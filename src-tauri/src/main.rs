@@ -1,5 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use tauri::Manager;
 use serde::Serialize;
 
@@ -32,9 +33,12 @@ struct File {
 }
 
 #[tauri::command]
-fn list_files() -> Vec<File> {
-    // list files form current directory, mark folder as folder
-    let paths = std::fs::read_dir("./").unwrap();
+fn list_files(subpath: Option<String>) -> Vec<File> {
+    let mut root_path = String::from("/Users/xddotcom/Downloads/local dam files");
+    if let Some(subpath) = subpath {
+        root_path = format!("{}/{}", root_path, subpath);
+    }
+    let paths = std::fs::read_dir(root_path).unwrap();
     let mut files = vec![];
     for path in paths {
         let file_name = path.as_ref().unwrap().file_name();

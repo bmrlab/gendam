@@ -2,10 +2,17 @@
 
 import Image from "next/image";
 // import { invoke } from '@tauri-apps/api';
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+type File = {
+  name: string;
+  is_dir: boolean;
+};
 
 export default function Home() {
-  const doInvoke = async () => {
+  let [files, setFiles] = useState<File[]>([]);
+
+  const doInvoke = async (subpath?: string): Promise<File[]> => {
     /**
      * https://github.com/tauri-apps/tauri/discussions/5271#discussioncomment-3716246
      * This is caused by nextjs' SSR nature and an unfortunate design choice of the window module.
@@ -17,23 +24,39 @@ export default function Home() {
      */
     const { invoke } = await import('@tauri-apps/api');
     invoke('greet', { name: 'World' }).then((response) => console.log(response));
-    let files = await invoke('list_files');
+    let files: File[] = subpath ?
+      await invoke('list_files', { subpath: subpath }) :
+      await invoke('list_files');
     console.log(files);
+    return files;
   }
 
   // useEffect(() => {
   //   console.log('abc');
   //   doInvoke();
-  // }, []);
-  let click = useCallback(() => {
-    doInvoke();
-  }, []);
+  // }, []);subpath
+  let click = useCallback(async (subpath?: string) => {
+    let _files: File[] = await doInvoke(subpath);
+    setFiles(_files);
+  }, [setFiles]);
 
   return (
-    <main className="flex min-h-screen">
-      <button className="w-24 h-24 bg-white" onClick={click}>
-        test
-      </button>
+    <main className="min-h-screen">
+      <div>
+        <button className="w-24 h-24 bg-white" onClick={() => click()}>
+          test
+        </button>
+      </div>
+      <div className="flex flex-wrap">
+        {files.map((file) => (
+          <div key={file.name} className="w-36 h-36 border-2 border-neutral-800 m-2 text-xs flex flex-col justify-between">
+            <span>{file.name}</span>
+            {file.is_dir ? (
+              <button onClick={() => click(file.name)}>点击查看详情</button>
+            ) : <div></div>}
+          </div>
+        ))}
+      </div>
     </main>
   );
 }
