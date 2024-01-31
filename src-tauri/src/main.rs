@@ -8,7 +8,7 @@ use rspc::Router;
 #[tokio::main]
 async fn main() {
     let router = <Router>::new()
-        .query("version", |t| t(|ctx, input: ()| env!("CARGO_PKG_VERSION")))
+        .query("version", |t| t(|_ctx, _input: ()| env!("CARGO_PKG_VERSION")))
         .build();
 
     tauri::Builder::default()
@@ -61,7 +61,9 @@ fn list_files(subpath: Option<String>) -> Vec<File> {
     files
 }
 
+#[allow(warnings)]
 mod prisma;
+
 use prisma::PrismaClient;
 use prisma::user;
 
