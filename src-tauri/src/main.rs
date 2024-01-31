@@ -15,7 +15,7 @@ fn main() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet, list_files,])
+        .invoke_handler(tauri::generate_handler![greet, list_files,list_users,])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -47,9 +47,20 @@ fn list_files(subpath: Option<String>) -> Vec<File> {
         let is_dir = file_path.is_dir();
         let file = File {
             name: file_path_str,
-            is_dir: is_dir,
+            is_dir,
         };
         files.push(file);
     }
     files
+}
+
+mod prisma;
+use prisma::PrismaClient;
+use prisma::user;
+
+#[tauri::command]
+async fn list_users() -> Vec<user::Data> {
+    let client = PrismaClient::_builder().build().await.unwrap();
+    let result: Vec<user::Data> = client.user().find_many(vec![user::id::equals(1)]).exec().await.unwrap();
+    result
 }

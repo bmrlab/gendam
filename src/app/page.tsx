@@ -24,6 +24,7 @@ export default function Home() {
      */
     const { invoke } = await import('@tauri-apps/api');
     invoke('greet', { name: 'World' }).then((response) => console.log(response));
+    invoke('list_users').then((response) => console.log('users', response));
     let files: File[] = subpath ?
       await invoke('list_files', { subpath: subpath }) :
       await invoke('list_files');
