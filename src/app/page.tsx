@@ -1,8 +1,10 @@
 "use client"
 
 import Image from "next/image";
-// import { invoke } from '@tauri-apps/api';
 import { useCallback, useEffect, useState } from "react";
+// import { invoke } from '@tauri-apps/api';
+// import { createClient } from "@rspc/client";
+// import { TauriTransport } from "@rspc/tauri";
 
 type File = {
   name: string;
@@ -13,6 +15,13 @@ export default function Home() {
   let [files, setFiles] = useState<File[]>([]);
 
   const doInvoke = async (subpath?: string): Promise<File[]> => {
+    const { createClient } = await import('@rspc/client');
+    const { TauriTransport } = await import('@rspc/tauri');
+    const client = createClient({
+      transport: new TauriTransport(),
+    });
+    client.query(['version']).then((data) => console.log('version', data));
+
     /**
      * https://github.com/tauri-apps/tauri/discussions/5271#discussioncomment-3716246
      * This is caused by nextjs' SSR nature and an unfortunate design choice of the window module.
@@ -25,6 +34,7 @@ export default function Home() {
     const { invoke } = await import('@tauri-apps/api');
     invoke('greet', { name: 'World' }).then((response) => console.log(response));
     invoke('list_users').then((response) => console.log('users', response));
+
     let files: File[] = subpath ?
       await invoke('list_files', { subpath: subpath }) :
       await invoke('list_files');

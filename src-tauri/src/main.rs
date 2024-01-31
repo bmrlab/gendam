@@ -3,9 +3,16 @@
 
 use tauri::Manager;
 use serde::Serialize;
+use rspc::Router;
 
-fn main() {
+#[tokio::main]
+async fn main() {
+    let router = <Router>::new()
+        .query("version", |t| t(|ctx, input: ()| env!("CARGO_PKG_VERSION")))
+        .build();
+
     tauri::Builder::default()
+        .plugin(rspc::integrations::tauri::plugin(router.into(), || ()))
         .setup(|app| {
             #[cfg(debug_assertions)] // only include this code on debug builds
             {
