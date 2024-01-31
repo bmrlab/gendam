@@ -20,17 +20,34 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
 
-## Learn More
+## Prisma Rust Client
 
-To learn more about Next.js, take a look at the following resources:
+1. 添加 `prisma-client-rust` 和 `prisma-client-rust-cli` 两个 crate
+2. 添加 `bin/prisma.rs` 并在 `main` 中执行 `prisma_client_rust_cli::run();`, 搞定 prisma cli
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+cd src-tauri
+cargo run --bin prisma
+# or
+cargo run --bin prisma -- <command>
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+为了方便使用，可以在 `.cargo/config.toml` 中添加一个 alias
 
-## Deploy on Vercel
+```toml
+[alias]
+prisma = "run --bin prisma --"
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. 执行 `cargo prisma init` 初始化 prisma 配置, 这时候会在 `src-tauri` 下生成一个 `prisma` 目录, 接着需要把 schema.prisma 里面的 client 配置修改成如下
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+```
+generator client {
+  provider = "cargo prisma"
+  output = "src/prisma/mod.rs"
+}
+```
+
+4. 执行 `cargo prisma generate` 生成 artifacts (e.g. Prisma Client), 根据上一步配置, 生成在 `src/prisma` 目录下
+
+5. `cargo prisma migrate dev` 以后，在代码里直接引入 `PrismaClient` 开始使用
