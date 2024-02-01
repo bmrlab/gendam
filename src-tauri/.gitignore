@@ -3,3 +3,8 @@
 /target/
 .env
 /src/prisma/
+
+sidecar/*
+resources/*
+
+.data/

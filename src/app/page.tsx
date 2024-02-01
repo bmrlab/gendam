@@ -1,6 +1,7 @@
-"use client"
+"use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 // import { invoke } from '@tauri-apps/api';
 // import { createClient } from "@rspc/client";
@@ -15,12 +16,12 @@ export default function Home() {
   let [files, setFiles] = useState<File[]>([]);
 
   const doInvoke = async (subpath?: string): Promise<File[]> => {
-    const { createClient } = await import('@rspc/client');
-    const { TauriTransport } = await import('@rspc/tauri');
+    const { createClient } = await import("@rspc/client");
+    const { TauriTransport } = await import("@rspc/tauri");
     const client = createClient({
       transport: new TauriTransport(),
     });
-    client.query(['version']).then((data) => console.log('version', data));
+    client.query(["version"]).then((data) => console.log("version", data));
 
     /**
      * https://github.com/tauri-apps/tauri/discussions/5271#discussioncomment-3716246
@@ -31,25 +32,30 @@ export default function Home() {
      * 不能在上面直接 import '@tauri-apps/api'
      * 不然 @tauri-apps/api/helpers/os-check.js 会报错 navigator is not defined
      */
-    const { invoke } = await import('@tauri-apps/api');
-    invoke('greet', { name: 'World' }).then((response) => console.log(response));
-    invoke('list_users').then((response) => console.log('users', response));
+    const { invoke } = await import("@tauri-apps/api");
+    invoke("greet", { name: "World" }).then((response) =>
+      console.log(response)
+    );
+    invoke("list_users").then((response) => console.log("users", response));
 
-    let files: File[] = subpath ?
-      await invoke('list_files', { subpath: subpath }) :
-      await invoke('list_files');
+    let files: File[] = subpath
+      ? await invoke("list_files", { subpath: subpath })
+      : await invoke("list_files");
     console.log(files);
     return files;
-  }
+  };
 
   // useEffect(() => {
   //   console.log('abc');
   //   doInvoke();
   // }, []);subpath
-  let click = useCallback(async (subpath?: string) => {
-    let _files: File[] = await doInvoke(subpath);
-    setFiles(_files);
-  }, [setFiles]);
+  let click = useCallback(
+    async (subpath?: string) => {
+      let _files: File[] = await doInvoke(subpath);
+      setFiles(_files);
+    },
+    [setFiles]
+  );
 
   return (
     <main className="min-h-screen">
@@ -60,13 +66,26 @@ export default function Home() {
       </div>
       <div className="flex flex-wrap">
         {files.map((file) => (
-          <div key={file.name} className="w-36 h-36 border-2 border-neutral-800 m-2 text-xs flex flex-col justify-between">
+          <div
+            key={file.name}
+            className="w-36 h-36 border-2 border-neutral-800 m-2 text-xs flex flex-col justify-between"
+          >
             <span>{file.name}</span>
             {file.is_dir ? (
               <button onClick={() => click(file.name)}>点击查看详情</button>
-            ) : <div></div>}
+            ) : (
+              <div></div>
+            )}
           </div>
         ))}
+      </div>
+
+      <div className="bg-blue-500 py-96">
+        <Link href="/files">
+          <button className="p-4 text-white bg-black rounded-lg">
+            direct to search test page
+          </button>
+        </Link>
       </div>
     </main>
   );

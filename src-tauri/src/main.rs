@@ -1,14 +1,30 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::Manager;
-use serde::Serialize;
+use std::rc::Rc;
+use std::time::Duration;
+
+use app::file_handler;
+use qdrant_client::client::QdrantClientConfig;
+use qdrant_client::qdrant::vectors_config::Config;
+use qdrant_client::qdrant::CreateCollection;
+use qdrant_client::qdrant::Distance;
+use qdrant_client::qdrant::VectorParams;
+use qdrant_client::qdrant::VectorsConfig;
 use rspc::Router;
+use serde::Serialize;
+use tauri::api::process::Command;
+use tauri::api::process::CommandEvent;
+use tauri::Manager;
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
+
     let router = <Router>::new()
-        .query("version", |t| t(|_ctx, _input: ()| env!("CARGO_PKG_VERSION")))
+        .query("version", |t| {
+            t(|_ctx, _input: ()| env!("CARGO_PKG_VERSION"))
+        })
         .build();
 
     tauri::Builder::default()
@@ -20,9 +36,75 @@ async fn main() {
                 window.open_devtools();
                 window.close_devtools();
             }
+
+            // start qdrant
+            let local_data_dir = app
+                .app_handle()
+                .path_resolver()
+                .app_local_data_dir()
+                .expect("failed to find local data dir");
+            std::fs::create_dir_all(&local_data_dir).unwrap();
+            let (mut rx, _) = Command::new_sidecar("qdrant")
+                .expect("failed to create `qdrant` binary command")
+                .current_dir(local_data_dir)
+                .spawn()
+                .expect("Failed to spawn sidecar");
+
+            tauri::async_runtime::spawn(async move {
+                // read events such as stdout
+                while let Some(event) = rx.recv().await {
+                    if let CommandEvent::Stdout(line) = event {
+                        debug!("message: {}", line);
+                    }
+                }
+            });
+
+            // make sure collection is created
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    let client = QdrantClientConfig::from_url("http://0.0.0.0:6334")
+                        .build()
+                        .expect("");
+                    let collection_info = client
+                        .collection_info(file_handler::QDRANT_COLLECTION_NAME)
+                        .await;
+
+                    match collection_info {
+                        Err(_) => {
+                            debug!("collection does not exist, creating it");
+                            // create collection
+                            let _ = client
+                                .create_collection(&CreateCollection {
+                                    collection_name: file_handler::QDRANT_COLLECTION_NAME.into(),
+                                    vectors_config: Some(VectorsConfig {
+                                        config: Some(Config::Params(VectorParams {
+                                            size: file_handler::EMBEDDING_DIM,
+                                            distance: Distance::Cosine.into(),
+                                            ..Default::default()
+                                        })),
+                                    }),
+                                    ..Default::default()
+                                })
+                                .await;
+                        }
+                        _ => break,
+                    }
+
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                }
+            });
+
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet, list_files,list_users,])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            list_files,
+            list_users,
+            handle_video_file,
+            get_video_embedding,
+            get_frame_caption,
+            handle_search
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -64,12 +146,122 @@ fn list_files(subpath: Option<String>) -> Vec<File> {
 #[allow(warnings)]
 mod prisma;
 
-use prisma::PrismaClient;
 use prisma::user;
+use prisma::PrismaClient;
+use tokio::task::JoinSet;
+use tracing::debug;
 
 #[tauri::command]
 async fn list_users() -> Vec<user::Data> {
     let client = PrismaClient::_builder().build().await.unwrap();
-    let result: Vec<user::Data> = client.user().find_many(vec![user::id::equals(1)]).exec().await.unwrap();
+    let result: Vec<user::Data> = client
+        .user()
+        .find_many(vec![user::id::equals(1)])
+        .exec()
+        .await
+        .unwrap();
     result
+}
+
+#[tauri::command]
+async fn handle_video_file(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), ()> {
+    let mut video_handler = file_handler::video::VideoHandler::new(
+        video_path,
+        app_handle
+            .path_resolver()
+            .app_local_data_dir()
+            .expect("failed to find local data dir"),
+        app_handle
+            .path_resolver()
+            .resolve_resource("resources")
+            .expect("failed to find resources dir"),
+    )
+    .expect("failed to initialize video handler");
+
+    video_handler
+        .decode_video()
+        .expect("failed to decode video");
+
+    let mut tokio_join_set = JoinSet::new();
+
+    let vh = video_handler.clone();
+    tokio_join_set.spawn(async move { vh.get_transcript().await });
+
+    while let Some(_) = tokio_join_set.join_next().await {}
+
+    Ok(())
+}
+
+
+#[tauri::command]
+async fn get_frame_caption(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), ()> {
+    let video_handler = file_handler::video::VideoHandler::new(
+        video_path,
+        app_handle
+            .path_resolver()
+            .app_local_data_dir()
+            .expect("failed to find local data dir"),
+        app_handle
+            .path_resolver()
+            .resolve_resource("resources")
+            .expect("failed to find resources dir"),
+    )
+    .expect("failed to initialize video handler");
+
+    let mut tokio_join_set = JoinSet::new();
+
+    let vh = video_handler.clone();
+    tokio_join_set.spawn(async move { vh.get_frames_caption().await });
+
+    while let Some(_) = tokio_join_set.join_next().await {}
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_video_embedding(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), ()> {
+    let mut tokio_join_set = JoinSet::new();
+
+    let video_handler = file_handler::video::VideoHandler::new(
+        video_path,
+        app_handle
+            .path_resolver()
+            .app_local_data_dir()
+            .expect("failed to find local data dir"),
+        app_handle
+            .path_resolver()
+            .resolve_resource("resources")
+            .expect("failed to find resources dir"),
+    )
+    .expect("failed to initialize video handler");
+
+    let vh = video_handler.clone();
+    tokio_join_set.spawn(async move { vh.get_frame_content_embedding().await });
+
+    let vh = video_handler.clone();
+    tokio_join_set.spawn(async move { vh.get_transcript_embedding().await });
+
+    // let vh = video_handler.clone();
+    // tokio_join_set.spawn(async move { vh.get_frame_caption_embedding().await });
+
+    while let Some(_) = tokio_join_set.join_next().await {}
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn handle_search(
+    app_handle: tauri::AppHandle,
+    text: String,
+) -> Result<Vec<file_handler::SearchResult>, ()> {
+    let resources_dir = app_handle
+        .path_resolver()
+        .resolve_resource("resources")
+        .unwrap();
+
+    Ok(
+        file_handler::handle_search(&text, resources_dir, None, None)
+            .await
+            .map_err(|_| ())?,
+    )
 }
