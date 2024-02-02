@@ -1,5 +1,6 @@
 use super::{preprocess, utils};
 use anyhow::anyhow;
+use ffmpeg_next::codec::debug;
 use image::RgbImage;
 use ndarray::Axis;
 use ort::{GraphOptimizationLevel, Session};
@@ -129,5 +130,35 @@ impl CLIP {
             .to_owned();
 
         Ok(output.into_dimensionality()?)
+    }
+}
+
+#[test_log::test(tokio::test)]
+async fn test_async_clip() {
+    let clip = CLIP::new(
+        "./resources/visual.onnx",
+        "./resources/textual.onnx",
+        "./resources/tokenizer.json",
+    )
+    .unwrap();
+
+    let clip = tokio::sync::RwLock::new(clip);
+    let clip = std::sync::Arc::new(clip);
+
+    let paths = vec!["/Users/zhuo/Library/Application Support/cc.musedam.local/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/frames/89000000.png", "/Users/zhuo/Library/Application Support/cc.musedam.local/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/frames/90000000.png"];
+
+    let mut set = tokio::task::JoinSet::new();
+
+    for path in paths {
+        let path = path.to_string();
+        let clip = std::sync::Arc::clone(&clip);
+        set.spawn(async move {
+            debug!("{:?}", path);
+            let _ = clip.read().await.get_image_embedding_from_file(path).await;
+        });
+    }
+
+    while let Some(res) = set.join_next().await {
+        debug!("{:?}", res);
     }
 }

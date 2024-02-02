@@ -20,20 +20,6 @@ export default function Files() {
     });
   }, [path]);
 
-  const handleEmbedding = useCallback(() => {
-    import("@tauri-apps/api").then(({ invoke }) => {
-      invoke<string>("get_video_embedding", {
-        videoPath: path,
-      })
-        .then((res) => {
-          console.log(res);
-        })
-        .catch((err: any) => {
-          console.error(err);
-        });
-    });
-  }, [path]);
-
   const handleCaption = useCallback(() => {
     import("@tauri-apps/api").then(({ invoke }) => {
       invoke<string>("get_frame_caption", {
@@ -77,10 +63,6 @@ export default function Files() {
 
         <button className="bg-black p-4 text-white" onClick={handleCaption}>
           generate captions
-        </button>
-
-        <button className="bg-black p-4 text-white" onClick={handleEmbedding}>
-          generate embedding
         </button>
       </div>
 

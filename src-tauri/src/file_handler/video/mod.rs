@@ -11,16 +11,17 @@ use serde_json::json;
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;
+use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
+use tokio::sync::RwLock;
 use tokio::task::JoinSet;
 use tracing::debug;
 
-mod decoder;
+pub mod decoder;
 
 #[derive(Clone, Debug)]
 pub struct VideoHandler {
     video_path: std::path::PathBuf,
-    artifacts_dir: std::path::PathBuf,
     resources_dir: std::path::PathBuf,
     file_identifier: String,
     frames_dir: std::path::PathBuf,
@@ -51,7 +52,6 @@ impl VideoHandler {
 
         Ok(Self {
             video_path: video_path.as_ref().to_owned(),
-            artifacts_dir: artifacts_dir.clone(),
             resources_dir: resources_dir.as_ref().to_owned(),
             file_identifier: file_sha256.clone().into(),
             audio_path: artifacts_dir.join("audio.wav"),
@@ -60,10 +60,16 @@ impl VideoHandler {
         })
     }
 
-    /// Trigger the video handler, to save artifacts (frame, audio, etc.)
-    pub fn decode_video(&mut self) -> anyhow::Result<()> {
-        let mut video_decoder = decoder::video::VideoDecoder::new(&self.video_path)?;
-        video_decoder.save_video_artifacts(&self.frames_dir, &self.audio_path)?;
+    pub async fn get_frames(&self) -> anyhow::Result<()> {
+        let video_decoder = decoder::video::VideoDecoder::new(&self.video_path);
+        video_decoder.save_video_frames(&self.frames_dir).await?;
+
+        Ok(())
+    }
+
+    pub async fn get_audio(&self) -> anyhow::Result<()> {
+        let video_decoder = decoder::video::VideoDecoder::new(&self.video_path);
+        video_decoder.save_video_audio(&self.audio_path).await?;
 
         Ok(())
     }
@@ -88,102 +94,87 @@ impl VideoHandler {
         // Read the JSON contents of the file as an instance of `User`.
         let whisper_results: Vec<WhisperItem> = serde_json::from_reader(reader)?;
 
-        let mut clip_model = self.get_clip_instance()?;
+        let clip_model = self.get_clip_instance()?;
+        let clip_model = Arc::new(RwLock::new(clip_model));
+
         let qdrant_client = self.get_qdrant_client()?;
+        let qdrant_client = Arc::new(RwLock::new(qdrant_client));
+
+        let mut set = JoinSet::new();
 
         for item in whisper_results {
-            self.get_single_transcript_embedding(item, &mut clip_model, &qdrant_client)
-                .await?;
+            let clip_model = Arc::clone(&clip_model);
+            let qdrant_client = Arc::clone(&qdrant_client);
+            let file_identifier = self.file_identifier.clone();
+
+            set.spawn(async move {
+                let payload = SearchPayload::Transcript(search_payload::TranscriptPayload {
+                    file_identifier,
+                    start_timestamp: item.start_timestamp,
+                    end_timestamp: item.end_timestamp,
+                    transcript: item.text.clone(),
+                });
+                let _ = save_text_embedding(&item.text, payload, clip_model, qdrant_client).await;
+            });
         }
 
-        Ok(())
-    }
-
-    async fn get_single_transcript_embedding(
-        &self,
-        item: WhisperItem,
-        clip_model: &mut embedding::clip::CLIP,
-        qdrant_client: &QdrantClient,
-    ) -> anyhow::Result<()> {
-        let payload = SearchPayload::Transcript(search_payload::TranscriptPayload {
-            file_identifier: self.file_identifier.clone(),
-            start_timestamp: item.start_timestamp,
-            end_timestamp: item.end_timestamp,
-            transcript: item.text.clone(),
-        });
-
-        self.save_text_embedding(&item.text, payload, clip_model, qdrant_client)
-            .await?;
+        while let Some(_) = set.join_next().await {}
 
         Ok(())
     }
 
     /// Get frame content embedding
     pub async fn get_frame_content_embedding(&self) -> anyhow::Result<()> {
-        let mut clip_model = self.get_clip_instance()?;
+        let clip_model = self.get_clip_instance()?;
+        let clip_model = Arc::new(RwLock::new(clip_model));
+
         let qdrant_client = self.get_qdrant_client()?;
+        let qdrant_client = Arc::new(RwLock::new(qdrant_client));
 
         let frame_paths = std::fs::read_dir(&self.frames_dir)?
             .map(|res| res.map(|e| e.path()))
             .collect::<Result<Vec<_>, std::io::Error>>()?;
 
+        let mut set = JoinSet::new();
+
         for path in frame_paths {
             if path.extension() == Some(std::ffi::OsStr::new("png")) {
-                self.get_single_frame_content_embedding(path, &mut clip_model, &qdrant_client)
-                    .await?;
+                let clip_model = Arc::clone(&clip_model);
+                let qdrant_client = Arc::clone(&qdrant_client);
+                let file_name = path
+                    .file_name()
+                    .ok_or(anyhow!("invalid path"))?
+                    .to_str()
+                    .ok_or(anyhow!("invalid path"))?;
+
+                let frame_timestamp: i64 = file_name
+                    .split(".")
+                    .next()
+                    .unwrap_or("0")
+                    .parse()
+                    .unwrap_or(0);
+
+                let payload = SearchPayload::Frame(search_payload::FramePayload {
+                    file_identifier: self.file_identifier.clone(),
+                    frame_filename: file_name.to_string(),
+                    timestamp: frame_timestamp,
+                });
+
+                set.spawn(async move {
+                    let _ = get_single_frame_content_embedding(
+                        payload,
+                        path,
+                        clip_model,
+                        qdrant_client,
+                    )
+                    .await;
+                });
             }
         }
 
+        while let Some(_) = set.join_next().await {}
+
         Ok(())
-    }
-
-    async fn get_single_frame_content_embedding(
-        &self,
-        path: impl AsRef<std::path::Path>,
-        clip_model: &mut embedding::clip::CLIP,
-        qdrant_client: &QdrantClient,
-    ) -> anyhow::Result<()> {
-        let file_name = path
-            .as_ref()
-            .file_name()
-            .ok_or(anyhow!("invalid path"))?
-            .to_str()
-            .ok_or(anyhow!("invalid path"))?;
-
-        let frame_timestamp: i64 = file_name
-            .split(".")
-            .next()
-            .unwrap_or("0")
-            .parse()
-            .unwrap_or(0);
-
-        let payload = SearchPayload::Frame(search_payload::FramePayload {
-            file_identifier: self.file_identifier.clone(),
-            frame_filename: file_name.to_string(),
-            timestamp: frame_timestamp,
-        });
-
-        let embedding = clip_model
-            .get_image_embedding_from_file(path.as_ref())
-            .await?;
-        let embedding: Vec<f32> = embedding
-            .index_axis(Axis(0), 0)
-            .iter()
-            .map(|&x| x)
-            .collect();
-
-        let point = PointStruct::new(
-            payload.uuid(),
-            embedding,
-            json!(payload)
-                .try_into()
-                .map_err(|_| anyhow!("invalid payload"))?,
-        );
-        qdrant_client
-            .upsert_points(super::QDRANT_COLLECTION_NAME, None, vec![point], None)
-            .await?;
-
-        todo!()
     }
 
     pub async fn get_frames_caption(&self) -> anyhow::Result<()> {
@@ -193,96 +184,56 @@ impl VideoHandler {
 
         let mut tokio_join_set = JoinSet::new();
         let blip_model_dir = self.resources_dir.join("blip");
+        let blip_model = embedding::blip::BLIP::new(blip_model_dir)?;
+        let blip_model = Arc::new(RwLock::new(blip_model));
 
         for path in frame_paths {
             if path.extension() == Some(std::ffi::OsStr::new("png")) {
                 debug!("get_frames_caption: {:?}", path);
-                let blip_dir = blip_model_dir.clone();
+                let blip_model = Arc::clone(&blip_model);
                 tokio_join_set.spawn(async move {
-                    let _ = get_single_frame_caption(blip_dir, path.clone()).await;
+                    let _ = get_single_frame_caption(blip_model, path).await;
                 });
             }
         }
+
         while let Some(_) = tokio_join_set.join_next().await {}
 
         Ok(())
     }
 
     pub async fn get_frame_caption_embedding(&self) -> anyhow::Result<()> {
-        let mut clip_model = self.get_clip_instance()?;
+        let clip_model = self.get_clip_instance()?;
+        let clip_model = Arc::new(RwLock::new(clip_model));
+
         let qdrant_client = self.get_qdrant_client()?;
+        let qdrant_client = Arc::new(RwLock::new(qdrant_client));
 
         let frame_paths = std::fs::read_dir(&self.frames_dir)?
             .map(|res| res.map(|e| e.path()))
             .collect::<Result<Vec<_>, std::io::Error>>()?;
 
+        let mut set = JoinSet::new();
+
         for path in frame_paths {
-            if path.ends_with(".caption") {
-                self.get_single_frame_caption_embedding(path, &mut clip_model, &qdrant_client)
-                    .await?;
+            if path.extension() == Some(std::ffi::OsStr::new("caption")) {
+                let clip_model = Arc::clone(&clip_model);
+                let qdrant_client = Arc::clone(&qdrant_client);
+                let file_identifier = self.file_identifier.clone();
+
+                set.spawn(async move {
+                    let _ = get_single_frame_caption_embedding(
+                        file_identifier,
+                        path,
+                        clip_model,
+                        qdrant_client,
+                    )
+                    .await;
+                });
             }
         }
 
-        Ok(())
-    }
-
-    async fn get_single_frame_caption_embedding(
-        &self,
-        path: impl AsRef<std::path::Path>,
-        clip_model: &mut embedding::clip::CLIP,
-        qdrant_client: &QdrantClient,
-    ) -> anyhow::Result<()> {
-        let caption = fs::read_to_string(path.as_ref())?;
-        let file_name = path
-            .as_ref()
-            .file_name()
-            .ok_or(anyhow!("invalid path"))?
-            .to_str()
-            .ok_or(anyhow!("invalid path"))?;
-
-        let frame_timestamp: i64 = file_name
-            .split(".")
-            .next()
-            .unwrap_or("0")
-            .parse()
-            .unwrap_or(0);
-
-        let payload = SearchPayload::FrameCaption(search_payload::FrameCaptionPayload {
-            file_identifier: self.file_identifier.clone(),
-            frame_filename: file_name.to_string(),
-            caption: caption.clone(),
-            timestamp: frame_timestamp,
-        });
-
-        self.save_text_embedding(&caption, payload, clip_model, qdrant_client);
-
-        todo!()
-    }
-
-    async fn save_text_embedding(
-        &self,
-        text: &str,
-        payload: SearchPayload,
-        clip: &embedding::clip::CLIP,
-        qdrant_client: &QdrantClient,
-    ) -> anyhow::Result<()> {
-        let embedding = clip.get_text_embedding(text).await?;
-        let embedding: Vec<f32> = embedding
-            .index_axis(Axis(0), 0)
-            .iter()
-            .map(|&x| x)
-            .collect();
-
-        let point = PointStruct::new(
-            payload.uuid(),
-            embedding,
-            json!(payload)
-                .try_into()
-                .map_err(|_| anyhow!("invalid payload"))?,
-        );
-        qdrant_client
-            .upsert_points(super::QDRANT_COLLECTION_NAME, None, vec![point], None)
-            .await?;
+        while let Some(_) = set.join_next().await {}
 
         Ok(())
     }
@@ -309,17 +260,11 @@ impl VideoHandler {
     }
 }
 
-#[test_log::test]
-fn test_handle_video() {
-    todo!()
-}
-
 async fn get_single_frame_caption(
-    blip_model_dir: impl AsRef<std::path::Path>,
+    blip_model: Arc<RwLock<embedding::blip::BLIP>>,
     path: impl AsRef<std::path::Path>,
 ) -> anyhow::Result<()> {
-    let mut blip_model = embedding::blip::BLIP::new(blip_model_dir)?;
-    let caption = blip_model.get_caption(path.as_ref()).await?;
+    let caption = blip_model.write().await.get_caption(path.as_ref()).await?;
     debug!("caption: {:?}", caption);
 
     // write into file
@@ -332,4 +277,104 @@ async fn get_single_frame_caption(
     file.write_all(caption.as_bytes()).await?;
 
     Ok(())
+}
+
+async fn save_text_embedding(
+    text: &str,
+    payload: SearchPayload,
+    clip: Arc<RwLock<embedding::clip::CLIP>>,
+    qdrant_client: Arc<RwLock<QdrantClient>>,
+) -> anyhow::Result<()> {
+    let embedding = clip.read().await.get_text_embedding(text).await?;
+    let embedding: Vec<f32> = embedding
+        .index_axis(Axis(0), 0)
+        .iter()
+        .map(|&x| x)
+        .collect();
+
+    let point = PointStruct::new(
+        payload.uuid(),
+        embedding,
+        json!(payload)
+            .try_into()
+            .map_err(|_| anyhow!("invalid payload"))?,
+    );
+    qdrant_client
+        .read()
+        .await
+        .upsert_points(super::QDRANT_COLLECTION_NAME, None, vec![point], None)
+        .await?;
+
+    Ok(())
+}
+
+async fn get_single_frame_content_embedding(
+    payload: SearchPayload,
+    path: impl AsRef<std::path::Path>,
+    clip_model: Arc<RwLock<embedding::clip::CLIP>>,
+    qdrant_client: Arc<RwLock<QdrantClient>>,
+) -> anyhow::Result<()> {
+    let embedding = clip_model
+        .read()
+        .await
+        .get_image_embedding_from_file(path.as_ref())
+        .await?;
+    let embedding: Vec<f32> = embedding
+        .index_axis(Axis(0), 0)
+        .iter()
+        .map(|&x| x)
+        .collect();
+
+    let point = PointStruct::new(
+        payload.uuid(),
+        embedding,
+        json!(payload)
+            .try_into()
+            .map_err(|_| anyhow!("invalid payload"))?,
+    );
+    qdrant_client
+        .read()
+        .await
+        .upsert_points(super::QDRANT_COLLECTION_NAME, None, vec![point], None)
+        .await?;
+
+    Ok(())
+}
+
+async fn get_single_frame_caption_embedding(
+    file_identifier: String,
+    path: impl AsRef<std::path::Path>,
+    clip_model: Arc<RwLock<embedding::clip::CLIP>>,
+    qdrant_client: Arc<RwLock<QdrantClient>>,
+) -> anyhow::Result<()> {
+    let caption = tokio::fs::read_to_string(path.as_ref()).await?;
+    let file_name = path
+        .as_ref()
+        .file_name()
+        .ok_or(anyhow!("invalid path"))?
+        .to_str()
+        .ok_or(anyhow!("invalid path"))?;
+
+    let frame_timestamp: i64 = file_name
+        .split(".")
+        .next()
+        .unwrap_or("0")
+        .parse()
+        .unwrap_or(0);
+
+    let payload = SearchPayload::FrameCaption(search_payload::FrameCaptionPayload {
+        file_identifier,
+        frame_filename: file_name.to_string(),
+        caption: caption.clone(),
+        timestamp: frame_timestamp,
+    });
+
+    save_text_embedding(&caption, payload, clip_model, qdrant_client).await?;
+
+    Ok(())
+}
+
+#[test_log::test]
+fn test_handle_video() {
+    todo!()
 }

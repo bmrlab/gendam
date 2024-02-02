@@ -1,189 +1,149 @@
+use super::{transcode::transcoder, utils};
 use ffmpeg_next::ffi::*;
-
-use std::{fs, path::Path};
+use std::path::Path;
+use tokio::{join, task::JoinSet};
 use tracing::debug;
 
-use super::{transcode::transcoder, utils};
-
-use anyhow::{anyhow, Result};
-
 pub struct VideoDecoder {
-    video: ffmpeg_next::format::context::Input,
-    video_stream_index: Option<usize>,
-    video_decoder: Option<ffmpeg_next::codec::decoder::Video>,
-    video_scaler: Option<ffmpeg_next::software::scaling::context::Context>,
-    audio_stream_index: Option<usize>,
+    video_file_path: std::path::PathBuf,
 }
 
 impl VideoDecoder {
-    pub fn new(filename: impl AsRef<Path>) -> Result<Self> {
-        let video = ffmpeg_next::format::input(&filename)?;
-
+    pub fn new(filename: impl AsRef<Path>) -> Self {
         debug!("Successfully opened {}", filename.as_ref().display());
 
-        let mut decoder = Self {
-            video,
-            video_stream_index: None,
-            video_decoder: None,
-            video_scaler: None,
-            audio_stream_index: None,
+        let decoder = Self {
+            video_file_path: filename.as_ref().to_path_buf(),
         };
 
-        decoder.initialize()?;
-
-        Ok(decoder)
+        decoder
     }
 
-    pub fn save_video_artifacts(
-        &mut self,
-        frames_dir: impl AsRef<Path>,
-        audio_path: impl AsRef<Path>,
-    ) -> Result<()> {
-        // preprocessing for audio file
-        let mut output = None;
-        let mut audio_transcoder = None;
-
-        if let Some(_) = self.audio_stream_index {
-            let mut inner_output = ffmpeg_next::format::output(&audio_path).unwrap();
-
-            audio_transcoder = Some(transcoder(
-                &mut self.video,
-                &mut inner_output,
-                &audio_path,
-                "anull",
-            )?);
-
-            inner_output.set_metadata(self.video.metadata().to_owned());
-            inner_output
-                .write_header()
-                .expect("failed to write output header");
-
-            output = Some(inner_output);
-        }
-
-        for (stream, mut packet) in self.video.packets() {
-            // use transcoder to handle audio packet
-            if let Some(transcoder) = audio_transcoder.as_mut() {
-                if let Some(mut output) = output.as_mut() {
-                    if stream.index() == transcoder.stream {
-                        packet.rescale_ts(stream.time_base(), transcoder.in_time_base);
-                        transcoder.send_packet_to_decoder(&packet);
-                        transcoder.receive_and_process_decoded_frames(&mut output);
-                    }
-                }
-            }
-
-            // handle video packet
-            if let Some(video_stream_index) = self.video_stream_index {
-                if stream.index() == video_stream_index {
-                    let video_decoder = self
-                        .video_decoder
-                        .as_mut()
-                        .expect("failed to initialize video_decoder");
-                    let video_scaler = self
-                        .video_scaler
-                        .as_mut()
-                        .expect("failed to initialize video_scaler");
-
-                    match video_decoder.send_packet(&packet) {
-                        Ok(()) => {
-                            let mut frame = ffmpeg_next::frame::Video::empty();
-                            match video_decoder.receive_frame(&mut frame) {
-                                Ok(()) => {
-                                    let mut scaled_frame = ffmpeg_next::frame::Video::empty();
-                                    video_scaler.run(&mut frame, &mut scaled_frame).unwrap();
-                                    utils::copy_frame_props(&frame, &mut scaled_frame);
-
-                                    if scaled_frame.is_key() {
-                                        // save frame to dir
-                                        let array = utils::convert_frame_to_ndarray_rgb24(
-                                            &mut scaled_frame,
-                                        )
-                                        .expect("failed to convert frame");
-
-                                        let image = utils::array_to_image(array);
-                                        image.save(frames_dir.as_ref().join(format!(
-                                                "{}.png",
-                                                scaled_frame
-                                                    .timestamp()
-                                                    .ok_or(anyhow!("frame has no timestamp"))?
-                                                    .to_string()
-                                            )))?;
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }
-        }
-
-        // postprocessing for audio file
-        if let Some(transcoder) = audio_transcoder.as_mut() {
-            if let Some(mut output) = output {
-                transcoder.send_eof_to_decoder();
-                transcoder.receive_and_process_decoded_frames(&mut output);
-
-                transcoder.flush_filter();
-                transcoder.get_and_process_filtered_frames(&mut output);
-
-                transcoder.send_eof_to_encoder();
-                transcoder.receive_and_process_encoded_packets(&mut output);
-
-                output.write_trailer().unwrap();
-            };
-        };
-
-        Ok(())
+    pub async fn save_video_frames(&self, frames_dir: impl AsRef<Path>) -> anyhow::Result<()> {
+        save_video_frames(self.video_file_path.to_path_buf(), frames_dir)
     }
 
-    fn initialize(&mut self) -> Result<()> {
-        let video_stream = self
-            .video
-            .streams()
-            .best(ffmpeg_next::media::Type::Video)
-            .ok_or(anyhow::anyhow!("no video stream found"))?;
-        self.video_stream_index = Some(video_stream.index());
-
-        // initialize video decoder and scaler
-        match ffmpeg_next::codec::Context::from_parameters(video_stream.parameters()) {
-            Ok(decoder_context) => match decoder_context.decoder().video() {
-                Ok(decoder) => {
-                    match ffmpeg_next::software::scaling::context::Context::get(
-                        decoder.format(),
-                        decoder.width(),
-                        decoder.height(),
-                        AVPixelFormat::AV_PIX_FMT_RGB24.into(),
-                        decoder.width(),
-                        decoder.height(),
-                        ffmpeg_next::software::scaling::flag::Flags::BICUBIC,
-                    ) {
-                        Ok(scaler) => {
-                            self.video_scaler = Some(scaler);
-                        }
-                        _ => {}
-                    }
-
-                    self.video_decoder = Some(decoder);
-                }
-                _ => {}
-            },
-            _ => {}
-        }
-
-        self.audio_stream_index = self
-            .video
-            .streams()
-            .best(ffmpeg_next::media::Type::Audio)
-            .map(|stream| stream.index());
-
-        Ok(())
+    pub async fn save_video_audio(&self, audio_path: impl AsRef<Path>) -> anyhow::Result<()> {
+        save_video_audio(self.video_file_path.to_path_buf(), audio_path)
     }
 }
 
-#[test_log::test]
-fn test_video_decoder() {
-    todo!()
+fn save_video_frames(
+    video_path: impl AsRef<Path>,
+    frames_dir: impl AsRef<Path>,
+) -> anyhow::Result<()> {
+    let mut video = ffmpeg_next::format::input(&video_path.as_ref().to_path_buf())?;
+    let video_stream = &video
+        .streams()
+        .best(ffmpeg_next::media::Type::Video)
+        .ok_or(anyhow::anyhow!("no video stream found"))?;
+    let video_stream_index = video_stream.index();
+
+    let decoder_context = ffmpeg_next::codec::Context::from_parameters(video_stream.parameters())?;
+    let mut decoder = decoder_context.decoder().video()?;
+
+    // resize to make max size to 768
+    let (target_width, target_height) = if decoder.width() > decoder.height() {
+        (
+            768,
+            (768.0 * decoder.height() as f32 / decoder.width() as f32) as u32,
+        )
+    } else {
+        (
+            (768.0 * decoder.width() as f32 / decoder.height() as f32) as u32,
+            768,
+        )
+    };
+
+    let mut scaler = ffmpeg_next::software::scaling::context::Context::get(
+        decoder.format(),
+        decoder.width(),
+        decoder.height(),
+        AVPixelFormat::AV_PIX_FMT_RGB24.into(),
+        target_width,
+        target_height,
+        ffmpeg_next::software::scaling::flag::Flags::BICUBIC,
+    )?;
+
+    for (stream, packet) in video.packets() {
+        if stream.index() == video_stream_index {
+            if decoder.send_packet(&packet).is_ok() {
+                let mut frame = ffmpeg_next::frame::Video::empty();
+                decoder.receive_frame(&mut frame)?;
+
+                if frame.is_key() {
+                    let mut scaled_frame = ffmpeg_next::frame::Video::empty();
+                    scaler.run(&mut frame, &mut scaled_frame).unwrap();
+                    let frames_dir = frames_dir.as_ref().to_path_buf().clone();
+
+                    utils::copy_frame_props(&frame, &mut scaled_frame);
+                    let array = utils::convert_frame_to_ndarray_rgb24(&mut scaled_frame).expect("");
+                    let image = utils::array_to_image(array);
+                    let _ = image.save(frames_dir.join(format!(
+                        "{}.png",
+                        scaled_frame.timestamp().unwrap().to_string()
+                    )));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn save_video_audio(
+    video_path: impl AsRef<Path>,
+    audio_path: impl AsRef<Path>,
+) -> anyhow::Result<()> {
+    let mut video = ffmpeg_next::format::input(&video_path.as_ref().to_path_buf())?;
+    let mut inner_output = ffmpeg_next::format::output(&audio_path)?;
+
+    let video_stream = video
+        .streams()
+        .best(ffmpeg_next::media::Type::Audio)
+        .unwrap();
+    let audio_stream_index = video_stream.index();
+
+    let mut transcoder = transcoder(&mut video, &mut inner_output, &audio_path, "anull")?;
+
+    inner_output.set_metadata(video.metadata().to_owned());
+    inner_output.write_header()?;
+
+    for (stream, mut packet) in video.packets() {
+        if stream.index() == audio_stream_index {
+            packet.rescale_ts(stream.time_base(), transcoder.in_time_base);
+            transcoder.send_packet_to_decoder(&packet);
+            transcoder.receive_and_process_decoded_frames(&mut inner_output);
+        }
+    }
+
+    transcoder.send_eof_to_decoder();
+    transcoder.receive_and_process_decoded_frames(&mut inner_output);
+
+    transcoder.flush_filter();
+    transcoder.get_and_process_filtered_frames(&mut inner_output);
+
+    transcoder.send_eof_to_encoder();
+    transcoder.receive_and_process_encoded_packets(&mut inner_output);
+
+    inner_output.write_trailer().unwrap();
+
+    Ok(())
+}
+
+#[test_log::test(tokio::test)]
+async fn test_video_decoder() {
+    let video_decoder =
+        VideoDecoder::new("/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4");
+
+    let frames_fut = video_decoder
+        .save_video_frames(
+            "/Users/zhuo/Library/Application Support/cc.musedam.local/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/frames",
+        );
+    let audio_fut = video_decoder
+        .save_video_audio(
+            "/Users/zhuo/Library/Application Support/cc.musedam.local/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/audio.wav",
+        );
+
+    join!(frames_fut, audio_fut);
 }

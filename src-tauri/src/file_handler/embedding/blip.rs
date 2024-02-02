@@ -14,7 +14,7 @@ use tokenizers::Tokenizer;
 use tracing::{debug, error};
 
 pub struct BLIP {
-    tokenizer: TokenOutputStream,
+    tokenizer: Tokenizer,
     model: quantized_blip::BlipForConditionalGeneration,
     logits_processor: LogitsProcessor,
     device: Device,
@@ -34,7 +34,6 @@ impl BLIP {
 
         let tokenizer = Tokenizer::from_file(tokenizer_path)
             .map_err(|_| anyhow!("failed to initialize tokenizer"))?;
-        let tokenizer = TokenOutputStream::new(tokenizer);
 
         let logits_processor =
             candle_transformers::generation::LogitsProcessor::new(1337, None, None);
@@ -63,7 +62,9 @@ impl BLIP {
         let image_embeds = image.unsqueeze(0)?.apply(self.model.vision_model())?;
 
         let mut token_ids = vec![30522u32];
-        let mut result = vec![];
+
+        // we need this to make multi time generation work
+        self.model.text_decoder().reset_kv_cache();
 
         for index in 0..1000 {
             let context_size = if index > 0 { 1 } else { token_ids.len() };
@@ -80,12 +81,11 @@ impl BLIP {
                 break;
             }
             token_ids.push(token);
-            if let Some(t) = self.tokenizer.next_token(token)? {
-                result.push(t);
-            }
         }
 
-        Ok(result.join(""))
+        let result = self.tokenizer.decode(&token_ids, true);
+
+        result.map_err(|_| anyhow!("failed to generate caption"))
     }
 }
 
@@ -108,7 +108,8 @@ pub fn load_image<P: AsRef<std::path::Path>>(p: P) -> candle_core::Result<Tensor
 
 #[test_log::test(tokio::test)]
 async fn test_caption() {
-    let blip = BLIP::new("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/src-tauri/resources/blip");
+    let blip =
+        BLIP::new("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/src-tauri/resources/blip");
 
     assert!(blip.is_ok());
     let mut blip = blip.unwrap();

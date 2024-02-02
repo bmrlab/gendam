@@ -101,7 +101,6 @@ async fn main() {
             list_files,
             list_users,
             handle_video_file,
-            get_video_embedding,
             get_frame_caption,
             handle_search
         ])
@@ -148,6 +147,7 @@ mod prisma;
 
 use prisma::user;
 use prisma::PrismaClient;
+use tokio::join;
 use tokio::task::JoinSet;
 use tracing::debug;
 
@@ -165,7 +165,7 @@ async fn list_users() -> Vec<user::Data> {
 
 #[tauri::command]
 async fn handle_video_file(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), ()> {
-    let mut video_handler = file_handler::video::VideoHandler::new(
+    let video_handler = file_handler::video::VideoHandler::new(
         video_path,
         app_handle
             .path_resolver()
@@ -178,20 +178,42 @@ async fn handle_video_file(app_handle: tauri::AppHandle, video_path: &str) -> Re
     )
     .expect("failed to initialize video handler");
 
-    video_handler
-        .decode_video()
-        .expect("failed to decode video");
+    let vh = video_handler.clone();
 
-    let mut tokio_join_set = JoinSet::new();
+    let frames_fut = async {
+        match vh.get_frames().await {
+            Ok(_) => {
+                let _ = vh.get_frame_content_embedding().await;
+            }
+            Err(e) => {
+                debug!("failed to get frames: {}", e);
+            }
+        };
+    };
 
     let vh = video_handler.clone();
-    tokio_join_set.spawn(async move { vh.get_transcript().await });
+    let audio_fut = async {
+        match vh.get_audio().await {
+            Ok(_) => {
+                match vh.get_transcript().await {
+                    Ok(_) => {
+                        let _ = vh.get_transcript_embedding().await;
+                    }
+                    Err(e) => {
+                        debug!("failed to get audio embedding: {}", e);
+                    }
+                };
+            }
+            Err(e) => {
+                debug!("failed to get audio: {}", e);
+            }
+        };
+    };
 
-    while let Some(_) = tokio_join_set.join_next().await {}
+    join!(frames_fut, audio_fut);
 
     Ok(())
 }
-
 
 #[tauri::command]
 async fn get_frame_caption(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), ()> {
@@ -208,43 +230,8 @@ async fn get_frame_caption(app_handle: tauri::AppHandle, video_path: &str) -> Re
     )
     .expect("failed to initialize video handler");
 
-    let mut tokio_join_set = JoinSet::new();
-
-    let vh = video_handler.clone();
-    tokio_join_set.spawn(async move { vh.get_frames_caption().await });
-
-    while let Some(_) = tokio_join_set.join_next().await {}
-
-    Ok(())
-}
-
-#[tauri::command]
-async fn get_video_embedding(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), ()> {
-    let mut tokio_join_set = JoinSet::new();
-
-    let video_handler = file_handler::video::VideoHandler::new(
-        video_path,
-        app_handle
-            .path_resolver()
-            .app_local_data_dir()
-            .expect("failed to find local data dir"),
-        app_handle
-            .path_resolver()
-            .resolve_resource("resources")
-            .expect("failed to find resources dir"),
-    )
-    .expect("failed to initialize video handler");
-
-    let vh = video_handler.clone();
-    tokio_join_set.spawn(async move { vh.get_frame_content_embedding().await });
-
-    let vh = video_handler.clone();
-    tokio_join_set.spawn(async move { vh.get_transcript_embedding().await });
-
-    // let vh = video_handler.clone();
-    // tokio_join_set.spawn(async move { vh.get_frame_caption_embedding().await });
-
-    while let Some(_) = tokio_join_set.join_next().await {}
+    let _ = video_handler.get_frames_caption().await;
+    let _ = video_handler.get_frame_caption_embedding().await;
 
     Ok(())
 }
