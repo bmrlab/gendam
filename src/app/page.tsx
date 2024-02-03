@@ -3,8 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-// import { invoke } from '@tauri-apps/api';
-// import { createClient } from "@rspc/client";
+import { invoke } from "@tauri-apps/api/tauri";
+import { createClient } from "@rspc/client";
 // import { TauriTransport } from "@rspc/tauri";
 
 type File = {
@@ -16,7 +16,7 @@ export default function Home() {
   let [files, setFiles] = useState<File[]>([]);
 
   const doInvoke = async (subpath?: string): Promise<File[]> => {
-    const { createClient } = await import("@rspc/client");
+    // const { createClient } = await import("@rspc/client");
     const { TauriTransport } = await import("@rspc/tauri");
     const client = createClient({
       transport: new TauriTransport(),
@@ -32,10 +32,8 @@ export default function Home() {
      * 不能在上面直接 import '@tauri-apps/api'
      * 不然 @tauri-apps/api/helpers/os-check.js 会报错 navigator is not defined
      */
-    const { invoke } = await import("@tauri-apps/api");
-    invoke("greet", { name: "World" }).then((response) =>
-      console.log(response)
-    );
+    // const { invoke } = await import('@tauri-apps/api');
+    invoke("greet", { name: "World" }).then((response) => console.log(response));
     invoke("list_users").then((response) => console.log("users", response));
 
     let files: File[] = subpath
