@@ -1,9 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-
 use std::time::Duration;
-
 use app::file_handler;
 use qdrant_client::client::QdrantClientConfig;
 use qdrant_client::qdrant::vectors_config::Config;
@@ -11,7 +9,6 @@ use qdrant_client::qdrant::CreateCollection;
 use qdrant_client::qdrant::Distance;
 use qdrant_client::qdrant::VectorParams;
 use qdrant_client::qdrant::VectorsConfig;
-use rspc::Router;
 use serde::Serialize;
 use tauri::api::process::Command;
 use tauri::api::process::CommandEvent;
@@ -21,11 +18,7 @@ use tauri::Manager;
 async fn main() {
     tracing_subscriber::fmt::init();
 
-    let router = <Router>::new()
-        .query("version", |t| {
-            t(|_ctx, _input: ()| env!("CARGO_PKG_VERSION"))
-        })
-        .build();
+    let router = api_server::router::get_router();
 
     tauri::Builder::default()
         .plugin(rspc::integrations::tauri::plugin(router.into(), || ()))
@@ -99,7 +92,6 @@ async fn main() {
         .invoke_handler(tauri::generate_handler![
             greet,
             list_files,
-            list_users,
             handle_video_file,
             get_frame_caption,
             handle_search
@@ -142,24 +134,8 @@ fn list_files(subpath: Option<String>) -> Vec<File> {
     files
 }
 
-use prisma_lib::user;
-use prisma_lib::PrismaClient;
-
 use tokio::join;
-
 use tracing::debug;
-
-#[tauri::command]
-async fn list_users() -> Vec<user::Data> {
-    let client = PrismaClient::_builder().build().await.unwrap();
-    let result: Vec<user::Data> = client
-        .user()
-        .find_many(vec![user::id::equals(1)])
-        .exec()
-        .await
-        .unwrap();
-    result
-}
 
 #[tauri::command]
 async fn handle_video_file(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), ()> {
