@@ -16,16 +16,6 @@ export default function Home() {
   let [files, setFiles] = useState<File[]>([]);
 
   const doInvoke = async (subpath?: string): Promise<File[]> => {
-    // const { createClient } = await import("@rspc/client");
-    const { TauriTransport } = await import("@rspc/tauri");
-    const client = createClient({
-      transport: new TauriTransport(),
-    });
-
-    client.query(["version"]).then((data) => console.log("version", data));
-
-    client.query(["users"]).then((data) => console.log("users", data));
-
     /**
      * https://github.com/tauri-apps/tauri/discussions/5271#discussioncomment-3716246
      * This is caused by nextjs' SSR nature and an unfortunate design choice of the window module.
@@ -38,11 +28,26 @@ export default function Home() {
     // const { invoke } = await import('@tauri-apps/api');
     invoke("greet", { name: "World" }).then((response) => console.log(response));
 
-    let files: File[] = subpath
-      ? await invoke("list_files", { subpath: subpath })
-      : await invoke("list_files");
-    console.log(files);
-    return files;
+    // const { createClient } = await import("@rspc/client");
+    const { TauriTransport } = await import("@rspc/tauri");
+    const client = createClient({
+      transport: new TauriTransport(),
+    });
+
+    client.query(["version"]).then((data) => console.log("version", data));
+
+    client.query(["users"]).then((data) => console.log("users", data));
+
+    try {
+      let files: File[] = subpath
+        ? await client.query<string>(["files", subpath])
+        : await client.query(["files"]);
+      console.log(files);
+      return files;
+    } catch(err) {
+      console.log(err);
+      return [];
+    }
   };
 
   // useEffect(() => {

@@ -8,7 +8,6 @@ use qdrant_client::qdrant::CreateCollection;
 use qdrant_client::qdrant::Distance;
 use qdrant_client::qdrant::VectorParams;
 use qdrant_client::qdrant::VectorsConfig;
-use serde::Serialize;
 use std::time::Duration;
 use tauri::api::process::Command;
 use tauri::api::process::CommandEvent;
@@ -94,7 +93,6 @@ async fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             greet,
-            list_files,
             handle_video_file,
             get_frame_caption,
             handle_search
@@ -109,33 +107,8 @@ fn greet(name: &str) -> String {
     format!("Hello, {}, in Client!", name)
 }
 
-#[derive(Serialize)]
-struct File {
-    name: String,
-    is_dir: bool,
-}
-
-#[tauri::command]
-fn list_files(subpath: Option<String>) -> Vec<File> {
-    let mut root_path = String::from("/Users/xddotcom/Downloads/local_dam_files");
-    if let Some(subpath) = subpath {
-        root_path = format!("{}/{}", root_path, subpath);
-    }
-    let paths = std::fs::read_dir(root_path).unwrap();
-    let mut files = vec![];
-    for path in paths {
-        let file_name = path.as_ref().unwrap().file_name();
-        let file_path = path.as_ref().unwrap().path();
-        let file_path_str = file_name.to_str().unwrap().to_string();
-        let is_dir = file_path.is_dir();
-        let file = File {
-            name: file_path_str,
-            is_dir,
-        };
-        files.push(file);
-    }
-    files
-}
+use tokio::join;
+use tracing::debug;
 
 #[tauri::command]
 async fn handle_video_file(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), String> {

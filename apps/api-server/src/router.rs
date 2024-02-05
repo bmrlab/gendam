@@ -1,5 +1,5 @@
 use rspc::Router;
-
+use serde::Serialize;
 use prisma_lib::user;
 use prisma_lib::PrismaClient;
 
@@ -25,6 +25,40 @@ pub fn get_router() -> Router {
                 serde_json::to_value(res).unwrap()
             })
         })
+        .query("files", |t| {
+            t(|_ctx, subpath: Option<String>| async move {
+                println!("subpath: {:?}", subpath);
+                let res = list_files(subpath);
+                serde_json::to_value(res).unwrap()
+            })
+        })
         .build();
     return router;
+}
+
+#[derive(Serialize)]
+struct File {
+    name: String,
+    is_dir: bool,
+}
+
+fn list_files(subpath: Option<String>) -> Vec<File> {
+    let mut root_path = String::from("/Users/xddotcom/Downloads/local_dam_files");
+    if let Some(subpath) = subpath {
+        root_path = format!("{}/{}", root_path, subpath);
+    }
+    let paths = std::fs::read_dir(root_path).unwrap();
+    let mut files = vec![];
+    for path in paths {
+        let file_name = path.as_ref().unwrap().file_name();
+        let file_path = path.as_ref().unwrap().path();
+        let file_path_str = file_name.to_str().unwrap().to_string();
+        let is_dir = file_path.is_dir();
+        let file = File {
+            name: file_path_str,
+            is_dir,
+        };
+        files.push(file);
+    }
+    files
 }
