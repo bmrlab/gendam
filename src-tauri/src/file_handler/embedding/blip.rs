@@ -2,7 +2,6 @@ extern crate accelerate_src;
 
 use std::path::Path;
 
-
 use anyhow::anyhow;
 use candle_core::backend::BackendDevice;
 use candle_core::MetalDevice;
@@ -11,7 +10,7 @@ use candle_transformers::generation::LogitsProcessor;
 use candle_transformers::models::blip;
 use candle_transformers::models::quantized_blip;
 use tokenizers::Tokenizer;
-use tracing::{debug};
+use tracing::debug;
 
 pub struct BLIP {
     tokenizer: Tokenizer,
@@ -23,14 +22,17 @@ pub struct BLIP {
 const SEP_TOKEN_ID: u32 = 102;
 
 impl BLIP {
-    pub fn new(model_dir: impl AsRef<Path>) -> anyhow::Result<Self> {
-        let tokenizer_path = model_dir.as_ref().join("tokenizer.json");
-        debug!("loading tokenizer: {}", tokenizer_path.display());
+    pub async fn new(resources_dir: impl AsRef<Path>) -> anyhow::Result<Self> {
+        let tokenizer_uri = "blip/tokenizer.json";
+        let model_uri = "blip/blip-image-captioning-large-q4k.gguf";
 
-        let model_path = model_dir
-            .as_ref()
-            .join("blip-image-captioning-large-q4k.gguf");
-        debug!("loading model: {}", model_path.display());
+        let download = crate::download::FileDownload::new(crate::download::FileDownloadConfig {
+            resources_dir: resources_dir.as_ref().to_path_buf(),
+            ..Default::default()
+        });
+
+        let model_path = download.download_if_not_exists(model_uri).await?;
+        let tokenizer_path = download.download_if_not_exists(tokenizer_uri).await?;
 
         let tokenizer = Tokenizer::from_file(tokenizer_path)
             .map_err(|_| anyhow!("failed to initialize tokenizer"))?;
@@ -109,7 +111,8 @@ pub fn load_image<P: AsRef<std::path::Path>>(p: P) -> candle_core::Result<Tensor
 #[test_log::test(tokio::test)]
 async fn test_caption() {
     let blip =
-        BLIP::new("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/src-tauri/resources/blip");
+        BLIP::new("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/src-tauri/resources/blip")
+            .await;
 
     assert!(blip.is_ok());
     let mut blip = blip.unwrap();

@@ -14,11 +14,41 @@ use std::io::BufReader;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
-use tokio::task::JoinSet;
 use tracing::debug;
 
 pub mod decoder;
 
+/// Video Handler
+///
+/// VideoHandler is a helper to struct video artifacts and get embeddings.
+///
+/// All artifacts will be saved into `local_data_dir` (one of the input argument of `new` function).
+///
+/// And in Tauri on macOS, it should be `/Users/xx/Library/Application Support/%APP_IDENTIFIER%`
+/// where `APP_IDENTIFIER` is configured in `tauri.conf.json`.
+///
+/// # Examples
+///
+/// ```rust
+/// let video_path = "";
+/// let local_data_dir = "";
+/// let resources_dir = "";
+///
+/// let video_handler = VideoHandler::new(
+///     video_path,
+///     local_data_dir,
+///     resources_dir,
+/// ).await.unwrap();
+///
+/// // get frames and save their embedding into qdrant
+/// video_handler.get_frames().await;
+/// video_handler.get_frame_content_embedding().await;
+///
+/// // get audio, then extract text, and finally save text embedding in qdrant
+/// video_handler.get_audio().await;
+/// video_handler.get_transcript().await;
+/// video_handler.get_transcript_embedding().await;
+/// ```
 #[derive(Clone, Debug)]
 pub struct VideoHandler {
     video_path: std::path::PathBuf,
@@ -37,7 +67,7 @@ impl VideoHandler {
     /// * `video_path` - The path to the video file
     /// * `local_data_dir` - The path to the local data directory, where artifacts (frame, transcript, etc.) will be saved into
     /// * `resources_dir` - The path to the resources directory (src-tauri/resources), where contains model files
-    pub fn new(
+    pub async fn new(
         video_path: impl AsRef<std::path::Path>,
         local_data_dir: impl AsRef<std::path::Path>,
         resources_dir: impl AsRef<std::path::Path>,
@@ -50,6 +80,28 @@ impl VideoHandler {
         fs::create_dir_all(&artifacts_dir)?;
         fs::create_dir_all(&frames_dir)?;
 
+        // make sure clip files are downloaded
+        let resources_dir_clone = resources_dir.as_ref().to_owned();
+        let clip_handle = tokio::spawn(embedding::clip::CLIP::new(
+            embedding::clip::model::CLIPModel::ViTB32,
+            resources_dir_clone,
+        ));
+
+        let resources_dir_clone = resources_dir.as_ref().to_owned();
+        let whisper_handle = tokio::spawn(audio::AudioWhisper::new(resources_dir_clone));
+
+        let clip_result = clip_handle.await;
+        let whisper_result = whisper_handle.await;
+
+        if let Err(clip_err) = clip_result.unwrap() {
+            return Err(anyhow!("Failed to download clip model: {clip_err}"));
+        }
+        if let Err(whisper_err) = whisper_result.unwrap() {
+            return Err(anyhow!("Failed to download whisper model: {whisper_err}"));
+        }
+
+        debug!("clip and whisper models downloaded");
+
         Ok(Self {
             video_path: video_path.as_ref().to_owned(),
             resources_dir: resources_dir.as_ref().to_owned(),
@@ -60,6 +112,8 @@ impl VideoHandler {
         })
     }
 
+    /// Extract key frames from video
+    /// and save the results in local data directory (in a folder named by file identifier)
     pub async fn get_frames(&self) -> anyhow::Result<()> {
         let video_decoder = decoder::video::VideoDecoder::new(&self.video_path);
         video_decoder.save_video_frames(&self.frames_dir).await?;
@@ -67,6 +121,8 @@ impl VideoHandler {
         Ok(())
     }
 
+    /// Extract audio from video
+    /// and save the results in local data directory (in a folder named by file identifier)
     pub async fn get_audio(&self) -> anyhow::Result<()> {
         let video_decoder = decoder::video::VideoDecoder::new(&self.video_path);
         video_decoder.save_video_audio(&self.audio_path).await?;
@@ -74,10 +130,13 @@ impl VideoHandler {
         Ok(())
     }
 
+    /// Convert audio of the video into text
+    /// this requires extracting audio in advance
+    ///
+    /// And the transcript will be saved in the same directory with audio
     pub async fn get_transcript(&self) -> anyhow::Result<()> {
-        let mut whisper =
-            audio::AudioWhisper::new(self.resources_dir.join("whisper-ggml-base.bin"))?;
-        let result = whisper.transcribe(&self.audio_path, &self.transcript_path)?;
+        let mut whisper = audio::AudioWhisper::new(&self.resources_dir).await?;
+        let result = whisper.transcribe(&self.audio_path)?;
 
         // write results into json file
         let mut file = tokio::fs::File::create(&self.transcript_path).await?;
@@ -87,27 +146,33 @@ impl VideoHandler {
         Ok(())
     }
 
+    /// Get transcript embedding
+    /// this requires extracting transcript in advance
     pub async fn get_transcript_embedding(&self) -> anyhow::Result<()> {
         let file = File::open(&self.transcript_path)?;
         let reader = BufReader::new(file);
 
-        // Read the JSON contents of the file as an instance of `User`.
+        // Read the JSON contents of the file as an instance of `WhisperItem`
         let whisper_results: Vec<WhisperItem> = serde_json::from_reader(reader)?;
 
-        let clip_model = self.get_clip_instance()?;
+        let clip_model = self.get_clip_instance().await?;
         let clip_model = Arc::new(RwLock::new(clip_model));
 
         let qdrant_client = self.get_qdrant_client()?;
         let qdrant_client = Arc::new(RwLock::new(qdrant_client));
 
-        let mut set = JoinSet::new();
-
         for item in whisper_results {
+            // if item is some like [MUSIC], just skip it
+            // TODO need to make sure all filter rules
+            if item.text.starts_with("[") && item.text.ends_with("]") {
+                continue;
+            }
+
             let clip_model = Arc::clone(&clip_model);
             let qdrant_client = Arc::clone(&qdrant_client);
             let file_identifier = self.file_identifier.clone();
 
-            set.spawn(async move {
+            tokio::spawn(async move {
                 let payload = SearchPayload::Transcript(search_payload::TranscriptPayload {
                     file_identifier,
                     start_timestamp: item.start_timestamp,
@@ -118,14 +183,12 @@ impl VideoHandler {
             });
         }
 
-        while let Some(_) = set.join_next().await {}
-
         Ok(())
     }
 
     /// Get frame content embedding
     pub async fn get_frame_content_embedding(&self) -> anyhow::Result<()> {
-        let clip_model = self.get_clip_instance()?;
+        let clip_model = self.get_clip_instance().await?;
         let clip_model = Arc::new(RwLock::new(clip_model));
 
         let qdrant_client = self.get_qdrant_client()?;
@@ -134,8 +197,6 @@ impl VideoHandler {
         let frame_paths = std::fs::read_dir(&self.frames_dir)?
             .map(|res| res.map(|e| e.path()))
             .collect::<Result<Vec<_>, std::io::Error>>()?;
-
-        let mut set = JoinSet::new();
 
         for path in frame_paths {
             if path.extension() == Some(std::ffi::OsStr::new("png")) {
@@ -160,7 +221,7 @@ impl VideoHandler {
                     timestamp: frame_timestamp,
                 });
 
-                set.spawn(async move {
+                tokio::spawn(async move {
                     let _ = get_single_frame_content_embedding(
                         payload,
                         path,
@@ -172,38 +233,38 @@ impl VideoHandler {
             }
         }
 
-        while let Some(_) = set.join_next().await {}
-
         Ok(())
     }
 
+    /// Get frames' captions of video
+    /// this requires extracting frames in advance
+    ///
+    /// All caption will be saved in .caption file in the same place with frame file
     pub async fn get_frames_caption(&self) -> anyhow::Result<()> {
         let frame_paths = std::fs::read_dir(&self.frames_dir)?
             .map(|res| res.map(|e| e.path()))
             .collect::<Result<Vec<_>, std::io::Error>>()?;
 
-        let mut tokio_join_set = JoinSet::new();
-        let blip_model_dir = self.resources_dir.join("blip");
-        let blip_model = embedding::blip::BLIP::new(blip_model_dir)?;
+        let blip_model = embedding::blip::BLIP::new(&self.resources_dir).await?;
         let blip_model = Arc::new(RwLock::new(blip_model));
 
         for path in frame_paths {
             if path.extension() == Some(std::ffi::OsStr::new("png")) {
                 debug!("get_frames_caption: {:?}", path);
                 let blip_model = Arc::clone(&blip_model);
-                tokio_join_set.spawn(async move {
+                tokio::spawn(async move {
                     let _ = get_single_frame_caption(blip_model, path).await;
                 });
             }
         }
 
-        while let Some(_) = tokio_join_set.join_next().await {}
-
         Ok(())
     }
 
+    /// Get frame caption embedding
+    /// this requires extracting frames and get captions in advance
     pub async fn get_frame_caption_embedding(&self) -> anyhow::Result<()> {
-        let clip_model = self.get_clip_instance()?;
+        let clip_model = self.get_clip_instance().await?;
         let clip_model = Arc::new(RwLock::new(clip_model));
 
         let qdrant_client = self.get_qdrant_client()?;
@@ -213,15 +274,13 @@ impl VideoHandler {
             .map(|res| res.map(|e| e.path()))
             .collect::<Result<Vec<_>, std::io::Error>>()?;
 
-        let mut set = JoinSet::new();
-
         for path in frame_paths {
             if path.extension() == Some(std::ffi::OsStr::new("caption")) {
                 let clip_model = Arc::clone(&clip_model);
                 let qdrant_client = Arc::clone(&qdrant_client);
                 let file_identifier = self.file_identifier.clone();
 
-                set.spawn(async move {
+                tokio::spawn(async move {
                     let _ = get_single_frame_caption_embedding(
                         file_identifier,
                         path,
@@ -233,26 +292,15 @@ impl VideoHandler {
             }
         }
 
-        while let Some(_) = set.join_next().await {}
-
         Ok(())
     }
 
-    fn get_clip_instance(&self) -> anyhow::Result<embedding::clip::CLIP> {
+    async fn get_clip_instance(&self) -> anyhow::Result<embedding::clip::CLIP> {
         embedding::clip::CLIP::new(
-            self.resources_dir
-                .join("visual.onnx")
-                .to_str()
-                .ok_or(anyhow::anyhow!("invalid path"))?,
-            self.resources_dir
-                .join("textual.onnx")
-                .to_str()
-                .ok_or(anyhow::anyhow!("invalid path"))?,
-            self.resources_dir
-                .join("tokenizer.json")
-                .to_str()
-                .ok_or(anyhow::anyhow!("invalid path"))?,
+            embedding::clip::model::CLIPModel::ViTB32,
+            &self.resources_dir,
         )
+        .await
     }
 
     fn get_qdrant_client(&self) -> anyhow::Result<QdrantClient> {

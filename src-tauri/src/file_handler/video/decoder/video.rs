@@ -1,7 +1,6 @@
 use super::{transcode::transcoder, utils};
 use ffmpeg_next::ffi::*;
 use std::path::Path;
-// use tokio::join;
 use tracing::debug;
 
 pub struct VideoDecoder {
@@ -133,6 +132,8 @@ fn save_video_audio(
 
 #[test_log::test(tokio::test)]
 async fn test_video_decoder() {
+    use tokio::join;
+
     let video_decoder =
         VideoDecoder::new("/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4");
 

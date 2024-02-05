@@ -1,14 +1,18 @@
 use ndarray::Axis;
-use qdrant_client::{client::QdrantClientConfig, qdrant::SearchPoints};
+use qdrant_client::{
+    client::QdrantClientConfig,
+    qdrant::{Condition, Filter, SearchPoints},
+};
 use serde_json::json;
 
-use self::search_payload::SearchPayload;
+use self::search_payload::{SearchPayload, SearchRecordType};
 
 pub(self) mod audio;
 pub mod embedding;
 pub mod search_payload;
 pub mod video;
 
+// TODO constants should be extracted into global config
 pub const QDRANT_COLLECTION_NAME: &str = "muse-v2";
 pub const EMBEDDING_DIM: u64 = 512;
 
@@ -18,6 +22,14 @@ pub struct SearchResult {
     pub score: f32,
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct SearchRequest {
+    pub text: String,
+    pub record_type: Option<SearchRecordType>,
+    pub skip: Option<u64>,
+    pub limit: Option<u64>,
+}
+
 pub enum SearchType {
     Frame,
     FrameCaption,
@@ -25,32 +37,34 @@ pub enum SearchType {
 }
 
 pub async fn handle_search(
-    text: &str,
+    payload: SearchRequest,
     resources_dir: impl AsRef<std::path::Path>,
-    skip: Option<u64>,
-    limit: Option<u64>,
 ) -> anyhow::Result<Vec<SearchResult>> {
-    let clip_model = embedding::clip::CLIP::new(
-        resources_dir.as_ref().join("visual.onnx"),
-        resources_dir.as_ref().join("textual.onnx"),
-        resources_dir.as_ref().join("tokenizer.json"),
-    )?;
+    let clip_model =
+        embedding::clip::CLIP::new(embedding::clip::model::CLIPModel::ViTB32, &resources_dir)
+            .await?;
 
     let client = QdrantClientConfig::from_url("http://0.0.0.0:6334").build()?;
 
-    let embedding = clip_model.get_text_embedding(&text).await?;
+    let embedding = clip_model.get_text_embedding(&payload.text).await?;
     let embedding: Vec<f32> = embedding
         .index_axis(Axis(0), 0)
         .iter()
         .map(|&x| x)
         .collect();
+    let filter = if let Some(record_type) = payload.record_type {
+        Some(Filter::must_not([Condition::is_empty(record_type.as_str())]))
+    } else {
+        None
+    };
     let search_result = client
         .search_points(&SearchPoints {
             collection_name: QDRANT_COLLECTION_NAME.into(),
             vector: embedding,
-            limit: limit.unwrap_or(10),
-            offset: skip,
+            limit: payload.limit.unwrap_or(10),
+            offset: payload.skip,
             with_payload: Some(true.into()),
+            filter,
             ..Default::default()
         })
         .await?;

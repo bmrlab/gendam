@@ -1,12 +1,12 @@
 use super::{preprocess, utils};
 use anyhow::anyhow;
-
 use image::RgbImage;
 use ndarray::Axis;
 use ort::{GraphOptimizationLevel, Session};
 use std::path::Path;
 use tokenizers::tokenizer::Tokenizer;
-use tracing::{debug};
+use tracing::debug;
+pub mod model;
 
 pub struct CLIP {
     image_model: Option<Session>,
@@ -17,7 +17,41 @@ pub struct CLIP {
 type CLIPEmbedding = ndarray::Array2<f32>;
 
 impl CLIP {
-    pub fn new(
+    pub async fn new(
+        model: model::CLIPModel,
+        resources_dir: impl AsRef<Path>,
+    ) -> anyhow::Result<Self> {
+        let (image_model_uri, text_model_uri, text_tokenizer_vocab_uri) = {
+            match model {
+                model::CLIPModel::ViTB32 => {
+                    let model_uri = std::path::Path::new("CLIP-ViT-B-32-laion2B-s34B-b79K");
+                    (
+                        model_uri.join("visual.onnx"),
+                        model_uri.join("textual.onnx"),
+                        model_uri.join("tokenizer.json"),
+                    )
+                }
+                model::CLIPModel::ViTL14 => {
+                    todo!("add model info for ViT-L/14")
+                }
+            }
+        };
+
+        let download = crate::download::FileDownload::new(crate::download::FileDownloadConfig {
+            resources_dir: resources_dir.as_ref().to_path_buf(),
+            ..Default::default()
+        });
+
+        let image_model_path = download.download_if_not_exists(&image_model_uri).await?;
+        let text_model_path = download.download_if_not_exists(&text_model_uri).await?;
+        let text_tokenizer_vocab_path = download
+            .download_if_not_exists(&text_tokenizer_vocab_uri)
+            .await?;
+
+        Self::from_file(image_model_path, text_model_path, text_tokenizer_vocab_path)
+    }
+
+    pub fn from_file(
         image_model_path: impl AsRef<Path>,
         text_model_path: impl AsRef<Path>,
         text_tokenizer_vocab_path: impl AsRef<Path>,
@@ -135,7 +169,7 @@ impl CLIP {
 
 #[test_log::test(tokio::test)]
 async fn test_async_clip() {
-    let clip = CLIP::new(
+    let clip = CLIP::from_file(
         "./resources/visual.onnx",
         "./resources/textual.onnx",
         "./resources/tokenizer.json",

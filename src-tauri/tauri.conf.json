@@ -24,6 +24,27 @@
           {
             "name": "sidecar/qdrant",
             "sidecar": true
+          },
+          {
+            "name": "sidecar/whisper",
+            "sidecar": true,
+            "args": [
+              "-m",
+              {
+                "validator": "\\S+"
+              },
+              "-f",
+              {
+                "validator": "\\S+"
+              },
+              "--language",
+              "auto",
+              "-oj",
+              "-of",
+              {
+                "validator": "\\S+"
+              }
+            ]
           }
         ],
         "sidecar": true

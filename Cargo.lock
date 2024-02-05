@@ -188,6 +188,7 @@ dependencies = [
  "prisma-client-rust-cli",
  "prisma-lib",
  "qdrant-client",
+ "reqwest",
  "rspc",
  "serde",
  "serde_json",

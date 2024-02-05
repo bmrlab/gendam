@@ -17,15 +17,21 @@ pub struct WhisperItem {
 }
 
 impl AudioWhisper {
-    pub fn new(model_path: impl AsRef<Path>) -> anyhow::Result<Self> {
-        let ctx = WhisperContext::new_with_params(
-            model_path
-                .as_ref()
-                .to_owned()
-                .to_str()
-                .ok_or(anyhow!("invalid path"))?,
-            WhisperContextParameters::default(),
-        )?;
+    pub async fn new(resources_dir: impl AsRef<Path>) -> anyhow::Result<Self> {
+        let download = crate::download::FileDownload::new(crate::download::FileDownloadConfig {
+            resources_dir: resources_dir.as_ref().to_path_buf(),
+            ..Default::default()
+        });
+
+        let model_path = download
+            .download_if_not_exists("whisper-ggml-base.bin")
+            .await?
+            .to_str()
+            .ok_or(anyhow!("invalid path"))?
+            .to_string();
+
+        let ctx =
+            WhisperContext::new_with_params(&model_path, WhisperContextParameters::default())?;
 
         debug!("context initialized");
 
@@ -35,23 +41,16 @@ impl AudioWhisper {
     pub fn transcribe(
         &mut self,
         audio_file_path: impl AsRef<Path>,
-        _result_file_path: impl AsRef<Path>,
     ) -> anyhow::Result<Vec<WhisperItem>> {
         let mut state = self.ctx.create_state()?;
 
-        let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 0 });
+        let mut params = FullParams::new(SamplingStrategy::default());
 
         // Edit params as needed.
-        // Set the number of threads to use to 1.
-        params.set_n_threads(1);
-        // Enable translation.
         params.set_translate(true);
 
-        // TODO maybe language could be an input params
-        //
-        // here we just ignore it
-        // this may lead to bad results
-        // params.set_language(Some("en"));
+        // TODO actually we need to use auto language detection
+        // however there is bug in whisper-rs
 
         // Disable anything that prints to stdout.
         params.set_print_special(false);
@@ -112,9 +111,6 @@ impl AudioWhisper {
                 .full_get_segment_t1(i)
                 .expect("failed to get end timestamp");
 
-            // Format the segment information as a string.
-            let _line = format!("[{} - {}]: {}\n", start_timestamp, end_timestamp, segment);
-
             results.push(WhisperItem {
                 text: segment,
                 start_timestamp,
@@ -126,10 +122,25 @@ impl AudioWhisper {
     }
 }
 
-#[test_log::test]
-fn test_whisper() {
-    let mut whisper = AudioWhisper::new("./resources/whisper-ggml-base.bin").unwrap();
-    let result = whisper.transcribe("./.data/test-audio.wav", "./.data/test-audio.text");
-
-    assert!(result.is_ok());
+#[test_log::test(tokio::test)]
+async fn test_whisper() {
+    let mut whisper =
+        AudioWhisper::new("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/src-tauri/resources")
+            .await
+            .unwrap();
+    match whisper
+        .transcribe("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/src-tauri/.data/audio.wav")
+    {
+        Ok(result) => {
+            for item in result {
+                println!(
+                    "[{}] [{}] {}",
+                    item.start_timestamp, item.end_timestamp, item.text
+                );
+            }
+        }
+        Err(e) => {
+            println!("{}", e);
+        }
+    }
 }

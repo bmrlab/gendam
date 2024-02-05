@@ -1,7 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::time::Duration;
 use app::file_handler;
 use qdrant_client::client::QdrantClientConfig;
 use qdrant_client::qdrant::vectors_config::Config;
@@ -10,9 +9,11 @@ use qdrant_client::qdrant::Distance;
 use qdrant_client::qdrant::VectorParams;
 use qdrant_client::qdrant::VectorsConfig;
 use serde::Serialize;
+use std::time::Duration;
 use tauri::api::process::Command;
 use tauri::api::process::CommandEvent;
 use tauri::Manager;
+use tracing::{debug, error};
 
 #[tokio::main]
 async fn main() {
@@ -43,6 +44,7 @@ async fn main() {
                 .spawn()
                 .expect("Failed to spawn sidecar");
 
+            // this will send stdout of qdrant to debug log
             tauri::async_runtime::spawn(async move {
                 // read events such as stdout
                 while let Some(event) = rx.recv().await {
@@ -53,6 +55,7 @@ async fn main() {
             });
 
             // make sure collection is created
+            // query collection info every seconds, until it exists
             tauri::async_runtime::spawn(async move {
                 loop {
                     let client = QdrantClientConfig::from_url("http://0.0.0.0:6334")
@@ -134,11 +137,8 @@ fn list_files(subpath: Option<String>) -> Vec<File> {
     files
 }
 
-use tokio::join;
-use tracing::debug;
-
 #[tauri::command]
-async fn handle_video_file(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), ()> {
+async fn handle_video_file(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), String> {
     let video_handler = file_handler::video::VideoHandler::new(
         video_path,
         app_handle
@@ -150,41 +150,65 @@ async fn handle_video_file(app_handle: tauri::AppHandle, video_path: &str) -> Re
             .resolve_resource("resources")
             .expect("failed to find resources dir"),
     )
+    .await
     .expect("failed to initialize video handler");
 
-    let vh = video_handler.clone();
+    debug!("video handler initialized");
 
-    let frames_fut = async {
+    let vh = video_handler.clone();
+    let frame_handle = tokio::spawn(async move {
         match vh.get_frames().await {
-            Ok(_) => {
-                let _ = vh.get_frame_content_embedding().await;
-            }
+            Ok(_) => match vh.get_frame_content_embedding().await {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    error!("failed to get frame content embedding: {}", e);
+                    Err(e)
+                }
+            },
             Err(e) => {
                 debug!("failed to get frames: {}", e);
+                Err(e)
             }
-        };
-    };
+        }
+    });
 
     let vh = video_handler.clone();
-    let audio_fut = async {
+    let audio_handle = tokio::spawn(async move {
         match vh.get_audio().await {
-            Ok(_) => {
-                match vh.get_transcript().await {
-                    Ok(_) => {
-                        let _ = vh.get_transcript_embedding().await;
-                    }
-                    Err(e) => {
-                        debug!("failed to get audio embedding: {}", e);
-                    }
-                };
-            }
-            Err(e) => {
-                debug!("failed to get audio: {}", e);
-            }
-        };
-    };
+            Ok(_) => match vh.get_transcript().await {
+                Ok(_) => {
+                    let res = vh.get_transcript_embedding().await;
 
-    join!(frames_fut, audio_fut);
+                    if let Err(e) = res {
+                        error!("failed to get transcript embedding: {}", e);
+                        Err(e)
+                    } else {
+                        Ok(())
+                    }
+                }
+                Err(e) => {
+                    error!("failed to get audio embedding: {}", e);
+                    Err(e)
+                }
+            },
+            Err(e) => {
+                error!("failed to get audio: {}", e);
+                Err(e)
+            }
+        }
+    });
+
+    let frame_results = frame_handle.await;
+    let audio_results = audio_handle.await;
+
+    if let Err(frame_err) = frame_results.unwrap() {
+        error!("failed to get frames: {}", frame_err);
+        return Err(format!("failed to get frames: {}", frame_err));
+    }
+    if let Err(audio_err) = audio_results.unwrap() {
+        error!("failed to get audio: {}", audio_err);
+        return Err(format!("failed to get frames: {}", audio_err));
+    }
 
     Ok(())
 }
@@ -202,6 +226,7 @@ async fn get_frame_caption(app_handle: tauri::AppHandle, video_path: &str) -> Re
             .resolve_resource("resources")
             .expect("failed to find resources dir"),
     )
+    .await
     .expect("failed to initialize video handler");
 
     let _ = video_handler.get_frames_caption().await;
@@ -213,16 +238,16 @@ async fn get_frame_caption(app_handle: tauri::AppHandle, video_path: &str) -> Re
 #[tauri::command]
 async fn handle_search(
     app_handle: tauri::AppHandle,
-    text: String,
+    payload: file_handler::SearchRequest,
 ) -> Result<Vec<file_handler::SearchResult>, ()> {
+    debug!("search payload: {:?}", payload);
+
     let resources_dir = app_handle
         .path_resolver()
         .resolve_resource("resources")
         .unwrap();
 
-    Ok(
-        file_handler::handle_search(&text, resources_dir, None, None)
-            .await
-            .map_err(|_| ())?,
-    )
+    Ok(file_handler::handle_search(payload, resources_dir)
+        .await
+        .map_err(|_| ())?)
 }

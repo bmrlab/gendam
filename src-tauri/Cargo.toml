@@ -57,6 +57,7 @@ accelerate-src = "0.3.2"
 ort = "2.0.0-alpha.4" # this version is recommended by developer
 anyhow = "1.0.79"
 num-traits = "0.2.17"
+reqwest = "0.11.24"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.

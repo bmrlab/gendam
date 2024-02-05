@@ -39,3 +39,22 @@ impl SearchPayload {
         uuid.to_string()
     }
 }
+
+// TODO this enum is not derived from SearchPayload
+// maybe we can find some way to derive it not hard coding it
+#[derive(Debug, Serialize, Deserialize)]
+pub enum SearchRecordType {
+    Frame,
+    FrameCaption,
+    Transcript,
+}
+
+impl SearchRecordType {
+    pub fn as_str(&self) -> &str {
+        match self {
+            SearchRecordType::Frame => "Frame",
+            SearchRecordType::FrameCaption => "FrameCaption",
+            SearchRecordType::Transcript => "Transcript",
+        }
+    }
+}
