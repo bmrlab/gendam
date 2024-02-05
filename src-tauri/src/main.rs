@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::rc::Rc;
+
 use std::time::Duration;
 
 use app::file_handler;
@@ -122,7 +122,7 @@ struct File {
 
 #[tauri::command]
 fn list_files(subpath: Option<String>) -> Vec<File> {
-    let mut root_path = String::from("/Users/xddotcom/Downloads/local dam files");
+    let mut root_path = String::from("/Users/xddotcom/Downloads/local_dam_files");
     if let Some(subpath) = subpath {
         root_path = format!("{}/{}", root_path, subpath);
     }
@@ -146,7 +146,7 @@ use prisma_lib::user;
 use prisma_lib::PrismaClient;
 
 use tokio::join;
-use tokio::task::JoinSet;
+
 use tracing::debug;
 
 #[tauri::command]

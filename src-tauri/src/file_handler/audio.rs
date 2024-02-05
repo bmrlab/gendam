@@ -1,4 +1,4 @@
-use std::{fs::File, path::Path};
+use std::{path::Path};
 
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
@@ -35,7 +35,7 @@ impl AudioWhisper {
     pub fn transcribe(
         &mut self,
         audio_file_path: impl AsRef<Path>,
-        result_file_path: impl AsRef<Path>,
+        _result_file_path: impl AsRef<Path>,
     ) -> anyhow::Result<Vec<WhisperItem>> {
         let mut state = self.ctx.create_state()?;
 
@@ -113,7 +113,7 @@ impl AudioWhisper {
                 .expect("failed to get end timestamp");
 
             // Format the segment information as a string.
-            let line = format!("[{} - {}]: {}\n", start_timestamp, end_timestamp, segment);
+            let _line = format!("[{} - {}]: {}\n", start_timestamp, end_timestamp, segment);
 
             results.push(WhisperItem {
                 text: segment,

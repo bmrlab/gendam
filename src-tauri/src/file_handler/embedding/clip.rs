@@ -1,12 +1,12 @@
 use super::{preprocess, utils};
 use anyhow::anyhow;
-use ffmpeg_next::codec::debug;
+
 use image::RgbImage;
 use ndarray::Axis;
 use ort::{GraphOptimizationLevel, Session};
 use std::path::Path;
 use tokenizers::tokenizer::Tokenizer;
-use tracing::{debug, error};
+use tracing::{debug};
 
 pub struct CLIP {
     image_model: Option<Session>,

@@ -1,7 +1,7 @@
 use super::{transcode::transcoder, utils};
 use ffmpeg_next::ffi::*;
 use std::path::Path;
-use tokio::{join, task::JoinSet};
+// use tokio::join;
 use tracing::debug;
 
 pub struct VideoDecoder {
@@ -145,5 +145,5 @@ async fn test_video_decoder() {
             "/Users/zhuo/Library/Application Support/cc.musedam.local/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/audio.wav",
         );
 
-    join!(frames_fut, audio_fut);
+    let (_res1, _res2) = tokio::join!(frames_fut, audio_fut);
 }

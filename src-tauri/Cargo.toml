@@ -53,7 +53,6 @@ candle-nn = { git = "https://github.com/huggingface/candle.git", features = [
 half = "2.3.1"
 accelerate-src = "0.3.2"
 ort = "2.0.0-alpha.4" # this version is recommended by developer
-clippy = "0.0.302"
 anyhow = "1.0.79"
 num-traits = "0.2.17"
 
