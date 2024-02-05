@@ -107,9 +107,6 @@ fn greet(name: &str) -> String {
     format!("Hello, {}, in Client!", name)
 }
 
-use tokio::join;
-use tracing::debug;
-
 #[tauri::command]
 async fn handle_video_file(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), String> {
     let video_handler = file_handler::video::VideoHandler::new(
