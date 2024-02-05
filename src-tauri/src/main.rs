@@ -142,11 +142,9 @@ fn list_files(subpath: Option<String>) -> Vec<File> {
     files
 }
 
-#[allow(warnings)]
-mod prisma;
+use prisma_lib::user;
+use prisma_lib::PrismaClient;
 
-use prisma::user;
-use prisma::PrismaClient;
 use tokio::join;
 use tokio::task::JoinSet;
 use tracing::debug;

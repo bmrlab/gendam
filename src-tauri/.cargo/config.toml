@@ -1,5 +1,2 @@
-[alias]
-prisma = "run --bin prisma --"
-
 [target.aarch64-apple-darwin]
 rustflags = "-lc++ -l framework=Accelerate"

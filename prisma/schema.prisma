@@ -3,7 +3,7 @@
 
 generator client {
   provider = "cargo prisma"
-  output = "../src/prisma/mod.rs"
+  output = "../crates/prisma/src/prisma.rs"
 }
 
 datasource db {
