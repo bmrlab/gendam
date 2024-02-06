@@ -89,8 +89,7 @@ export default function Home() {
           </div>
         ))}
       </div>
-
-      <div className="bg-blue-500 py-96">
+      <div className="bg-blue-500 py-16">
         <Link href="/files">
           <button className="p-4 text-white bg-black rounded-lg">
             direct to search test page

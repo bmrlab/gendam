@@ -27,8 +27,20 @@ pub fn get_router() -> Router {
         })
         .query("files", |t| {
             t(|_ctx, subpath: Option<String>| async move {
-                println!("subpath: {:?}", subpath);
+                // println!("subpath: {:?}", subpath);
                 let res = list_files(subpath);
+                serde_json::to_value(res).unwrap()
+            })
+        })
+        .query("folders", |t| {
+            t(|_ctx, _input: ()| async move {
+                let res = get_folders_tree();
+                serde_json::to_value(res).unwrap()
+            })
+        })
+        .query("ls", |t| {
+            t(|_ctx, full_path: String| async move {
+                let res = get_files_in_path(full_path);
                 serde_json::to_value(res).unwrap()
             })
         })
@@ -61,4 +73,29 @@ fn list_files(subpath: Option<String>) -> Vec<File> {
         files.push(file);
     }
     files
+}
+
+fn get_files_in_path(full_path: String) -> Vec<File> {
+    let result = std::fs::read_dir(full_path);
+    if let Err(_) = result {
+        return vec![];
+    }
+    let paths = result.unwrap();
+    let mut files = vec![];
+    for path in paths {
+        let file_name = path.as_ref().unwrap().file_name();
+        let file_path = path.as_ref().unwrap().path();
+        let file_path_str = file_name.to_str().unwrap().to_string();
+        let is_dir = file_path.is_dir();
+        let file = File {
+            name: file_path_str,
+            is_dir,
+        };
+        files.push(file);
+    }
+    files
+}
+
+fn get_folders_tree() -> Vec<File> {
+    vec![]
 }
