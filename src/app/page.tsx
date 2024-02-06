@@ -69,6 +69,11 @@ export default function Home() {
           test
         </button>
       </div>
+      <div>
+        <Link href="/library" className="block p-2 bg-blue-400">
+          go to library
+        </Link>
+      </div>
       <div className="flex flex-wrap">
         {files.map((file) => (
           <div
