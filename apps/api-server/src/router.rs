@@ -1,8 +1,12 @@
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    path::PathBuf,
+};
 use rspc::{
     // Router,
     Rspc,
-    BuiltRouter
+    BuiltRouter,
+    ExportConfig,
 };
 use serde::Serialize;
 use prisma_lib::user;
@@ -59,7 +63,13 @@ pub fn get_router() -> Arc<BuiltRouter<Ctx>> {
                 serde_json::to_value(res).unwrap()
             })
         );
-    return router.build().unwrap().arced();
+    let router = router.build().unwrap().arced();
+    router
+        .export_ts(ExportConfig::new(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../src/app/lib/bindings.ts"),
+        ))
+        .unwrap();
+    return router;
 }
 
 #[derive(Serialize)]

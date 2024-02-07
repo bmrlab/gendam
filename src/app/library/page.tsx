@@ -1,17 +1,23 @@
 "use client";
 import { useCallback, useEffect, useState, useRef } from "react";
-import { createClient, FetchTransport } from "@rspc/client";
+// import { createClient } from "@rspc/client";
+import { httpLink, initRspc } from "@rspc/client";
 import Sidebar from "./Sidebar";
 import Files from "./Files";
 import type { File } from "./types";
+import type { Procedures } from "../lib/bindings";
 
 const getClient = async () => {
   // const { TauriTransport } = await import("@rspc/tauri");
   // const client = createClient({
   //   transport: new TauriTransport(),
   // });
-  const client = createClient({
-    transport: new FetchTransport("http://localhost:3001/rspc"),
+  const client = initRspc<Procedures>({
+    links: [
+      httpLink({
+        url: "http://localhost:3001/rspc",
+      })
+    ],
   });
   return client;
 }
@@ -23,8 +29,9 @@ export default function Library() {
 
   const lsFiles = useCallback(async (fullPath: string) => {
     const client = await getClient();
+    client.query(["version"]).then((data) => console.log("!!data!!", data));
     try {
-      let files: File[] = await client.query<string>(["ls", fullPath]);
+      let files: File[] = await client.query<"ls">(["ls", fullPath]);
       console.log(files);
       setFiles(files);
     } catch(err) {
