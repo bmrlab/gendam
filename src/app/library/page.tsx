@@ -8,17 +8,16 @@ import type { File } from "./types";
 import type { Procedures } from "../lib/bindings";
 
 const getClient = async () => {
-  // const { TauriTransport } = await import("@rspc/tauri");
-  // const client = createClient({
-  //   transport: new TauriTransport(),
-  // });
-  const client = initRspc<Procedures>({
-    links: [
-      httpLink({
-        url: "http://localhost:3001/rspc",
-      })
-    ],
-  });
+  const links = [];
+  if (typeof window.__TAURI__ !== 'undefined') {
+    const { tauriLink } = await import("@rspc/tauri");
+    links.push(tauriLink());
+  } else {
+    links.push(httpLink({
+      url: "http://localhost:3001/rspc",
+    }));
+  }
+  const client = initRspc<Procedures>({ links });
   return client;
 }
 
@@ -29,7 +28,9 @@ export default function Library() {
 
   const lsFiles = useCallback(async (fullPath: string) => {
     const client = await getClient();
-    client.query(["version"]).then((data) => console.log("!!data!!", data));
+    client.query(["version"]).then((data) => console.log("!!data!!", data)).catch(err => {
+      console.log("version err", err);
+    });
     try {
       let files: File[] = await client.query<"ls">(["ls", fullPath]);
       console.log(files);
