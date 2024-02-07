@@ -1,7 +1,18 @@
-use rspc::Router;
+use std::sync::Arc;
+use rspc::{
+    // Router,
+    Rspc,
+    BuiltRouter
+};
 use serde::Serialize;
 use prisma_lib::user;
 use prisma_lib::PrismaClient;
+
+#[derive(Clone)]
+pub struct Ctx {
+    pub x_demo_header: Option<String>,
+}
+pub const R: Rspc<Ctx> = Rspc::new();
 
 async fn list_users() -> Vec<user::Data> {
     let client = PrismaClient::_builder().build().await.unwrap();
@@ -14,38 +25,41 @@ async fn list_users() -> Vec<user::Data> {
     result
 }
 
-pub fn get_router() -> Router {
-    let router = <Router>::new()
-        .query("version", |t| {
-            t(|_ctx, _input: ()| env!("CARGO_PKG_VERSION"))
-        })
-        .query("users", |t| {
-            t(|_ctx, _input: ()| async move {
+pub fn get_router() -> Arc<BuiltRouter<Ctx>> {
+    let router = R.router()
+        .procedure(
+            "version",
+            R.query(|_ctx, _input: ()| env!("CARGO_PKG_VERSION"))
+        )
+        .procedure(
+            "users",
+            R.query(|_ctx, _input: ()| async move {
                 let res = list_users().await;
                 serde_json::to_value(res).unwrap()
             })
-        })
-        .query("files", |t| {
-            t(|_ctx, subpath: Option<String>| async move {
+        )
+        .procedure(
+            "files",
+            R.query(|_ctx, subpath: Option<String>| async move {
                 // println!("subpath: {:?}", subpath);
                 let res = list_files(subpath);
                 serde_json::to_value(res).unwrap()
             })
-        })
-        .query("folders", |t| {
-            t(|_ctx, _input: ()| async move {
+        )
+        .procedure(
+            "folders",
+            R.query(|_ctx, _input: ()| async move {
                 let res = get_folders_tree();
                 serde_json::to_value(res).unwrap()
             })
-        })
-        .query("ls", |t| {
-            t(|_ctx, full_path: String| async move {
+        )
+        .procedure("ls",
+            R.query(|_ctx, full_path: String| async move {
                 let res = get_files_in_path(full_path);
                 serde_json::to_value(res).unwrap()
             })
-        })
-        .build();
-    return router;
+        );
+    return router.build().unwrap().arced();
 }
 
 #[derive(Serialize)]

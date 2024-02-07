@@ -21,7 +21,11 @@ async fn main() {
     let router = api_server::router::get_router();
 
     tauri::Builder::default()
-        .plugin(rspc::integrations::tauri::plugin(router.into(), || ()))
+        .plugin(rspc::integrations::tauri::plugin(router, |_| {
+            api_server::router::Ctx {
+                x_demo_header: None,
+            }
+        }))
         .setup(|app| {
             #[cfg(debug_assertions)] // only include this code on debug builds
             {

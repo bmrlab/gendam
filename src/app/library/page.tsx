@@ -1,14 +1,17 @@
 "use client";
 import { useCallback, useEffect, useState, useRef } from "react";
-import { createClient } from "@rspc/client";
+import { createClient, FetchTransport } from "@rspc/client";
 import Sidebar from "./Sidebar";
 import Files from "./Files";
 import type { File } from "./types";
 
 const getClient = async () => {
-  const { TauriTransport } = await import("@rspc/tauri");
+  // const { TauriTransport } = await import("@rspc/tauri");
+  // const client = createClient({
+  //   transport: new TauriTransport(),
+  // });
   const client = createClient({
-    transport: new TauriTransport(),
+    transport: new FetchTransport("http://localhost:3001/rspc"),
   });
   return client;
 }

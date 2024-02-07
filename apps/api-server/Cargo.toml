@@ -12,4 +12,5 @@ serde_json = { workspace = true }
 prisma-client-rust = { workspace = true }
 prisma-client-rust-cli = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
-axum = "0.7.4"
+tower-http = { version = "0.4.1", default-features = false, features = ["cors"] }
+axum = "0.6.9"  # 为了和 rspc 的 axum feature 保持兼容, 这里只能用 0.6.x, 不能用 0.7.x

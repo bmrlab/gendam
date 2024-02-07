@@ -1,21 +1,41 @@
-// use super::router::get_router;
+use std::net::SocketAddr;
+use rspc::integrations::httpz::Request;
 use axum::{
     routing::get,
     // Router,
 };
+use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
 async fn main() {
     let router = api_server::router::get_router();
-    let router = router.arced();
 
-    let app = axum::Router::new()
+    let cors = CorsLayer::new()
+        .allow_methods(Any)
+        .allow_headers(Any)
+        .allow_origin(Any);
+    let app: axum::Router = axum::Router::new()
         .route("/", get(|| async { "Hello 'rspc'!" }))
-        .route("/rspc/:id", router.endpoint(|| ()).axum());
+        .nest(
+            "/rspc",
+            router
+                .clone()
+                .endpoint(|req: Request| {
+                    println!("Client requested operation '{}'", req.uri().path());
+                    api_server::router::Ctx {
+                        x_demo_header: req
+                            .headers()
+                            .get("X-Demo-Header")
+                            .map(|v| v.to_str().unwrap().to_string()),
+                    }
+                })
+                .axum()
+        )
+        .layer(cors);
 
-    let port = String::from("3000");
-    let host = String::from("0.0.0.0");
-    let socket_addr = format!("{}:{}", host, port);
-    let listener = tokio::net::TcpListener::bind(&socket_addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 }
