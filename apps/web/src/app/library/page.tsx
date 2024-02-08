@@ -41,6 +41,17 @@ export default function Library() {
     }
   }, []);
 
+  const goToFolder = useCallback((folderName: string) => {
+    let newFullPath = fullPath + (fullPath.endsWith("/") ? "" : "/");
+    if (folderName === "-1") {
+      newFullPath = newFullPath.replace(/(.*\/)[^/]+\/$/, "$1");
+    } else {
+      newFullPath += folderName;
+    }
+    // console.log("goto", folderName);
+    setFullPath(newFullPath);
+  }, [setFullPath, fullPath]);
+
   useEffect(() => {
     if (fullPathInputRef.current) {
       fullPathInputRef.current.value = fullPath;
@@ -68,7 +79,7 @@ export default function Library() {
             }}
           >ls</button>
         </div>
-        <Files files={files} />
+        <Files files={files} goToFolder={goToFolder} />
       </div>
     </main>
   );
