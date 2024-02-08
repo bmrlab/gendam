@@ -28,15 +28,15 @@ export default function Library() {
 
   const lsFiles = useCallback(async (fullPath: string) => {
     const client = await getClient();
-    client.query(["version"]).then((data) => console.log("!!data!!", data)).catch(err => {
-      console.log("version err", err);
-    });
+    // client.query(["version"]).then((data) => console.log("!!data!!", data)).catch(err => {
+    //   console.log("version err", err);
+    // });
     try {
       let files: File[] = await client.query<"ls">(["ls", fullPath]);
-      console.log(files);
+      // console.log(files);
       setFiles(files);
     } catch(err) {
-      console.log(err);
+      // console.log(err);
       setFiles([]);
     }
   }, []);

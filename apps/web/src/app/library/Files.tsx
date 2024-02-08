@@ -1,23 +1,45 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { File } from "./types";
 import Image from "next/image";
-import { Folder_Light } from "@muse/assets/icons";
+import { Folder_Light, Document_Light } from "@muse/assets/icons";
+import styles from './styles.module.css'
 
 type Props = {
   files: File[]
 }
 
+type FileWithId = File & { id: string };
+
 export default function Files({ files }: Props) {
+  let filesWithId = useMemo(() => {
+    return files.map((file) => {
+      return { ...file, id: Math.floor(Math.random() * 10000000).toString() };
+    })
+  }, [files]);
+  let [selectedId, setSelectedId] = useState<string | null>(null);
+
   return (
-    <div className="bg-blue-400">
+    <div className="p-6 mt-2 bg-white">
       <div className="flex flex-wrap">
-        {files.map((file) => (
+        {filesWithId.map((file) => (
           <div
-            key={file.name}
-            className="w-36 h-36 border-2 border-neutral-800 m-2 text-xs flex flex-col justify-between"
+            key={file.id}
+            className={
+              `w-36 m-2 flex flex-col justify-between overflow-hidden cursor-default select-none
+              ${selectedId === file.id && styles["selected"]}`
+            }
+            onClick={() => setSelectedId(file.id)}
           >
-            <Image src={Folder_Light} alt="folder"></Image>
-            <span>{file.name}</span>
+            <div className={`${styles["image"]} rounded-lg`}>
+              {file.is_dir ? (
+                <Image src={ Folder_Light } alt="folder"></Image>
+              ) : (
+                <Image src={ Document_Light } alt="folder"></Image>
+              )}
+            </div>
+            <div className={`${styles["title"]} p-1 mt-1 mb-2 rounded-lg`}>
+              <div className="leading-[1.4em] h-[2.8em] line-clamp-2 text-xs text-center">{file.name}</div>
+            </div>
           </div>
         ))}
       </div>
