@@ -66,7 +66,7 @@ pub fn get_router() -> Arc<BuiltRouter<Ctx>> {
     let router = router.build().unwrap().arced();
     router
         .export_ts(ExportConfig::new(
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../src/app/lib/bindings.ts"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../apps/web/src/app/lib/bindings.ts"),
         ))
         .unwrap();
     return router;
