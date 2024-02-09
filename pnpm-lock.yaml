@@ -8,6 +8,8 @@ importers:
 
   .: {}
 
+  apps/api-server: {}
+
   apps/desktop:
     devDependencies:
       '@tauri-apps/cli':

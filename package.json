@@ -3,11 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-		"web": "pnpm --filter @muse/web --",
+		"web": "pnpm run --filter @muse/web --",
     "dev:web": "pnpm web dev",
     "build:web": "pnpm web build",
+
     "desktop": "pnpm run --filter @muse/desktop --",
-		"tauri": "pnpm desktop tauri"
+		"tauri": "pnpm desktop tauri",
+
+    "api-server": "pnpm run --filter @muse/api-server --",
+    "dev:api-server": "pnpm api-server dev"
   },
   "dependencies": {},
   "devDependencies": {},

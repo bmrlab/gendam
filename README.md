@@ -5,6 +5,26 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 可以增加 `RUST_LOG` 环境变量，进行 `debug!` 日志的输出:
 `RUST_LOG=debug cargo tauri dev`
 
+### 运行 tauri
+
+```bash
+pnpm tauri dev
+```
+
+### 单独运行 web
+
+在开发环境，运行 tauri 的时候会同时启动 web 服务，但是也可以单独运行 web 服务
+
+```bash
+pnpm dev:web
+```
+
+### 单独运行 rspc 服务
+```bash
+pnpm dev:api-server
+```
+
+
 ## Prisma Rust Client
 
 1. 添加 `prisma-client-rust` 和 `prisma-client-rust-cli` 两个 crate
