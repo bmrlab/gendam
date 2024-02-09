@@ -72,8 +72,8 @@ async fn main() {
                         .await;
 
                     match collection_info {
-                        Err(_) => {
-                            debug!("collection does not exist, creating it");
+                        Err(err) => {
+                            debug!("collection does not exist, creating it. {}", err);
                             // create collection
                             let _ = client
                                 .create_collection(&CreateCollection {
