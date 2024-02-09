@@ -68,20 +68,21 @@ fn save_video_frames(
         if stream.index() == video_stream_index {
             if decoder.send_packet(&packet).is_ok() {
                 let mut frame = ffmpeg_next::frame::Video::empty();
-                decoder.receive_frame(&mut frame)?;
+                while decoder.receive_frame(&mut frame).is_ok() {
+                    if frame.is_key() {
+                        let mut scaled_frame = ffmpeg_next::frame::Video::empty();
+                        scaler.run(&mut frame, &mut scaled_frame).unwrap();
+                        let frames_dir = frames_dir.as_ref().to_path_buf().clone();
 
-                if frame.is_key() {
-                    let mut scaled_frame = ffmpeg_next::frame::Video::empty();
-                    scaler.run(&mut frame, &mut scaled_frame).unwrap();
-                    let frames_dir = frames_dir.as_ref().to_path_buf().clone();
-
-                    utils::copy_frame_props(&frame, &mut scaled_frame);
-                    let array = utils::convert_frame_to_ndarray_rgb24(&mut scaled_frame).expect("");
-                    let image = utils::array_to_image(array);
-                    let _ = image.save(frames_dir.join(format!(
-                        "{}.png",
-                        scaled_frame.timestamp().unwrap().to_string()
-                    )));
+                        utils::copy_frame_props(&frame, &mut scaled_frame);
+                        let array =
+                            utils::convert_frame_to_ndarray_rgb24(&mut scaled_frame).expect("");
+                        let image = utils::array_to_image(array);
+                        let _ = image.save(frames_dir.join(format!(
+                            "{}.png",
+                            scaled_frame.timestamp().unwrap().to_string()
+                        )));
+                    }
                 }
             }
         }
@@ -97,11 +98,11 @@ fn save_video_audio(
     let mut video = ffmpeg_next::format::input(&video_path.as_ref().to_path_buf())?;
     let mut inner_output = ffmpeg_next::format::output(&audio_path)?;
 
-    let video_stream = video
+    let audio_stream = video
         .streams()
         .best(ffmpeg_next::media::Type::Audio)
         .unwrap();
-    let audio_stream_index = video_stream.index();
+    let audio_stream_index = audio_stream.index();
 
     let mut transcoder = transcoder(&mut video, &mut inner_output, &audio_path, "anull")?;
 
