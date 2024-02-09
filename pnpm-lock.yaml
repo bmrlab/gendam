@@ -6,7 +6,9 @@ settings:
 
 importers:
 
-  .:
+  .: {}
+
+  apps/desktop:
     devDependencies:
       '@tauri-apps/cli':
         specifier: ^1.5.9

@@ -3,12 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev:web": "pnpm run --filter @muse/web dev"
+		"web": "pnpm --filter @muse/web --",
+    "dev:web": "pnpm web dev",
+    "build:web": "pnpm web build",
+    "desktop": "pnpm run --filter @muse/desktop --",
+		"tauri": "pnpm desktop tauri"
   },
   "dependencies": {},
-  "devDependencies": {
-    "@tauri-apps/cli": "^1.5.9"
-  },
+  "devDependencies": {},
   "engines": {
 		"pnpm": ">=8.0.0",
 		"npm": "pnpm",

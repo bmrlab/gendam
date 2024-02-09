@@ -159,44 +159,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "app"
-version = "0.1.0"
-dependencies = [
- "accelerate-src",
- "anyhow",
- "api-server",
- "candle-core",
- "candle-nn",
- "candle-transformers",
- "ffmpeg-next",
- "half",
- "hound",
- "image",
- "ndarray",
- "num-traits",
- "ort",
- "prisma-client-rust",
- "prisma-client-rust-cli",
- "prisma-lib",
- "qdrant-client",
- "reqwest",
- "rspc 1.0.0-rc.5",
- "serde",
- "serde_json",
- "sha256",
- "specta-macros 2.0.0-rc.1",
- "tauri",
- "tauri-build",
- "test-log",
- "tokenizers",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
- "whisper-rs",
-]
-
-[[package]]
 name = "arrayvec"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3580,6 +3542,44 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.48",
+]
+
+[[package]]
+name = "muse-desktop"
+version = "0.1.0"
+dependencies = [
+ "accelerate-src",
+ "anyhow",
+ "api-server",
+ "candle-core",
+ "candle-nn",
+ "candle-transformers",
+ "ffmpeg-next",
+ "half",
+ "hound",
+ "image",
+ "ndarray",
+ "num-traits",
+ "ort",
+ "prisma-client-rust",
+ "prisma-client-rust-cli",
+ "prisma-lib",
+ "qdrant-client",
+ "reqwest",
+ "rspc 1.0.0-rc.5",
+ "serde",
+ "serde_json",
+ "sha256",
+ "specta-macros 2.0.0-rc.1",
+ "tauri",
+ "tauri-build",
+ "test-log",
+ "tokenizers",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "whisper-rs",
 ]
 
 [[package]]
