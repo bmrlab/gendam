@@ -178,20 +178,26 @@ async fn handle_video_file(app_handle: tauri::AppHandle, video_path: &str) -> Re
     let frame_results = frame_handle.await;
     let audio_results = audio_handle.await;
 
-    if let Ok(result) = frame_results {
-        if let Err(frame_err) = result {
-            error!("failed to get frames: {}", frame_err);
+    match frame_results {
+        Ok(result) => {
+            if let Err(frame_err) = result {
+                error!("failed to get frames: {}", frame_err);
+            }
         }
-    } else {
-        error!("failed to get frames");
+        Err(err) => {
+            error!("failed to get frames: (JoinError){}", err);
+        }
     }
 
-    if let Ok(result) = audio_results {
-        if let Err(frame_err) = result {
-            error!("failed to get audio: {}", frame_err);
+    match audio_results {
+        Ok(result) => {
+            if let Err(audio_err) = result {
+                error!("failed to get audio: {}", audio_err);
+            }
         }
-    } else {
-        error!("failed to get audio");
+        Err(err) => {
+            error!("failed to get audio: (JoinError){}", err);
+        }
     }
 
     Ok(())

@@ -101,7 +101,7 @@ fn save_video_audio(
     let audio_stream = video
         .streams()
         .best(ffmpeg_next::media::Type::Audio)
-        .unwrap();
+        .ok_or(anyhow::anyhow!("no audio found in video"))?;
     let audio_stream_index = audio_stream.index();
 
     let mut transcoder = transcoder(&mut video, &mut inner_output, &audio_path, "anull")?;
