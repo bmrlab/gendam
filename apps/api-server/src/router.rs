@@ -1,6 +1,7 @@
 use std::{
     sync::Arc,
     path::PathBuf,
+    process::Command,
 };
 use rspc::{
     // Router,
@@ -59,14 +60,20 @@ pub fn get_router() -> Arc<BuiltRouter<Ctx>> {
         )
         .procedure("ls",
             R.query(|_ctx, full_path: String| async move {
-                let res = get_files_in_path(full_path);
+                let res = get_files_in_path(&full_path);
                 serde_json::to_value(res).unwrap()
+            })
+        )
+        .procedure("reveal",
+            R.mutation(|_ctx, path: String| async move {
+                let res = reveal_in_finder(&path);
+                res.expect("failed reveal file in finder");
             })
         );
     let router = router.build().unwrap().arced();
     router
         .export_ts(ExportConfig::new(
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../apps/web/src/app/lib/bindings.ts"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../apps/web/src/lib/bindings.ts"),
         ))
         .unwrap();
     return router;
@@ -99,7 +106,7 @@ fn list_files(subpath: Option<String>) -> Vec<File> {
     files
 }
 
-fn get_files_in_path(full_path: String) -> Vec<File> {
+fn get_files_in_path(full_path: &str) -> Vec<File> {
     let result = std::fs::read_dir(full_path);
     if let Err(_) = result {
         return vec![];
@@ -122,4 +129,12 @@ fn get_files_in_path(full_path: String) -> Vec<File> {
 
 fn get_folders_tree() -> Vec<File> {
     vec![]
+}
+
+fn reveal_in_finder(path: &str) -> std::io::Result<()> {
+    Command::new("open")
+        .arg("-R")
+        .arg(path)
+        .output()?;
+    Ok(())
 }

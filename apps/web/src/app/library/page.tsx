@@ -5,7 +5,7 @@ import { httpLink, initRspc } from "@rspc/client";
 import Sidebar from "./Sidebar";
 import Files from "./Files";
 import type { File } from "./types";
-import type { Procedures } from "../lib/bindings";
+import type { Procedures } from "@/lib/bindings";
 
 const getClient = async () => {
   const links = [];
@@ -32,7 +32,7 @@ export default function Library() {
     //   console.log("version err", err);
     // });
     try {
-      let files: File[] = await client.query<"ls">(["ls", fullPath]);
+      let files: File[] = await client.query(["ls", fullPath]);
       // console.log(files);
       setFiles(files);
     } catch(err) {
@@ -51,6 +51,13 @@ export default function Library() {
     // console.log("goto", folderName);
     setFullPath(newFullPath);
   }, [setFullPath, fullPath]);
+
+  const revealFile = useCallback(async (fileName: string) => {
+    const client = await getClient();
+    let newFullPath = fullPath + (fullPath.endsWith("/") ? "" : "/");
+    newFullPath += fileName;
+    let result = await client.mutation(["reveal", newFullPath]);
+  }, [fullPath]);
 
   useEffect(() => {
     if (fullPathInputRef.current) {
@@ -79,7 +86,7 @@ export default function Library() {
             }}
           >ls</button>
         </div>
-        <Files files={files} goToFolder={goToFolder} />
+        <Files files={files} goToFolder={goToFolder} revealFile={revealFile} />
       </div>
     </main>
   );

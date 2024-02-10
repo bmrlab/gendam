@@ -7,6 +7,7 @@ export type Procedures = {
         { key: "ls", input: string, result: any } | 
         { key: "users", input: never, result: any } | 
         { key: "version", input: never, result: string },
-    mutations: never,
+    mutations: 
+        { key: "reveal", input: string, result: null },
     subscriptions: never
 };

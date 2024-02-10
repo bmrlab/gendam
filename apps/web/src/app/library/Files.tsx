@@ -7,11 +7,12 @@ import styles from "./styles.module.css";
 type Props = {
   files: File[];
   goToFolder: (folderName: string) => void;
+  revealFile: (path: string) => void;
 }
 
 type FileWithId = File & { id: string };
 
-export default function Files({ files, goToFolder }: Props) {
+export default function Files({ files, goToFolder, revealFile }: Props) {
   let filesWithId = useMemo(() => {
     return files.map((file) => {
       return { ...file, id: Math.floor(Math.random() * 10000000).toString() };
@@ -24,9 +25,9 @@ export default function Files({ files, goToFolder }: Props) {
     if (file.is_dir) {
       goToFolder(file.name);
     } else {
-      console.log("openfile", file.name);
+      revealFile(file.name);
     }
-  }, [goToFolder]);
+  }, [goToFolder, revealFile]);
 
   return (
     <div className="p-6 mt-2 bg-white">
