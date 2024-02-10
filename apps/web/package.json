@@ -9,14 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@muse/assets": "workspace:*",
     "@rspc/client": "^1.0.0-rc.3",
     "@rspc/react": "^1.0.0-rc.3",
     "@rspc/tauri": "^1.0.0-rc.3",
     "@tauri-apps/api": "^1.5.3",
     "next": "14.1.0",
     "react": "^18",
-    "react-dom": "^18",
-    "@muse/assets": "workspace:*"
+    "react-dom": "^18"
   },
   "devDependencies": {
     "@types/node": "^20",

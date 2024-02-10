@@ -2,22 +2,27 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { File } from "./types";
 import Image from "next/image";
 import { Folder_Light, Document_Light } from "@muse/assets/icons";
+import { rspc } from "@/lib/rspc";
 import styles from "./styles.module.css";
 
 type Props = {
-  files: File[];
+  folderPath: string;
   goToFolder: (folderName: string) => void;
-  revealFile: (path: string) => void;
 }
 
 type FileWithId = File & { id: string };
 
-export default function Files({ files, goToFolder, revealFile }: Props) {
+export default function Files({ folderPath, goToFolder }: Props) {
+  const { data, isLoading, error } = rspc.useQuery(["ls", folderPath]);
+  // const { mutate, data, isPending, error } = rspc.useMutation("reveal");
+  const revealMut = rspc.useMutation("reveal");
+
   let filesWithId = useMemo(() => {
+    let files: File[] = isLoading ? [] : data;
     return files.map((file) => {
       return { ...file, id: Math.floor(Math.random() * 10000000).toString() };
     })
-  }, [files]);
+  }, [isLoading, data]);
 
   let [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -25,9 +30,11 @@ export default function Files({ files, goToFolder, revealFile }: Props) {
     if (file.is_dir) {
       goToFolder(file.name);
     } else {
-      revealFile(file.name);
+      let newFullPath = folderPath + (folderPath.endsWith("/") ? "" : "/");
+      newFullPath += file.name;
+      revealMut.mutate(newFullPath);
     }
-  }, [goToFolder, revealFile]);
+  }, [goToFolder, revealMut, folderPath]);
 
   return (
     <div className="p-6 mt-2 bg-white">

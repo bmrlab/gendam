@@ -23,23 +23,7 @@ const getClient = async () => {
 
 export default function Library() {
   let [fullPath, setFullPath] = useState<string>("/Users/xddotcom/Downloads");
-  let [files, setFiles] = useState<File[]>([]);
   const fullPathInputRef = useRef<HTMLInputElement>(null);
-
-  const lsFiles = useCallback(async (fullPath: string) => {
-    const client = await getClient();
-    // client.query(["version"]).then((data) => console.log("!!data!!", data)).catch(err => {
-    //   console.log("version err", err);
-    // });
-    try {
-      let files: File[] = await client.query(["ls", fullPath]);
-      // console.log(files);
-      setFiles(files);
-    } catch(err) {
-      // console.log(err);
-      setFiles([]);
-    }
-  }, []);
 
   const goToFolder = useCallback((folderName: string) => {
     let newFullPath = fullPath + (fullPath.endsWith("/") ? "" : "/");
@@ -52,19 +36,11 @@ export default function Library() {
     setFullPath(newFullPath);
   }, [setFullPath, fullPath]);
 
-  const revealFile = useCallback(async (fileName: string) => {
-    const client = await getClient();
-    let newFullPath = fullPath + (fullPath.endsWith("/") ? "" : "/");
-    newFullPath += fileName;
-    let result = await client.mutation(["reveal", newFullPath]);
-  }, [fullPath]);
-
   useEffect(() => {
     if (fullPathInputRef.current) {
       fullPathInputRef.current.value = fullPath;
     }
-    lsFiles(fullPath);
-  }, [lsFiles, fullPath]);
+  }, [fullPath]);
 
   return (
     <main className="min-h-screen flex">
@@ -86,7 +62,7 @@ export default function Library() {
             }}
           >ls</button>
         </div>
-        <Files files={files} goToFolder={goToFolder} revealFile={revealFile} />
+        <Files folderPath={fullPath} goToFolder={goToFolder} />
       </div>
     </main>
   );
