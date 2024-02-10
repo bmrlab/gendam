@@ -18,7 +18,7 @@ pub struct WhisperItem {
 
 impl AudioWhisper {
     pub async fn new(resources_dir: impl AsRef<Path>) -> anyhow::Result<Self> {
-        let download = crate::download::FileDownload::new(crate::download::FileDownloadConfig {
+        let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
             resources_dir: resources_dir.as_ref().to_path_buf(),
             ..Default::default()
         });

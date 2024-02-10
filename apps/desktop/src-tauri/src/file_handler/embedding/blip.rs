@@ -26,7 +26,7 @@ impl BLIP {
         let tokenizer_uri = "blip/tokenizer.json";
         let model_uri = "blip/blip-image-captioning-large-q4k.gguf";
 
-        let download = crate::download::FileDownload::new(crate::download::FileDownloadConfig {
+        let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
             resources_dir: resources_dir.as_ref().to_path_buf(),
             ..Default::default()
         });

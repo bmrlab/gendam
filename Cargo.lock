@@ -1684,6 +1684,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "file-downloader"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "filetime"
 version = "0.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3555,6 +3565,7 @@ dependencies = [
  "candle-nn",
  "candle-transformers",
  "ffmpeg-next",
+ "file-downloader",
  "half",
  "hound",
  "image",

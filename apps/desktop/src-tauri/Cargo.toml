@@ -20,6 +20,7 @@ tauri = { version = "1.5.4", features = [
   "fs-all",
 ] }
 prisma-lib = { path = "../../../crates/prisma"}
+file-downloader = { path = "../../../crates/file-downloader"}
 api-server = { path = "../../api-server"}
 rspc = { workspace = true, features = ["tauri"] }
 specta-macros = { workspace = true }

@@ -37,7 +37,7 @@ impl CLIP {
             }
         };
 
-        let download = crate::download::FileDownload::new(crate::download::FileDownloadConfig {
+        let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
             resources_dir: resources_dir.as_ref().to_path_buf(),
             ..Default::default()
         });
