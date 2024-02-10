@@ -1,9 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-#[allow(dead_code)]
-mod file_handler;
-
 use qdrant_client::client::QdrantClientConfig;
 use qdrant_client::qdrant::vectors_config::Config;
 use qdrant_client::qdrant::CreateCollection;

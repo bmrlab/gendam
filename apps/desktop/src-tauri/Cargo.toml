@@ -21,6 +21,7 @@ tauri = { version = "1.5.4", features = [
 ] }
 prisma-lib = { path = "../../../crates/prisma"}
 file-downloader = { path = "../../../crates/file-downloader"}
+file-handler = { path = "../../../crates/file-handler"}
 api-server = { path = "../../api-server"}
 rspc = { workspace = true, features = ["tauri"] }
 specta-macros = { workspace = true }
@@ -31,34 +32,7 @@ prisma-client-rust-cli = { workspace = true }
 tokio = { workspace = true }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
-test-log = { version = "0.2.14", features = ["trace"] }
-ndarray = { version = "0.15.6", features = ["serde"] }
-ffmpeg-next = "6.1.1"
-tokenizers = "0.15.1"
 qdrant-client = "1.7.0"
-sha256 = "1.5.0"
-image = "0.24.8"
-hound = "3.5.1"
-uuid = { version = "1.7.0", features = ["v5"] }
-whisper-rs = { version = "0.10.0", features = ["coreml"] }
-candle-core = { git = "https://github.com/huggingface/candle.git", features = [
-  "accelerate",
-  "metal",
-] }
-candle-transformers = { git = "https://github.com/huggingface/candle.git", features = [
-  "accelerate",
-  "metal",
-] }
-candle-nn = { git = "https://github.com/huggingface/candle.git", features = [
-  "accelerate",
-  "metal",
-] }
-half = "2.3.1"
-accelerate-src = "0.3.2"
-ort = "2.0.0-alpha.4" # this version is recommended by developer
-anyhow = "1.0.79"
-num-traits = "0.2.17"
-reqwest = "0.11.24"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.

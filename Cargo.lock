@@ -1694,6 +1694,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "file-handler"
+version = "0.1.0"
+dependencies = [
+ "accelerate-src",
+ "anyhow",
+ "candle-core",
+ "candle-nn",
+ "candle-transformers",
+ "ffmpeg-next",
+ "file-downloader",
+ "half",
+ "hound",
+ "image",
+ "ndarray",
+ "num-traits",
+ "ort",
+ "qdrant-client",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha256",
+ "test-log",
+ "tokenizers",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "whisper-rs",
+]
+
+[[package]]
 name = "filetime"
 version = "0.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3558,39 +3589,22 @@ dependencies = [
 name = "muse-desktop"
 version = "0.1.0"
 dependencies = [
- "accelerate-src",
- "anyhow",
  "api-server",
- "candle-core",
- "candle-nn",
- "candle-transformers",
- "ffmpeg-next",
  "file-downloader",
- "half",
- "hound",
- "image",
- "ndarray",
- "num-traits",
- "ort",
+ "file-handler",
  "prisma-client-rust",
  "prisma-client-rust-cli",
  "prisma-lib",
  "qdrant-client",
- "reqwest",
  "rspc 1.0.0-rc.5",
  "serde",
  "serde_json",
- "sha256",
  "specta-macros 2.0.0-rc.1",
  "tauri",
  "tauri-build",
- "test-log",
- "tokenizers",
  "tokio",
  "tracing",
  "tracing-subscriber",
- "uuid",
- "whisper-rs",
 ]
 
 [[package]]
