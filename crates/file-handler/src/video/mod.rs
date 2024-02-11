@@ -112,6 +112,10 @@ impl VideoHandler {
         })
     }
 
+    pub fn file_identifier(&self) -> &str {
+        &self.file_identifier
+    }
+
     /// Extract key frames from video
     /// and save the results in local data directory (in a folder named by file identifier)
     pub async fn get_frames(&self) -> anyhow::Result<()> {

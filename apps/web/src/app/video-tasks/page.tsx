@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { rspc } from "@/lib/rspc";
 
 export default function Library() {
-  const videoFrameslMut = rspc.useMutation("video.create_video_frames");
+  // const videoFrameslMut = rspc.useMutation("video.create_video_frames");
+  const videoFrameslMut = rspc.useMutation("video.create_video_task");
   let [videoPath, setVideoPath] = useState<string>("");
   const videoPathInputRef = useRef<HTMLInputElement>(null);
 

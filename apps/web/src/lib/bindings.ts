@@ -9,6 +9,7 @@ export type Procedures = {
         { key: "version", input: never, result: string },
     mutations: 
         { key: "files.reveal", input: string, result: null } | 
-        { key: "video.create_video_frames", input: string, result: any },
+        { key: "video.create_video_frames", input: string, result: any } | 
+        { key: "video.create_video_task", input: string, result: any },
     subscriptions: never
 };
