@@ -36,6 +36,11 @@ export default function Home() {
           go to library
         </Link>
       </div>
+      <div>
+        <Link href="/video-tasks" className="block p-2 bg-green-400">
+          go to video-tasks
+        </Link>
+      </div>
       <div className="bg-blue-500 py-16">
         <Link href="/files">
           <button className="p-4 text-white bg-black rounded-lg">

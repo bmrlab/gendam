@@ -5,7 +5,8 @@ use std::{env, net::SocketAddr, path::Path};
 use rspc::integrations::httpz::Request;
 use axum::routing::get;
 use tower_http::cors::{Any, CorsLayer};
-use tracing::{info, error};
+use tracing::{info, debug, error};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
@@ -13,6 +14,8 @@ async fn main() {
         Ok(path) => info!(".env read successfully from {}", path.display()),
         Err(e) => error!("Could not load .env file: {e}"),
     };
+    init_tracing();  // should be after dotenv() so RUST_LOG in .env file will be loaded
+    // debug!("test debug output");
     let local_data_dir = match env::var("LOCAL_DATA_DIR") {
 		Ok(path) => Path::new(&path).to_path_buf(),
 		Err(_e) => {
@@ -53,8 +56,20 @@ async fn main() {
         .layer(cors);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
+    debug!("Listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+fn init_tracing() {
+    tracing_subscriber::registry()
+        .with(
+            // load filters from the `RUST_LOG` environment variable.
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "api_server=info".into()),
+        )
+        .with(tracing_subscriber::fmt::layer().with_ansi(true))
+        .init();
 }
