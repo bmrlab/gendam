@@ -42,4 +42,6 @@ model VideoTask {
   endsAt        DateTime?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
+
+   @@unique([videoFileHash, taskType])
 }
