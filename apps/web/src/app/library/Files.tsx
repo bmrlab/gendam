@@ -13,9 +13,9 @@ type Props = {
 type FileWithId = File & { id: string };
 
 export default function Files({ folderPath, goToFolder }: Props) {
-  const { data, isLoading, error } = rspc.useQuery(["ls", folderPath]);
+  const { data, isLoading, error } = rspc.useQuery(["files.ls", folderPath]);
   // const { mutate, data, isPending, error } = rspc.useMutation("reveal");
-  const revealMut = rspc.useMutation("reveal");
+  const revealMut = rspc.useMutation("files.reveal");
 
   let filesWithId = useMemo(() => {
     let files: File[] = isLoading ? [] : data;

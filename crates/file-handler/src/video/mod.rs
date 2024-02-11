@@ -105,7 +105,7 @@ impl VideoHandler {
         Ok(Self {
             video_path: video_path.as_ref().to_owned(),
             resources_dir: resources_dir.as_ref().to_owned(),
-            file_identifier: file_sha256.clone().into(),
+            file_identifier: file_sha256.clone(),
             audio_path: artifacts_dir.join("audio.wav"),
             frames_dir,
             transcript_path: artifacts_dir.join("transcript.txt"),

@@ -2,12 +2,12 @@
 
 export type Procedures = {
     queries: 
-        { key: "files", input: string | null, result: any } | 
-        { key: "folders", input: never, result: any } | 
-        { key: "ls", input: string, result: any } | 
-        { key: "users", input: never, result: any } | 
+        { key: "files.files", input: string | null, result: any } | 
+        { key: "files.folders", input: never, result: any } | 
+        { key: "files.ls", input: string, result: any } | 
+        { key: "users.list", input: never, result: any } | 
         { key: "version", input: never, result: string },
     mutations: 
-        { key: "reveal", input: string, result: null },
+        { key: "files.reveal", input: string, result: null },
     subscriptions: never
 };

@@ -1,25 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, useRef } from "react";
-// import { createClient } from "@rspc/client";
-import { httpLink, initRspc } from "@rspc/client";
 import Sidebar from "./Sidebar";
 import Files from "./Files";
-import type { File } from "./types";
-import type { Procedures } from "@/lib/bindings";
-
-const getClient = async () => {
-  const links = [];
-  if (typeof window.__TAURI__ !== 'undefined') {
-    const { tauriLink } = await import("@rspc/tauri");
-    links.push(tauriLink());
-  } else {
-    links.push(httpLink({
-      url: "http://localhost:3001/rspc",
-    }));
-  }
-  const client = initRspc<Procedures>({ links });
-  return client;
-}
 
 export default function Library() {
   let [fullPath, setFullPath] = useState<string>("/Users/xddotcom/Downloads");

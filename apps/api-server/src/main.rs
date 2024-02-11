@@ -1,3 +1,6 @@
+extern crate api_server;  // 引入 lib.rs 里面的内容
+use api_server::{Ctx, router};
+
 use std::net::SocketAddr;
 use rspc::integrations::httpz::Request;
 use axum::{
@@ -8,7 +11,7 @@ use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
 async fn main() {
-    let router = api_server::router::get_router();
+    let router = router::get_router();
 
     let cors = CorsLayer::new()
         .allow_methods(Any)
@@ -22,7 +25,7 @@ async fn main() {
                 .clone()
                 .endpoint(|req: Request| {
                     println!("Client requested operation '{}'", req.uri().path());
-                    api_server::router::Ctx {
+                    Ctx {
                         x_demo_header: req
                             .headers()
                             .get("X-Demo-Header")

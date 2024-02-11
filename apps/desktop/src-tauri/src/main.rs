@@ -1,12 +1,16 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use qdrant_client::client::QdrantClientConfig;
-use qdrant_client::qdrant::vectors_config::Config;
-use qdrant_client::qdrant::CreateCollection;
-use qdrant_client::qdrant::Distance;
-use qdrant_client::qdrant::VectorParams;
-use qdrant_client::qdrant::VectorsConfig;
+use qdrant_client::{
+    client::QdrantClientConfig,
+    qdrant::{
+        vectors_config,
+        CreateCollection,
+        Distance,
+        VectorParams,
+        VectorsConfig,
+    }
+};
 use std::time::Duration;
 use tauri::api::process::Command;
 use tauri::api::process::CommandEvent;
@@ -75,7 +79,7 @@ async fn main() {
                                 .create_collection(&CreateCollection {
                                     collection_name: file_handler::QDRANT_COLLECTION_NAME.into(),
                                     vectors_config: Some(VectorsConfig {
-                                        config: Some(Config::Params(VectorParams {
+                                        config: Some(vectors_config::Config::Params(VectorParams {
                                             size: file_handler::EMBEDDING_DIM,
                                             distance: Distance::Cosine.into(),
                                             ..Default::default()
