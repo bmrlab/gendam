@@ -24,11 +24,6 @@ async fn main() {
     let router = api_server::router::get_router();
 
     tauri::Builder::default()
-        .plugin(rspc::integrations::tauri::plugin(router, |_| {
-            api_server::router::Ctx {
-                x_demo_header: None,
-            }
-        }))
         .setup(|app| {
             #[cfg(debug_assertions)] // only include this code on debug builds
             {
@@ -98,6 +93,21 @@ async fn main() {
 
             Ok(())
         })
+        .plugin(rspc::integrations::tauri::plugin(router, |app| {
+            let local_data_dir = app.app_handle()
+                .path_resolver()
+                .app_local_data_dir()
+                .expect("failed to find local data dir");
+            let resources_dir = app.app_handle()
+                .path_resolver()
+                .resolve_resource("resources")
+                .expect("failed to find resources dir");
+            api_server::router::Ctx {
+                x_demo_header: None,
+                local_data_dir,
+                resources_dir,
+            }
+        }))
         .invoke_handler(tauri::generate_handler![
             greet,
             handle_video_file,

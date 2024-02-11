@@ -1,16 +1,30 @@
 extern crate api_server;  // 引入 lib.rs 里面的内容
 use api_server::{Ctx, router};
-
-use std::net::SocketAddr;
+use dotenvy::dotenv;
+use std::{env, net::SocketAddr, path::Path};
 use rspc::integrations::httpz::Request;
-use axum::{
-    routing::get,
-    // Router,
-};
+use axum::routing::get;
 use tower_http::cors::{Any, CorsLayer};
+use tracing::{info, error};
 
 #[tokio::main]
 async fn main() {
+    match dotenv() {
+        Ok(path) => info!(".env read successfully from {}", path.display()),
+        Err(e) => error!("Could not load .env file: {e}"),
+    };
+    let local_data_dir = match env::var("LOCAL_DATA_DIR") {
+		Ok(path) => Path::new(&path).to_path_buf(),
+		Err(_e) => {
+			// #[cfg(not(debug_assertions))]
+			// {
+				panic!("'$LOCAL_DATA_DIR' is not set ({})", _e)
+			// }
+		}
+	};
+    let resources_dir = local_data_dir.join("resources").to_str().unwrap().to_owned();
+    let resources_dir = Path::new(&resources_dir).to_path_buf();
+
     let router = router::get_router();
 
     let cors = CorsLayer::new()
@@ -30,6 +44,8 @@ async fn main() {
                             .headers()
                             .get("X-Demo-Header")
                             .map(|v| v.to_str().unwrap().to_string()),
+                        local_data_dir,
+                        resources_dir,
                     }
                 })
                 .axum()
