@@ -10,8 +10,8 @@ rspc = { workspace = true, features = ["axum"] }
 specta-macros = { version = "=2.0.0-rc.1" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-prisma-client-rust = { workspace = true }
-prisma-client-rust-cli = { workspace = true }
+prisma-client-rust = { workspace = true, features = ["specta"]}
+# prisma-client-rust-cli = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 dotenvy = { workspace = true }
 tracing = { workspace = true }

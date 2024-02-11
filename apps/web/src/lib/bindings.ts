@@ -6,10 +6,10 @@ export type Procedures = {
         { key: "files.folders", input: never, result: any } | 
         { key: "files.ls", input: string, result: any } | 
         { key: "users.list", input: never, result: any } | 
-        { key: "version", input: never, result: string },
+        { key: "version", input: never, result: string } | 
+        { key: "video.list_video_tasks", input: never, result: any },
     mutations: 
         { key: "files.reveal", input: string, result: null } | 
-        { key: "video.create_video_frames", input: string, result: any } | 
         { key: "video.create_video_task", input: string, result: any },
     subscriptions: never
 };

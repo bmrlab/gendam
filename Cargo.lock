@@ -151,7 +151,6 @@ dependencies = [
  "dotenvy",
  "file-handler",
  "prisma-client-rust",
- "prisma-client-rust-cli",
  "prisma-lib",
  "rand 0.8.5",
  "rspc 1.0.0-rc.5",

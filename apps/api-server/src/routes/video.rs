@@ -9,16 +9,16 @@ use prisma_lib::{
     VideoTaskType,
 };
 
+#[derive(prisma_client_rust::specta::Type)]
+#[specta(crate="prisma_client_rust::specta")]
+pub struct VideoTaskResult {
+    pub id: i32,
+    pub video_path: String,
+}
+
 pub fn get_routes() -> Router<Ctx> {
     let tx = init_task_pool();
     R.router()
-        .procedure(
-            "create_video_frames",
-            R.mutation(|ctx, video_path: String| async move {
-                let res = create_video_frames(&ctx, &video_path).await;
-                serde_json::to_value(res).unwrap()
-            })
-        )
         .procedure(
             "create_video_task",
             R.mutation(move |ctx: Ctx, video_path: String| {
@@ -29,31 +29,19 @@ pub fn get_routes() -> Router<Ctx> {
                 }
             })
         )
-}
-
-async fn create_video_frames(ctx: &Ctx, video_path: &str) {
-    let video_handler =
-        file_handler::video::VideoHandler::new(
-            video_path,
-            &ctx.local_data_dir,
-            &ctx.resources_dir,
+        .procedure(
+            "list_video_tasks",
+            R.query(move |_ctx: Ctx, _input: ()| async move {
+                let client = new_client().await.expect("failed to create prisma client");
+                let res = client.video_task().find_many(vec![]).exec().await.expect("failed to list video tasks");
+                // return VideoTaskResult {
+                //     id: 1,
+                //     video_path: "abc".to_owned()
+                // };
+                // TODO: 这里没搞定返回结果类型的定义，可能是因为现在用的 rspc 的版本和 prisma rust client 版本不兼容
+                serde_json::to_value(res).unwrap()
+            })
         )
-        .await
-        .expect("failed to initialize video handler");
-    let frame_handle = tokio::spawn(async move {
-        match video_handler.get_frames().await {
-            Ok(res) => {
-                debug!("successfully got frames");
-                Ok(res)
-            },
-            Err(e) => {
-                debug!("failed to get frames: {}", e);
-                Err(e)
-            }
-        }
-    });
-    let result = frame_handle.await.unwrap();
-    result.expect("failed to get frames");
 }
 
 #[derive(Clone)]
@@ -222,3 +210,40 @@ async fn create_video_task(
         }
     }
 }
+
+
+
+/*
+        .procedure(
+            "create_video_frames",
+            R.mutation(|ctx, video_path: String| async move {
+                let res = create_video_frames(&ctx, &video_path).await;
+                serde_json::to_value(res).unwrap()
+            })
+        )
+*/
+
+// async fn create_video_frames(ctx: &Ctx, video_path: &str) {
+//     let video_handler =
+//         file_handler::video::VideoHandler::new(
+//             video_path,
+//             &ctx.local_data_dir,
+//             &ctx.resources_dir,
+//         )
+//         .await
+//         .expect("failed to initialize video handler");
+//     let frame_handle = tokio::spawn(async move {
+//         match video_handler.get_frames().await {
+//             Ok(res) => {
+//                 debug!("successfully got frames");
+//                 Ok(res)
+//             },
+//             Err(e) => {
+//                 debug!("failed to get frames: {}", e);
+//                 Err(e)
+//             }
+//         }
+//     });
+//     let result = frame_handle.await.unwrap();
+//     result.expect("failed to get frames");
+// }
