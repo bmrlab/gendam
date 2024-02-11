@@ -16,3 +16,30 @@ model User {
   email String  @unique
   name  String?
 }
+
+enum VideoTaskType {
+  FRAMES
+  FRAME_CONTENT_EMBEDDING
+  AUDIO
+  TRANSCRIPT
+  TRANSCRIPT_EMBEDDING
+}
+
+enum VideoTaskStatus {
+  FRAMES
+  FRAME_CONTENT_EMBEDDING
+  AUDIO
+  TRANSCRIPT
+  TRANSCRIPT_EMBEDDING
+}
+
+model VideoTask {
+  id            Int               @id @default(autoincrement())
+  videoPath     String            @db.VarChar(500)
+  videoFileHash String            @db.VarChar(64)
+  taskType      VideoTaskType
+  startsAt      DateTime?
+  endsAt        DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
