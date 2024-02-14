@@ -1715,6 +1715,7 @@ dependencies = [
  "candle-transformers",
  "ffmpeg-next",
  "file-downloader",
+ "futures",
  "half",
  "hound",
  "image",

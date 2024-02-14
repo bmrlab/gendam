@@ -14,6 +14,7 @@ use std::io::BufReader;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
+use futures::future::join_all;
 use tracing::debug;
 
 pub mod decoder;
@@ -252,13 +253,24 @@ impl VideoHandler {
         let blip_model = embedding::blip::BLIP::new(&self.resources_dir).await?;
         let blip_model = Arc::new(RwLock::new(blip_model));
 
+        // ToDo: 下面这么写有问题，因为一下子起来太多 async 任务似乎就 block axum 处理的请求了，有点奇怪
+        // let tasks = frame_paths.iter()
+        //     .filter(|path| path.extension() == Some(std::ffi::OsStr::new("png")))
+        //     .map(|path| {
+        //         debug!("get_frames_caption: {:?}", path);
+        //         let blip_model = Arc::clone(&blip_model);
+        //         get_single_frame_caption(blip_model, path)
+        //     })
+        //     .collect::<Vec<_>>();
+        // join_all(tasks).await;
+
         for path in frame_paths {
             if path.extension() == Some(std::ffi::OsStr::new("png")) {
                 debug!("get_frames_caption: {:?}", path);
                 let blip_model = Arc::clone(&blip_model);
-                tokio::spawn(async move {
+                // tokio::spawn(async move {
                     let _ = get_single_frame_caption(blip_model, path).await;
-                });
+                // });
             }
         }
 
