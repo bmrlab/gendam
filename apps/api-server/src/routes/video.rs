@@ -83,7 +83,7 @@ async fn process_task(task_payload: &TaskPayload) {
     client.video_task().update(
         video_task::video_file_hash_task_type(
             String::from(vh.file_identifier()),
-            VideoTaskType::Frames
+            VideoTaskType::Frame
         ),
         vec![video_task::starts_at::set(Some(chrono::Utc::now().into()))]
     ).exec().await.expect("failed to update video task");
@@ -94,10 +94,32 @@ async fn process_task(task_payload: &TaskPayload) {
             client.video_task().update(
                 video_task::video_file_hash_task_type(
                     String::from(vh.file_identifier()),
-                    VideoTaskType::Frames
+                    VideoTaskType::Frame
                 ),
                 vec![video_task::ends_at::set(Some(chrono::Utc::now().into()))]
             ).exec().await.expect("failed to update video task");
+            client.video_task().update(
+                video_task::video_file_hash_task_type(
+                    String::from(vh.file_identifier()),
+                    VideoTaskType::FrameCaption
+                ),
+                vec![video_task::starts_at::set(Some(chrono::Utc::now().into()))]
+            ).exec().await.expect("failed to update video task");
+            match vh.get_frames_caption().await {
+                Ok(_) => {
+                    debug!("successfully got frames caption, {}", &task_payload.video_path);
+                    client.video_task().update(
+                        video_task::video_file_hash_task_type(
+                            String::from(vh.file_identifier()),
+                            VideoTaskType::FrameCaption
+                        ),
+                        vec![video_task::ends_at::set(Some(chrono::Utc::now().into()))]
+                    ).exec().await.expect("failed to update video task");
+                }
+                Err(e) => {
+                    error!("failed to get transcript: {}", e);
+                }
+            }
         },
         Err(e) => {
             debug!("failed to get frames: {}", e);
@@ -168,7 +190,7 @@ async fn create_video_task(
     let client = new_client().await.expect("failed to create prisma client");
 
     for task_type in vec![
-        VideoTaskType::Frames, VideoTaskType::Audio, VideoTaskType::Transcript
+        VideoTaskType::Frame, VideoTaskType::FrameCaption, VideoTaskType::Audio, VideoTaskType::Transcript
     ] {
         let x = client.video_task().upsert(
             video_task::video_file_hash_task_type(
