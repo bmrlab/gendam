@@ -4,7 +4,7 @@ import { rspc } from "@/lib/rspc";
 import type { VideoTaskResult } from "@/lib/bindings";
 
 const VideoTasksList: React.FC = () => {
-  const { data, isLoading, error } = rspc.useQuery(["video.list_video_tasks"]);
+  const { data, isLoading, error } = rspc.useQuery(["video.tasks.list"]);
   // console.log(data);
 
   // useEffect(() => {
@@ -42,9 +42,9 @@ const VideoTasksList: React.FC = () => {
   )
 }
 
-export default function Library() {
+export default function VideoTasks() {
   // const videoTasklList = rspc.useQuery(["video.list_video_tasks"]);
-  const videoTasklMut = rspc.useMutation("video.create_video_task");
+  const videoTasklMut = rspc.useMutation("video.tasks.create");
   let [videoPath, setVideoPath] = useState<string>("");
   const videoPathInputRef = useRef<HTMLInputElement>(null);
 

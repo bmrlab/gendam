@@ -187,7 +187,7 @@ if let Err(audio_err) = audio_results.unwrap() {
 // resource_dir 为模型文件存放路径
 file_handler::handle_search(file_handler::SearchRequest {
   text: "a man".to_string(),
-  record_type: Some(file_handler:search_payload::SearchRecordType::Frame),
+  record_type: Some(file_handler::search_payload::SearchRecordType::Frame),
   skip: None,
   limit: None
 }, resources_dir).await

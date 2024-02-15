@@ -21,7 +21,7 @@ pub fn get_routes() -> Router<Ctx> {
     let tx = init_task_pool();
     R.router()
         .procedure(
-            "create_video_task",
+            "create",
             R.mutation(move |ctx: Ctx, video_path: String| {
                 let tx2 = Arc::clone(&tx);
                 async move {
@@ -31,7 +31,7 @@ pub fn get_routes() -> Router<Ctx> {
             })
         )
         .procedure(
-            "list_video_tasks",
+            "list",
             R.query(move |_ctx: Ctx, _input: ()| async move {
                 let client = new_client().await.expect("failed to create prisma client");
                 let res = client.video_task().find_many(vec![]).exec().await.expect("failed to list video tasks");
@@ -62,24 +62,9 @@ pub fn get_routes() -> Router<Ctx> {
                         ends_at: if let Some(t) = item.ends_at { Some(t.to_string()) } else { None },
                     }
                 }).collect::<Vec<_>>()
-
-                // return VideoTaskResult {
-                //     id: 1,
-                //     video_path: "abc".to_owned()
-                // };
-                // TODO: 这里没搞定返回结果类型的定义，可能是因为现在用的 rspc 的版本和 prisma rust client 版本不兼容
                 // serde_json::to_value(res).unwrap()
             })
         )
-        // .procedure(
-        //     "search_videos",
-        //     R.query(move |ctx: Ctx, input: String| async move {
-        //         return VideoTaskResult {
-        //             id: 1,
-        //             video_path: "abc".to_owned()
-        //         };
-        //     })
-        // )
 }
 
 #[derive(Clone)]
@@ -109,7 +94,6 @@ fn init_task_pool() -> Arc<broadcast::Sender<TaskPayload>> {
     });
     tx
 }
-
 
 async fn save_starts_at(task_type: VideoTaskType, client: &PrismaClient, vh: &VideoHandler) {
     client.video_task().update(

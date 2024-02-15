@@ -41,7 +41,12 @@ export default function Home() {
           go to video-tasks
         </Link>
       </div>
-      <div className="bg-blue-500 py-16">
+      <div>
+        <Link href="/search" className="block p-2 bg-green-200">
+          go to search
+        </Link>
+      </div>
+      <div className="bg-blue-500 p-4">
         <Link href="/files">
           <button className="p-4 text-white bg-black rounded-lg">
             direct to search test page
