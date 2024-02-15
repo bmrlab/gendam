@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { rspc } from "@/lib/rspc";
+import type { VideoTaskResult } from "@/lib/bindings";
 
 const VideoTasksList: React.FC = () => {
   const { data, isLoading, error } = rspc.useQuery(["video.list_video_tasks"]);
@@ -14,7 +15,7 @@ const VideoTasksList: React.FC = () => {
     return <div>Loading</div>
   }
 
-  const status = (task: any) => {
+  const status = (task: VideoTaskResult) => {
     if (!task.startsAt) {
       return "未开始";
     } else if (task.startsAt && !task.endsAt) {
@@ -26,7 +27,7 @@ const VideoTasksList: React.FC = () => {
 
   return (
     <div>
-      {data.map((task: any) => {
+      {data!.map((task: VideoTaskResult) => {
         return (
           <div key={task.id} className="flex">
             <div className="mx-2">{ task.id }</div>

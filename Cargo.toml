@@ -11,6 +11,7 @@ edition = "2021"
 
 [workspace.dependencies]
 rspc = { version = "=1.0.0-rc.5" }
+specta = { version = "=2.0.0-rc.1", default-features = false }
 specta-macros = { version = "=2.0.0-rc.1" }
 prisma-client-rust = { git = "https://github.com/Brendonovich/prisma-client-rust", tag = "0.6.11", features = [
 	"rspc",

@@ -14,13 +14,8 @@ use prisma_lib::{
     VideoTaskType,
 };
 use file_handler::video::VideoHandler;
-
-#[derive(prisma_client_rust::specta::Type)]
-#[specta(crate="prisma_client_rust::specta")]
-pub struct VideoTaskResult {
-    pub id: i32,
-    pub video_path: String,
-}
+use specta::Type;
+use serde::Serialize;
 
 pub fn get_routes() -> Router<Ctx> {
     let tx = init_task_pool();
@@ -40,14 +35,51 @@ pub fn get_routes() -> Router<Ctx> {
             R.query(move |_ctx: Ctx, _input: ()| async move {
                 let client = new_client().await.expect("failed to create prisma client");
                 let res = client.video_task().find_many(vec![]).exec().await.expect("failed to list video tasks");
+
+                #[derive(Serialize, Type)]
+                pub struct VideoTaskResult {
+                    #[serde(rename = "id")]
+                    pub id: i32,
+                    #[serde(rename = "videoPath")]
+                    pub video_path: String,
+                    #[serde(rename = "videoFileHash")]
+                    pub video_file_hash: String,
+                    #[serde(rename = "taskType")]
+                    pub task_type: String,
+                    #[serde(rename = "startsAt")]
+                    pub starts_at: Option<String>,
+                    #[serde(rename = "endsAt")]
+                    pub ends_at: Option<String>,
+                }
+
+                res.iter().map(|item| {
+                    VideoTaskResult {
+                        id: item.id,
+                        video_path: item.video_path.clone(),
+                        video_file_hash: item.video_file_hash.clone(),
+                        task_type: item.task_type.to_string(),
+                        starts_at: if let Some(t) = item.starts_at { Some(t.to_string()) } else { None },
+                        ends_at: if let Some(t) = item.ends_at { Some(t.to_string()) } else { None },
+                    }
+                }).collect::<Vec<_>>()
+
                 // return VideoTaskResult {
                 //     id: 1,
                 //     video_path: "abc".to_owned()
                 // };
                 // TODO: 这里没搞定返回结果类型的定义，可能是因为现在用的 rspc 的版本和 prisma rust client 版本不兼容
-                serde_json::to_value(res).unwrap()
+                // serde_json::to_value(res).unwrap()
             })
         )
+        // .procedure(
+        //     "search_videos",
+        //     R.query(move |ctx: Ctx, input: String| async move {
+        //         return VideoTaskResult {
+        //             id: 1,
+        //             video_path: "abc".to_owned()
+        //         };
+        //     })
+        // )
 }
 
 #[derive(Clone)]

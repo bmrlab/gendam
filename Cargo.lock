@@ -156,6 +156,7 @@ dependencies = [
  "rspc 1.0.0-rc.5",
  "serde",
  "serde_json",
+ "specta 2.0.0-rc.1",
  "specta-macros 2.0.0-rc.1",
  "tokio",
  "tower-http",
