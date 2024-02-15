@@ -7,12 +7,14 @@ export type Procedures = {
         { key: "files.ls", input: string, result: any } | 
         { key: "users.list", input: never, result: any } | 
         { key: "version", input: never, result: string } | 
-        { key: "video.search.all", input: string, result: any } | 
+        { key: "video.search.all", input: string, result: SearchResultPayload[] } | 
         { key: "video.tasks.list", input: never, result: VideoTaskResult[] },
     mutations: 
         { key: "files.reveal", input: string, result: null } | 
         { key: "video.tasks.create", input: string, result: any },
     subscriptions: never
 };
+
+export type SearchResultPayload = { fullPath: string }
 
 export type VideoTaskResult = { id: number; videoPath: string; videoFileHash: string; taskType: string; startsAt: string | null; endsAt: string | null }

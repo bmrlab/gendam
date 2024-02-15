@@ -4,7 +4,10 @@ use dotenvy::dotenv;
 use std::{env, net::SocketAddr, path::Path};
 use rspc::integrations::httpz::Request;
 use axum::routing::get;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::{
+    cors::{Any, CorsLayer},
+    services::ServeDir,
+};
 use tracing::{info, debug, error};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -53,6 +56,7 @@ async fn main() {
                 })
                 .axum()
         )
+        .nest_service("/assets", ServeDir::new("/Users/xddotcom/Library/Application Support/cc.musedam.local"))
         .layer(cors);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
