@@ -4,10 +4,12 @@ use rspc::Router;
 use tracing::{debug, info, error};
 use crate::{Ctx, R};
 use prisma_lib::{
+    PrismaClient,
     new_client,
     video_task,
     VideoTaskType,
 };
+use file_handler::video::VideoHandler;
 
 #[derive(prisma_client_rust::specta::Type)]
 #[specta(crate="prisma_client_rust::specta")]
@@ -46,7 +48,7 @@ pub fn get_routes() -> Router<Ctx> {
 
 #[derive(Clone)]
 pub struct TaskPayload {
-    pub video_handler: file_handler::video::VideoHandler,
+    pub video_handler: VideoHandler,
     pub video_path: String,
     // pub video_file_hash: String,
     // pub task_type: VideoTaskType,
@@ -72,105 +74,67 @@ fn init_task_pool() -> Arc<broadcast::Sender<TaskPayload>> {
     tx
 }
 
+
+async fn save_starts_at(task_type: VideoTaskType, client: &PrismaClient, vh: &VideoHandler) {
+    client.video_task().update(
+        video_task::video_file_hash_task_type(
+            String::from(vh.file_identifier()),
+            task_type
+        ),
+        vec![video_task::starts_at::set(Some(chrono::Utc::now().into()))]
+    ).exec().await.expect(&format!("failed save_starts_at {:?}", task_type));
+}
+
+async fn save_ends_at(task_type: VideoTaskType, client: &PrismaClient, vh: &VideoHandler) {
+    client.video_task().update(
+        video_task::video_file_hash_task_type(
+            String::from(vh.file_identifier()),
+            task_type
+        ),
+        vec![video_task::ends_at::set(Some(chrono::Utc::now().into()))]
+    ).exec().await.expect(&format!("failed save_ends_at {:?}", task_type));
+}
+
 async fn process_task(task_payload: &TaskPayload) {
     // sleep for random time
     // let sleep_time = rand::random::<u64>() % 10;
     // tokio::time::sleep(tokio::time::Duration::from_secs(sleep_time)).await;
     // info!("Task finished {}", &task_payload.video_path);
-    let client = new_client().await.expect("failed to create prisma client");
-    let vh = &task_payload.video_handler;
+    let client: PrismaClient = new_client().await.expect("failed to create prisma client");
+    let client = Arc::new(client);
+    let vh: &VideoHandler = &task_payload.video_handler;
 
-    client.video_task().update(
-        video_task::video_file_hash_task_type(
-            String::from(vh.file_identifier()),
-            VideoTaskType::Frame
-        ),
-        vec![video_task::starts_at::set(Some(chrono::Utc::now().into()))]
-    ).exec().await.expect("failed to update video task");
+    save_starts_at(VideoTaskType::Frame, &client, vh).await;
+    if let Err(e) = vh.get_frames().await {
+        error!("failed to get frames: {}", e);
+        return;
+    }
+    info!("successfully got frames, {}", &task_payload.video_path);
+    save_ends_at(VideoTaskType::Frame, &client, vh).await;
 
-    match vh.get_frames().await {
-        Ok(_res) => {
-            debug!("successfully got frames, {}", &task_payload.video_path);
-            client.video_task().update(
-                video_task::video_file_hash_task_type(
-                    String::from(vh.file_identifier()),
-                    VideoTaskType::Frame
-                ),
-                vec![video_task::ends_at::set(Some(chrono::Utc::now().into()))]
-            ).exec().await.expect("failed to update video task");
-            client.video_task().update(
-                video_task::video_file_hash_task_type(
-                    String::from(vh.file_identifier()),
-                    VideoTaskType::FrameCaption
-                ),
-                vec![video_task::starts_at::set(Some(chrono::Utc::now().into()))]
-            ).exec().await.expect("failed to update video task");
-            match vh.get_frames_caption().await {
-                Ok(_) => {
-                    debug!("successfully got frames caption, {}", &task_payload.video_path);
-                    client.video_task().update(
-                        video_task::video_file_hash_task_type(
-                            String::from(vh.file_identifier()),
-                            VideoTaskType::FrameCaption
-                        ),
-                        vec![video_task::ends_at::set(Some(chrono::Utc::now().into()))]
-                    ).exec().await.expect("failed to update video task");
-                }
-                Err(e) => {
-                    error!("failed to get transcript: {}", e);
-                }
-            }
-        },
-        Err(e) => {
-            debug!("failed to get frames: {}", e);
-        }
-    };
+    save_starts_at(VideoTaskType::FrameCaption, &client, vh).await;
+    if let Err(e) = vh.get_frames_caption().await {
+        error!("failed to get frames caption: {}", e);
+        return;
+    }
+    info!("successfully got frames caption, {}", &task_payload.video_path);
+    save_ends_at(VideoTaskType::FrameCaption, &client, vh).await;
 
-    client.video_task().update(
-        video_task::video_file_hash_task_type(
-            String::from(vh.file_identifier()),
-            VideoTaskType::Audio
-        ),
-        vec![video_task::starts_at::set(Some(chrono::Utc::now().into()))]
-    ).exec().await.expect("failed to update video task");
-    match vh.get_audio().await {
-        // `get_transcript` 使用whisper提取音频
-        Ok(_) => {
-            debug!("successfully got audio, {}", &task_payload.video_path);
-            client.video_task().update(
-                video_task::video_file_hash_task_type(
-                    String::from(vh.file_identifier()),
-                    VideoTaskType::Audio
-                ),
-                vec![video_task::ends_at::set(Some(chrono::Utc::now().into()))]
-            ).exec().await.expect("failed to update video task");
-            client.video_task().update(
-                video_task::video_file_hash_task_type(
-                    String::from(vh.file_identifier()),
-                    VideoTaskType::Transcript
-                ),
-                vec![video_task::starts_at::set(Some(chrono::Utc::now().into()))]
-            ).exec().await.expect("failed to update video task");
-            match vh.get_transcript().await {
-                Ok(_) => {
-                    debug!("successfully got transcript, {}", &task_payload.video_path);
-                    client.video_task().update(
-                        video_task::video_file_hash_task_type(
-                            String::from(vh.file_identifier()),
-                            VideoTaskType::Transcript
-                        ),
-                        vec![video_task::ends_at::set(Some(chrono::Utc::now().into()))]
-                    ).exec().await.expect("failed to update video task");
-                }
-                Err(e) => {
-                    error!("failed to get transcript: {}", e);
-                }
-            }
-        },
-        Err(e) => {
-            error!("failed to get audio: {}", e);
-        }
-    };
+    save_starts_at(VideoTaskType::Audio, &client, vh).await;
+    if let Err(e) = vh.get_audio().await {
+        error!("failed to get audio: {}", e);
+        return;
+    }
+    info!("successfully got audio, {}", &task_payload.video_path);
+    save_ends_at(VideoTaskType::Audio, &client, vh).await;
+
+    save_starts_at(VideoTaskType::Transcript, &client, vh).await;
+    if let Err(e) = vh.get_transcript().await {
+        error!("failed to get transcript: {}", e);
+        return;
+    }
+    info!("successfully got transcript, {}", &task_payload.video_path);
+    save_ends_at(VideoTaskType::Transcript, &client, vh).await;
 }
 
 async fn create_video_task(
@@ -179,7 +143,7 @@ async fn create_video_task(
     tx: Arc<Sender<TaskPayload>>
 ) {
     let video_handler =
-        file_handler::video::VideoHandler::new(
+        VideoHandler::new(
             video_path,
             &ctx.local_data_dir,
             &ctx.resources_dir,
