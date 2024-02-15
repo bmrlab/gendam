@@ -264,16 +264,24 @@ impl VideoHandler {
         //     .collect::<Vec<_>>();
         // join_all(tasks).await;
 
+        let mut tasks: Vec<_> = vec![];
+
         for path in frame_paths {
             if path.extension() == Some(std::ffi::OsStr::new("png")) {
                 debug!("get_frames_caption: {:?}", path);
                 let blip_model = Arc::clone(&blip_model);
+                let task = get_single_frame_caption(blip_model, path);
+                tasks.push(task);
+                if tasks.len() >= 3 {
+                    join_all(tasks).await;
+                    tasks = vec![]; // `tasks` is moved to join_all, so drop it and assign a new vec to it
+                }
                 // tokio::spawn(async move {
-                    let _ = get_single_frame_caption(blip_model, path).await;
+                //     let _ = get_single_frame_caption(blip_model, path).await;
                 // });
             }
         }
-
+        join_all(tasks).await;
         Ok(())
     }
 
