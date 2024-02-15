@@ -1,7 +1,11 @@
 use std::sync::Arc;
 use tokio::sync::broadcast::{self, Sender};
 use rspc::Router;
-use tracing::{debug, info, error};
+use tracing::{
+    // debug,
+    info,
+    error
+};
 use crate::{Ctx, R};
 use prisma_lib::{
     PrismaClient,
@@ -112,6 +116,14 @@ async fn process_task(task_payload: &TaskPayload) {
     info!("successfully got frames, {}", &task_payload.video_path);
     save_ends_at(VideoTaskType::Frame, &client, vh).await;
 
+    save_starts_at(VideoTaskType::FrameContentEmbedding, &client, vh).await;
+    if let Err(e) = vh.get_frame_caption_embedding().await {
+        error!("failed to get frame caption embedding: {}", e);
+        return;
+    }
+    info!("successfully got frame caption embedding, {}", &task_payload.video_path);
+    save_ends_at(VideoTaskType::FrameContentEmbedding, &client, vh).await;
+
     save_starts_at(VideoTaskType::FrameCaption, &client, vh).await;
     if let Err(e) = vh.get_frames_caption().await {
         error!("failed to get frames caption: {}", e);
@@ -135,6 +147,14 @@ async fn process_task(task_payload: &TaskPayload) {
     }
     info!("successfully got transcript, {}", &task_payload.video_path);
     save_ends_at(VideoTaskType::Transcript, &client, vh).await;
+
+    save_starts_at(VideoTaskType::TranscriptEmbedding, &client, vh).await;
+    if let Err(e) = vh.get_transcript_embedding().await {
+        error!("failed to get transcript embedding: {}", e);
+        return;
+    }
+    info!("successfully got transcript embedding, {}", &task_payload.video_path);
+    save_ends_at(VideoTaskType::TranscriptEmbedding, &client, vh).await;
 }
 
 async fn create_video_task(
@@ -154,7 +174,9 @@ async fn create_video_task(
     let client = new_client().await.expect("failed to create prisma client");
 
     for task_type in vec![
-        VideoTaskType::Frame, VideoTaskType::FrameCaption, VideoTaskType::Audio, VideoTaskType::Transcript
+        VideoTaskType::Frame, VideoTaskType::FrameContentEmbedding,
+        VideoTaskType::FrameCaption,
+        VideoTaskType::Audio, VideoTaskType::Transcript, VideoTaskType::TranscriptEmbedding,
     ] {
         let x = client.video_task().upsert(
             video_task::video_file_hash_task_type(
