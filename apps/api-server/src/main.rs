@@ -41,9 +41,9 @@ async fn main() {
         .route("/", get(|| async { "Hello 'rspc'!" }))
         .nest(
             "/rspc",
-            router
-                .clone()
-                .endpoint(|req: Request| {
+            {
+                let local_data_dir = local_data_dir.clone();
+                router.clone().endpoint(|req: Request| {
                     println!("Client requested operation '{}'", req.uri().path());
                     Ctx {
                         x_demo_header: req
@@ -53,10 +53,10 @@ async fn main() {
                         local_data_dir,
                         resources_dir,
                     }
-                })
-                .axum()
+                }).axum()
+            }
         )
-        .nest_service("/assets", ServeDir::new("/Users/xddotcom/Library/Application Support/cc.musedam.local"))
+        .nest_service("/assets", ServeDir::new(local_data_dir.clone()))
         .nest_service("/contents", ServeDir::new("/"))
         .layer(cors);
 
