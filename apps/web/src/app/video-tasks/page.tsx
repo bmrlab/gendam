@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { rspc } from "@/lib/rspc";
-import { getContentUrl } from "@/utils/file";
+import { getLocalFileUrl } from "@/utils/file";
 import type { VideoTaskResult } from "@/lib/bindings";
 
 type VideoItem = {
@@ -75,7 +75,7 @@ const VideoTasksList: React.FC = () => {
               onClick={() => handleClickVideoFile(video)}
             >
               <video style={{ width: "100%", height: "auto" }}>
-                <source src={getContentUrl(video.videoPath)} type="video/mp4" />
+                <source src={getLocalFileUrl(video.videoPath)} type="video/mp4" />
               </video>
             </div>
             <div className="p-1">

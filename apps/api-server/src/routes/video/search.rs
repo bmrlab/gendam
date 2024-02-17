@@ -92,7 +92,7 @@ pub fn get_routes() -> Router<Ctx> {
                 res.iter().map(|SearchResult { payload, score: _ }| {
                     if let SearchPayload::Frame(payload) = payload {
                         let image_path = format!("{}/frames/{}", &payload.file_identifier, &payload.frame_filename);
-                        // let full_path = ctx.local_data_dir.join(full_path).display().to_string();
+                        let image_path = ctx.local_data_dir.join(image_path).display().to_string();
                         let video_path = tasks_hash_map.get(&payload.file_identifier).unwrap_or(&"".to_string()).clone();
                         let start_time: i32 = payload.timestamp as i32;
                         SearchResultPayload {

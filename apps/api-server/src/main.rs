@@ -56,8 +56,8 @@ async fn main() {
                 }).axum()
             }
         )
-        .nest_service("/artifacts", ServeDir::new(local_data_dir.clone()))
-        .nest_service("/contents", ServeDir::new("/"))
+        // .nest_service("/artifacts", ServeDir::new(local_data_dir.clone()))
+        .nest_service("/file/localhost", ServeDir::new("/"))
         .layer(cors);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
