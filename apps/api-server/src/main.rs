@@ -8,14 +8,14 @@ use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
 };
-use tracing::{info, debug, error};
+use tracing::debug;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
     match dotenv() {
-        Ok(path) => info!(".env read successfully from {}", path.display()),
-        Err(e) => error!("Could not load .env file: {e}"),
+        Ok(path) => println!(".env read successfully from {}", path.display()),
+        Err(e) => println!("Could not load .env file: {e}"),
     };
     init_tracing();  // should be after dotenv() so RUST_LOG in .env file will be loaded
     // debug!("test debug output");

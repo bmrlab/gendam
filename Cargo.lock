@@ -3635,6 +3635,7 @@ name = "muse-desktop"
 version = "0.1.0"
 dependencies = [
  "api-server",
+ "dotenvy",
  "file-downloader",
  "file-handler",
  "prisma-client-rust",

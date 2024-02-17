@@ -30,8 +30,9 @@ serde_json = { workspace = true }
 prisma-client-rust = { workspace = true }
 prisma-client-rust-cli = { workspace = true }
 tokio = { workspace = true }
+dotenvy = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
+tracing-subscriber = { workspace = true , features = ["env-filter"] }
 qdrant-client = "1.7.0"
 
 [features]

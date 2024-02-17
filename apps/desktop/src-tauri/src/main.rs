@@ -1,6 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
+use dotenvy::dotenv;
 use qdrant_client::{
     client::QdrantClientConfig,
     qdrant::{
@@ -16,10 +16,15 @@ use tauri::api::process::Command;
 use tauri::api::process::CommandEvent;
 use tauri::Manager;
 use tracing::{debug, error};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    match dotenv() {
+        Ok(path) => println!(".env read successfully from {}", path.display()),
+        Err(e) => println!("Could not load .env file: {e}"),
+    };
+    init_tracing();
 
     let router = api_server::router::get_router();
 
@@ -250,4 +255,15 @@ async fn handle_search(
     Ok(file_handler::handle_search(payload, resources_dir)
         .await
         .map_err(|_| ())?)
+}
+
+fn init_tracing() {
+    tracing_subscriber::registry()
+        .with(
+            // load filters from the `RUST_LOG` environment variable.
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "muse_desktop=info".into()),
+        )
+        .with(tracing_subscriber::fmt::layer().with_ansi(true))
+        .init();
 }
