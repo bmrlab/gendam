@@ -7,7 +7,7 @@ import { client, queryClient, rspc } from "@/lib/rspc";
 const ClientLayout = dynamic(() => import('./ClientLayout'), {
   loading: () => <div className="w-screen h-screen bg-white flex items-center justify-center">Loading...</div>,
   ssr: false,
-})
+});
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,7 +24,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ClientLayout>{children}</ClientLayout>
+        <>
+          <ClientLayout>{children}</ClientLayout>
+        </>
       </body>
     </html>
   );

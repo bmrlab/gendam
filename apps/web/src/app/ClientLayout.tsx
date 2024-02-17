@@ -8,7 +8,7 @@ export default function ClientLayout({
 }>) {
   return (
     <rspc.Provider client={client} queryClient={queryClient}>
-      <div>{children}</div>
+      <>{children}</>
     </rspc.Provider>
   );
 }
