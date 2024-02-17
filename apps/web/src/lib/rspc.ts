@@ -20,7 +20,7 @@ export const rspc = createReactQueryHooks<Procedures>(client);
 export const queryClient: QueryClient = new QueryClient({
 	defaultOptions: {
 		queries: {
-			suspense: true
+			suspense: false,
 		},
 		mutations: {
 			onSuccess: () => queryClient.invalidateQueries()

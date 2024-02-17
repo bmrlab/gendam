@@ -39,7 +39,10 @@ const VideoPreview: React.FC<{ videoItem: VideoItem }> = ({ videoItem }) => {
 }
 
 export default function Search() {
-  const { data, isLoading, error } = rspc.useQuery(["video.search.all", "car"]);
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const queryRes = rspc.useQuery(["video.search.all", searchKeyword]);
+  // cosnt { data, isLoading, error } = queryRes;
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [videoItem, setVideoItem] = useState<VideoItem | null>(null);
 
   const handleVideoClick = useCallback((item: SearchResultPayload) => {
@@ -49,24 +52,41 @@ export default function Search() {
     });
   }, [setVideoItem]);
 
+  const handleSearch = useCallback((e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const keyword = searchInputRef.current?.value;
+    if (!keyword) return;
+    setSearchKeyword(keyword);
+  }, [setSearchKeyword]);
+
   return (
     <main className="min-h-screen p-12">
-      <div className="flex flex-wrap">
-        {data?.map((item: SearchResultPayload) => {
-          return (
-            <div key={item.imagePath} className="m-4">
-              <div className="relative w-64 h-36">
-                <Image
-                  fill={true} style={{ objectFit: "cover" }}
-                  src={"http://localhost:3001/assets/" + item.imagePath}
-                  alt={item.imagePath}
-                ></Image>
-              </div>
-              <div className="cursor-pointer text-center" onClick={() => handleVideoClick(item)}>查看</div>
-            </div>
-          )
-        })}
+      <div>
+        <form onSubmit={handleSearch} className="flex mb-4">
+          <input ref={searchInputRef} type="text" className="block w-full p-2" />
+          <button className="ml-4 px-6 bg-black text-white" type="submit">Search</button>
+        </form>
       </div>
+      {queryRes.isLoading ? (
+        <div className="flex px-2 py-8 items-center justify-center">正在搜索...</div>
+      ) : (
+        <div className="flex flex-wrap">
+          {queryRes.data?.map((item: SearchResultPayload) => {
+            return (
+              <div key={item.imagePath} className="m-4">
+                <div className="relative w-64 h-36">
+                  <Image
+                    fill={true} style={{ objectFit: "cover" }}
+                    src={"http://localhost:3001/assets/" + item.imagePath}
+                    alt={item.imagePath}
+                  ></Image>
+                </div>
+                <div className="cursor-pointer text-center" onClick={() => handleVideoClick(item)}>查看</div>
+              </div>
+            )
+          })}
+        </div>
+      )}
       {videoItem && (
         <div className="fixed left-0 top-0 w-full h-full flex items-center justify-center">
           <div className="bg-black absolute left-0 top-0 w-full h-full opacity-70"

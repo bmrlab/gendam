@@ -64,7 +64,7 @@ pub fn get_routes() -> Router<Ctx> {
                     acc
                 });
 
-                println!("file_identifiers: {:?}", file_identifiers);
+                // println!("file_identifiers: {:?}", file_identifiers);
 
                 let client = new_client().await.expect("failed to create prisma client");
                 let tasks = client.video_task().find_many(
@@ -73,7 +73,7 @@ pub fn get_routes() -> Router<Ctx> {
                         video_task::task_type::equals(VideoTaskType::Frame),
                     ]
                 ).exec().await.expect("failed to list video frames");
-                println!("tasks: {:?}", tasks);
+                // println!("tasks: {:?}", tasks);
                 let mut tasks_hash_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
                 tasks.iter().for_each(|task| {
                     tasks_hash_map.insert(task.video_file_hash.clone(), task.video_path.clone());
