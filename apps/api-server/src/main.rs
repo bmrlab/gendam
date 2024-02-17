@@ -57,6 +57,7 @@ async fn main() {
                 .axum()
         )
         .nest_service("/assets", ServeDir::new("/Users/xddotcom/Library/Application Support/cc.musedam.local"))
+        .nest_service("/contents", ServeDir::new("/"))
         .layer(cors);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3001));

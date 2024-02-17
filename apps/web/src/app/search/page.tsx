@@ -4,25 +4,78 @@ import { useCallback, useEffect, useState, useRef } from "react";
 import { rspc, client } from "@/lib/rspc";
 import type { SearchResultPayload } from "@/lib/bindings";
 
+type VideoItem = {
+  videoSrc: string;
+  startTime: number;
+};
+
+const VideoPreview: React.FC<{ videoItem: VideoItem }> = ({ videoItem }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const { videoSrc } = videoItem;
+  let startTime = Math.max(0, (videoItem.startTime / 1e6) - 1);
+  let endTime = startTime + 2;
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = startTime;
+    video.ontimeupdate = () => {
+      if (video.currentTime >= endTime) {
+        video.pause();
+        video.ontimeupdate = null;
+      }
+    };
+  }, [startTime, endTime]);
+
+  return (
+    <video ref={videoRef} controls autoPlay style={{
+      width: "100%",
+      height: "auto",
+    }}>
+      <source src={videoSrc} type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+  );
+}
+
 export default function Search() {
-  const { data, isLoading, error } = rspc.useQuery(["video.search.all", "car"]);
-  console.log(data);
-  // useEffect(() => {
-  //   client.query(["video.search_videos", "car"]).then((res) => {
-  //     console.log("!!!", res);
-  //   });
-  // }, [])
+  const { data, isLoading, error } = rspc.useQuery(["video.search.all", "fire"]);
+  const [videoItem, setVideoItem] = useState<VideoItem | null>(null);
+
+  const handleVideoClick = useCallback((item: SearchResultPayload) => {
+    setVideoItem({
+      videoSrc: `http://localhost:3001/contents/${item.videoPath}`,
+      startTime: item.startTime,
+    });
+  }, [setVideoItem]);
 
   return (
     <main className="min-h-screen p-12">
-      <div>
+      <div className="flex flex-wrap">
         {data?.map((item: SearchResultPayload) => {
-          // return item.fullPath;
           return (
-            <Image src={"http://localhost:3001/assets/" + item.fullPath} alt={item.fullPath} key={item.fullPath} width={300} height={300} />
+            <div key={item.imagePath} className="m-4">
+              <div className="relative w-64 h-36">
+                <Image
+                  fill={true} style={{ objectFit: "cover" }}
+                  src={"http://localhost:3001/assets/" + item.imagePath}
+                  alt={item.imagePath}
+                ></Image>
+              </div>
+              <div className="cursor-pointer text-center" onClick={() => handleVideoClick(item)}>查看</div>
+            </div>
           )
         })}
       </div>
+      {videoItem && (
+        <div className="fixed left-0 top-0 w-full h-full flex items-center justify-center">
+          <div className="bg-black absolute left-0 top-0 w-full h-full opacity-70"
+            onClick={() => setVideoItem(null)}></div>
+          <div className="relative w-[80%]">
+            <VideoPreview videoItem={videoItem}></VideoPreview>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -15,6 +15,6 @@ export type Procedures = {
     subscriptions: never
 };
 
-export type SearchResultPayload = { fullPath: string }
+export type SearchResultPayload = { imagePath: string; videoPath: string; startTime: number }
 
 export type VideoTaskResult = { id: number; videoPath: string; videoFileHash: string; taskType: string; startsAt: string | null; endsAt: string | null }
