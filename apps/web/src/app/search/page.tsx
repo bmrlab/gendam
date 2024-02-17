@@ -64,7 +64,7 @@ export default function Search() {
     <main className="min-h-screen p-12">
       <div>
         <form onSubmit={handleSearch} className="flex mb-4">
-          <input ref={searchInputRef} type="text" className="block w-full p-2" />
+          <input ref={searchInputRef} type="text" className="block flex-1 px-4 py-2" />
           <button className="ml-4 px-6 bg-black text-white" type="submit">Search</button>
         </form>
       </div>

@@ -116,22 +116,21 @@ export default function VideoTasks() {
 
   return (
     <main className="min-h-screen p-12">
-      <div>Path: {videoPath}</div>
-      <div className="flex h-12">
-        <input
-          className="w-[800px] px-4 py-2"
-          ref={videoPathInputRef}
-        ></input>
-        <button
-          className="p-2 bg-slate-200 hover:bg-slate-400"
-          onClick={() => {
+      {/* <div>Path: {videoPath}</div> */}
+      <div className="">
+        <form onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
+            e.preventDefault();
             if (videoPathInputRef.current) {
               let videoPath = videoPathInputRef.current.value;
               setVideoPath(videoPath);
               handleGetVideoFrames(videoPath);
             }
           }}
-        >get frames</button>
+          className="flex mb-4"
+        >
+          <input ref={videoPathInputRef} type="text" className="block flex-1 px-4 py-2" />
+          <button className="ml-4 px-6 bg-black text-white" type="submit">get frames</button>
+        </form>
       </div>
       <VideoTasksList></VideoTasksList>
     </main>

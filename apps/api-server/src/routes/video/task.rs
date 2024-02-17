@@ -13,6 +13,7 @@ use prisma_lib::{
     video_task,
     VideoTaskType,
 };
+use prisma_client_rust::Direction;
 use file_handler::video::VideoHandler;
 use specta::Type;
 use serde::Serialize;
@@ -34,7 +35,10 @@ pub fn get_routes() -> Router<Ctx> {
             "list",
             R.query(move |_ctx: Ctx, _input: ()| async move {
                 let client = new_client().await.expect("failed to create prisma client");
-                let res = client.video_task().find_many(vec![]).exec().await.expect("failed to list video tasks");
+                let res = client.video_task()
+                    .find_many(vec![])
+                    .order_by(video_task::id::order(Direction::Desc))
+                    .exec().await.expect("failed to list video tasks");
 
                 #[derive(Serialize, Type)]
                 pub struct VideoTaskResult {
@@ -205,7 +209,10 @@ async fn create_video_task(
                 task_type,
                 vec![],
             ),
-            vec![],
+            vec![
+                video_task::starts_at::set(None),
+                video_task::ends_at::set(None),
+            ],
         );
 
         match x.exec().await {
