@@ -1,6 +1,5 @@
 "use client";
 import { useCallback, useEffect, useState, useRef } from "react";
-import Sidebar from "./Sidebar";
 import Files from "./Files";
 
 export default function Library() {
@@ -25,27 +24,21 @@ export default function Library() {
   }, [fullPath]);
 
   return (
-    <main className="min-h-screen flex">
-      <div className="min-h-screen">
-        <Sidebar />
+    <main className="min-h-screen p-12">
+      <div className="">
+        <form onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
+            e.preventDefault();
+            if (fullPathInputRef.current) {
+              setFullPath(fullPathInputRef.current.value);
+            }
+          }}
+          className="flex mb-4"
+        >
+          <input ref={fullPathInputRef} type="text" className="block flex-1 px-4 py-2" />
+          <button className="ml-4 px-6 bg-black text-white" type="submit">ls</button>
+        </form>
       </div>
-      <div className="min-h-screen flex-1">
-        <div className="flex">
-          <input
-            className="w-96"
-            ref={fullPathInputRef}
-          ></input>
-          <button
-            className="p-2 bg-slate-200 hover:bg-slate-400"
-            onClick={() => {
-              if (fullPathInputRef.current) {
-                setFullPath(fullPathInputRef.current.value);
-              }
-            }}
-          >ls</button>
-        </div>
-        <Files folderPath={fullPath} goToFolder={goToFolder} />
-      </div>
+      <Files folderPath={fullPath} goToFolder={goToFolder} />
     </main>
   );
 }

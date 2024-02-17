@@ -1,6 +1,7 @@
 "use client";
-import type { AppProps } from "next/app";
+// import type { AppProps } from "next/app";
 import { client, queryClient, rspc } from "@/lib/rspc";
+import Sidebar from "@/components/Sidebar";
 
 export default function Layout({
   children,
@@ -8,8 +9,11 @@ export default function Layout({
   children: React.ReactNode;
 }>) {
   return (
-    <rspc.Provider client={client} queryClient={queryClient}>
-      <div>{children}</div>
-    </rspc.Provider>
+    <main className="min-h-screen flex">
+      <Sidebar />
+      <rspc.Provider client={client} queryClient={queryClient}>
+        <div className="flex-1">{children}</div>
+      </rspc.Provider>
+    </main>
   );
 }
