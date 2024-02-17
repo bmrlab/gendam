@@ -1,7 +1,6 @@
-"use client";
 import * as client from "@rspc/client";
 import * as event from "@tauri-apps/api/event";
-import * as window from "@tauri-apps/api/window";
+// import * as window from "@tauri-apps/api/window";
 import { Link } from '@rspc/client';
 
 function newWsManager() {
@@ -28,7 +27,11 @@ function newWsManager() {
   return [
     activeMap,
     (data: any) => listener.then(
-      () => window.appWindow.emit("plugin:rspc:transport", JSON.stringify(data))
+      () => {
+        import("@tauri-apps/api/window").then((window) => {
+          window.appWindow.emit("plugin:rspc:transport", JSON.stringify(data))
+        });
+      }
     )
   ];
 }

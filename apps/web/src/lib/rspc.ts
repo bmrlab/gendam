@@ -1,7 +1,7 @@
 "use client";
 import { httpLink, initRspc } from "@rspc/client";
-import { tauriLink } from "@rspc/tauri";
-// import { tauriLink } from "./rspc-tauri";
+// import { tauriLink } from "@rspc/tauri";
+import { tauriLink } from "./rspc-tauri";
 import { createReactQueryHooks, QueryClient } from "@rspc/react";
 import type { Procedures } from "@/lib/bindings";
 

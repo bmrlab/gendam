@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import dynamic from 'next/dynamic';
+import { client, queryClient, rspc } from "@/lib/rspc";
 
 const ClientLayout = dynamic(() => import('./ClientLayout'), {
   loading: () => <div className="w-screen h-screen bg-white flex items-center justify-center">Loading...</div>,
