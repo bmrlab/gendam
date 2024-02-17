@@ -2,8 +2,7 @@
 
 export type Procedures = {
     queries: 
-        { key: "files.files", input: string | null, result: any } | 
-        { key: "files.folders", input: never, result: any } | 
+        { key: "files.home_dir", input: never, result: string } | 
         { key: "files.ls", input: string, result: any } | 
         { key: "users.list", input: never, result: any } | 
         { key: "version", input: never, result: string } | 

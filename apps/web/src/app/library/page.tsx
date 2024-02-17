@@ -1,9 +1,12 @@
 "use client";
 import { useCallback, useEffect, useState, useRef } from "react";
+import { rspc } from "@/lib/rspc";
 import Files from "./Files";
 
 export default function Library() {
-  let [fullPath, setFullPath] = useState<string>("/Users/xddotcom/Downloads");
+  const { data: homeDir } = rspc.useQuery(["files.home_dir"]);
+
+  let [fullPath, setFullPath] = useState<string>("");
   const fullPathInputRef = useRef<HTMLInputElement>(null);
 
   const goToFolder = useCallback((folderName: string) => {
@@ -21,7 +24,10 @@ export default function Library() {
     if (fullPathInputRef.current) {
       fullPathInputRef.current.value = fullPath;
     }
-  }, [fullPath]);
+    if (homeDir && !fullPath) {
+      setFullPath(homeDir);
+    }
+  }, [setFullPath, fullPath, homeDir]);
 
   return (
     <main className="min-h-screen p-12">
@@ -38,7 +44,9 @@ export default function Library() {
           <button className="ml-4 px-6 bg-black text-white" type="submit">ls</button>
         </form>
       </div>
-      <Files folderPath={fullPath} goToFolder={goToFolder} />
+      {fullPath && (
+        <Files folderPath={fullPath} goToFolder={goToFolder} />
+      )}
     </main>
   );
 }

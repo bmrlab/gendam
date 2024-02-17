@@ -21,3 +21,4 @@ tower-http = { version = "0.4.1", default-features = false, features = ["cors", 
 axum = "0.6.9"  # 为了和 rspc 的 axum feature 保持兼容, 这里只能用 0.6.x, 不能用 0.7.x
 rand = "0.8.5"
 chrono = "0.4.34"
+dirs = "5.0.1"

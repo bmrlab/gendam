@@ -23,9 +23,6 @@ prisma-client-rust-cli = { git = "https://github.com/Brendonovich/prisma-client-
 	"migrations",
 	"mysql",
 ], default-features = false }
-prisma-client-rust-sdk = { git = "https://github.com/Brendonovich/prisma-client-rust", tag = "0.6.11", features = [
-	"mysql",
-], default-features = false }
 tokio = "1.35"
 serde_json = "1.0"
 serde = "1.0"
