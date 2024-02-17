@@ -133,20 +133,20 @@ async fn process_task(task_payload: &TaskPayload) {
     save_ends_at(VideoTaskType::Frame, &client, vh).await;
 
     save_starts_at(VideoTaskType::FrameContentEmbedding, &client, vh).await;
-    if let Err(e) = vh.get_frame_caption_embedding().await {
-        error!("failed to get frame caption embedding: {}", e);
+    if let Err(e) = vh.get_frame_content_embedding().await {
+        error!("failed to get frame content embedding: {}", e);
         return;
     }
-    info!("successfully got frame caption embedding, {}", &task_payload.video_path);
+    info!("successfully got frame content embedding, {}", &task_payload.video_path);
     save_ends_at(VideoTaskType::FrameContentEmbedding, &client, vh).await;
 
-    save_starts_at(VideoTaskType::FrameCaption, &client, vh).await;
-    if let Err(e) = vh.get_frames_caption().await {
-        error!("failed to get frames caption: {}", e);
-        return;
-    }
-    info!("successfully got frames caption, {}", &task_payload.video_path);
-    save_ends_at(VideoTaskType::FrameCaption, &client, vh).await;
+    // save_starts_at(VideoTaskType::FrameCaption, &client, vh).await;
+    // if let Err(e) = vh.get_frames_caption().await {
+    //     error!("failed to get frames caption: {}", e);
+    //     return;
+    // }
+    // info!("successfully got frames caption, {}", &task_payload.video_path);
+    // save_ends_at(VideoTaskType::FrameCaption, &client, vh).await;
 
     save_starts_at(VideoTaskType::Audio, &client, vh).await;
     if let Err(e) = vh.get_audio().await {

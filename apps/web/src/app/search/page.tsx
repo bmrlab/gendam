@@ -39,7 +39,7 @@ const VideoPreview: React.FC<{ videoItem: VideoItem }> = ({ videoItem }) => {
 }
 
 export default function Search() {
-  const { data, isLoading, error } = rspc.useQuery(["video.search.all", "fire"]);
+  const { data, isLoading, error } = rspc.useQuery(["video.search.all", "car"]);
   const [videoItem, setVideoItem] = useState<VideoItem | null>(null);
 
   const handleVideoClick = useCallback((item: SearchResultPayload) => {

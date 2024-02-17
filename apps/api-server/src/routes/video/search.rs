@@ -36,9 +36,17 @@ pub fn get_routes() -> Router<Ctx> {
                         limit: None
                     },
                     ctx.resources_dir
-                ).await.unwrap();
+                ).await;
+                // .unwrap();
                 // .map_err(|_| ())
                 // serde_json::to_value(res).unwrap()
+                let res = match res {
+                    Ok(res) => res,
+                    Err(e) => {
+                        println!("error: {:?}", e);
+                        return vec![];
+                    }
+                };
 
                 let file_identifiers = res.iter().filter_map(
                     |SearchResult { payload, score: _ }| {
