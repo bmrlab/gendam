@@ -1,40 +1,102 @@
 "use client";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { rspc } from "@/lib/rspc";
+import { getContentUrl } from "@/utils/file";
 import type { VideoTaskResult } from "@/lib/bindings";
+
+type VideoItem = {
+  videoPath: string;
+  videoFileHash: string;
+  tasks: {
+    taskType: string;
+    startsAt: string | null;
+    endsAt: string | null;
+  }[];
+}
+
+const status = (task: {
+  startsAt: string | null;
+  endsAt: string | null;
+}) => {
+  if (!task.startsAt) {
+    return ["⚪️", "未开始"];
+  } else if (task.startsAt && !task.endsAt) {
+    return ["🟠", "进行中"];
+  } else if (task.startsAt && task.endsAt) {
+    return ["🟢", "已完成"]
+  } else {
+    return ["", ""];
+  }
+}
 
 const VideoTasksList: React.FC = () => {
   const { data, isLoading, error } = rspc.useQuery(["video.tasks.list"]);
-  // console.log(data);
+  const revealMut = rspc.useMutation("files.reveal");
 
-  // useEffect(() => {
-  //   //
-  // }, []);
+  const videos = useMemo<VideoItem[]>(() => {
+    if (isLoading) {
+      return [];
+    }
+    const groups: {
+      [videoFileHash: string]: VideoItem;
+    } = {};
+    data?.forEach((task: VideoTaskResult) => {
+      if (!groups[task.videoFileHash]) {
+        groups[task.videoFileHash] = {
+          videoPath: task.videoPath,
+          videoFileHash: task.videoFileHash,
+          tasks: []
+        };
+      }
+      groups[task.videoFileHash].tasks.push({
+        taskType: task.taskType,
+        startsAt: task.startsAt,
+        endsAt: task.endsAt
+      });
+    });
+    return Object.values(groups);
+  }, [data, isLoading]);
+
+  let handleClickVideoFile = useCallback((video: VideoItem) => {
+    revealMut.mutate(video.videoPath);
+  }, [revealMut]);
 
   if (isLoading) {
     return <div>Loading</div>
   }
 
-  const status = (task: VideoTaskResult) => {
-    if (!task.startsAt) {
-      return "未开始";
-    } else if (task.startsAt && !task.endsAt) {
-      return "进行中";
-    } else if (task.startsAt && task.endsAt) {
-      return "已完成"
-    }
-  }
-
   return (
     <div>
-      {data!.map((task: VideoTaskResult) => {
+      {videos.map((video: VideoItem) => {
         return (
-          <div key={task.id} className="flex">
-            <div className="mx-2">{ task.id }</div>
+          <div key={video.videoFileHash} className="flex my-4">
+            <div
+              className="w-16 h-16 bg-slate-200 mr-2 flex items-center justify-center cursor-pointer"
+              onClick={() => handleClickVideoFile(video)}
+            >
+              <video style={{ width: "100%", height: "auto" }}>
+                <source src={getContentUrl(video.videoPath)} type="video/mp4" />
+              </video>
+            </div>
+            <div className="p-1">
+              <div className="text-xs mb-2">{video.videoPath} ({video.videoFileHash})</div>
+              <div className="flex">
+                {video.tasks.map((task, index) => {
+                  let [icon, text] = status(task);
+                  return (
+                    <div key={index} className="mr-2 px-3 py-1 bg-slate-200 rounded-lg overflow-hidden text-xs">
+                      <span className="mr-1">{icon}</span>
+                      <span>{task.taskType}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            {/* <div className="mx-2">{ task.id }</div>
             <div className="mx-2">{ task.videoPath }</div>
             <div className="mx-2">{ task.videoFileHash }</div>
             <div className="mx-2">{ task.taskType }</div>
-            <div className="mx-2">{status(task)}</div>
+            <div className="mx-2">}</div> */}
           </div>
         )
       })}

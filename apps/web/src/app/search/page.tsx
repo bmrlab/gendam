@@ -2,6 +2,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useState, useRef } from "react";
 import { rspc, client } from "@/lib/rspc";
+import { getContentUrl, getArtifactUrl } from "@/utils/file";
 import type { SearchResultPayload } from "@/lib/bindings";
 
 type VideoItem = {
@@ -47,7 +48,7 @@ export default function Search() {
 
   const handleVideoClick = useCallback((item: SearchResultPayload) => {
     setVideoItem({
-      videoSrc: `http://localhost:3001/contents/${item.videoPath}`,
+      videoSrc: getContentUrl(item.videoPath),
       startTime: item.startTime,
     });
   }, [setVideoItem]);
@@ -77,7 +78,7 @@ export default function Search() {
                 <div className="relative w-64 h-36">
                   <Image
                     fill={true} style={{ objectFit: "cover" }}
-                    src={"http://localhost:3001/assets/" + item.imagePath}
+                    src={getArtifactUrl(item.imagePath)}
                     alt={item.imagePath}
                   ></Image>
                 </div>

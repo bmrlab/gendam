@@ -56,7 +56,7 @@ async fn main() {
                 }).axum()
             }
         )
-        .nest_service("/assets", ServeDir::new(local_data_dir.clone()))
+        .nest_service("/artifacts", ServeDir::new(local_data_dir.clone()))
         .nest_service("/contents", ServeDir::new("/"))
         .layer(cors);
 
