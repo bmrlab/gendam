@@ -107,10 +107,13 @@ async fn main() {
                 .path_resolver()
                 .resolve_resource("resources")
                 .expect("failed to find resources dir");
+            let db_dir = local_data_dir.join("db/muse-v2.db");
+            let db_url = format!("file:{}", db_dir.to_str().unwrap());
             api_server::router::Ctx {
                 x_demo_header: None,
                 local_data_dir,
                 resources_dir,
+                db_url,
             }
         }))
         .invoke_handler(tauri::generate_handler![

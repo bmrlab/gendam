@@ -1,5 +1,4 @@
 extern crate api_server;  // 引入 lib.rs 里面的内容
-use api_server::{Ctx, router};
 use dotenvy::dotenv;
 use std::{env, net::SocketAddr, path::Path};
 use rspc::integrations::httpz::Request;
@@ -10,6 +9,7 @@ use tower_http::{
 };
 use tracing::debug;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use api_server::{Ctx, router};
 
 #[tokio::main]
 async fn main() {
@@ -43,6 +43,8 @@ async fn main() {
             "/rspc",
             {
                 let local_data_dir = local_data_dir.clone();
+                let db_dir = local_data_dir.join("db/muse-v2.db");
+                let db_url = format!("file:{}", db_dir.to_str().unwrap());
                 router.clone().endpoint(|req: Request| {
                     println!("Client requested operation '{}'", req.uri().path());
                     Ctx {
@@ -52,6 +54,7 @@ async fn main() {
                             .map(|v| v.to_str().unwrap().to_string()),
                         local_data_dir,
                         resources_dir,
+                        db_url,
                     }
                 }).axum()
             }

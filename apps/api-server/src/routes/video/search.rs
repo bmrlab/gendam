@@ -9,8 +9,8 @@ use crate::{Ctx, R};
 use super::task::VideoTaskType;
 use prisma_lib::{
     // PrismaClient,
-    new_client,
-    video_task,
+    new_client_with_url,
+    video_task
 };
 use file_handler::{
     // handle_search,
@@ -67,7 +67,9 @@ pub fn get_routes() -> Router<Ctx> {
 
                 // println!("file_identifiers: {:?}", file_identifiers);
 
-                let client = new_client().await.expect("failed to create prisma client");
+                let client = new_client_with_url(ctx.db_url.as_str())
+                    .await.expect("failed to create prisma client");
+                client._db_push().await.expect("failed to push db");  // apply migrations
                 let tasks = client.video_task().find_many(
                     vec![
                         video_task::video_file_hash::in_vec(file_identifiers),

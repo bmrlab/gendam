@@ -6,6 +6,7 @@ pub struct Ctx {
     pub x_demo_header: Option<String>,
     pub local_data_dir: PathBuf,
     pub resources_dir: PathBuf,
+    pub db_url: String,
 }
 pub const R: Rspc<Ctx> = Rspc::new();
 

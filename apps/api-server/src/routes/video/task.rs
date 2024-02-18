@@ -9,7 +9,7 @@ use tracing::{
 use crate::{Ctx, R};
 use prisma_lib::{
     PrismaClient,
-    new_client,
+    new_client_with_url,
     video_task,
 };
 use prisma_client_rust::Direction;
@@ -54,8 +54,11 @@ pub fn get_routes() -> Router<Ctx> {
         )
         .procedure(
             "list",
-            R.query(move |_ctx: Ctx, _input: ()| async move {
-                let client = new_client().await.expect("failed to create prisma client");
+            R.query(move |ctx: Ctx, _input: ()| async move {
+                let client = new_client_with_url(ctx.db_url.as_str())
+                    .await.expect("failed to create prisma client");
+                client._db_push().await.expect("failed to push db");  // apply migrations
+
                 let res = client.video_task()
                     .find_many(vec![])
                     .order_by(video_task::id::order(Direction::Desc))
@@ -94,6 +97,7 @@ pub fn get_routes() -> Router<Ctx> {
 
 #[derive(Clone)]
 pub struct TaskPayload {
+    pub db_url: String,
     pub video_handler: VideoHandler,
     pub video_path: String,
     // pub video_file_hash: String,
@@ -145,7 +149,10 @@ async fn process_task(task_payload: &TaskPayload) {
     // let sleep_time = rand::random::<u64>() % 10;
     // tokio::time::sleep(tokio::time::Duration::from_secs(sleep_time)).await;
     // info!("Task finished {}", &task_payload.video_path);
-    let client: PrismaClient = new_client().await.expect("failed to create prisma client");
+    let client = new_client_with_url(task_payload.db_url.as_str())
+        .await.expect("failed to create prisma client");
+    client._db_push().await.expect("failed to push db");  // apply migrations
+
     let client = Arc::new(client);
     let vh: &VideoHandler = &task_payload.video_handler;
 
@@ -212,7 +219,9 @@ async fn create_video_task(
         .await
         .expect("failed to initialize video handler");
 
-    let client = new_client().await.expect("failed to create prisma client");
+    let client = new_client_with_url(ctx.db_url.as_str())
+        .await.expect("failed to create prisma client");
+    client._db_push().await.expect("failed to push db");  // apply migrations
 
     for task_type in vec![
         VideoTaskType::Frame, VideoTaskType::FrameContentEmbedding,
@@ -247,6 +256,7 @@ async fn create_video_task(
     }
 
     let task_payload = TaskPayload {
+        db_url: ctx.db_url.clone(),
         video_handler: video_handler,
         video_path: String::from(video_path),
         // video_file_hash: String::from(video_handler.file_identifier()),
