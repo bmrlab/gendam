@@ -65,43 +65,48 @@ fn save_video_frames(
         ffmpeg_next::software::scaling::flag::Flags::BICUBIC,
     )?;
 
+    let time_base: f64 = video_stream.time_base().into();
+    let mut last_timestamp = 0;
+
+    let mut receive_and_process_decoded_frames =
+        |decoder: &mut ffmpeg_next::decoder::Video| -> Result<(), ffmpeg_next::Error> {
+            let mut frame = ffmpeg_next::frame::Video::empty();
+            while decoder.receive_frame(&mut frame).is_ok() {
+                // get timestamp in milliseconds
+                let current_timestamp =
+                    (frame.timestamp().unwrap() as f64 * time_base * 1000.0) as i64;
+
+                // if frame is key frame or no key frame in 2000ms
+                if frame.is_key() || (current_timestamp - last_timestamp > 2000) {
+                    let mut scaled_frame = ffmpeg_next::frame::Video::empty();
+                    scaler.run(&mut frame, &mut scaled_frame).unwrap();
+                    let frames_dir = frames_dir.as_ref().to_path_buf().clone();
+
+                    let array = utils::convert_frame_to_ndarray_rgb24(&mut scaled_frame).expect("");
+                    let image = utils::array_to_image(array);
+
+                    if let Err(e) =
+                        image.save(frames_dir.join(format!("{}.png", current_timestamp)))
+                    {
+                        error!("Failed to save frame: {}", e);
+                    }
+
+                    last_timestamp = current_timestamp;
+                }
+            }
+            Ok(())
+        };
+
     for (stream, packet) in video.packets() {
         if stream.index() == video_stream_index {
-            let time_base: f64 = stream.time_base().into();
-
             if decoder.send_packet(&packet).is_ok() {
-                let mut frame = ffmpeg_next::frame::Video::empty();
-                while decoder.receive_frame(&mut frame).is_ok() {
-                    if frame.is_key() {
-                        let mut scaled_frame = ffmpeg_next::frame::Video::empty();
-                        scaler.run(&mut frame, &mut scaled_frame).unwrap();
-                        let frames_dir = frames_dir.as_ref().to_path_buf().clone();
-
-                        utils::copy_frame_props(&frame, &mut scaled_frame);
-                        let array =
-                            utils::convert_frame_to_ndarray_rgb24(&mut scaled_frame).expect("");
-                        let image = utils::array_to_image(array);
-
-                        // get presentation milliseconds
-                        let presentation_timestamp =
-                            (scaled_frame.timestamp().unwrap() as f64 * time_base * 1000.0) as i64;
-                        debug!(
-                            "presentation_timestamp(timestamp/{} * time_base/{}): {:?}",
-                            scaled_frame.timestamp().unwrap(),
-                            time_base,
-                            presentation_timestamp
-                        );
-
-                        if let Err(e) =
-                            image.save(frames_dir.join(format!("{}.png", presentation_timestamp)))
-                        {
-                            error!("Failed to save frame: {}", e);
-                        }
-                    }
-                }
+                receive_and_process_decoded_frames(&mut decoder)?;
             }
         }
     }
+
+    decoder.send_eof()?;
+    receive_and_process_decoded_frames(&mut decoder)?;
 
     Ok(())
 }
@@ -149,15 +154,15 @@ fn save_video_audio(
 #[test_log::test(tokio::test)]
 async fn test_video_decoder() {
     let video_decoder =
-        VideoDecoder::new("/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4");
+        VideoDecoder::new("/Users/zhuo/Desktop/20240218-143801.mp4");
 
     let frames_fut = video_decoder
         .save_video_frames(
-            "/Users/zhuo/Library/Application Support/cc.musedam.local/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/frames",
+            "/Users/zhuo/Library/Application Support/cc.musedam.local/3fcab714ed229fdbb82653cf250cf5de797b3896353c82a315f9a4ff0feeb2d5/frames",
         );
     let audio_fut = video_decoder
         .save_video_audio(
-            "/Users/zhuo/Library/Application Support/cc.musedam.local/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/audio.wav",
+            "/Users/zhuo/Library/Application Support/cc.musedam.local/3fcab714ed229fdbb82653cf250cf5de797b3896353c82a315f9a4ff0feeb2d5/audio.wav",
         );
 
     let (_res1, _res2) = tokio::join!(frames_fut, audio_fut);

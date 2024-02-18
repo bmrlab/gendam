@@ -45,12 +45,3 @@ pub fn array_to_image(arr: Array3<u8>) -> RgbImage {
     RgbImage::from_raw(width as u32, height as u32, raw)
         .expect("container should have the right size for the image dimensions")
 }
-
-pub fn copy_frame_props(
-    src: &ffmpeg_next::util::frame::video::Video,
-    dst: &mut ffmpeg_next::util::frame::video::Video,
-) {
-    unsafe {
-        av_frame_copy_props(dst.as_mut_ptr(), src.as_ptr());
-    }
-}
