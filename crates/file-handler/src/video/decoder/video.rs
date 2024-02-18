@@ -1,7 +1,7 @@
 use super::{transcode::transcoder, utils};
 use ffmpeg_next::ffi::*;
 use std::path::Path;
-use tracing::debug;
+use tracing::{debug, error};
 
 pub struct VideoDecoder {
     video_file_path: std::path::PathBuf,
@@ -42,6 +42,7 @@ fn save_video_frames(
     let mut decoder = decoder_context.decoder().video()?;
 
     // resize to make max size to 768
+    // TODO here 768 is hard coded, we need to put it into global config
     let (target_width, target_height) = if decoder.width() > decoder.height() {
         (
             768,
@@ -66,6 +67,8 @@ fn save_video_frames(
 
     for (stream, packet) in video.packets() {
         if stream.index() == video_stream_index {
+            let time_base: f64 = stream.time_base().into();
+
             if decoder.send_packet(&packet).is_ok() {
                 let mut frame = ffmpeg_next::frame::Video::empty();
                 while decoder.receive_frame(&mut frame).is_ok() {
@@ -78,10 +81,22 @@ fn save_video_frames(
                         let array =
                             utils::convert_frame_to_ndarray_rgb24(&mut scaled_frame).expect("");
                         let image = utils::array_to_image(array);
-                        let _ = image.save(frames_dir.join(format!(
-                            "{}.png",
-                            scaled_frame.timestamp().unwrap().to_string()
-                        )));
+
+                        // get presentation milliseconds
+                        let presentation_timestamp =
+                            (scaled_frame.timestamp().unwrap() as f64 * time_base * 1000.0) as i64;
+                        debug!(
+                            "presentation_timestamp(timestamp/{} * time_base/{}): {:?}",
+                            scaled_frame.timestamp().unwrap(),
+                            time_base,
+                            presentation_timestamp
+                        );
+
+                        if let Err(e) =
+                            image.save(frames_dir.join(format!("{}.png", presentation_timestamp)))
+                        {
+                            error!("Failed to save frame: {}", e);
+                        }
                     }
                 }
             }
