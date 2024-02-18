@@ -13,7 +13,7 @@ type VideoItem = {
 const VideoPreview: React.FC<{ videoItem: VideoItem }> = ({ videoItem }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { videoSrc } = videoItem;
-  let startTime = Math.max(0, (videoItem.startTime / 1e6) - 1);
+  let startTime = Math.max(0, (videoItem.startTime / 1e3) - 0.5);
   let endTime = startTime + 2;
 
   useEffect(() => {
