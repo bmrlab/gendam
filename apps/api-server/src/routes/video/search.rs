@@ -5,11 +5,12 @@ use rspc::Router;
 //     error
 // };
 use crate::{Ctx, R};
+// use crate::routes::video::task::VideoTaskType;
+use super::task::VideoTaskType;
 use prisma_lib::{
     // PrismaClient,
     new_client,
     video_task,
-    VideoTaskType,
 };
 use file_handler::{
     // handle_search,
@@ -70,7 +71,7 @@ pub fn get_routes() -> Router<Ctx> {
                 let tasks = client.video_task().find_many(
                     vec![
                         video_task::video_file_hash::in_vec(file_identifiers),
-                        video_task::task_type::equals(VideoTaskType::Frame),
+                        video_task::task_type::equals(VideoTaskType::Frame.to_string()),
                     ]
                 ).exec().await.expect("failed to list video frames");
                 // println!("tasks: {:?}", tasks);

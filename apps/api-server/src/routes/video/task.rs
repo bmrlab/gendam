@@ -11,12 +11,33 @@ use prisma_lib::{
     PrismaClient,
     new_client,
     video_task,
-    VideoTaskType,
 };
 use prisma_client_rust::Direction;
 use file_handler::video::VideoHandler;
 use specta::Type;
 use serde::Serialize;
+
+pub enum VideoTaskType {
+    Frame,
+    FrameCaption,
+    FrameContentEmbedding,
+    Audio,
+    Transcript,
+    TranscriptEmbedding,
+}
+
+impl ToString for VideoTaskType {
+    fn to_string(&self) -> String {
+        match self {
+            VideoTaskType::Frame => "Frame".to_string(),
+            VideoTaskType::FrameCaption => "FrameCaption".to_string(),
+            VideoTaskType::FrameContentEmbedding => "FrameContentEmbedding".to_string(),
+            VideoTaskType::Audio => "Audio".to_string(),
+            VideoTaskType::Transcript => "Transcript".to_string(),
+            VideoTaskType::TranscriptEmbedding => "TranscriptEmbedding".to_string(),
+        }
+    }
+}
 
 pub fn get_routes() -> Router<Ctx> {
     let tx = init_task_pool();
@@ -99,21 +120,21 @@ fn init_task_pool() -> Arc<broadcast::Sender<TaskPayload>> {
     tx
 }
 
-async fn save_starts_at(task_type: VideoTaskType, client: &PrismaClient, vh: &VideoHandler) {
+async fn save_starts_at(task_type: &str, client: &PrismaClient, vh: &VideoHandler) {
     client.video_task().update(
         video_task::video_file_hash_task_type(
             String::from(vh.file_identifier()),
-            task_type
+            task_type.to_string()
         ),
         vec![video_task::starts_at::set(Some(chrono::Utc::now().into()))]
     ).exec().await.expect(&format!("failed save_starts_at {:?}", task_type));
 }
 
-async fn save_ends_at(task_type: VideoTaskType, client: &PrismaClient, vh: &VideoHandler) {
+async fn save_ends_at(task_type: &str, client: &PrismaClient, vh: &VideoHandler) {
     client.video_task().update(
         video_task::video_file_hash_task_type(
             String::from(vh.file_identifier()),
-            task_type
+            task_type.to_string()
         ),
         vec![video_task::ends_at::set(Some(chrono::Utc::now().into()))]
     ).exec().await.expect(&format!("failed save_ends_at {:?}", task_type));
@@ -128,53 +149,53 @@ async fn process_task(task_payload: &TaskPayload) {
     let client = Arc::new(client);
     let vh: &VideoHandler = &task_payload.video_handler;
 
-    save_starts_at(VideoTaskType::Frame, &client, vh).await;
+    save_starts_at(&VideoTaskType::Frame.to_string(), &client, vh).await;
     if let Err(e) = vh.get_frames().await {
         error!("failed to get frames: {}", e);
         return;
     }
     info!("successfully got frames, {}", &task_payload.video_path);
-    save_ends_at(VideoTaskType::Frame, &client, vh).await;
+    save_ends_at(&VideoTaskType::Frame.to_string(), &client, vh).await;
 
-    save_starts_at(VideoTaskType::FrameContentEmbedding, &client, vh).await;
+    save_starts_at(&VideoTaskType::FrameContentEmbedding.to_string(), &client, vh).await;
     if let Err(e) = vh.get_frame_content_embedding().await {
         error!("failed to get frame content embedding: {}", e);
         return;
     }
     info!("successfully got frame content embedding, {}", &task_payload.video_path);
-    save_ends_at(VideoTaskType::FrameContentEmbedding, &client, vh).await;
+    save_ends_at(&VideoTaskType::FrameContentEmbedding.to_string(), &client, vh).await;
 
-    // save_starts_at(VideoTaskType::FrameCaption, &client, vh).await;
+    // save_starts_at(&VideoTaskType::FrameCaption.to_string(), &client, vh).await;
     // if let Err(e) = vh.get_frames_caption().await {
     //     error!("failed to get frames caption: {}", e);
     //     return;
     // }
     // info!("successfully got frames caption, {}", &task_payload.video_path);
-    // save_ends_at(VideoTaskType::FrameCaption, &client, vh).await;
+    // save_ends_at(&VideoTaskType::FrameCaption.to_string(), &client, vh).await;
 
-    save_starts_at(VideoTaskType::Audio, &client, vh).await;
+    save_starts_at(&VideoTaskType::Audio.to_string(), &client, vh).await;
     if let Err(e) = vh.get_audio().await {
         error!("failed to get audio: {}", e);
         return;
     }
     info!("successfully got audio, {}", &task_payload.video_path);
-    save_ends_at(VideoTaskType::Audio, &client, vh).await;
+    save_ends_at(&VideoTaskType::Audio.to_string(), &client, vh).await;
 
-    save_starts_at(VideoTaskType::Transcript, &client, vh).await;
+    save_starts_at(&VideoTaskType::Transcript.to_string(), &client, vh).await;
     if let Err(e) = vh.get_transcript().await {
         error!("failed to get transcript: {}", e);
         return;
     }
     info!("successfully got transcript, {}", &task_payload.video_path);
-    save_ends_at(VideoTaskType::Transcript, &client, vh).await;
+    save_ends_at(&VideoTaskType::Transcript.to_string(), &client, vh).await;
 
-    save_starts_at(VideoTaskType::TranscriptEmbedding, &client, vh).await;
+    save_starts_at(&VideoTaskType::TranscriptEmbedding.to_string(), &client, vh).await;
     if let Err(e) = vh.get_transcript_embedding().await {
         error!("failed to get transcript embedding: {}", e);
         return;
     }
     info!("successfully got transcript embedding, {}", &task_payload.video_path);
-    save_ends_at(VideoTaskType::TranscriptEmbedding, &client, vh).await;
+    save_ends_at(&VideoTaskType::TranscriptEmbedding.to_string(), &client, vh).await;
 }
 
 async fn create_video_task(
@@ -201,12 +222,12 @@ async fn create_video_task(
         let x = client.video_task().upsert(
             video_task::video_file_hash_task_type(
                 String::from(video_handler.file_identifier()),
-                task_type
+                task_type.to_string()
             ),
             video_task::create(
                 video_path.to_owned(),
                 String::from(video_handler.file_identifier()),
-                task_type,
+                task_type.to_string(),
                 vec![],
             ),
             vec![

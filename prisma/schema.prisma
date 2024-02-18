@@ -7,30 +7,16 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-}
-
-model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
-}
-
-enum VideoTaskType {
-  FRAME
-  FRAME_CAPTION
-  FRAME_CONTENT_EMBEDDING
-  AUDIO
-  TRANSCRIPT
-  TRANSCRIPT_EMBEDDING
+  provider = "sqlite"
+  // url      = "file:dev.db"
+  url      = env("LOCAL_DB_URL")
 }
 
 model VideoTask {
   id            Int               @id @default(autoincrement())
-  videoPath     String            @db.VarChar(500)
-  videoFileHash String            @db.VarChar(64)
-  taskType      VideoTaskType
+  videoPath     String
+  videoFileHash String
+  taskType      String
   startsAt      DateTime?
   endsAt        DateTime?
   createdAt     DateTime          @default(now())
