@@ -107,8 +107,9 @@ async fn main() {
                 .path_resolver()
                 .resolve_resource("resources")
                 .expect("failed to find resources dir");
-            let db_dir = local_data_dir.join("db/muse-v2.db");
-            let db_url = format!("file:{}", db_dir.to_str().unwrap());
+            let db_dir = local_data_dir.join("databases");
+            std::fs::create_dir_all(&db_dir).unwrap();
+            let db_url = format!("file:{}", db_dir.join("muse-v2.db").to_str().unwrap());
             api_server::router::Ctx {
                 x_demo_header: None,
                 local_data_dir,

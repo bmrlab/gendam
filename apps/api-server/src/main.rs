@@ -28,6 +28,7 @@ async fn main() {
 			// }
 		}
 	};
+    std::fs::create_dir_all(&local_data_dir).unwrap();
     let resources_dir = local_data_dir.join("resources").to_str().unwrap().to_owned();
     let resources_dir = Path::new(&resources_dir).to_path_buf();
 
@@ -43,8 +44,9 @@ async fn main() {
             "/rspc",
             {
                 let local_data_dir = local_data_dir.clone();
-                let db_dir = local_data_dir.join("db/muse-v2.db");
-                let db_url = format!("file:{}", db_dir.to_str().unwrap());
+                let db_dir = local_data_dir.join("databases");
+                std::fs::create_dir_all(&db_dir).unwrap();
+                let db_url = format!("file:{}", db_dir.join("muse-v2.db").to_str().unwrap());
                 router.clone().endpoint(|req: Request| {
                     println!("Client requested operation '{}'", req.uri().path());
                     Ctx {
