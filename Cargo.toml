@@ -1,10 +1,6 @@
 [workspace]
 resolver = "2"
-members = [
-	"crates/*",
-  "apps/api-server",
-  "apps/desktop/src-tauri",
-]
+members = ["crates/*", "apps/api-server", "apps/desktop/src-tauri"]
 
 [workspace.package]
 edition = "2021"
@@ -14,14 +10,14 @@ rspc = { version = "=1.0.0-rc.5" }
 specta = { version = "=2.0.0-rc.1", default-features = false }
 specta-macros = { version = "=2.0.0-rc.1" }
 prisma-client-rust = { git = "https://github.com/Brendonovich/prisma-client-rust", tag = "0.6.11", features = [
-	"rspc",
-	"migrations",
-	"sqlite",
+  "rspc",
+  "migrations",
+  "sqlite",
 ], default-features = false }
 prisma-client-rust-cli = { git = "https://github.com/Brendonovich/prisma-client-rust", tag = "0.6.11", features = [
-	"rspc",
-	"migrations",
-	"sqlite",
+  "rspc",
+  "migrations",
+  "sqlite",
 ], default-features = false }
 tokio = "1.35"
 serde_json = "1.0"
@@ -29,6 +25,7 @@ serde = "1.0"
 dotenvy = "0.15.7"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
+faiss = { git = "https://github.com/jondot/faiss-rs", features = ["static"] }
 
 # Set the settings for build scripts and proc-macros.
 [profile.dev.build-override]

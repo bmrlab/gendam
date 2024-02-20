@@ -22,10 +22,6 @@
         "open": false,
         "scope": [
           {
-            "name": "sidecar/qdrant",
-            "sidecar": true
-          },
-          {
             "name": "sidecar/whisper",
             "sidecar": true,
             "args": [
@@ -51,7 +47,9 @@
       },
       "protocol": {
         "all": true,
-        "assetScope": ["/**/*"]
+        "assetScope": [
+          "/**/*"
+        ]
       }
     },
     "bundle": {
@@ -61,9 +59,7 @@
       "deb": {
         "depends": []
       },
-      "externalBin": [
-        "sidecar/qdrant"
-      ],
+      "externalBin": [],
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",

@@ -1,4 +1,4 @@
-use ffmpeg_next::ffi::{av_frame_copy_props, AVPixelFormat};
+use ffmpeg_next::ffi::AVPixelFormat;
 use image::RgbImage;
 use ndarray::Array3;
 

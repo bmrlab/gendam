@@ -1,7 +1,6 @@
-use std::{path::Path};
-
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 use tracing::debug;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 

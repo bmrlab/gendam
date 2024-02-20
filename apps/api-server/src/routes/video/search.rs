@@ -1,116 +1,106 @@
-use rspc::Router;
-// use tracing::{
-//     // debug,
-//     info,
-//     error
-// };
-use crate::{Ctx, R};
-// use crate::routes::video::task::VideoTaskType;
 use super::task::VideoTaskType;
-use prisma_lib::{
-    // PrismaClient,
-    new_client_with_url,
-    video_task
-};
-use file_handler::{
-    // handle_search,
-    search_payload::{
-        SearchPayload,
-        SearchRecordType,
-    },
-    SearchRequest,
-    SearchResult
-};
-use specta::Type;
+use crate::{Ctx, R};
+use file_handler::{search_payload::SearchRecordType, SearchRequest, SearchResult};
+use prisma_lib::{new_client_with_url, video_task};
+use rspc::Router;
 use serde::Serialize;
+use specta::Type;
 
 pub fn get_routes() -> Router<Ctx> {
-    R.router()
-        .procedure(
-            "all",
-            R.query(move |ctx: Ctx, input: String| async move {
-                let res = file_handler::handle_search(
-                    SearchRequest {
-                        text: input,
-                        record_type: Some(SearchRecordType::Frame),
-                        skip: None,
-                        limit: None
-                    },
-                    ctx.resources_dir
-                ).await;
-                // .unwrap();
-                // .map_err(|_| ())
-                // serde_json::to_value(res).unwrap()
-                let res = match res {
-                    Ok(res) => res,
-                    Err(e) => {
-                        println!("error: {:?}", e);
-                        return vec![];
-                    }
-                };
+    R.router().procedure(
+        "all",
+        R.query(move |ctx: Ctx, input: String| async move {
+            let res = file_handler::handle_search(
+                SearchRequest {
+                    text: input,
+                    record_type: SearchRecordType::Frame,
+                    limit: None,
+                },
+                ctx.resources_dir,
+                ctx.local_data_dir.clone(),
+                ctx.db_url.clone(),
+            )
+            .await;
+            // .unwrap();
+            // .map_err(|_| ())
+            // serde_json::to_value(res).unwrap()
+            let res = match res {
+                Ok(res) => res,
+                Err(e) => {
+                    println!("error: {:?}", e);
+                    return vec![];
+                }
+            };
 
-                let file_identifiers = res.iter().filter_map(
-                    |SearchResult { payload, score: _ }| {
-                        if let SearchPayload::Frame(payload) = payload {
-                            Some(payload.file_identifier.clone())
-                        } else {
-                            None
-                        }
-                    }
-                // ).collect::<Vec<String>>();
-                ).fold(Vec::new(), |mut acc, x| {
+            let file_identifiers = res
+                .iter()
+                .map(
+                    |SearchResult {
+                         file_identifier, ..
+                     }| file_identifier.clone(),
+                )
+                .fold(Vec::new(), |mut acc, x| {
                     if !acc.contains(&x) {
                         acc.push(x);
                     }
                     acc
                 });
 
-                // println!("file_identifiers: {:?}", file_identifiers);
+            // println!("file_identifiers: {:?}", file_identifiers);
 
-                let client = new_client_with_url(ctx.db_url.as_str())
-                    .await.expect("failed to create prisma client");
-                client._db_push().await.expect("failed to push db");  // apply migrations
-                let tasks = client.video_task().find_many(
-                    vec![
-                        video_task::video_file_hash::in_vec(file_identifiers),
-                        video_task::task_type::equals(VideoTaskType::Frame.to_string()),
-                    ]
-                ).exec().await.expect("failed to list video frames");
-                // println!("tasks: {:?}", tasks);
-                let mut tasks_hash_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-                tasks.iter().for_each(|task| {
-                    tasks_hash_map.insert(task.video_file_hash.clone(), task.video_path.clone());
-                });
+            let client = new_client_with_url(ctx.db_url.as_str())
+                .await
+                .expect("failed to create prisma client");
+            client._db_push().await.expect("failed to push db"); // apply migrations
+            let tasks = client
+                .video_task()
+                .find_many(vec![
+                    video_task::video_file_hash::in_vec(file_identifiers),
+                    video_task::task_type::equals(VideoTaskType::Frame.to_string()),
+                ])
+                .exec()
+                .await
+                .expect("failed to list video frames");
+            // println!("tasks: {:?}", tasks);
+            let mut tasks_hash_map: std::collections::HashMap<String, String> =
+                std::collections::HashMap::new();
+            tasks.iter().for_each(|task| {
+                tasks_hash_map.insert(task.video_file_hash.clone(), task.video_path.clone());
+            });
 
-                #[derive(Serialize, Type)]
-                pub struct SearchResultPayload {
-                    #[serde(rename = "imagePath")]
-                    pub image_path: String,
-                    #[serde(rename = "videoPath")]
-                    pub video_path: String,
-                    #[serde(rename = "startTime")]
-                    pub start_time: i32,
-                }
+            #[derive(Serialize, Type)]
+            pub struct SearchResultPayload {
+                #[serde(rename = "imagePath")]
+                pub image_path: String,
+                #[serde(rename = "videoPath")]
+                pub video_path: String,
+                #[serde(rename = "startTime")]
+                pub start_time: i32,
+            }
 
-                res.iter().map(|SearchResult { payload, score: _ }| {
-                    if let SearchPayload::Frame(payload) = payload {
-                        let image_path = format!("{}/frames/{}", &payload.file_identifier, &payload.frame_filename);
+            res.iter()
+                .map(
+                    |SearchResult {
+                         file_identifier,
+                         start_timestamp,
+                         ..
+                     }| {
+                        // TODO current version only support frame type
+                        let image_path =
+                            format!("{}/frames/{}.png", &file_identifier, &start_timestamp);
                         let image_path = ctx.local_data_dir.join(image_path).display().to_string();
-                        let video_path = tasks_hash_map.get(&payload.file_identifier).unwrap_or(&"".to_string()).clone();
-                        let start_time: i32 = payload.timestamp as i32;
+                        let video_path = tasks_hash_map
+                            .get(file_identifier)
+                            .unwrap_or(&"".to_string())
+                            .clone();
                         SearchResultPayload {
                             image_path,
                             video_path,
-                            start_time,
+                            start_time: (*start_timestamp).clone(),
                         }
-                    } else {
-                        SearchResultPayload {
-                            image_path: "".to_string(),
-                            video_path: "".to_string(),
-                            start_time: 0,
-                        }
-                    }
-                }).collect::<Vec<SearchResultPayload>>()
-            })
-        )
+                    },
+                )
+                .collect::<Vec<SearchResultPayload>>()
+        }),
+    )
 }

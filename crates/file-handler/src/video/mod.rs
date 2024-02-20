@@ -1,21 +1,20 @@
+use super::audio;
 use super::audio::WhisperItem;
 use super::embedding;
-use super::search_payload;
-use super::{audio, search_payload::SearchPayload};
+use super::index::VideoIndex;
+use crate::index::EmbeddingIndex;
 use anyhow::{anyhow, Ok};
-use ndarray::Axis;
-use qdrant_client::client::QdrantClient;
-use qdrant_client::client::QdrantClientConfig;
-use qdrant_client::qdrant::PointStruct;
-use serde_json::json;
+use futures::future::join_all;
+use prisma_lib::{
+    new_client_with_url, video_frame, video_frame_caption, video_transcript, PrismaClient,
+};
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
-use futures::future::join_all;
-use tracing::debug;
+use tracing::{debug, error};
 
 pub mod decoder;
 
@@ -41,11 +40,11 @@ pub mod decoder;
 ///     resources_dir,
 /// ).await.unwrap();
 ///
-/// // get frames and save their embedding into qdrant
+/// // get frames and save their embedding into faiss
 /// video_handler.get_frames().await;
 /// video_handler.get_frame_content_embedding().await;
 ///
-/// // get audio, then extract text, and finally save text embedding in qdrant
+/// // get audio, then extract text, and finally save text embedding in faiss
 /// video_handler.get_audio().await;
 /// video_handler.get_transcript().await;
 /// video_handler.get_transcript_embedding().await;
@@ -58,6 +57,8 @@ pub struct VideoHandler {
     frames_dir: std::path::PathBuf,
     audio_path: std::path::PathBuf,
     transcript_path: std::path::PathBuf,
+    db_url: String,
+    indexes: VideoIndex,
 }
 
 impl VideoHandler {
@@ -72,14 +73,17 @@ impl VideoHandler {
         video_path: impl AsRef<std::path::Path>,
         local_data_dir: impl AsRef<std::path::Path>,
         resources_dir: impl AsRef<std::path::Path>,
+        db_url: impl AsRef<std::path::Path>,
     ) -> anyhow::Result<Self> {
         let bytes = std::fs::read(&video_path)?;
         let file_sha256 = sha256::digest(&bytes);
         let artifacts_dir = local_data_dir.as_ref().join(&file_sha256);
         let frames_dir = artifacts_dir.join("frames");
+        let index_dir = local_data_dir.as_ref().join("index");
 
         fs::create_dir_all(&artifacts_dir)?;
         fs::create_dir_all(&frames_dir)?;
+        fs::create_dir_all(&index_dir)?;
 
         // make sure clip files are downloaded
         let resources_dir_clone = resources_dir.as_ref().to_owned();
@@ -103,6 +107,8 @@ impl VideoHandler {
 
         debug!("clip and whisper models downloaded");
 
+        let indexes = VideoIndex::new(index_dir).expect("Failed to create indexes");
+
         Ok(Self {
             video_path: video_path.as_ref().to_owned(),
             resources_dir: resources_dir.as_ref().to_owned(),
@@ -110,11 +116,17 @@ impl VideoHandler {
             audio_path: artifacts_dir.join("audio.wav"),
             frames_dir,
             transcript_path: artifacts_dir.join("transcript.txt"),
+            indexes,
+            db_url: format!("file:{}", db_url.as_ref().to_str().unwrap()),
         })
     }
 
     pub fn file_identifier(&self) -> &str {
         &self.file_identifier
+    }
+
+    pub fn indexes(&self) -> &VideoIndex {
+        &self.indexes
     }
 
     /// Extract key frames from video
@@ -163,30 +175,67 @@ impl VideoHandler {
         let clip_model = self.get_clip_instance().await?;
         let clip_model = Arc::new(RwLock::new(clip_model));
 
-        let qdrant_client = self.get_qdrant_client()?;
-        let qdrant_client = Arc::new(RwLock::new(qdrant_client));
+        let embedding_index = Arc::new(self.indexes.transcript_index.clone());
+
+        let mut tasks = vec![];
+        let client = new_client_with_url(&self.db_url)
+            .await
+            .expect("failed to create prisma client");
+        let client = Arc::new(client);
 
         for item in whisper_results {
             // if item is some like [MUSIC], just skip it
             // TODO need to make sure all filter rules
-            if item.text.starts_with("[") && item.text.ends_with("]") {
+            if (item.text.starts_with("[") && item.text.ends_with("]"))
+                || item.text.starts_with("(")
+            {
                 continue;
             }
 
             let clip_model = Arc::clone(&clip_model);
-            let qdrant_client = Arc::clone(&qdrant_client);
             let file_identifier = self.file_identifier.clone();
+            let embedding_index = Arc::clone(&embedding_index);
+            let client = client.clone();
 
-            tokio::spawn(async move {
-                let payload = SearchPayload::Transcript(search_payload::TranscriptPayload {
-                    file_identifier,
-                    start_timestamp: item.start_timestamp,
-                    end_timestamp: item.end_timestamp,
-                    transcript: item.text.clone(),
-                });
-                let _ = save_text_embedding(&item.text, payload, clip_model, qdrant_client).await;
+            let handle = tokio::spawn(async move {
+                // write data using prisma
+                let x = client.video_transcript().upsert(
+                    video_transcript::file_identifier_start_timestamp_end_timestamp(
+                        file_identifier.clone(),
+                        item.start_timestamp as i32,
+                        item.end_timestamp as i32,
+                    ),
+                    (
+                        file_identifier,
+                        item.start_timestamp as i32,
+                        item.end_timestamp as i32,
+                        item.text.clone(),
+                        vec![],
+                    ),
+                    vec![],
+                );
+
+                match x.exec().await {
+                    std::result::Result::Ok(res) => {
+                        let _ = save_text_embedding(
+                            &item.text,
+                            res.id as u64,
+                            clip_model,
+                            embedding_index,
+                        )
+                        .await;
+                        debug!("transcript embedding saved");
+                    }
+                    Err(e) => {
+                        error!("failed to save transcript embedding: {:?}", e);
+                    }
+                }
             });
+
+            tasks.push(handle);
         }
+
+        join_all(tasks).await;
 
         Ok(())
     }
@@ -196,17 +245,25 @@ impl VideoHandler {
         let clip_model = self.get_clip_instance().await?;
         let clip_model = Arc::new(RwLock::new(clip_model));
 
-        let qdrant_client = self.get_qdrant_client()?;
-        let qdrant_client = Arc::new(RwLock::new(qdrant_client));
+        let embedding_index = Arc::new(self.indexes.frame_index.clone());
 
         let frame_paths = std::fs::read_dir(&self.frames_dir)?
             .map(|res| res.map(|e| e.path()))
             .collect::<Result<Vec<_>, std::io::Error>>()?;
 
+        let mut tasks = vec![];
+        let client = new_client_with_url(&self.db_url)
+            .await
+            .expect("failed to create prisma client");
+        let client = Arc::new(client);
+
         for path in frame_paths {
             if path.extension() == Some(std::ffi::OsStr::new("png")) {
+                debug!("handle file: {:?}", path);
+
                 let clip_model = Arc::clone(&clip_model);
-                let qdrant_client = Arc::clone(&qdrant_client);
+                let embedding_index = Arc::clone(&embedding_index);
+
                 let file_name = path
                     .file_name()
                     .ok_or(anyhow!("invalid path"))?
@@ -220,23 +277,42 @@ impl VideoHandler {
                     .parse()
                     .unwrap_or(0);
 
-                let payload = SearchPayload::Frame(search_payload::FramePayload {
-                    file_identifier: self.file_identifier.clone(),
-                    frame_filename: file_name.to_string(),
-                    timestamp: frame_timestamp,
+                let file_identifier = self.file_identifier.clone();
+                let client = client.clone();
+
+                let handle = tokio::spawn(async move {
+                    // write data using prisma
+                    let x = client.video_frame().upsert(
+                        video_frame::file_identifier_timestamp(
+                            file_identifier.clone(),
+                            frame_timestamp as i32,
+                        ),
+                        (file_identifier.clone(), frame_timestamp as i32, vec![]),
+                        vec![],
+                    );
+
+                    match x.exec().await {
+                        std::result::Result::Ok(res) => {
+                            let _ = get_single_frame_content_embedding(
+                                res.id as u64,
+                                path,
+                                clip_model,
+                                embedding_index,
+                            )
+                            .await;
+                            debug!("frame content embedding saved");
+                        }
+                        Err(e) => {
+                            error!("failed to save frame content embedding: {:?}", e);
+                        }
+                    }
                 });
 
-                tokio::spawn(async move {
-                    let _ = get_single_frame_content_embedding(
-                        payload,
-                        path,
-                        clip_model,
-                        qdrant_client,
-                    )
-                    .await;
-                });
+                tasks.push(handle);
             }
         }
+
+        join_all(tasks).await;
 
         Ok(())
     }
@@ -253,7 +329,7 @@ impl VideoHandler {
         let blip_model = embedding::blip::BLIP::new(&self.resources_dir).await?;
         let blip_model = Arc::new(RwLock::new(blip_model));
 
-        // ToDo: 下面这么写有问题，因为一下子起来太多 async 任务似乎就 block axum 处理的请求了，有点奇怪
+        // TODO 下面这么写有问题，因为一下子起来太多 async 任务似乎就 block axum 处理的请求了，有点奇怪
         // let tasks = frame_paths.iter()
         //     .filter(|path| path.extension() == Some(std::ffi::OsStr::new("png")))
         //     .map(|path| {
@@ -291,25 +367,31 @@ impl VideoHandler {
         let clip_model = self.get_clip_instance().await?;
         let clip_model = Arc::new(RwLock::new(clip_model));
 
-        let qdrant_client = self.get_qdrant_client()?;
-        let qdrant_client = Arc::new(RwLock::new(qdrant_client));
+        let embedding_index = Arc::new(self.indexes.frame_caption_index.clone());
 
         let frame_paths = std::fs::read_dir(&self.frames_dir)?
             .map(|res| res.map(|e| e.path()))
             .collect::<Result<Vec<_>, std::io::Error>>()?;
 
+        let client = new_client_with_url(&self.db_url)
+            .await
+            .expect("failed to create prisma client");
+        let client = Arc::new(client);
+
         for path in frame_paths {
             if path.extension() == Some(std::ffi::OsStr::new("caption")) {
                 let clip_model = Arc::clone(&clip_model);
-                let qdrant_client = Arc::clone(&qdrant_client);
+                let embedding_index = Arc::clone(&embedding_index);
                 let file_identifier = self.file_identifier.clone();
+                let client = client.clone();
 
                 tokio::spawn(async move {
                     let _ = get_single_frame_caption_embedding(
                         file_identifier,
+                        client,
                         path,
                         clip_model,
-                        qdrant_client,
+                        embedding_index,
                     )
                     .await;
                 });
@@ -325,10 +407,6 @@ impl VideoHandler {
             &self.resources_dir,
         )
         .await
-    }
-
-    fn get_qdrant_client(&self) -> anyhow::Result<QdrantClient> {
-        QdrantClientConfig::from_url("http://0.0.0.0:6334").build()
     }
 }
 
@@ -353,71 +431,42 @@ async fn get_single_frame_caption(
 
 async fn save_text_embedding(
     text: &str,
-    payload: SearchPayload,
+    id: u64,
     clip: Arc<RwLock<embedding::clip::CLIP>>,
-    qdrant_client: Arc<RwLock<QdrantClient>>,
+    embedding_index: Arc<EmbeddingIndex>,
 ) -> anyhow::Result<()> {
     let embedding = clip.read().await.get_text_embedding(text).await?;
-    let embedding: Vec<f32> = embedding
-        .index_axis(Axis(0), 0)
-        .iter()
-        .map(|&x| x)
-        .collect();
+    let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
 
-    let point = PointStruct::new(
-        payload.uuid(),
-        embedding,
-        json!(payload)
-            .try_into()
-            .map_err(|_| anyhow!("invalid payload"))?,
-    );
-    qdrant_client
-        .read()
-        .await
-        .upsert_points(super::QDRANT_COLLECTION_NAME, None, vec![point], None)
-        .await?;
+    embedding_index.add(id, embedding).await?;
 
     Ok(())
 }
 
 async fn get_single_frame_content_embedding(
-    payload: SearchPayload,
+    id: u64,
     path: impl AsRef<std::path::Path>,
     clip_model: Arc<RwLock<embedding::clip::CLIP>>,
-    qdrant_client: Arc<RwLock<QdrantClient>>,
+    embedding_index: Arc<EmbeddingIndex>,
 ) -> anyhow::Result<()> {
     let embedding = clip_model
         .read()
         .await
         .get_image_embedding_from_file(path.as_ref())
         .await?;
-    let embedding: Vec<f32> = embedding
-        .index_axis(Axis(0), 0)
-        .iter()
-        .map(|&x| x)
-        .collect();
+    let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
 
-    let point = PointStruct::new(
-        payload.uuid(),
-        embedding,
-        json!(payload)
-            .try_into()
-            .map_err(|_| anyhow!("invalid payload"))?,
-    );
-    qdrant_client
-        .read()
-        .await
-        .upsert_points(super::QDRANT_COLLECTION_NAME, None, vec![point], None)
-        .await?;
+    embedding_index.add(id, embedding).await?;
 
     Ok(())
 }
 
 async fn get_single_frame_caption_embedding(
     file_identifier: String,
+    client: Arc<PrismaClient>,
     path: impl AsRef<std::path::Path>,
     clip_model: Arc<RwLock<embedding::clip::CLIP>>,
-    qdrant_client: Arc<RwLock<QdrantClient>>,
+    embedding_index: Arc<EmbeddingIndex>,
 ) -> anyhow::Result<()> {
     let caption = tokio::fs::read_to_string(path.as_ref()).await?;
     let file_name = path
@@ -434,19 +483,109 @@ async fn get_single_frame_caption_embedding(
         .parse()
         .unwrap_or(0);
 
-    let payload = SearchPayload::FrameCaption(search_payload::FrameCaptionPayload {
-        file_identifier,
-        frame_filename: file_name.to_string(),
-        caption: caption.clone(),
-        timestamp: frame_timestamp,
-    });
+    let video_frame = client
+        .video_frame()
+        .upsert(
+            video_frame::UniqueWhereParam::FileIdentifierTimestampEquals(
+                file_identifier.clone(),
+                frame_timestamp as i32,
+            ),
+            (file_identifier.clone(), frame_timestamp as i32, vec![]),
+            vec![],
+        )
+        .exec()
+        .await?;
 
-    save_text_embedding(&caption, payload, clip_model, qdrant_client).await?;
+    let x = client.video_frame_caption().upsert(
+        video_frame_caption::UniqueWhereParam::VideoFrameIdEquals(video_frame.id),
+        (
+            caption.clone(),
+            video_frame::UniqueWhereParam::IdEquals(video_frame.id),
+            vec![],
+        ),
+        vec![],
+    );
+
+    match x.exec().await {
+        std::result::Result::Ok(res) => {
+            save_text_embedding(&caption, res.id as u64, clip_model, embedding_index).await?;
+        }
+        Err(e) => {
+            error!("failed to save frame caption embedding: {:?}", e);
+        }
+    }
 
     Ok(())
 }
 
-#[test_log::test]
-fn test_handle_video() {
-    todo!()
+#[test_log::test(tokio::test)]
+async fn test_handle_video() {
+    let video_path = "/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4";
+    // let video_path = "/Users/zhuo/Desktop/屏幕录制2022-11-30 11.43.29.mov";
+    let local_data_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local";
+    let resources_dir = "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources";
+
+    let video_handler = VideoHandler::new(
+        video_path,
+        local_data_dir,
+        resources_dir,
+        "/Users/zhuo/Library/Application Support/cc.musedam.local/dev.db",
+    )
+    .await;
+
+    if video_handler.is_err() {
+        tracing::error!("failed to create video handler: {:?}", video_handler);
+    }
+    let video_handler = video_handler.unwrap();
+
+    tracing::info!("file handler initialized");
+
+    video_handler
+        .get_frames()
+        .await
+        .expect("failed to get frames");
+
+    tracing::info!("got frames");
+
+    video_handler
+        .get_frame_content_embedding()
+        .await
+        .expect("failed to get frame content embedding");
+
+    tracing::debug!("got frame content embedding");
+
+    video_handler
+        .indexes
+        .frame_index
+        .flush()
+        .await
+        .expect("failed to flush index");
+
+    video_handler
+        .get_audio()
+        .await
+        .expect("failed to get audio");
+
+    tracing::info!("got audio");
+
+    video_handler
+        .get_transcript()
+        .await
+        .expect("failed to get transcript");
+
+    tracing::info!("got transcript");
+
+    video_handler
+        .get_transcript_embedding()
+        .await
+        .expect("failed to get transcript embedding");
+
+    video_handler
+        .indexes
+        .transcript_index
+        .flush()
+        .await
+        .expect("failed to flush index");
+
+    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 }

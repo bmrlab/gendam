@@ -1,19 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use dotenvy::dotenv;
-use qdrant_client::{
-    client::QdrantClientConfig,
-    qdrant::{
-        vectors_config,
-        CreateCollection,
-        Distance,
-        VectorParams,
-        VectorsConfig,
-    }
-};
-use std::time::Duration;
-use tauri::api::process::Command;
-use tauri::api::process::CommandEvent;
 use tauri::Manager;
 use tracing::{debug, error};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -37,73 +24,16 @@ async fn main() {
                 window.close_devtools();
             }
 
-            // start qdrant
+            Ok(())
+        })
+        .plugin(rspc::integrations::tauri::plugin(router, |app| {
             let local_data_dir = app
                 .app_handle()
                 .path_resolver()
                 .app_local_data_dir()
                 .expect("failed to find local data dir");
-            std::fs::create_dir_all(&local_data_dir).unwrap();
-            let (mut rx, _) = Command::new_sidecar("qdrant")
-                .expect("failed to create `qdrant` binary command")
-                .current_dir(local_data_dir)
-                .spawn()
-                .expect("Failed to spawn sidecar");
-
-            // this will send stdout of qdrant to debug log
-            tauri::async_runtime::spawn(async move {
-                // read events such as stdout
-                while let Some(event) = rx.recv().await {
-                    if let CommandEvent::Stdout(line) = event {
-                        debug!("message: {}", line);
-                    }
-                }
-            });
-
-            // make sure collection is created
-            // query collection info every seconds, until it exists
-            tauri::async_runtime::spawn(async move {
-                loop {
-                    let client = QdrantClientConfig::from_url("http://0.0.0.0:6334")
-                        .build()
-                        .expect("");
-                    let collection_info = client
-                        .collection_info(file_handler::QDRANT_COLLECTION_NAME)
-                        .await;
-
-                    match collection_info {
-                        Err(err) => {
-                            debug!("collection does not exist, creating it. {}", err);
-                            // create collection
-                            let _ = client
-                                .create_collection(&CreateCollection {
-                                    collection_name: file_handler::QDRANT_COLLECTION_NAME.into(),
-                                    vectors_config: Some(VectorsConfig {
-                                        config: Some(vectors_config::Config::Params(VectorParams {
-                                            size: file_handler::EMBEDDING_DIM,
-                                            distance: Distance::Cosine.into(),
-                                            ..Default::default()
-                                        })),
-                                    }),
-                                    ..Default::default()
-                                })
-                                .await;
-                        }
-                        _ => break,
-                    }
-
-                    tokio::time::sleep(Duration::from_secs(1)).await;
-                }
-            });
-
-            Ok(())
-        })
-        .plugin(rspc::integrations::tauri::plugin(router, |app| {
-            let local_data_dir = app.app_handle()
-                .path_resolver()
-                .app_local_data_dir()
-                .expect("failed to find local data dir");
-            let resources_dir = app.app_handle()
+            let resources_dir = app
+                .app_handle()
                 .path_resolver()
                 .resolve_resource("resources")
                 .expect("failed to find resources dir");
@@ -145,6 +75,11 @@ async fn handle_video_file(app_handle: tauri::AppHandle, video_path: &str) -> Re
             .path_resolver()
             .resolve_resource("resources")
             .expect("failed to find resources dir"),
+        app_handle
+            .path_resolver()
+            .app_local_data_dir()
+            .expect("failed to find local data dir")
+            .join("db/muse-v2.db"),
     )
     .await
     .expect("failed to initialize video handler");
@@ -234,6 +169,11 @@ async fn get_frame_caption(app_handle: tauri::AppHandle, video_path: &str) -> Re
             .path_resolver()
             .resolve_resource("resources")
             .expect("failed to find resources dir"),
+        app_handle
+            .path_resolver()
+            .app_local_data_dir()
+            .expect("failed to find local data dir")
+            .join("db/muse-v2.db"),
     )
     .await
     .expect("failed to initialize video handler");
@@ -255,10 +195,19 @@ async fn handle_search(
         .path_resolver()
         .resolve_resource("resources")
         .unwrap();
+    let local_data_dir = app_handle
+        .path_resolver()
+        .app_local_data_dir()
+        .expect("failed to find local data dir");
 
-    Ok(file_handler::handle_search(payload, resources_dir)
-        .await
-        .map_err(|_| ())?)
+    Ok(file_handler::handle_search(
+        payload,
+        resources_dir,
+        local_data_dir.clone(),
+        local_data_dir.join("db/muse-v2.db"),
+    )
+    .await
+    .map_err(|_| ())?)
 }
 
 fn init_tracing() {

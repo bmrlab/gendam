@@ -33,7 +33,6 @@ tokio = { workspace = true }
 dotenvy = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true , features = ["env-filter"] }
-qdrant-client = "1.7.0"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.

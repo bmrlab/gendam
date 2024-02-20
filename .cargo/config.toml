@@ -1,2 +1,8 @@
 [alias]
 prisma = "run -p prisma-cli --bin prisma --"
+
+[env]
+OpenMP_ROOT = "/opt/homebrew/opt/libomp"
+
+[target.aarch64-apple-darwin]
+rustflags = "-L/opt/homebrew/opt/llvm/lib"

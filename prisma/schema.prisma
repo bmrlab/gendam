@@ -3,7 +3,7 @@
 
 generator client {
   provider = "cargo prisma"
-  output = "../crates/prisma/src/prisma.rs"
+  output   = "../crates/prisma/src/prisma.rs"
 }
 
 datasource db {
@@ -13,14 +13,52 @@ datasource db {
 }
 
 model VideoTask {
-  id            Int               @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
   videoPath     String
   videoFileHash String
   taskType      String
   startsAt      DateTime?
   endsAt        DateTime?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-   @@unique([videoFileHash, taskType])
+  @@unique([videoFileHash, taskType])
+}
+
+model VideoFrame {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fileIdentifier String
+  timestamp      Int
+
+  caption VideoFrameCaption?
+
+  @@unique([fileIdentifier, timestamp])
+}
+
+model VideoTranscript {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fileIdentifier String
+  startTimestamp Int
+  endTimestamp   Int
+
+  text String
+
+  @@unique([fileIdentifier, startTimestamp, endTimestamp])
+}
+
+model VideoFrameCaption {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  caption String
+
+  frame        VideoFrame @relation(fields: [videoFrameId], references: [id])
+  videoFrameId Int        @unique
 }

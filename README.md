@@ -166,60 +166,15 @@ if let Err(audio_err) = audio_results.unwrap() {
 }
 ```
 
-### 向量数据库（Qdrant）
+### 向量检索 faiss
 
-视频处理结果均会存储在向量数据库中，启动项目后向量数据库会自动启动并创建相关 collection （默认的向量数据库名为`muse-v2`）
-
-向量数据库相关文件也会被存储在 tauri 提供的 `app_handle.path_resolver().resolve_resource("resources")` 中
-
-#### `file_handler` 提供的 `handle_search`
-
-`file_handler` 提供了一个 `handle_search` 函数用于简单的结果查询，具体实现了以下逻辑：
-
-- 输入文本通过 CLIP 编码
-- 按照`record_type`和文本 embedding 查询结果并返回到前端
-
-其中`record_type`用于进行结果类型的筛选，包括：仅搜索帧图像内容 (`Frame`)、仅搜索音频对应的文本内容 (`Transcript`)、全部搜索 (`None`)
-
-使用示例
-
-```rust
-// resource_dir 为模型文件存放路径
-file_handler::handle_search(file_handler::SearchRequest {
-  text: "a man".to_string(),
-  record_type: Some(file_handler::search_payload::SearchRecordType::Frame),
-  skip: None,
-  limit: None
-}, resources_dir).await
-```
-
-#### 常用查询
-
-查看 collection 状态（如当前有多少个数据点）
+> faiss 在 Apple Silicon 上的 build 可以参考[此处](https://github.com/facebookresearch/faiss/issues/2111)
+> 除了根据这个 issue 进行第三方库安装后
+> 还需要设置环境变量 `OpenMP_ROOT = "/opt/homebrew/opt/libomp"`
 
 ```bash
-curl  -X GET 'http://localhost:6333/collections/muse-v2'
-```
-
-使用 filter 查询所有向量
-
-```bash
-curl  -X POST \
-  'http://localhost:6333/collections/muse-v2/points/scroll' \
-  --header 'Content-Type: application/json' \
-  --data-raw '{
-  "offset": 0,
-  "limit": 10,
-  "filter": {
-    "should": [
-      {
-        "is_empty": {
-          "key": "Frame"
-        }
-      }
-    ]
-  }
-}'
+# 仅在 Apple Silicon 上测试，需要安装以下库
+brew install cmake llvm libomp
 ```
 
 ### 相关 TODO

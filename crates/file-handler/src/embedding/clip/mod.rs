@@ -1,11 +1,10 @@
 use super::{preprocess, utils};
 use anyhow::anyhow;
 use image::RgbImage;
-use ndarray::Axis;
+use ndarray::{Array1, ArrayView1, Axis};
 use ort::{GraphOptimizationLevel, Session};
 use std::path::Path;
 use tokenizers::tokenizer::Tokenizer;
-use tracing::debug;
 pub mod model;
 
 pub struct CLIP {
@@ -14,7 +13,17 @@ pub struct CLIP {
     text_tokenizer: Option<Tokenizer>,
 }
 
-type CLIPEmbedding = ndarray::Array2<f32>;
+type CLIPEmbedding = Array1<f32>;
+
+fn l2_norm(x: ArrayView1<f32>) -> f32 {
+    x.dot(&x).sqrt()
+}
+
+fn normalize(mut x: CLIPEmbedding) -> CLIPEmbedding {
+    let norm = l2_norm(x.view());
+    x.mapv_inplace(|e| e / norm);
+    x
+}
 
 impl CLIP {
     pub async fn new(
@@ -122,7 +131,11 @@ impl CLIP {
             .view()
             .to_owned();
 
-        Ok(output.into_dimensionality()?)
+        let output: CLIPEmbedding = output
+            .into_shape(crate::EMBEDDING_DIM)?
+            .into_dimensionality()?;
+
+        Ok(normalize(output))
     }
 
     pub async fn get_text_embedding(&self, text: &str) -> anyhow::Result<CLIPEmbedding> {
@@ -149,9 +162,6 @@ impl CLIP {
         let ids = ids.insert_axis(Axis(0)).clone();
         let attention_mask = attention_mask.insert_axis(Axis(0)).clone();
 
-        debug!("{:?}", ids);
-        debug!("{:?}", attention_mask);
-
         let outputs = model.run(
             ort::inputs!["input_ids" => ids.view(), "attention_mask" => attention_mask.view()]?,
         )?;
@@ -163,36 +173,45 @@ impl CLIP {
             .view()
             .to_owned();
 
-        Ok(output.into_dimensionality()?)
+        let output: CLIPEmbedding = output
+            .into_shape(crate::EMBEDDING_DIM)?
+            .into_dimensionality()?;
+
+        Ok(normalize(output))
     }
 }
 
 #[test_log::test(tokio::test)]
 async fn test_async_clip() {
     let clip = CLIP::from_file(
-        "./resources/visual.onnx",
-        "./resources/textual.onnx",
-        "./resources/tokenizer.json",
+        "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources/CLIP-ViT-B-32-laion2B-s34B-b79K/visual.onnx",
+        "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources/CLIP-ViT-B-32-laion2B-s34B-b79K/textual.onnx",
+        "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources/CLIP-ViT-B-32-laion2B-s34B-b79K/tokenizer.json",
     )
     .unwrap();
 
     let clip = tokio::sync::RwLock::new(clip);
     let clip = std::sync::Arc::new(clip);
 
-    let paths = vec!["/Users/zhuo/Library/Application Support/cc.musedam.local/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/frames/89000000.png", "/Users/zhuo/Library/Application Support/cc.musedam.local/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/frames/90000000.png"];
-
-    let mut set = tokio::task::JoinSet::new();
+    let paths = vec!["/Users/zhuo/Desktop/avatar.JPG"];
 
     for path in paths {
         let path = path.to_string();
         let clip = std::sync::Arc::clone(&clip);
-        set.spawn(async move {
-            debug!("{:?}", path);
-            let _ = clip.read().await.get_image_embedding_from_file(path).await;
+        tokio::spawn(async move {
+            tracing::debug!("{:?}", path);
+            let embedding = clip.read().await.get_image_embedding_from_file(path).await;
+            match embedding {
+                Ok(vector) => {
+                    tracing::debug!("{:?}", vector);
+                    tracing::debug!("square sum: {:?}", vector.dot(&vector));
+                }
+                Err(e) => {
+                    tracing::error!("{:?}", e);
+                }
+            }
         });
     }
 
-    while let Some(res) = set.join_next().await {
-        debug!("{:?}", res);
-    }
+    tokio::task::yield_now().await;
 }
