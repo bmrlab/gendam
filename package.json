@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prisma": "cargo prisma --",
+
 		"web": "pnpm run --filter @muse/web --",
     "dev:web": "pnpm web dev",
     "build:web": "pnpm web build",
