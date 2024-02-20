@@ -75,7 +75,7 @@ const VideoTasksList: React.FC = () => {
               className="w-16 h-16 bg-slate-200 mr-2 flex items-center justify-center cursor-pointer"
               onClick={() => handleClickVideoFile(video)}
             >
-              <video style={{ width: "100%", height: "auto" }}>
+              <video style={{ maxWidth: "100%", maxHeight: "100%" }}>
                 <source src={getLocalFileUrl(video.videoPath)} type="video/mp4" />
               </video>
             </div>
