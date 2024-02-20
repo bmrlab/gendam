@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { rspc } from "@/lib/rspc";
 import { getLocalFileUrl } from "@/utils/file";
 import type { VideoTaskResult } from "@/lib/bindings";
+import { selectFile } from "@/utils/file";
 
 type VideoItem = {
   videoPath: string;
@@ -110,8 +111,20 @@ export default function VideoTasks() {
   let [videoPath, setVideoPath] = useState<string>("");
   const videoPathInputRef = useRef<HTMLInputElement>(null);
 
-  let handleGetVideoFrames = useCallback((videoPath: string) => {
+  const handleGetVideoFrames = useCallback((videoPath: string) => {
     videoTasklMut.mutate(videoPath);
+  }, [videoTasklMut]);
+
+  const handleOpenFile = useCallback(async () => {
+    const selected = await selectFile();
+    if (selected) {
+      const videoPath = selected;
+      if (videoPathInputRef.current) {
+        videoPathInputRef.current.value = videoPath;
+      }
+      setVideoPath(videoPath);
+      videoTasklMut.mutate(videoPath);
+    }
   }, [videoTasklMut]);
 
   return (
@@ -130,6 +143,8 @@ export default function VideoTasks() {
         >
           <input ref={videoPathInputRef} type="text" className="block flex-1 px-4 py-2" />
           <button className="ml-4 px-6 bg-black text-white" type="submit">get frames</button>
+          <button className="ml-4 px-6 bg-slate-800 text-white"
+            onClick={() => handleOpenFile()} type="button">选择文件</button>
         </form>
       </div>
       <VideoTasksList></VideoTasksList>

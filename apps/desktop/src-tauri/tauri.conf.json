@@ -45,6 +45,10 @@
         ],
         "sidecar": true
       },
+      "dialog": {
+        "ask": true,
+        "open": true
+      },
       "protocol": {
         "all": true,
         "assetScope": [
@@ -96,10 +100,10 @@
     "windows": [
       {
         "fullscreen": false,
-        "height": 600,
+        "height": 800,
         "resizable": true,
         "title": "Muse V2",
-        "width": 800
+        "width": 1200
       }
     ]
   }

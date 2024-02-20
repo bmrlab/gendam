@@ -6,6 +6,7 @@ use rspc::Router;
 use serde::Serialize;
 use specta::Type;
 use std::sync::Arc;
+use serde_json::json;
 use tokio::sync::broadcast::{self, Sender};
 use tracing::{
     error,
@@ -43,8 +44,13 @@ pub fn get_routes() -> Router<Ctx> {
             R.mutation(move |ctx: Ctx, video_path: String| {
                 let tx2 = Arc::clone(&tx);
                 async move {
-                    let res = create_video_task(&ctx, &video_path, tx2).await;
-                    serde_json::to_value(res).unwrap()
+                    if let Ok(res) = create_video_task(&ctx, &video_path, tx2).await {
+                        return serde_json::to_value(res).unwrap();
+                    } else {
+                        return json!({
+                            "error": "failed to create video task"
+                        });
+                    }
                 }
             }),
         )
@@ -246,15 +252,19 @@ async fn process_task(task_payload: &TaskPayload) {
     };
 }
 
-async fn create_video_task(ctx: &Ctx, video_path: &str, tx: Arc<Sender<TaskPayload>>) {
-    let video_handler = VideoHandler::new(
+async fn create_video_task(ctx: &Ctx, video_path: &str, tx: Arc<Sender<TaskPayload>>) -> Result<(), ()> {
+    let video_handler = match VideoHandler::new(
         video_path,
         &ctx.local_data_dir,
         &ctx.resources_dir,
         &ctx.db_url,
-    )
-    .await
-    .expect("failed to initialize video handler");
+    ).await {
+        Ok(vh) => vh,
+        Err(e) => {
+            error!("failed to initialize video handler: {}", e);
+            return Err(());
+        }
+    };
 
     let client = new_client_with_url(ctx.db_url.as_str())
         .await
@@ -311,7 +321,9 @@ async fn create_video_task(ctx: &Ctx, video_path: &str, tx: Arc<Sender<TaskPaylo
         Err(e) => {
             error!("Failed to queue task {}: {}", video_path, e);
         }
-    }
+    };
+
+    Ok(())
 }
 
 /*
