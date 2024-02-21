@@ -1,17 +1,31 @@
-use std::collections::HashMap;
-
-use self::search_payload::SearchRecordType;
 use faiss::Index;
-use prisma_lib::{new_client_with_url, video_frame};
+use prisma_lib::{new_client_with_url, video_frame, video_frame_caption, video_transcript};
+use std::collections::HashMap;
 use tracing::debug;
 pub(self) mod audio;
 pub mod embedding;
 pub mod index;
-pub mod search_payload;
 pub mod video;
 
 // TODO constants should be extracted into global config
 pub const EMBEDDING_DIM: usize = 512;
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub enum SearchRecordType {
+    Frame,
+    FrameCaption,
+    Transcript,
+}
+
+impl SearchRecordType {
+    pub fn index_name(&self) -> &str {
+        match self {
+            SearchRecordType::Frame => index::VIDEO_FRAME_INDEX_NAME,
+            SearchRecordType::FrameCaption => index::VIDEO_FRAME_CAPTION_INDEX_NAME,
+            SearchRecordType::Transcript => index::VIDEO_TRANSCRIPT_INDEX_NAME,
+        }
+    }
+}
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct SearchResult {
@@ -24,8 +38,8 @@ pub struct SearchResult {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct SearchRequest {
     pub text: String,
-    pub record_type: SearchRecordType,
-    pub limit: Option<u64>,
+    pub record_type: Option<Vec<SearchRecordType>>,
+    pub limit: Option<usize>,
 }
 
 pub enum SearchType {
@@ -52,75 +66,111 @@ pub async fn handle_search(
 
     debug!("embedding: {:?}", embedding);
 
-    let mut index = faiss::read_index(
-        local_data_dir
-            .as_ref()
-            .join("index")
-            .join(payload.record_type.index_name())
-            .to_str()
-            .unwrap(),
-    )?
-    .into_id_map()?;
+    let record_types = payload.record_type.unwrap_or(vec![
+        SearchRecordType::Frame,
+        SearchRecordType::FrameCaption,
+        SearchRecordType::Transcript,
+    ]);
+    let mut search_results = vec![];
 
-    debug!("index vector count: {}", index.ntotal());
-    debug!("index dimension: {}", index.d());
+    for record_type in record_types {
+        let mut index = faiss::read_index(
+            local_data_dir
+                .as_ref()
+                .join("index")
+                .join(record_type.index_name())
+                .to_str()
+                .unwrap(),
+        )?
+        .into_id_map()?;
 
-    let results = index.search(embedding.as_slice(), payload.limit.unwrap_or(10) as usize)?;
+        debug!("index vector count: {}", index.ntotal());
+        debug!("index dimension: {}", index.d());
 
-    tracing::debug!("labels: {:?}", results.labels);
-    tracing::debug!("distances: {:?}", results.distances);
+        let limit = payload.limit.unwrap_or(10);
 
-    let mut id_order_mapping = HashMap::new();
+        let results = index.search(embedding.as_slice(), limit)?;
 
-    let ids = results
-        .labels
-        .iter()
-        .zip(results.distances.iter())
-        .enumerate()
-        .map(|(order, (id, &distance))| {
-            let id = id.get().unwrap() as i32;
-            id_order_mapping.insert(id, (order, distance));
+        let mut id_distance_mapping = HashMap::new();
 
-            id
-        })
-        .collect();
+        let ids = results
+            .labels
+            .iter()
+            .zip(results.distances.iter())
+            .map(|(id, &distance)| {
+                let id = id.get().unwrap() as i32;
+                id_distance_mapping.insert(id, distance);
 
-    // find results from prisma using labels
-    match payload.record_type {
-        SearchRecordType::Frame => {
-            let mut results = client
-                .video_frame()
-                .find_many(vec![video_frame::WhereParam::Id(
-                    prisma_lib::read_filters::IntFilter::InVec(ids),
-                )])
-                .exec()
-                .await?;
+                id
+            })
+            .collect();
 
-            results.sort_by(|a, b| {
-                id_order_mapping
-                    .get(&a.id)
-                    .unwrap()
-                    .0
-                    .cmp(&id_order_mapping.get(&b.id).unwrap().0)
-            });
+        match record_type {
+            SearchRecordType::Frame => {
+                let results = client
+                    .video_frame()
+                    .find_many(vec![video_frame::WhereParam::Id(
+                        prisma_lib::read_filters::IntFilter::InVec(ids),
+                    )])
+                    .exec()
+                    .await?;
 
-            Ok(results
-                .iter()
-                .map(|v| SearchResult {
-                    file_identifier: v.file_identifier.clone(),
-                    start_timestamp: v.timestamp,
-                    end_timestamp: v.timestamp,
-                    score: id_order_mapping.get(&v.id).unwrap().1,
-                })
-                .collect())
-        }
-        SearchRecordType::FrameCaption => {
-            todo!()
-        }
-        SearchRecordType::Transcript => {
-            todo!()
+                results.iter().for_each(|v| {
+                    search_results.push(SearchResult {
+                        file_identifier: v.file_identifier.clone(),
+                        start_timestamp: v.timestamp,
+                        end_timestamp: v.timestamp,
+                        score: *id_distance_mapping.get(&v.id).unwrap(),
+                    })
+                });
+            }
+            SearchRecordType::FrameCaption => {
+                let results = client
+                    .video_frame_caption()
+                    .find_many(vec![video_frame_caption::WhereParam::Id(
+                        prisma_lib::read_filters::IntFilter::InVec(ids),
+                    )])
+                    .exec()
+                    .await?;
+
+                results.iter().for_each(|v| {
+                    let frame = v.frame.as_ref().unwrap();
+
+                    search_results.push(SearchResult {
+                        file_identifier: frame.file_identifier.clone(),
+                        start_timestamp: frame.timestamp,
+                        end_timestamp: frame.timestamp,
+                        score: *id_distance_mapping.get(&v.id).unwrap(),
+                    })
+                });
+            }
+            SearchRecordType::Transcript => {
+                let results = client
+                    .video_transcript()
+                    .find_many(vec![video_transcript::WhereParam::Id(
+                        prisma_lib::read_filters::IntFilter::InVec(ids),
+                    )])
+                    .exec()
+                    .await?;
+
+                results.iter().for_each(|v| {
+                    search_results.push(SearchResult {
+                        file_identifier: v.file_identifier.clone(),
+                        start_timestamp: v.start_timestamp,
+                        end_timestamp: v.end_timestamp,
+                        score: *id_distance_mapping.get(&v.id).unwrap(),
+                    })
+                });
+            }
         }
     }
+
+    // order results by score
+    search_results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
+    Ok(search_results
+        .into_iter()
+        .take(payload.limit.unwrap_or(10))
+        .collect())
 }
 
 #[test_log::test(tokio::test)]
@@ -128,7 +178,7 @@ async fn test_handle_search() {
     let results = handle_search(
         SearchRequest {
             text: "a photo of a girl".into(),
-            record_type: SearchRecordType::Frame,
+            record_type: None,
             limit: None,
         },
         "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources",
