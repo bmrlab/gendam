@@ -68,10 +68,18 @@ impl EmbeddingIndex {
                         match rx.recv().await {
                             Some(payload) => match payload {
                                 IndexPayload::Data(payload) => {
-                                    if let Err(e) = index.add_with_ids(
-                                        payload.embedding.as_slice(),
-                                        &[faiss::Idx::new(payload.id as u64)],
-                                    ) {
+                                    let xids = faiss::Idx::new(payload.id as u64);
+
+                                    // try to remove data with id to avoid duplicate vector
+                                    if let Ok(ids_selector) =
+                                        faiss::selector::IdSelector::batch(&[xids])
+                                    {
+                                        let _ = index.remove_ids(&ids_selector);
+                                    }
+
+                                    if let Err(e) =
+                                        index.add_with_ids(payload.embedding.as_slice(), &[xids])
+                                    {
                                         tracing::error!("add {} index error: {}", &name_cloned, e);
                                     };
                                 }
@@ -82,7 +90,7 @@ impl EmbeddingIndex {
                                         index.ntotal()
                                     );
 
-                                    debug!("index dimension: {}", index.d());
+                                    debug!("index({}) dimension: {}", &name_cloned, index.d());
 
                                     if let Err(e) = faiss::write_index(
                                         &index,

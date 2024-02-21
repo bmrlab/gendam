@@ -1,6 +1,6 @@
 use super::task::VideoTaskType;
 use crate::{Ctx, R};
-use file_handler::{SearchRecordType, SearchRequest, SearchResult};
+use file_handler::search::{SearchRecordType, SearchRequest, SearchResult};
 use prisma_lib::{new_client_with_url, video_task};
 use rspc::Router;
 use serde::Serialize;
@@ -10,7 +10,7 @@ pub fn get_routes() -> Router<Ctx> {
     R.router().procedure(
         "all",
         R.query(move |ctx: Ctx, input: String| async move {
-            let res = file_handler::handle_search(
+            let res = file_handler::search::handle_search(
                 SearchRequest {
                     text: input,
                     record_type: Some(vec![SearchRecordType::Frame]),

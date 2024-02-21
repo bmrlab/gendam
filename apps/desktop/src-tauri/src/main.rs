@@ -187,8 +187,8 @@ async fn get_frame_caption(app_handle: tauri::AppHandle, video_path: &str) -> Re
 #[tauri::command]
 async fn handle_search(
     app_handle: tauri::AppHandle,
-    payload: file_handler::SearchRequest,
-) -> Result<Vec<file_handler::SearchResult>, ()> {
+    payload: file_handler::search::SearchRequest,
+) -> Result<Vec<file_handler::search::SearchResult>, ()> {
     debug!("search payload: {:?}", payload);
 
     let resources_dir = app_handle
@@ -200,7 +200,7 @@ async fn handle_search(
         .app_local_data_dir()
         .expect("failed to find local data dir");
 
-    Ok(file_handler::handle_search(
+    Ok(file_handler::search::handle_search(
         payload,
         resources_dir,
         local_data_dir.clone(),
