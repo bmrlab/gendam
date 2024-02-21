@@ -4,7 +4,6 @@ use super::embedding;
 use super::index::VideoIndex;
 use crate::index::EmbeddingIndex;
 use anyhow::{anyhow, Ok};
-use futures::future::join_all;
 use prisma_lib::{
     new_client_with_url, video_frame, video_frame_caption, video_transcript, PrismaClient,
 };
@@ -57,7 +56,7 @@ pub struct VideoHandler {
     frames_dir: std::path::PathBuf,
     audio_path: std::path::PathBuf,
     transcript_path: std::path::PathBuf,
-    db_url: String,
+    client: Arc<RwLock<PrismaClient>>,
     indexes: VideoIndex,
 }
 
@@ -108,6 +107,7 @@ impl VideoHandler {
         debug!("clip and whisper models downloaded");
 
         let indexes = VideoIndex::new(index_dir).expect("Failed to create indexes");
+        let client = new_client_with_url(db_url.as_ref().to_str().unwrap().as_ref()).await?;
 
         Ok(Self {
             video_path: video_path.as_ref().to_owned(),
@@ -117,7 +117,7 @@ impl VideoHandler {
             frames_dir,
             transcript_path: artifacts_dir.join("transcript.txt"),
             indexes,
-            db_url: format!("file:{}", db_url.as_ref().to_str().unwrap()),
+            client: Arc::new(RwLock::new(client)),
         })
     }
 
@@ -177,28 +177,24 @@ impl VideoHandler {
 
         let embedding_index = Arc::new(self.indexes.transcript_index.clone());
 
-        let mut tasks = vec![];
-        let client = new_client_with_url(&self.db_url)
-            .await
-            .expect("failed to create prisma client");
-        let client = Arc::new(client);
+        let mut join_set = tokio::task::JoinSet::new();
 
         for item in whisper_results {
             // if item is some like [MUSIC], just skip it
             // TODO need to make sure all filter rules
-            if (item.text.starts_with("[") && item.text.ends_with("]"))
-                || item.text.starts_with("(")
-            {
+            if item.text.starts_with("[") || item.text.starts_with("(") {
                 continue;
             }
 
             let clip_model = Arc::clone(&clip_model);
             let file_identifier = self.file_identifier.clone();
             let embedding_index = Arc::clone(&embedding_index);
-            let client = client.clone();
+            let client = self.client.clone();
 
-            let handle = tokio::spawn(async move {
+            join_set.spawn(async move {
                 // write data using prisma
+                // FIXME here use write to make sure only one thread can using prisma client
+                let client = client.write().await;
                 let x = client.video_transcript().upsert(
                     video_transcript::file_identifier_start_timestamp_end_timestamp(
                         file_identifier.clone(),
@@ -231,11 +227,9 @@ impl VideoHandler {
                     }
                 }
             });
-
-            tasks.push(handle);
         }
 
-        join_all(tasks).await;
+        while let Some(_) = join_set.join_next().await {}
 
         Ok(())
     }
@@ -251,18 +245,15 @@ impl VideoHandler {
             .map(|res| res.map(|e| e.path()))
             .collect::<Result<Vec<_>, std::io::Error>>()?;
 
-        let mut tasks = vec![];
-        let client = new_client_with_url(&self.db_url)
-            .await
-            .expect("failed to create prisma client");
-        let client = Arc::new(client);
+        let mut join_set = tokio::task::JoinSet::new();
 
         for path in frame_paths {
             if path.extension() == Some(std::ffi::OsStr::new("png")) {
                 debug!("handle file: {:?}", path);
 
-                let clip_model = Arc::clone(&clip_model);
-                let embedding_index = Arc::clone(&embedding_index);
+                let clip_model = clip_model.clone();
+                let embedding_index = embedding_index.clone();
+                let client = self.client.clone();
 
                 let file_name = path
                     .file_name()
@@ -280,8 +271,9 @@ impl VideoHandler {
                 let file_identifier = self.file_identifier.clone();
                 let client = client.clone();
 
-                let handle = tokio::spawn(async move {
+                join_set.spawn(async move {
                     // write data using prisma
+                    let client = client.write().await;
                     let x = client.video_frame().upsert(
                         video_frame::file_identifier_timestamp(
                             file_identifier.clone(),
@@ -307,12 +299,11 @@ impl VideoHandler {
                         }
                     }
                 });
-
-                tasks.push(handle);
             }
         }
 
-        join_all(tasks).await;
+        // wait for all tasks
+        while let Some(_) = join_set.join_next().await {}
 
         Ok(())
     }
@@ -329,35 +320,21 @@ impl VideoHandler {
         let blip_model = embedding::blip::BLIP::new(&self.resources_dir).await?;
         let blip_model = Arc::new(RwLock::new(blip_model));
 
-        // TODO 下面这么写有问题，因为一下子起来太多 async 任务似乎就 block axum 处理的请求了，有点奇怪
-        // let tasks = frame_paths.iter()
-        //     .filter(|path| path.extension() == Some(std::ffi::OsStr::new("png")))
-        //     .map(|path| {
-        //         debug!("get_frames_caption: {:?}", path);
-        //         let blip_model = Arc::clone(&blip_model);
-        //         get_single_frame_caption(blip_model, path)
-        //     })
-        //     .collect::<Vec<_>>();
-        // join_all(tasks).await;
-
-        let mut tasks: Vec<_> = vec![];
+        let mut join_set = tokio::task::JoinSet::new();
 
         for path in frame_paths {
             if path.extension() == Some(std::ffi::OsStr::new("png")) {
                 debug!("get_frames_caption: {:?}", path);
                 let blip_model = Arc::clone(&blip_model);
-                let task = get_single_frame_caption(blip_model, path);
-                tasks.push(task);
-                if tasks.len() >= 3 {
-                    join_all(tasks).await;
-                    tasks = vec![]; // `tasks` is moved to join_all, so drop it and assign a new vec to it
-                }
-                // tokio::spawn(async move {
-                //     let _ = get_single_frame_caption(blip_model, path).await;
-                // });
+
+                join_set.spawn(async move {
+                    let _ = get_single_frame_caption(blip_model, path).await;
+                });
             }
         }
-        join_all(tasks).await;
+
+        while let Some(_) = join_set.join_next().await {}
+
         Ok(())
     }
 
@@ -373,19 +350,21 @@ impl VideoHandler {
             .map(|res| res.map(|e| e.path()))
             .collect::<Result<Vec<_>, std::io::Error>>()?;
 
-        let client = new_client_with_url(&self.db_url)
-            .await
-            .expect("failed to create prisma client");
-        let client = Arc::new(client);
+        let mut join_set = tokio::task::JoinSet::new();
 
         for path in frame_paths {
             if path.extension() == Some(std::ffi::OsStr::new("caption")) {
                 let clip_model = Arc::clone(&clip_model);
                 let embedding_index = Arc::clone(&embedding_index);
                 let file_identifier = self.file_identifier.clone();
-                let client = client.clone();
+                let client = self.client.clone();
 
-                tokio::spawn(async move {
+                // FIXME 这里限制一下最大任务数量，因为出现过 axum 被 block 的情况
+                if join_set.len() >= 3 {
+                    while let Some(_) = join_set.join_next().await {}
+                }
+
+                join_set.spawn(async move {
                     let _ = get_single_frame_caption_embedding(
                         file_identifier,
                         client,
@@ -397,6 +376,8 @@ impl VideoHandler {
                 });
             }
         }
+
+        while let Some(_) = join_set.join_next().await {}
 
         Ok(())
     }
@@ -463,7 +444,7 @@ async fn get_single_frame_content_embedding(
 
 async fn get_single_frame_caption_embedding(
     file_identifier: String,
-    client: Arc<PrismaClient>,
+    client: Arc<RwLock<PrismaClient>>,
     path: impl AsRef<std::path::Path>,
     clip_model: Arc<RwLock<embedding::clip::CLIP>>,
     embedding_index: Arc<EmbeddingIndex>,
@@ -482,6 +463,8 @@ async fn get_single_frame_caption_embedding(
         .unwrap_or("0")
         .parse()
         .unwrap_or(0);
+
+    let client = client.write().await;
 
     let video_frame = client
         .video_frame()
