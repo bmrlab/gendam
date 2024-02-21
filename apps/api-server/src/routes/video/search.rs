@@ -1,6 +1,6 @@
 use super::task::VideoTaskType;
 use crate::{Ctx, R};
-use file_handler::{search_payload::SearchRecordType, SearchRequest, SearchResult};
+use file_handler::{SearchRecordType, SearchRequest, SearchResult};
 use prisma_lib::{new_client_with_url, video_task};
 use rspc::Router;
 use serde::Serialize;
@@ -13,7 +13,7 @@ pub fn get_routes() -> Router<Ctx> {
             let res = file_handler::handle_search(
                 SearchRequest {
                     text: input,
-                    record_type: SearchRecordType::Frame,
+                    record_type: Some(vec![SearchRecordType::Frame]),
                     limit: None,
                 },
                 ctx.resources_dir,
