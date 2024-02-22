@@ -1,6 +1,11 @@
 use crate::index;
 use faiss::Index;
-use prisma_lib::{new_client_with_url, video_frame, video_frame_caption, video_transcript};
+use prisma_lib::{
+    new_client_with_url,
+    video_frame,
+    video_frame_caption,
+    video_transcript
+};
 use content_library::Library;
 use std::collections::HashMap;
 use tracing::debug;
@@ -120,6 +125,7 @@ pub async fn handle_search(
                     .find_many(vec![video_frame_caption::WhereParam::Id(
                         prisma_lib::read_filters::IntFilter::InVec(ids),
                     )])
+                    .with(video_frame_caption::frame::fetch())
                     .exec()
                     .await?;
 
