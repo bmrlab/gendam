@@ -80,7 +80,7 @@ impl VideoHandler {
     ) -> anyhow::Result<Self> {
         let bytes = std::fs::read(&video_path)?;
         let file_sha256 = sha256::digest(&bytes);
-        let artifacts_dir = library.dir.join(&file_sha256);
+        let artifacts_dir = library.artifacts_dir.join(&file_sha256);
         let frames_dir = artifacts_dir.join("frames");
         let index_dir = library.index_dir;
         let db_url = library.db_url;

@@ -82,7 +82,7 @@ pub fn get_routes() -> Router<Ctx> {
                     // TODO current version only support frame type
                     let image_path =
                         format!("{}/frames/{}.png", &file_identifier, &start_timestamp);
-                    let image_path = ctx.library.dir.join(image_path).display().to_string();
+                    let image_path = ctx.library.artifacts_dir.join(image_path).display().to_string();
                     let video_path = tasks_hash_map
                         .get(file_identifier)
                         .unwrap_or(&"".to_string())
