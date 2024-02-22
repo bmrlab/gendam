@@ -19,10 +19,11 @@ pub fn get_routes() -> Router<Ctx> {
     //         let res = get_folders_tree();
     //         serde_json::to_value(res).unwrap()
     //     })
-    // )gi
+    // )
     .procedure("home_dir",
-        R.query(|_ctx, _input: ()| async move {
-            dirs::home_dir().unwrap()
+        R.query(|ctx, _input: ()| async move {
+            ctx.library.files_dir.to_str().unwrap().to_string()
+            // dirs::home_dir().unwrap()
         })
     )
     .procedure("ls",

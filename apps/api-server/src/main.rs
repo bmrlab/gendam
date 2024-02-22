@@ -9,7 +9,7 @@ use tower_http::{
 };
 use tracing::debug;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use api_server::{Ctx, router};
+use api_server::{router, Ctx};
 use content_library::load_library;
 
 #[tokio::main]
@@ -43,18 +43,20 @@ async fn main() {
         .route("/", get(|| async { "Hello 'rspc'!" }))
         .nest(
             "/rspc",
-            {
-                let library = load_library(&local_data_root).await;
-                router.clone().endpoint(|req: Request| {
-                    println!("Client requested operation '{}'", req.uri().path());
-                    Ctx {
-                        // x_demo_header: req.headers().get("X-Demo-Header").map(|v| v.to_str().unwrap().to_string()),
-                        local_data_root,
-                        resources_dir,
-                        library,
-                    }
-                }).axum()
-            }
+            router.clone().endpoint(|req: Request| {
+                let library_id_header = req.headers().get("x-library-id").map(|v| v.to_str().unwrap().to_string());
+                let library_id = match library_id_header {
+                    Some(id) => id,
+                    None => "default".to_string(),
+                };
+                let library = load_library(&local_data_root, &library_id);
+                println!("Client requested operation '{}'", req.uri().path());
+                Ctx {
+                    local_data_root,
+                    resources_dir,
+                    library,
+                }
+            }).axum()
         )
         // .nest_service("/artifacts", ServeDir::new(local_data_dir.clone()))
         .nest_service("/file/localhost", ServeDir::new("/"))

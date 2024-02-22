@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useContext } from "react";
 import { rspc } from "@/lib/rspc";
+import { CurrentLibrary } from "@/lib/library";
 import { invoke } from "@tauri-apps/api/tauri";
 
 const LibraryList: React.FC = () => {
@@ -12,13 +13,22 @@ const LibraryList: React.FC = () => {
     libraryMut.mutate("a test library");
   }, [libraryMut]);
 
+  const currentLibrary = useContext(CurrentLibrary);
+  const handleLibraryClick = useCallback((libraryId: string) => {
+    currentLibrary.setCurrentLibrary(libraryId);
+  }, [currentLibrary]);
+
   return (
     <div className="bg-slate-400 px-4 py-8">
       <h1 className="my-2 font-bold text-xl">Libraries</h1>
-      {libraries?.map((libraryTitle: string) => {
+      {libraries?.map((libraryId: string) => {
         return (
-          <div key={libraryTitle} className="my-2">
-            <Link href={`/library/${libraryTitle}`}>{libraryTitle}</Link>
+          <div key={libraryId} className="my-2">
+            {/* <Link href={`/libraries/${libraryId}`}>{libraryId}</Link> */}
+            <span
+              onClick={() => handleLibraryClick(libraryId)}
+              className="cursor-pointer text-blue-500 hover:underline"
+            >{libraryId}</span>
           </div>
         );
       })}

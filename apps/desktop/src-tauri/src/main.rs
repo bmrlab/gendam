@@ -38,9 +38,9 @@ async fn main() {
                 .path_resolver()
                 .resolve_resource("resources")
                 .expect("failed to find resources dir");
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let library = rt.block_on(load_library(&local_data_root));
-            // let library = create_library(&local_data_root).await;
+            // TODO: get library id from request header
+            let library_id = String::from("default");
+            let library = load_library(&local_data_root, &library_id);
             api_server::router::Ctx {
                 local_data_root,
                 resources_dir,

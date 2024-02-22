@@ -61,6 +61,6 @@ fn list_libraries(local_data_root: &PathBuf) -> Vec<String> {
 }
 
 async fn create_library(local_data_root: &PathBuf, title: String) -> Library {
-    let library = content_library::create_library_with_title(local_data_root, title).await;
+    let library = content_library::create_library_with_title(local_data_root, title.as_str()).await;
     return library;
 }
