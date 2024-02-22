@@ -15,6 +15,7 @@ pub fn get_router() -> Arc<BuiltRouter<Ctx>> {
         .merge("users", routes::users::get_routes())
         .merge("files", routes::files::get_routes())
         .merge("video", routes::video::get_routes())
+        .merge("libraries", routes::library::get_routes())
         .procedure(
             "version",
             R.query(|_ctx, _input: ()| env!("CARGO_PKG_VERSION"))

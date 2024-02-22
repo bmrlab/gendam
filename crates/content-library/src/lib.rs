@@ -10,9 +10,9 @@ pub struct Library {
     pub db_url: String,
 }
 
-pub async fn create_library(local_data_dir: PathBuf) -> Library {
+pub async fn load_library(local_data_root: &PathBuf) -> Library {
     let library_id = "1234567";
-    let library_dir = local_data_dir.join("libraries").join(library_id);
+    let library_dir = local_data_root.join("libraries").join(library_id);
     let db_dir = library_dir.join("databases");
     let index_dir = library_dir.join("index");
     let artifacts_dir = library_dir.join("artifacts");
@@ -26,6 +26,30 @@ pub async fn create_library(local_data_dir: PathBuf) -> Library {
     client._db_push().await.expect("failed to push db"); // apply migrations
     Library {
         id: library_id.to_string(),
+        dir: library_dir,
+        artifacts_dir,
+        index_dir,
+        db_url,
+    }
+}
+
+pub async fn create_library_with_title(local_data_root: &PathBuf, title: String) -> Library {
+    let _ = title;
+    let library_id = sha256::digest(format!("{}", chrono::Utc::now()));
+    let library_dir = local_data_root.join("libraries").join(&library_id);
+    let db_dir = library_dir.join("databases");
+    let index_dir = library_dir.join("index");
+    let artifacts_dir = library_dir.join("artifacts");
+    std::fs::create_dir_all(&db_dir).unwrap();
+    std::fs::create_dir_all(&index_dir).unwrap();
+    std::fs::create_dir_all(&artifacts_dir).unwrap();
+    let db_url = format!("file:{}", db_dir.join("muse-v2.db").to_str().unwrap());
+    let client = new_client_with_url(db_url.as_str())
+        .await
+        .expect("failed to create prisma client");
+    client._db_push().await.expect("failed to push db"); // apply migrations
+    Library {
+        id: library_id,
         dir: library_dir,
         artifacts_dir,
         index_dir,

@@ -176,7 +176,7 @@ async fn test_handle_search() {
     let local_data_dir =
         std::path::Path::new("/Users/zhuo/Library/Application Support/cc.musedam.local")
             .to_path_buf();
-    let library = content_library::create_library(local_data_dir).await;
+    let library = content_library::load_library(&local_data_dir).await;
     let client = prisma_lib::new_client_with_url(&library.db_url)
         .await
         .expect("failed to create prisma client");

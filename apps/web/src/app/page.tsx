@@ -1,7 +1,34 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { rspc } from "@/lib/rspc";
 import { invoke } from "@tauri-apps/api/tauri";
+
+const LibraryList: React.FC = () => {
+  const { data: libraries, isLoading } = rspc.useQuery(["libraries.list"]);
+  const libraryMut = rspc.useMutation("libraries.create");
+
+  const createLibrary = useCallback(() => {
+    libraryMut.mutate("a test library");
+  }, [libraryMut]);
+
+  return (
+    <div className="bg-slate-400 px-4 py-8">
+      <h1 className="my-2 font-bold text-xl">Libraries</h1>
+      {libraries?.map((libraryTitle: string) => {
+        return (
+          <div key={libraryTitle} className="my-2">
+            <Link href={`/library/${libraryTitle}`}>{libraryTitle}</Link>
+          </div>
+        );
+      })}
+      <div>
+        <button className="px-4 py-2 bg-black text-white rounded-full"
+          onClick={() => createLibrary()}>create</button>
+      </div>
+    </div>
+  )
+}
 
 export default function Home() {
   const doInvoke = async () => {
@@ -24,6 +51,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen">
+      <LibraryList />
       <div>
         <button className="w-24 h-24 bg-white" onClick={() => click()}>
           test

@@ -4,7 +4,7 @@ use dotenvy::dotenv;
 use tauri::Manager;
 // use tracing::{debug, error};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use content_library::create_library;
+use content_library::load_library;
 
 #[tokio::main]
 async fn main() {
@@ -28,7 +28,7 @@ async fn main() {
             Ok(())
         })
         .plugin(rspc::integrations::tauri::plugin(router, |app| {
-            let local_data_dir = app
+            let local_data_root = app
                 .app_handle()
                 .path_resolver()
                 .app_local_data_dir()
@@ -39,9 +39,13 @@ async fn main() {
                 .resolve_resource("resources")
                 .expect("failed to find resources dir");
             let rt = tokio::runtime::Runtime::new().unwrap();
-            let library = rt.block_on(create_library(local_data_dir));
-            // let library = create_library(local_data_dir).await;
-            api_server::router::Ctx { resources_dir, library }
+            let library = rt.block_on(load_library(&local_data_root));
+            // let library = create_library(&local_data_root).await;
+            api_server::router::Ctx {
+                local_data_root,
+                resources_dir,
+                library,
+            }
         }))
         .invoke_handler(tauri::generate_handler![
             greet,

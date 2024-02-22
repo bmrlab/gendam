@@ -10,7 +10,7 @@ use tower_http::{
 use tracing::debug;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use api_server::{Ctx, router};
-use content_library::create_library;
+use content_library::load_library;
 
 #[tokio::main]
 async fn main() {
@@ -20,7 +20,7 @@ async fn main() {
     };
     init_tracing();  // should be after dotenv() so RUST_LOG in .env file will be loaded
     // debug!("test debug output");
-    let local_data_dir = match env::var("LOCAL_DATA_DIR") {
+    let local_data_root = match env::var("LOCAL_DATA_DIR") {
 		Ok(path) => Path::new(&path).to_path_buf(),
 		Err(_e) => {
 			// #[cfg(not(debug_assertions))]
@@ -29,8 +29,8 @@ async fn main() {
 			// }
 		}
 	};
-    std::fs::create_dir_all(&local_data_dir).unwrap();
-    let resources_dir = local_data_dir.join("resources").to_str().unwrap().to_owned();
+    std::fs::create_dir_all(&local_data_root).unwrap();
+    let resources_dir = local_data_root.join("resources").to_str().unwrap().to_owned();
     let resources_dir = Path::new(&resources_dir).to_path_buf();
 
     let router = router::get_router();
@@ -44,11 +44,12 @@ async fn main() {
         .nest(
             "/rspc",
             {
-                let library = create_library(local_data_dir).await;
+                let library = load_library(&local_data_root).await;
                 router.clone().endpoint(|req: Request| {
                     println!("Client requested operation '{}'", req.uri().path());
                     Ctx {
                         // x_demo_header: req.headers().get("X-Demo-Header").map(|v| v.to_str().unwrap().to_string()),
+                        local_data_root,
                         resources_dir,
                         library,
                     }

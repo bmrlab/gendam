@@ -885,7 +885,9 @@ dependencies = [
 name = "content-library"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "prisma-lib",
+ "sha256",
 ]
 
 [[package]]

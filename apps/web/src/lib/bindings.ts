@@ -4,12 +4,14 @@ export type Procedures = {
     queries: 
         { key: "files.home_dir", input: never, result: string } | 
         { key: "files.ls", input: string, result: any } | 
+        { key: "libraries.list", input: never, result: any } | 
         { key: "users.list", input: never, result: any } | 
         { key: "version", input: never, result: string } | 
         { key: "video.search.all", input: string, result: SearchResultPayload[] } | 
         { key: "video.tasks.list", input: never, result: VideoTaskResult[] },
     mutations: 
         { key: "files.reveal", input: string, result: null } | 
+        { key: "libraries.create", input: string, result: any } | 
         { key: "video.tasks.create", input: string, result: any },
     subscriptions: never
 };
