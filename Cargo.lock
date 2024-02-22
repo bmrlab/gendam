@@ -178,6 +178,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "chrono",
+ "content-library",
  "dirs",
  "dotenvy",
  "file-handler",
@@ -878,6 +879,13 @@ dependencies = [
  "libc",
  "unicode-width",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "content-library"
+version = "0.1.0"
+dependencies = [
+ "prisma-lib",
 ]
 
 [[package]]
@@ -1669,6 +1677,7 @@ version = "0.1.0"
 dependencies = [
  "ai",
  "anyhow",
+ "content-library",
  "faiss",
  "ffmpeg-next",
  "file-downloader",
@@ -3397,6 +3406,7 @@ name = "muse-desktop"
 version = "0.1.0"
 dependencies = [
  "api-server",
+ "content-library",
  "dotenvy",
  "file-downloader",
  "file-handler",

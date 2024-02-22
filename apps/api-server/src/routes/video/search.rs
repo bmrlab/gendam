@@ -17,8 +17,7 @@ pub fn get_routes() -> Router<Ctx> {
                     limit: None,
                 },
                 ctx.resources_dir,
-                ctx.local_data_dir.clone(),
-                ctx.db_url.clone(),
+                ctx.library.clone(),
             )
             .await;
             // .unwrap();
@@ -48,7 +47,7 @@ pub fn get_routes() -> Router<Ctx> {
 
             // println!("file_identifiers: {:?}", file_identifiers);
 
-            let client = new_client_with_url(ctx.db_url.as_str())
+            let client = new_client_with_url(ctx.library.db_url.as_str())
                 .await
                 .expect("failed to create prisma client");
             client._db_push().await.expect("failed to push db"); // apply migrations
@@ -78,29 +77,24 @@ pub fn get_routes() -> Router<Ctx> {
                 pub start_time: i32,
             }
 
-            res.iter()
-                .map(
-                    |SearchResult {
-                         file_identifier,
-                         start_timestamp,
-                         ..
-                     }| {
-                        // TODO current version only support frame type
-                        let image_path =
-                            format!("{}/frames/{}.png", &file_identifier, &start_timestamp);
-                        let image_path = ctx.local_data_dir.join(image_path).display().to_string();
-                        let video_path = tasks_hash_map
-                            .get(file_identifier)
-                            .unwrap_or(&"".to_string())
-                            .clone();
-                        SearchResultPayload {
-                            image_path,
-                            video_path,
-                            start_time: (*start_timestamp).clone(),
-                        }
-                    },
-                )
-                .collect::<Vec<SearchResultPayload>>()
+            res.iter().map(
+                |SearchResult { file_identifier, start_timestamp, ..}| {
+                    // TODO current version only support frame type
+                    let image_path =
+                        format!("{}/frames/{}.png", &file_identifier, &start_timestamp);
+                    let image_path = ctx.library.dir.join(image_path).display().to_string();
+                    let video_path = tasks_hash_map
+                        .get(file_identifier)
+                        .unwrap_or(&"".to_string())
+                        .clone();
+                    SearchResultPayload {
+                        image_path,
+                        video_path,
+                        start_time: (*start_timestamp).clone(),
+                    }
+                }
+            )
+            .collect::<Vec<SearchResultPayload>>()
         }),
     )
 }

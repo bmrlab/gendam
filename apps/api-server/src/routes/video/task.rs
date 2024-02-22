@@ -57,10 +57,9 @@ pub fn get_routes() -> Router<Ctx> {
         .procedure(
             "list",
             R.query(move |ctx: Ctx, _input: ()| async move {
-                let client = new_client_with_url(ctx.db_url.as_str())
+                let client = new_client_with_url(ctx.library.db_url.as_str())
                     .await
                     .expect("failed to create prisma client");
-                client._db_push().await.expect("failed to push db"); // apply migrations
 
                 let res = client
                     .video_task()
@@ -176,7 +175,6 @@ async fn process_task(task_payload: &TaskPayload) {
     let client = new_client_with_url(task_payload.db_url.as_str())
         .await
         .expect("failed to create prisma client");
-    client._db_push().await.expect("failed to push db"); // apply migrations
 
     let client = Arc::new(client);
     let vh: &VideoHandler = &task_payload.video_handler;
@@ -255,9 +253,8 @@ async fn process_task(task_payload: &TaskPayload) {
 async fn create_video_task(ctx: &Ctx, video_path: &str, tx: Arc<Sender<TaskPayload>>) -> Result<(), ()> {
     let video_handler = match VideoHandler::new(
         video_path,
-        &ctx.local_data_dir,
         &ctx.resources_dir,
-        &ctx.db_url,
+        ctx.library.clone(),
     ).await {
         Ok(vh) => vh,
         Err(e) => {
@@ -266,10 +263,9 @@ async fn create_video_task(ctx: &Ctx, video_path: &str, tx: Arc<Sender<TaskPaylo
         }
     };
 
-    let client = new_client_with_url(ctx.db_url.as_str())
+    let client = new_client_with_url(ctx.library.db_url.as_str())
         .await
         .expect("failed to create prisma client");
-    client._db_push().await.expect("failed to push db"); // apply migrations
 
     for task_type in vec![
         VideoTaskType::Frame,
@@ -307,7 +303,7 @@ async fn create_video_task(ctx: &Ctx, video_path: &str, tx: Arc<Sender<TaskPaylo
     }
 
     let task_payload = TaskPayload {
-        db_url: ctx.db_url.clone(),
+        db_url: ctx.library.db_url.clone(),
         video_handler,
         video_path: String::from(video_path),
         // video_file_hash: String::from(video_handler.file_identifier()),

@@ -1,6 +1,7 @@
 use crate::index;
 use faiss::Index;
 use prisma_lib::{new_client_with_url, video_frame, video_frame_caption, video_transcript};
+use content_library::Library;
 use std::collections::HashMap;
 use tracing::debug;
 
@@ -45,11 +46,9 @@ pub enum SearchType {
 pub async fn handle_search(
     payload: SearchRequest,
     resources_dir: impl AsRef<std::path::Path>,
-    local_data_dir: impl AsRef<std::path::Path>,
-    db_url: impl AsRef<std::path::Path>,
+    library: Library,
 ) -> anyhow::Result<Vec<SearchResult>> {
-    let client =
-        new_client_with_url(&format!("file:{}", db_url.as_ref().to_str().unwrap())).await?;
+    let client = new_client_with_url(library.db_url.as_str()).await?;
 
     let clip_model = ai::clip::CLIP::new(
         ai::clip::model::CLIPModel::ViTB32,
@@ -71,12 +70,7 @@ pub async fn handle_search(
 
     for record_type in record_types {
         let mut index = faiss::read_index(
-            local_data_dir
-                .as_ref()
-                .join("index")
-                .join(record_type.index_name())
-                .to_str()
-                .unwrap(),
+            library.index_dir.join(record_type.index_name()).to_str().unwrap(),
         )?
         .into_id_map()?;
 
@@ -171,6 +165,8 @@ pub async fn handle_search(
 
 #[test_log::test(tokio::test)]
 async fn test_handle_search() {
+    let local_data_dir = std::path::Path::new("/Users/zhuo/Library/Application Support/cc.musedam.local").to_path_buf();
+    let library = content_library::create_library(local_data_dir).await;
     let results = handle_search(
         SearchRequest {
             text: "a photo of a girl".into(),
@@ -178,8 +174,7 @@ async fn test_handle_search() {
             limit: None,
         },
         "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources",
-        "/Users/zhuo/Library/Application Support/cc.musedam.local",
-        "/Users/zhuo/Library/Application Support/cc.musedam.local/dev.db",
+        library,
     )
     .await;
 

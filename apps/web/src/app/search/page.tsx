@@ -30,8 +30,9 @@ const VideoPreview: React.FC<{ videoItem: VideoItem }> = ({ videoItem }) => {
 
   return (
     <video ref={videoRef} controls autoPlay style={{
-      maxWidth: "80%",
-      maxHeight: "100%",
+      width: "100%",
+      height: "100%",
+      objectFit: "contain",
     }}>
       <source src={videoSrc} type="video/mp4" />
       Your browser does not support the video tag.
@@ -92,7 +93,9 @@ export default function Search() {
         <div className="fixed left-0 top-0 w-full h-full flex items-center justify-center">
           <div className="bg-black absolute left-0 top-0 w-full h-full opacity-70"
             onClick={() => setVideoItem(null)}></div>
-          <VideoPreview videoItem={videoItem}></VideoPreview>
+          <div className="relative w-[80%] h-[90%]">
+            <VideoPreview videoItem={videoItem}></VideoPreview>
+          </div>
         </div>
       )}
     </main>

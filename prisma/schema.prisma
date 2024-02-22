@@ -8,8 +8,8 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  // url      = "file:dev.db"
-  url      = env("LOCAL_DB_URL")
+  url      = "file:dev.db"
+  // url      = env("LOCAL_DB_URL")
 }
 
 model VideoTask {

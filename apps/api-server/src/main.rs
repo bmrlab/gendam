@@ -10,6 +10,7 @@ use tower_http::{
 use tracing::debug;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use api_server::{Ctx, router};
+use content_library::create_library;
 
 #[tokio::main]
 async fn main() {
@@ -43,20 +44,13 @@ async fn main() {
         .nest(
             "/rspc",
             {
-                let local_data_dir = local_data_dir.clone();
-                let db_dir = local_data_dir.join("databases");
-                std::fs::create_dir_all(&db_dir).unwrap();
-                let db_url = format!("file:{}", db_dir.join("muse-v2.db").to_str().unwrap());
+                let library = create_library(local_data_dir).await;
                 router.clone().endpoint(|req: Request| {
                     println!("Client requested operation '{}'", req.uri().path());
                     Ctx {
-                        x_demo_header: req
-                            .headers()
-                            .get("X-Demo-Header")
-                            .map(|v| v.to_str().unwrap().to_string()),
-                        local_data_dir,
+                        // x_demo_header: req.headers().get("X-Demo-Header").map(|v| v.to_str().unwrap().to_string()),
                         resources_dir,
-                        db_url,
+                        library,
                     }
                 }).axum()
             }

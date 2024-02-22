@@ -5,6 +5,7 @@ use anyhow::{anyhow, Ok};
 use prisma_lib::{
     new_client_with_url, video_frame, video_frame_caption, video_transcript, PrismaClient,
 };
+use content_library::Library;
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;
@@ -74,15 +75,15 @@ impl VideoHandler {
     /// * `db_url` - The path for sqlite file
     pub async fn new(
         video_path: impl AsRef<std::path::Path>,
-        local_data_dir: impl AsRef<std::path::Path>,
         resources_dir: impl AsRef<std::path::Path>,
-        db_url: impl AsRef<std::path::Path>,
+        library: Library,
     ) -> anyhow::Result<Self> {
         let bytes = std::fs::read(&video_path)?;
         let file_sha256 = sha256::digest(&bytes);
-        let artifacts_dir = local_data_dir.as_ref().join(&file_sha256);
+        let artifacts_dir = library.dir.join(&file_sha256);
         let frames_dir = artifacts_dir.join("frames");
-        let index_dir = local_data_dir.as_ref().join("index");
+        let index_dir = library.index_dir;
+        let db_url = library.db_url;
 
         fs::create_dir_all(&artifacts_dir)?;
         fs::create_dir_all(&frames_dir)?;
@@ -111,7 +112,7 @@ impl VideoHandler {
         debug!("clip and whisper models downloaded");
 
         let indexes = VideoIndex::new(index_dir, clip_result.unwrap().unwrap().dim()).expect("Failed to create indexes");
-        let client = new_client_with_url(db_url.as_ref().to_str().unwrap().as_ref()).await?;
+        let client = new_client_with_url(db_url.as_str()).await?;
 
         Ok(Self {
             video_path: video_path.as_ref().to_owned(),
@@ -509,14 +510,14 @@ async fn get_single_frame_caption_embedding(
 async fn test_handle_video() {
     let video_path = "/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4";
     // let video_path = "/Users/zhuo/Desktop/屏幕录制2022-11-30 11.43.29.mov";
-    let local_data_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local";
     let resources_dir = "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources";
+    let local_data_dir = std::path::Path::new("/Users/zhuo/Library/Application Support/cc.musedam.local").to_path_buf();
+    let library = content_library::create_library(local_data_dir).await;
 
     let video_handler = VideoHandler::new(
         video_path,
-        local_data_dir,
         resources_dir,
-        "/Users/zhuo/Library/Application Support/cc.musedam.local/dev.db",
+        library,
     )
     .await;
 

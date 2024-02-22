@@ -2,8 +2,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use dotenvy::dotenv;
 use tauri::Manager;
-use tracing::{debug, error};
+// use tracing::{debug, error};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use content_library::create_library;
 
 #[tokio::main]
 async fn main() {
@@ -37,21 +38,16 @@ async fn main() {
                 .path_resolver()
                 .resolve_resource("resources")
                 .expect("failed to find resources dir");
-            let db_dir = local_data_dir.join("databases");
-            std::fs::create_dir_all(&db_dir).unwrap();
-            let db_url = format!("file:{}", db_dir.join("muse-v2.db").to_str().unwrap());
-            api_server::router::Ctx {
-                x_demo_header: None,
-                local_data_dir,
-                resources_dir,
-                db_url,
-            }
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            let library = rt.block_on(create_library(local_data_dir));
+            // let library = create_library(local_data_dir).await;
+            api_server::router::Ctx { resources_dir, library }
         }))
         .invoke_handler(tauri::generate_handler![
             greet,
-            handle_video_file,
-            get_frame_caption,
-            handle_search
+            // handle_video_file,
+            // get_frame_caption,
+            // handle_search
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -63,152 +59,152 @@ fn greet(name: &str) -> String {
     format!("Hello, {}, in Client!", name)
 }
 
-#[tauri::command]
-async fn handle_video_file(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), String> {
-    let video_handler = file_handler::video::VideoHandler::new(
-        video_path,
-        app_handle
-            .path_resolver()
-            .app_local_data_dir()
-            .expect("failed to find local data dir"),
-        app_handle
-            .path_resolver()
-            .resolve_resource("resources")
-            .expect("failed to find resources dir"),
-        app_handle
-            .path_resolver()
-            .app_local_data_dir()
-            .expect("failed to find local data dir")
-            .join("db/muse-v2.db"),
-    )
-    .await
-    .expect("failed to initialize video handler");
+// #[tauri::command]
+// async fn handle_video_file(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), String> {
+//     let video_handler = file_handler::video::VideoHandler::new(
+//         video_path,
+//         app_handle
+//             .path_resolver()
+//             .app_local_data_dir()
+//             .expect("failed to find local data dir"),
+//         app_handle
+//             .path_resolver()
+//             .resolve_resource("resources")
+//             .expect("failed to find resources dir"),
+//         app_handle
+//             .path_resolver()
+//             .app_local_data_dir()
+//             .expect("failed to find local data dir")
+//             .join("db/muse-v2.db"),
+//     )
+//     .await
+//     .expect("failed to initialize video handler");
 
-    debug!("video handler initialized");
+//     debug!("video handler initialized");
 
-    let vh = video_handler.clone();
-    let frame_handle = tokio::spawn(async move {
-        match vh.get_frames().await {
-            Ok(_) => match vh.get_frame_content_embedding().await {
-                Ok(_) => Ok(()),
-                Err(e) => {
-                    error!("failed to get frame content embedding: {}", e);
-                    Err(e)
-                }
-            },
-            Err(e) => {
-                debug!("failed to get frames: {}", e);
-                Err(e)
-            }
-        }
-    });
+//     let vh = video_handler.clone();
+//     let frame_handle = tokio::spawn(async move {
+//         match vh.get_frames().await {
+//             Ok(_) => match vh.get_frame_content_embedding().await {
+//                 Ok(_) => Ok(()),
+//                 Err(e) => {
+//                     error!("failed to get frame content embedding: {}", e);
+//                     Err(e)
+//                 }
+//             },
+//             Err(e) => {
+//                 debug!("failed to get frames: {}", e);
+//                 Err(e)
+//             }
+//         }
+//     });
 
-    let vh = video_handler.clone();
-    let audio_handle = tokio::spawn(async move {
-        match vh.get_audio().await {
-            Ok(_) => match vh.get_transcript().await {
-                Ok(_) => {
-                    let res = vh.get_transcript_embedding().await;
+//     let vh = video_handler.clone();
+//     let audio_handle = tokio::spawn(async move {
+//         match vh.get_audio().await {
+//             Ok(_) => match vh.get_transcript().await {
+//                 Ok(_) => {
+//                     let res = vh.get_transcript_embedding().await;
 
-                    if let Err(e) = res {
-                        error!("failed to get transcript embedding: {}", e);
-                        Err(e)
-                    } else {
-                        Ok(())
-                    }
-                }
-                Err(e) => {
-                    error!("failed to get audio embedding: {}", e);
-                    Err(e)
-                }
-            },
-            Err(e) => {
-                error!("failed to get audio: {}", e);
-                Err(e)
-            }
-        }
-    });
+//                     if let Err(e) = res {
+//                         error!("failed to get transcript embedding: {}", e);
+//                         Err(e)
+//                     } else {
+//                         Ok(())
+//                     }
+//                 }
+//                 Err(e) => {
+//                     error!("failed to get audio embedding: {}", e);
+//                     Err(e)
+//                 }
+//             },
+//             Err(e) => {
+//                 error!("failed to get audio: {}", e);
+//                 Err(e)
+//             }
+//         }
+//     });
 
-    let frame_results = frame_handle.await;
-    let audio_results = audio_handle.await;
+//     let frame_results = frame_handle.await;
+//     let audio_results = audio_handle.await;
 
-    match frame_results {
-        Ok(result) => {
-            if let Err(frame_err) = result {
-                error!("failed to get frames: {}", frame_err);
-            }
-        }
-        Err(err) => {
-            error!("failed to get frames: (JoinError){}", err);
-        }
-    }
+//     match frame_results {
+//         Ok(result) => {
+//             if let Err(frame_err) = result {
+//                 error!("failed to get frames: {}", frame_err);
+//             }
+//         }
+//         Err(err) => {
+//             error!("failed to get frames: (JoinError){}", err);
+//         }
+//     }
 
-    match audio_results {
-        Ok(result) => {
-            if let Err(audio_err) = result {
-                error!("failed to get audio: {}", audio_err);
-            }
-        }
-        Err(err) => {
-            error!("failed to get audio: (JoinError){}", err);
-        }
-    }
+//     match audio_results {
+//         Ok(result) => {
+//             if let Err(audio_err) = result {
+//                 error!("failed to get audio: {}", audio_err);
+//             }
+//         }
+//         Err(err) => {
+//             error!("failed to get audio: (JoinError){}", err);
+//         }
+//     }
 
-    Ok(())
-}
+//     Ok(())
+// }
 
-#[tauri::command]
-async fn get_frame_caption(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), ()> {
-    let video_handler = file_handler::video::VideoHandler::new(
-        video_path,
-        app_handle
-            .path_resolver()
-            .app_local_data_dir()
-            .expect("failed to find local data dir"),
-        app_handle
-            .path_resolver()
-            .resolve_resource("resources")
-            .expect("failed to find resources dir"),
-        app_handle
-            .path_resolver()
-            .app_local_data_dir()
-            .expect("failed to find local data dir")
-            .join("db/muse-v2.db"),
-    )
-    .await
-    .expect("failed to initialize video handler");
+// #[tauri::command]
+// async fn get_frame_caption(app_handle: tauri::AppHandle, video_path: &str) -> Result<(), ()> {
+//     let video_handler = file_handler::video::VideoHandler::new(
+//         video_path,
+//         app_handle
+//             .path_resolver()
+//             .app_local_data_dir()
+//             .expect("failed to find local data dir"),
+//         app_handle
+//             .path_resolver()
+//             .resolve_resource("resources")
+//             .expect("failed to find resources dir"),
+//         app_handle
+//             .path_resolver()
+//             .app_local_data_dir()
+//             .expect("failed to find local data dir")
+//             .join("db/muse-v2.db"),
+//     )
+//     .await
+//     .expect("failed to initialize video handler");
 
-    let _ = video_handler.get_frames_caption().await;
-    let _ = video_handler.get_frame_caption_embedding().await;
+//     let _ = video_handler.get_frames_caption().await;
+//     let _ = video_handler.get_frame_caption_embedding().await;
 
-    Ok(())
-}
+//     Ok(())
+// }
 
-#[tauri::command]
-async fn handle_search(
-    app_handle: tauri::AppHandle,
-    payload: file_handler::search::SearchRequest,
-) -> Result<Vec<file_handler::search::SearchResult>, ()> {
-    debug!("search payload: {:?}", payload);
+// #[tauri::command]
+// async fn handle_search(
+//     app_handle: tauri::AppHandle,
+//     payload: file_handler::search::SearchRequest,
+// ) -> Result<Vec<file_handler::search::SearchResult>, ()> {
+//     debug!("search payload: {:?}", payload);
 
-    let resources_dir = app_handle
-        .path_resolver()
-        .resolve_resource("resources")
-        .unwrap();
-    let local_data_dir = app_handle
-        .path_resolver()
-        .app_local_data_dir()
-        .expect("failed to find local data dir");
+//     let resources_dir = app_handle
+//         .path_resolver()
+//         .resolve_resource("resources")
+//         .unwrap();
+//     let local_data_dir = app_handle
+//         .path_resolver()
+//         .app_local_data_dir()
+//         .expect("failed to find local data dir");
 
-    Ok(file_handler::search::handle_search(
-        payload,
-        resources_dir,
-        local_data_dir.clone(),
-        local_data_dir.join("db/muse-v2.db"),
-    )
-    .await
-    .map_err(|_| ())?)
-}
+//     Ok(file_handler::search::handle_search(
+//         payload,
+//         resources_dir,
+//         local_data_dir.clone(),
+//         local_data_dir.join("db/muse-v2.db"),
+//     )
+//     .await
+//     .map_err(|_| ())?)
+// }
 
 fn init_tracing() {
     tracing_subscriber::registry()

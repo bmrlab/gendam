@@ -6,6 +6,7 @@ edition = { workspace = true }
 [dependencies]
 prisma-lib = { path = "../../crates/prisma"}
 file-handler = { path = "../../crates/file-handler"}
+content-library = { path = "../../crates/content-library"}
 rspc = { workspace = true, features = ["axum"] }
 specta = { workspace = true }
 specta-macros = { version = "=2.0.0-rc.1" }

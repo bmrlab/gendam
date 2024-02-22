@@ -22,6 +22,7 @@ tauri = { version = "1.5.4", features = [ "dialog-ask", "dialog-open", "protocol
 prisma-lib = { path = "../../../crates/prisma"}
 file-downloader = { path = "../../../crates/file-downloader"}
 file-handler = { path = "../../../crates/file-handler"}
+content-library = { path = "../../../crates/content-library"}
 api-server = { path = "../../api-server"}
 rspc = { workspace = true, features = ["tauri"] }
 specta-macros = { workspace = true }
