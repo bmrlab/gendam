@@ -4,7 +4,7 @@ use std::path::Path;
 use tracing::debug;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
-pub struct AudioWhisper {
+pub struct Whisper {
     ctx: WhisperContext,
 }
 
@@ -15,7 +15,7 @@ pub struct WhisperItem {
     pub end_timestamp: i64,
 }
 
-impl AudioWhisper {
+impl Whisper {
     pub async fn new(resources_dir: impl AsRef<Path>) -> anyhow::Result<Self> {
         let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
             resources_dir: resources_dir.as_ref().to_path_buf(),
@@ -124,11 +124,11 @@ impl AudioWhisper {
 #[test_log::test(tokio::test)]
 async fn test_whisper() {
     let mut whisper =
-        AudioWhisper::new("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/src-tauri/resources")
+        Whisper::new("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources")
             .await
             .unwrap();
     match whisper
-        .transcribe("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/src-tauri/.data/audio.wav")
+        .transcribe("/Users/zhuo/Library/Application Support/cc.musedam.local/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/audio.wav")
     {
         Ok(result) => {
             for item in result {

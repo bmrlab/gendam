@@ -11,6 +11,7 @@ pub struct CLIP {
     image_model: Option<Session>,
     text_model: Option<Session>,
     text_tokenizer: Option<Tokenizer>,
+    dim: usize,
 }
 
 type CLIPEmbedding = Array1<f32>;
@@ -30,7 +31,7 @@ impl CLIP {
         model: model::CLIPModel,
         resources_dir: impl AsRef<Path>,
     ) -> anyhow::Result<Self> {
-        let (image_model_uri, text_model_uri, text_tokenizer_vocab_uri) = {
+        let (image_model_uri, text_model_uri, text_tokenizer_vocab_uri, dim) = {
             match model {
                 model::CLIPModel::ViTB32 => {
                     let model_uri = std::path::Path::new("CLIP-ViT-B-32-laion2B-s34B-b79K");
@@ -38,6 +39,7 @@ impl CLIP {
                         model_uri.join("visual.onnx"),
                         model_uri.join("textual.onnx"),
                         model_uri.join("tokenizer.json"),
+                        512,
                     )
                 }
                 model::CLIPModel::ViTL14 => {
@@ -57,13 +59,14 @@ impl CLIP {
             .download_if_not_exists(&text_tokenizer_vocab_uri)
             .await?;
 
-        Self::from_file(image_model_path, text_model_path, text_tokenizer_vocab_path)
+        Self::from_file(image_model_path, text_model_path, text_tokenizer_vocab_path, dim)
     }
 
     pub fn from_file(
         image_model_path: impl AsRef<Path>,
         text_model_path: impl AsRef<Path>,
         text_tokenizer_vocab_path: impl AsRef<Path>,
+        dim: usize,
     ) -> anyhow::Result<Self> {
         let image_model = Session::builder()?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
@@ -93,6 +96,7 @@ impl CLIP {
             image_model: Some(image_model),
             text_model: Some(text_model),
             text_tokenizer,
+            dim,
         })
     }
 
@@ -132,7 +136,7 @@ impl CLIP {
             .to_owned();
 
         let output: CLIPEmbedding = output
-            .into_shape(crate::EMBEDDING_DIM)?
+            .into_shape(self.dim)?
             .into_dimensionality()?;
 
         Ok(normalize(output))
@@ -174,10 +178,14 @@ impl CLIP {
             .to_owned();
 
         let output: CLIPEmbedding = output
-            .into_shape(crate::EMBEDDING_DIM)?
+            .into_shape(self.dim)?
             .into_dimensionality()?;
 
         Ok(normalize(output))
+    }
+
+    pub fn dim(&self) -> usize {
+        self.dim
     }
 }
 
@@ -187,6 +195,7 @@ async fn test_async_clip() {
         "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources/CLIP-ViT-B-32-laion2B-s34B-b79K/visual.onnx",
         "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources/CLIP-ViT-B-32-laion2B-s34B-b79K/textual.onnx",
         "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources/CLIP-ViT-B-32-laion2B-s34B-b79K/tokenizer.json",
+        512,
     )
     .unwrap();
 

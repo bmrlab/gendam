@@ -30,7 +30,7 @@ pub const VIDEO_FRAME_CAPTION_INDEX_NAME: &str = "frame-caption-index";
 pub const VIDEO_TRANSCRIPT_INDEX_NAME: &str = "transcript-index";
 
 impl EmbeddingIndex {
-    pub fn new(dir: impl AsRef<Path>, name: &str) -> anyhow::Result<Self> {
+    pub fn new(dir: impl AsRef<Path>, name: &str, dim: usize) -> anyhow::Result<Self> {
         debug!("start creating {} index", name);
 
         let filename = dir.as_ref().to_path_buf().join(name);
@@ -44,7 +44,7 @@ impl EmbeddingIndex {
             } else {
                 debug!("index {} does not exist, creating it", name);
                 let index = faiss::index_factory(
-                    crate::EMBEDDING_DIM as u32,
+                    dim as u32,
                     "Flat",
                     faiss::MetricType::InnerProduct,
                 )?;
@@ -137,12 +137,12 @@ impl EmbeddingIndex {
 }
 
 impl VideoIndex {
-    pub fn new(dir: impl AsRef<Path>) -> anyhow::Result<Self> {
+    pub fn new(dir: impl AsRef<Path>, dim: usize) -> anyhow::Result<Self> {
         debug!("start creating video index");
-        let frame_index = EmbeddingIndex::new(dir.as_ref(), VIDEO_FRAME_INDEX_NAME)?;
+        let frame_index = EmbeddingIndex::new(dir.as_ref(), VIDEO_FRAME_INDEX_NAME, dim)?;
         let frame_caption_index =
-            EmbeddingIndex::new(dir.as_ref(), VIDEO_FRAME_CAPTION_INDEX_NAME)?;
-        let transcript_index = EmbeddingIndex::new(dir.as_ref(), VIDEO_TRANSCRIPT_INDEX_NAME)?;
+            EmbeddingIndex::new(dir.as_ref(), VIDEO_FRAME_CAPTION_INDEX_NAME, dim)?;
+        let transcript_index = EmbeddingIndex::new(dir.as_ref(), VIDEO_TRANSCRIPT_INDEX_NAME, dim)?;
 
         Ok(Self {
             frame_index,

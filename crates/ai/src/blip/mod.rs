@@ -111,13 +111,13 @@ pub fn load_image<P: AsRef<std::path::Path>>(p: P) -> candle_core::Result<Tensor
 #[test_log::test(tokio::test)]
 async fn test_caption() {
     let blip =
-        BLIP::new("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/src-tauri/resources/blip")
+        BLIP::new("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources")
             .await;
 
     assert!(blip.is_ok());
     let mut blip = blip.unwrap();
 
-    let caption = blip.get_caption("/Users/zhuo/Library/Application Support/cc.musedam.local/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/frames/15000000.png").await;
+    let caption = blip.get_caption("/Users/zhuo/Desktop/avatar.JPG").await;
     debug!("caption: {:?}", caption);
     assert!(caption.is_ok());
 }

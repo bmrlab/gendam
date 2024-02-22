@@ -1,8 +1,6 @@
-use super::audio;
-use super::audio::WhisperItem;
-use super::embedding;
 use super::index::VideoIndex;
 use crate::index::EmbeddingIndex;
+use ai::whisper::WhisperItem;
 use anyhow::{anyhow, Ok};
 use prisma_lib::{
     new_client_with_url, video_frame, video_frame_caption, video_transcript, PrismaClient,
@@ -32,11 +30,13 @@ pub mod decoder;
 /// let video_path = "";
 /// let local_data_dir = "";
 /// let resources_dir = "";
+/// let db_url = "";
 ///
 /// let video_handler = VideoHandler::new(
 ///     video_path,
 ///     local_data_dir,
 ///     resources_dir,
+///     db_url,
 /// ).await.unwrap();
 ///
 /// // get frames and save their embedding into faiss
@@ -47,6 +47,9 @@ pub mod decoder;
 /// video_handler.get_audio().await;
 /// video_handler.get_transcript().await;
 /// video_handler.get_transcript_embedding().await;
+///
+/// // flush embedding index into disk
+/// video_handler.indexes().flush().await;
 /// ```
 #[derive(Clone, Debug)]
 pub struct VideoHandler {
@@ -68,6 +71,7 @@ impl VideoHandler {
     /// * `video_path` - The path to the video file
     /// * `local_data_dir` - The path to the local data directory, where artifacts (frame, transcript, etc.) will be saved into
     /// * `resources_dir` - The path to the resources directory (src-tauri/resources), where contains model files
+    /// * `db_url` - The path for sqlite file
     pub async fn new(
         video_path: impl AsRef<std::path::Path>,
         local_data_dir: impl AsRef<std::path::Path>,
@@ -86,18 +90,18 @@ impl VideoHandler {
 
         // make sure clip files are downloaded
         let resources_dir_clone = resources_dir.as_ref().to_owned();
-        let clip_handle = tokio::spawn(embedding::clip::CLIP::new(
-            embedding::clip::model::CLIPModel::ViTB32,
+        let clip_handle = tokio::spawn(ai::clip::CLIP::new(
+            ai::clip::model::CLIPModel::ViTB32,
             resources_dir_clone,
         ));
 
         let resources_dir_clone = resources_dir.as_ref().to_owned();
-        let whisper_handle = tokio::spawn(audio::AudioWhisper::new(resources_dir_clone));
+        let whisper_handle = tokio::spawn(ai::whisper::Whisper::new(resources_dir_clone));
 
         let clip_result = clip_handle.await;
         let whisper_result = whisper_handle.await;
 
-        if let Err(clip_err) = clip_result.unwrap() {
+        if let Err(clip_err) = clip_result.as_ref().unwrap() {
             return Err(anyhow!("Failed to download clip model: {clip_err}"));
         }
         if let Err(whisper_err) = whisper_result.unwrap() {
@@ -106,7 +110,7 @@ impl VideoHandler {
 
         debug!("clip and whisper models downloaded");
 
-        let indexes = VideoIndex::new(index_dir).expect("Failed to create indexes");
+        let indexes = VideoIndex::new(index_dir, clip_result.unwrap().unwrap().dim()).expect("Failed to create indexes");
         let client = new_client_with_url(db_url.as_ref().to_str().unwrap().as_ref()).await?;
 
         Ok(Self {
@@ -152,7 +156,7 @@ impl VideoHandler {
     ///
     /// And the transcript will be saved in the same directory with audio
     pub async fn get_transcript(&self) -> anyhow::Result<()> {
-        let mut whisper = audio::AudioWhisper::new(&self.resources_dir).await?;
+        let mut whisper = ai::whisper::Whisper::new(&self.resources_dir).await?;
         let result = whisper.transcribe(&self.audio_path)?;
 
         // write results into json file
@@ -317,7 +321,7 @@ impl VideoHandler {
             .map(|res| res.map(|e| e.path()))
             .collect::<Result<Vec<_>, std::io::Error>>()?;
 
-        let blip_model = embedding::blip::BLIP::new(&self.resources_dir).await?;
+        let blip_model = ai::blip::BLIP::new(&self.resources_dir).await?;
         let blip_model = Arc::new(RwLock::new(blip_model));
 
         let mut join_set = tokio::task::JoinSet::new();
@@ -382,9 +386,9 @@ impl VideoHandler {
         Ok(())
     }
 
-    async fn get_clip_instance(&self) -> anyhow::Result<embedding::clip::CLIP> {
-        embedding::clip::CLIP::new(
-            embedding::clip::model::CLIPModel::ViTB32,
+    async fn get_clip_instance(&self) -> anyhow::Result<ai::clip::CLIP> {
+        ai::clip::CLIP::new(
+            ai::clip::model::CLIPModel::ViTB32,
             &self.resources_dir,
         )
         .await
@@ -392,7 +396,7 @@ impl VideoHandler {
 }
 
 async fn get_single_frame_caption(
-    blip_model: Arc<RwLock<embedding::blip::BLIP>>,
+    blip_model: Arc<RwLock<ai::blip::BLIP>>,
     path: impl AsRef<std::path::Path>,
 ) -> anyhow::Result<()> {
     let caption = blip_model.write().await.get_caption(path.as_ref()).await?;
@@ -413,7 +417,7 @@ async fn get_single_frame_caption(
 async fn save_text_embedding(
     text: &str,
     id: u64,
-    clip: Arc<RwLock<embedding::clip::CLIP>>,
+    clip: Arc<RwLock<ai::clip::CLIP>>,
     embedding_index: Arc<EmbeddingIndex>,
 ) -> anyhow::Result<()> {
     let embedding = clip.read().await.get_text_embedding(text).await?;
@@ -427,7 +431,7 @@ async fn save_text_embedding(
 async fn get_single_frame_content_embedding(
     id: u64,
     path: impl AsRef<std::path::Path>,
-    clip_model: Arc<RwLock<embedding::clip::CLIP>>,
+    clip_model: Arc<RwLock<ai::clip::CLIP>>,
     embedding_index: Arc<EmbeddingIndex>,
 ) -> anyhow::Result<()> {
     let embedding = clip_model
@@ -446,7 +450,7 @@ async fn get_single_frame_caption_embedding(
     file_identifier: String,
     client: Arc<RwLock<PrismaClient>>,
     path: impl AsRef<std::path::Path>,
-    clip_model: Arc<RwLock<embedding::clip::CLIP>>,
+    clip_model: Arc<RwLock<ai::clip::CLIP>>,
     embedding_index: Arc<EmbeddingIndex>,
 ) -> anyhow::Result<()> {
     let caption = tokio::fs::read_to_string(path.as_ref()).await?;

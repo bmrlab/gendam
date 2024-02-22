@@ -1,5 +1,3 @@
-pub(self) mod audio;
-pub mod embedding;
 pub mod index;
 pub mod search;
 pub mod video;

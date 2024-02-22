@@ -59,6 +59,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "ai"
+version = "0.1.0"
+dependencies = [
+ "accelerate-src",
+ "anyhow",
+ "candle-core",
+ "candle-nn",
+ "candle-transformers",
+ "faiss",
+ "file-downloader",
+ "futures",
+ "half",
+ "hound",
+ "image",
+ "ndarray",
+ "num-traits",
+ "ort",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha256",
+ "test-log",
+ "tokenizers",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "whisper-rs",
+]
+
+[[package]]
 name = "alloc-no-stdlib"
 version = "2.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1637,34 +1667,23 @@ dependencies = [
 name = "file-handler"
 version = "0.1.0"
 dependencies = [
- "accelerate-src",
+ "ai",
  "anyhow",
- "candle-core",
- "candle-nn",
- "candle-transformers",
  "faiss",
  "ffmpeg-next",
  "file-downloader",
  "futures",
- "half",
- "hound",
  "image",
  "ndarray",
- "num-traits",
- "ort",
  "prisma-client-rust",
  "prisma-lib",
- "reqwest",
  "serde",
  "serde_json",
  "sha256",
  "test-log",
- "tokenizers",
  "tokio",
  "tracing",
  "tracing-subscriber",
- "uuid",
- "whisper-rs",
 ]
 
 [[package]]
@@ -5420,12 +5439,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sha1_smol"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae1a47186c03a32177042e55dbc5fd5aee900b8e0069a8d70fba96a9375cd012"
-
-[[package]]
 name = "sha2"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6894,7 +6907,6 @@ checksum = "f00cc9702ca12d3c81455259621e676d0f7251cec66a21e98fe2e9a37db93b2a"
 dependencies = [
  "getrandom 0.2.12",
  "serde",
- "sha1_smol",
 ]
 
 [[package]]

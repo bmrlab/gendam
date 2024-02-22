@@ -51,8 +51,8 @@ pub async fn handle_search(
     let client =
         new_client_with_url(&format!("file:{}", db_url.as_ref().to_str().unwrap())).await?;
 
-    let clip_model = crate::embedding::clip::CLIP::new(
-        crate::embedding::clip::model::CLIPModel::ViTB32,
+    let clip_model = ai::clip::CLIP::new(
+        ai::clip::model::CLIPModel::ViTB32,
         &resources_dir,
     )
     .await?;
