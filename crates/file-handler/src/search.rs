@@ -87,10 +87,10 @@ pub async fn handle_search(
             .labels
             .iter()
             .zip(results.distances.iter())
+            .filter(|(id, _)| id.is_some())
             .map(|(id, &distance)| {
                 let id = id.get().unwrap() as i32;
                 id_distance_mapping.insert(id, distance);
-
                 id
             })
             .collect();
@@ -124,7 +124,11 @@ pub async fn handle_search(
                     .await?;
 
                 results.iter().for_each(|v| {
-                    let frame = v.frame.as_ref().unwrap();
+                    // TODO: 这里忽略了找不到的 frame，其实不应该有找不到的情况，需要优化下
+                    let frame = match v.frame.as_ref() {
+                        Some(frame) => frame,
+                        None => return,
+                    };
 
                     search_results.push(SearchResult {
                         file_identifier: frame.file_identifier.clone(),
