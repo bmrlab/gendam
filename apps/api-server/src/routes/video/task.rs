@@ -18,6 +18,7 @@ pub enum VideoTaskType {
     Frame,
     FrameCaption,
     FrameContentEmbedding,
+    FrameCaptionEmbedding,
     Audio,
     Transcript,
     TranscriptEmbedding,
@@ -29,6 +30,7 @@ impl ToString for VideoTaskType {
             VideoTaskType::Frame => "Frame".to_string(),
             VideoTaskType::FrameCaption => "FrameCaption".to_string(),
             VideoTaskType::FrameContentEmbedding => "FrameContentEmbedding".to_string(),
+            VideoTaskType::FrameCaptionEmbedding => "FrameCaptionEmbedding".to_string(),
             VideoTaskType::Audio => "Audio".to_string(),
             VideoTaskType::Transcript => "Transcript".to_string(),
             VideoTaskType::TranscriptEmbedding => "TranscriptEmbedding".to_string(),
@@ -187,34 +189,29 @@ async fn process_task(task_payload: &TaskPayload) {
     info!("successfully got frames, {}", &task_payload.video_path);
     save_ends_at(&VideoTaskType::Frame.to_string(), &client, vh).await;
 
-    save_starts_at(
-        &VideoTaskType::FrameContentEmbedding.to_string(),
-        &client,
-        vh,
-    )
-    .await;
+    save_starts_at(&VideoTaskType::FrameContentEmbedding.to_string(), &client, vh).await;
     if let Err(e) = vh.get_frame_content_embedding().await {
         error!("failed to get frame content embedding: {}", e);
         return;
     }
-    info!(
-        "successfully got frame content embedding, {}",
-        &task_payload.video_path
-    );
-    save_ends_at(
-        &VideoTaskType::FrameContentEmbedding.to_string(),
-        &client,
-        vh,
-    )
-    .await;
+    info!("successfully got frame content embedding, {}", &task_payload.video_path);
+    save_ends_at(&VideoTaskType::FrameContentEmbedding.to_string(), &client, vh).await;
 
-    // save_starts_at(&VideoTaskType::FrameCaption.to_string(), &client, vh).await;
-    // if let Err(e) = vh.get_frames_caption().await {
-    //     error!("failed to get frames caption: {}", e);
-    //     return;
-    // }
-    // info!("successfully got frames caption, {}", &task_payload.video_path);
-    // save_ends_at(&VideoTaskType::FrameCaption.to_string(), &client, vh).await;
+    save_starts_at(&VideoTaskType::FrameCaption.to_string(), &client, vh).await;
+    if let Err(e) = vh.get_frames_caption().await {
+        error!("failed to get frames caption: {}", e);
+        return;
+    }
+    info!("successfully got frames caption, {}", &task_payload.video_path);
+    save_ends_at(&VideoTaskType::FrameCaption.to_string(), &client, vh).await;
+
+    save_starts_at(&VideoTaskType::FrameCaptionEmbedding.to_string(), &client, vh).await;
+    if let Err(e) = vh.get_frame_caption_embedding().await {
+        error!("failed to get frames caption embedding: {}", e);
+        return;
+    }
+    info!("successfully got frames caption embedding, {}", &task_payload.video_path);
+    save_ends_at(&VideoTaskType::FrameCaptionEmbedding.to_string(), &client, vh).await;
 
     save_starts_at(&VideoTaskType::Audio.to_string(), &client, vh).await;
     if let Err(e) = vh.get_audio().await {
@@ -270,6 +267,7 @@ async fn create_video_task(ctx: &Ctx, video_path: &str, tx: Arc<Sender<TaskPaylo
     for task_type in vec![
         VideoTaskType::Frame,
         VideoTaskType::FrameContentEmbedding,
+        VideoTaskType::FrameCaptionEmbedding,
         VideoTaskType::FrameCaption,
         VideoTaskType::Audio,
         VideoTaskType::Transcript,

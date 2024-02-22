@@ -13,7 +13,7 @@ pub fn get_routes() -> Router<Ctx> {
             let res = file_handler::search::handle_search(
                 SearchRequest {
                     text: input,
-                    record_type: Some(vec![SearchRecordType::Frame]),
+                    record_type: Some(vec![SearchRecordType::FrameCaption]),
                     limit: None,
                 },
                 ctx.resources_dir,
