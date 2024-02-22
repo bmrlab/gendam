@@ -2,10 +2,8 @@ use super::index::VideoIndex;
 use crate::index::EmbeddingIndex;
 use ai::whisper::WhisperItem;
 use anyhow::{anyhow, Ok};
-use prisma_lib::{
-    new_client_with_url, video_frame, video_frame_caption, video_transcript, PrismaClient,
-};
 use content_library::Library;
+use prisma_lib::{video_frame, video_frame_caption, video_transcript, PrismaClient};
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;
@@ -77,13 +75,13 @@ impl VideoHandler {
         video_path: impl AsRef<std::path::Path>,
         resources_dir: impl AsRef<std::path::Path>,
         library: Library,
+        client: Arc<RwLock<PrismaClient>>,
     ) -> anyhow::Result<Self> {
         let bytes = std::fs::read(&video_path)?;
         let file_sha256 = sha256::digest(&bytes);
         let artifacts_dir = library.artifacts_dir.join(&file_sha256);
         let frames_dir = artifacts_dir.join("frames");
         let index_dir = library.index_dir;
-        let db_url = library.db_url;
 
         fs::create_dir_all(&artifacts_dir)?;
         fs::create_dir_all(&frames_dir)?;
@@ -111,8 +109,8 @@ impl VideoHandler {
 
         debug!("clip and whisper models downloaded");
 
-        let indexes = VideoIndex::new(index_dir, clip_result.unwrap().unwrap().dim()).expect("Failed to create indexes");
-        let client = new_client_with_url(db_url.as_str()).await?;
+        let indexes = VideoIndex::new(index_dir, clip_result.unwrap().unwrap().dim())
+            .expect("Failed to create indexes");
 
         Ok(Self {
             video_path: video_path.as_ref().to_owned(),
@@ -122,7 +120,7 @@ impl VideoHandler {
             frames_dir,
             transcript_path: artifacts_dir.join("transcript.txt"),
             indexes,
-            client: Arc::new(RwLock::new(client)),
+            client,
         })
     }
 
@@ -388,11 +386,7 @@ impl VideoHandler {
     }
 
     async fn get_clip_instance(&self) -> anyhow::Result<ai::clip::CLIP> {
-        ai::clip::CLIP::new(
-            ai::clip::model::CLIPModel::ViTB32,
-            &self.resources_dir,
-        )
-        .await
+        ai::clip::CLIP::new(ai::clip::model::CLIPModel::ViTB32, &self.resources_dir).await
     }
 }
 
@@ -511,15 +505,18 @@ async fn test_handle_video() {
     let video_path = "/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4";
     // let video_path = "/Users/zhuo/Desktop/屏幕录制2022-11-30 11.43.29.mov";
     let resources_dir = "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources";
-    let local_data_dir = std::path::Path::new("/Users/zhuo/Library/Application Support/cc.musedam.local").to_path_buf();
+    let local_data_dir =
+        std::path::Path::new("/Users/zhuo/Library/Application Support/cc.musedam.local")
+            .to_path_buf();
     let library = content_library::create_library(local_data_dir).await;
 
-    let video_handler = VideoHandler::new(
-        video_path,
-        resources_dir,
-        library,
-    )
-    .await;
+    let client = prisma_lib::new_client_with_url(&library.db_url)
+        .await
+        .expect("failed to create prisma client");
+    client._db_push().await.expect("failed to push db"); // apply migrations
+    let client = Arc::new(RwLock::new(client));
+
+    let video_handler = VideoHandler::new(video_path, resources_dir, library, client).await;
 
     if video_handler.is_err() {
         tracing::error!("failed to create video handler: {:?}", video_handler);

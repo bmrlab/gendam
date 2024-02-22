@@ -4,10 +4,13 @@ use prisma_client_rust::Direction;
 use prisma_lib::{new_client_with_url, video_task, PrismaClient};
 use rspc::Router;
 use serde::Serialize;
+use serde_json::json;
 use specta::Type;
 use std::sync::Arc;
-use serde_json::json;
-use tokio::sync::broadcast::{self, Sender};
+use tokio::sync::{
+    broadcast::{self, Sender},
+    RwLock,
+};
 use tracing::{
     error,
     // debug,
@@ -189,29 +192,58 @@ async fn process_task(task_payload: &TaskPayload) {
     info!("successfully got frames, {}", &task_payload.video_path);
     save_ends_at(&VideoTaskType::Frame.to_string(), &client, vh).await;
 
-    save_starts_at(&VideoTaskType::FrameContentEmbedding.to_string(), &client, vh).await;
+    save_starts_at(
+        &VideoTaskType::FrameContentEmbedding.to_string(),
+        &client,
+        vh,
+    )
+    .await;
     if let Err(e) = vh.get_frame_content_embedding().await {
         error!("failed to get frame content embedding: {}", e);
         return;
     }
-    info!("successfully got frame content embedding, {}", &task_payload.video_path);
-    save_ends_at(&VideoTaskType::FrameContentEmbedding.to_string(), &client, vh).await;
+    info!(
+        "successfully got frame content embedding, {}",
+        &task_payload.video_path
+    );
+    save_ends_at(
+        &VideoTaskType::FrameContentEmbedding.to_string(),
+        &client,
+        vh,
+    )
+    .await;
 
     save_starts_at(&VideoTaskType::FrameCaption.to_string(), &client, vh).await;
     if let Err(e) = vh.get_frames_caption().await {
         error!("failed to get frames caption: {}", e);
         return;
     }
-    info!("successfully got frames caption, {}", &task_payload.video_path);
+    info!(
+        "successfully got frames caption, {}",
+        &task_payload.video_path
+    );
     save_ends_at(&VideoTaskType::FrameCaption.to_string(), &client, vh).await;
 
-    save_starts_at(&VideoTaskType::FrameCaptionEmbedding.to_string(), &client, vh).await;
+    save_starts_at(
+        &VideoTaskType::FrameCaptionEmbedding.to_string(),
+        &client,
+        vh,
+    )
+    .await;
     if let Err(e) = vh.get_frame_caption_embedding().await {
         error!("failed to get frames caption embedding: {}", e);
         return;
     }
-    info!("successfully got frames caption embedding, {}", &task_payload.video_path);
-    save_ends_at(&VideoTaskType::FrameCaptionEmbedding.to_string(), &client, vh).await;
+    info!(
+        "successfully got frames caption embedding, {}",
+        &task_payload.video_path
+    );
+    save_ends_at(
+        &VideoTaskType::FrameCaptionEmbedding.to_string(),
+        &client,
+        vh,
+    )
+    .await;
 
     save_starts_at(&VideoTaskType::Audio.to_string(), &client, vh).await;
     if let Err(e) = vh.get_audio().await {
@@ -247,12 +279,24 @@ async fn process_task(task_payload: &TaskPayload) {
     };
 }
 
-async fn create_video_task(ctx: &Ctx, video_path: &str, tx: Arc<Sender<TaskPayload>>) -> Result<(), ()> {
+async fn create_video_task(
+    ctx: &Ctx,
+    video_path: &str,
+    tx: Arc<Sender<TaskPayload>>,
+) -> Result<(), ()> {
+    let client = new_client_with_url(&ctx.library.db_url)
+        .await
+        .expect("failed to create prisma client");
+    client._db_push().await.expect("failed to push db"); // apply migrations
+    let client = Arc::new(RwLock::new(client));
     let video_handler = match VideoHandler::new(
         video_path,
         &ctx.resources_dir,
         ctx.library.clone(),
-    ).await {
+        client,
+    )
+    .await
+    {
         Ok(vh) => vh,
         Err(e) => {
             error!("failed to initialize video handler: {}", e);

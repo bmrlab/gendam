@@ -1,13 +1,9 @@
 use crate::index;
-use faiss::Index;
-use prisma_lib::{
-    new_client_with_url,
-    video_frame,
-    video_frame_caption,
-    video_transcript
-};
 use content_library::Library;
-use std::collections::HashMap;
+use faiss::Index;
+use prisma_lib::{video_frame, video_frame_caption, video_transcript, PrismaClient};
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::RwLock;
 use tracing::debug;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -52,14 +48,10 @@ pub async fn handle_search(
     payload: SearchRequest,
     resources_dir: impl AsRef<std::path::Path>,
     library: Library,
+    client: Arc<RwLock<PrismaClient>>,
 ) -> anyhow::Result<Vec<SearchResult>> {
-    let client = new_client_with_url(library.db_url.as_str()).await?;
-
-    let clip_model = ai::clip::CLIP::new(
-        ai::clip::model::CLIPModel::ViTB32,
-        &resources_dir,
-    )
-    .await?;
+    let clip_model =
+        ai::clip::CLIP::new(ai::clip::model::CLIPModel::ViTB32, &resources_dir).await?;
 
     let embedding = clip_model.get_text_embedding(&payload.text).await?;
     let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
@@ -75,7 +67,11 @@ pub async fn handle_search(
 
     for record_type in record_types {
         let mut index = faiss::read_index(
-            library.index_dir.join(record_type.index_name()).to_str().unwrap(),
+            library
+                .index_dir
+                .join(record_type.index_name())
+                .to_str()
+                .unwrap(),
         )?
         .into_id_map()?;
 
@@ -99,6 +95,8 @@ pub async fn handle_search(
                 id
             })
             .collect();
+
+        let client = client.read().await;
 
         match record_type {
             SearchRecordType::Frame => {
@@ -175,8 +173,15 @@ pub async fn handle_search(
 
 #[test_log::test(tokio::test)]
 async fn test_handle_search() {
-    let local_data_dir = std::path::Path::new("/Users/zhuo/Library/Application Support/cc.musedam.local").to_path_buf();
+    let local_data_dir =
+        std::path::Path::new("/Users/zhuo/Library/Application Support/cc.musedam.local")
+            .to_path_buf();
     let library = content_library::create_library(local_data_dir).await;
+    let client = prisma_lib::new_client_with_url(&library.db_url)
+        .await
+        .expect("failed to create prisma client");
+    client._db_push().await.expect("failed to push db"); // apply migrations
+    let client = Arc::new(RwLock::new(client));
     let results = handle_search(
         SearchRequest {
             text: "a photo of a girl".into(),
@@ -185,6 +190,7 @@ async fn test_handle_search() {
         },
         "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources",
         library,
+        client,
     )
     .await;
 

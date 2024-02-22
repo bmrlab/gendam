@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use super::task::VideoTaskType;
 use crate::{Ctx, R};
 use file_handler::search::{SearchRecordType, SearchRequest, SearchResult};
@@ -5,11 +6,17 @@ use prisma_lib::{new_client_with_url, video_task};
 use rspc::Router;
 use serde::Serialize;
 use specta::Type;
+use tokio::sync::RwLock;
 
 pub fn get_routes() -> Router<Ctx> {
     R.router().procedure(
         "all",
         R.query(move |ctx: Ctx, input: String| async move {
+            let client = new_client_with_url(&ctx.library.db_url)
+                .await
+                .expect("failed to create prisma client");
+            client._db_push().await.expect("failed to push db"); // apply migrations
+            let client = Arc::new(RwLock::new(client));
             let res = file_handler::search::handle_search(
                 SearchRequest {
                     text: input,
@@ -18,6 +25,7 @@ pub fn get_routes() -> Router<Ctx> {
                 },
                 ctx.resources_dir,
                 ctx.library.clone(),
+                client,
             )
             .await;
             // .unwrap();
@@ -77,24 +85,34 @@ pub fn get_routes() -> Router<Ctx> {
                 pub start_time: i32,
             }
 
-            res.iter().map(
-                |SearchResult { file_identifier, start_timestamp, ..}| {
-                    // TODO current version only support frame type
-                    let image_path =
-                        format!("{}/frames/{}.png", &file_identifier, &start_timestamp);
-                    let image_path = ctx.library.artifacts_dir.join(image_path).display().to_string();
-                    let video_path = tasks_hash_map
-                        .get(file_identifier)
-                        .unwrap_or(&"".to_string())
-                        .clone();
-                    SearchResultPayload {
-                        image_path,
-                        video_path,
-                        start_time: (*start_timestamp).clone(),
-                    }
-                }
-            )
-            .collect::<Vec<SearchResultPayload>>()
+            res.iter()
+                .map(
+                    |SearchResult {
+                         file_identifier,
+                         start_timestamp,
+                         ..
+                     }| {
+                        // TODO current version only support frame type
+                        let image_path =
+                            format!("{}/frames/{}.png", &file_identifier, &start_timestamp);
+                        let image_path = ctx
+                            .library
+                            .artifacts_dir
+                            .join(image_path)
+                            .display()
+                            .to_string();
+                        let video_path = tasks_hash_map
+                            .get(file_identifier)
+                            .unwrap_or(&"".to_string())
+                            .clone();
+                        SearchResultPayload {
+                            image_path,
+                            video_path,
+                            start_time: (*start_timestamp).clone(),
+                        }
+                    },
+                )
+                .collect::<Vec<SearchResultPayload>>()
         }),
     )
 }

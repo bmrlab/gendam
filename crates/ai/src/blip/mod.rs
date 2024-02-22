@@ -1,7 +1,5 @@
 extern crate accelerate_src;
 
-use std::path::Path;
-
 use anyhow::anyhow;
 use candle_core::backend::BackendDevice;
 use candle_core::MetalDevice;
@@ -9,6 +7,7 @@ use candle_core::{Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 use candle_transformers::models::blip;
 use candle_transformers::models::quantized_blip;
+use std::path::Path;
 use tokenizers::Tokenizer;
 use tracing::debug;
 
@@ -111,8 +110,7 @@ pub fn load_image<P: AsRef<std::path::Path>>(p: P) -> candle_core::Result<Tensor
 #[test_log::test(tokio::test)]
 async fn test_caption() {
     let blip =
-        BLIP::new("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources")
-            .await;
+        BLIP::new("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources").await;
 
     assert!(blip.is_ok());
     let mut blip = blip.unwrap();

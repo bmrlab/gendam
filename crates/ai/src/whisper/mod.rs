@@ -103,12 +103,17 @@ impl Whisper {
             let segment = state
                 .full_get_segment_text(i)
                 .expect("failed to get segment");
+
+            // it is strange that the timestamp is not in milliseconds
+            // here we just convert it
             let start_timestamp = state
                 .full_get_segment_t0(i)
-                .expect("failed to get start timestamp");
+                .expect("failed to get start timestamp")
+                * 10;
             let end_timestamp = state
                 .full_get_segment_t1(i)
-                .expect("failed to get end timestamp");
+                .expect("failed to get end timestamp")
+                * 10;
 
             results.push(WhisperItem {
                 text: segment,
