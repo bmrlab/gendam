@@ -1,4 +1,7 @@
-use std::process::Command;
+use std::{
+    path::PathBuf,
+    process::Command,
+};
 use serde::Serialize;
 use rspc::Router;
 use crate::{Ctx, R};
@@ -27,9 +30,25 @@ pub fn get_routes() -> Router<Ctx> {
         })
     )
     .procedure("ls",
-        R.query(|_ctx, full_path: String| async move {
-            let res = get_files_in_path(&full_path);
-            serde_json::to_value(res).unwrap()
+        R.query(|ctx, path: String| async move {
+            if !path.starts_with("/") {
+                // let res = serde_json::to_value::<Vec<File>>(vec![]);
+                // return res.map_err(|e| {
+                //     rspc::Error::new(
+                //         rspc::ErrorCode::BadRequest,
+                //         String::from("path muse be start with /")
+                //     )
+                // });
+                return Err(rspc::Error::new(
+                    rspc::ErrorCode::BadRequest,
+                    String::from("path muse be start with /")
+                ));
+            }
+            let relative_path = format!(".{}", path);
+            let files_dir = ctx.library.files_dir;
+            let ls_dir = files_dir.join(relative_path);
+            let res = get_files_in_path(&ls_dir);
+            Ok(serde_json::to_value(res).unwrap())
         })
     )
     .procedure("reveal",
@@ -69,8 +88,9 @@ struct File {
 //     files
 // }
 
-fn get_files_in_path(full_path: &str) -> Vec<File> {
-    let result = std::fs::read_dir(full_path);
+fn get_files_in_path(ls_dir: &PathBuf) -> Vec<File> {
+    let result = ls_dir.read_dir();
+    // let result = std::fs::read_dir(full_path);
     if let Err(_) = result {
         return vec![];
     }

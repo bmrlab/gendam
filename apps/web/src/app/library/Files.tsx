@@ -37,7 +37,7 @@ export default function Files({ folderPath, goToFolder }: Props) {
   }, [goToFolder, revealMut, folderPath]);
 
   return (
-    <div className="p-6 mt-2 bg-white">
+    <div className="p-6 mt-2">
       <div className="flex flex-wrap">
         <div
           className="w-36 m-2 flex flex-col justify-between overflow-hidden cursor-pointer select-none"
