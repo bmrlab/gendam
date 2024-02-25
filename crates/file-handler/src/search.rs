@@ -56,7 +56,7 @@ pub async fn handle_search(
     let embedding = clip_model.get_text_embedding(&payload.text).await?;
     let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
 
-    debug!("embedding: {:?}", embedding);
+    debug!("embedding of search text: {:?}", embedding);
 
     let record_types = payload.record_type.unwrap_or(vec![
         SearchRecordType::Frame,
@@ -66,12 +66,18 @@ pub async fn handle_search(
     let mut search_results = vec![];
 
     for record_type in record_types {
+        let filename = library.index_dir
+            .join(record_type.index_name());
+        if !filename.exists() {
+            /*
+             * TODO: 这里可能是 faiss 的一个实现的缺陷，如果 index 文件不存在，会内部 panic 直接退出进程，
+             * 而下面通过 ? 或者 match 都无法捕捉到 Err。
+             * 所以这里提前判断下 filename
+             */
+            continue;
+        }
         let mut index = faiss::read_index(
-            library
-                .index_dir
-                .join(record_type.index_name())
-                .to_str()
-                .unwrap(),
+            filename.to_str().unwrap()
         )?
         .into_id_map()?;
 
