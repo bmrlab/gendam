@@ -18,6 +18,15 @@ pub fn load_library(local_data_root: &PathBuf, library_id: &str) -> Library {
     let artifacts_dir = library_dir.join("artifacts");
     let files_dir = library_dir.join("files");
     let db_url = format!("file:{}", db_dir.join("muse-v2.db").to_str().unwrap());
+    /*
+     * TODO: _db_push 还是需要的, 确保数据库更新以后每个库也都会更新,
+     * 现在 load_library 展示无法实现成 async 的,
+     * 并且这个在 load_library 里面做也不大好, 应该在一个单独的方法里 upgrade library
+     */
+    // let client = new_client_with_url(db_url.as_str())
+    //     .await
+    //     .expect("failed to create prisma client");
+    // client._db_push().await.expect("failed to push db"); // apply migrations
     Library {
         id: library_id.to_string(),
         dir: library_dir,

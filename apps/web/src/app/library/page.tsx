@@ -1,12 +1,9 @@
 "use client";
 import { useCallback, useEffect, useState, useRef, useContext } from "react";
 import { rspc } from "@/lib/rspc";
-// import { CurrentLibrary } from "@/lib/library";
 import Files from "./Files";
 
 export default function Library() {
-  // const currentLibrary = useContext(CurrentLibrary);
-
   const { data: homeDir } = rspc.useQuery(["files.home_dir"]);
 
   let [fullPath, setFullPath] = useState<string>("");
