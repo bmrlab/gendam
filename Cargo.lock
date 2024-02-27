@@ -1686,6 +1686,7 @@ dependencies = [
  "file-downloader",
  "futures",
  "image",
+ "llm",
  "ndarray",
  "prisma-client-rust",
  "prisma-lib",

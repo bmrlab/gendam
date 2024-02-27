@@ -3,7 +3,8 @@ use crate::index::EmbeddingIndex;
 use ai::whisper::WhisperItem;
 use anyhow::{anyhow, Ok};
 use content_library::Library;
-use prisma_lib::{video_frame, video_frame_caption, video_transcript, PrismaClient};
+use llm::{LLMMessage, StandardSampler};
+use prisma_lib::{video_clip, video_frame, video_frame_caption, video_transcript, PrismaClient};
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;
@@ -13,6 +14,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, error};
 
 pub mod decoder;
+pub mod split;
 
 /// Video Handler
 ///
@@ -70,7 +72,7 @@ impl VideoHandler {
     /// * `video_path` - The path to the video file
     /// * `local_data_dir` - The path to the local data directory, where artifacts (frame, transcript, etc.) will be saved into
     /// * `resources_dir` - The path to the resources directory (src-tauri/resources), where contains model files
-    /// * `db_url` - The path for sqlite file
+    /// * `client` - The prisma client
     pub async fn new(
         video_path: impl AsRef<std::path::Path>,
         resources_dir: impl AsRef<std::path::Path>,
@@ -95,17 +97,17 @@ impl VideoHandler {
         ));
 
         let resources_dir_clone = resources_dir.as_ref().to_owned();
-        let whisper_handle = tokio::spawn(ai::whisper::Whisper::new(resources_dir_clone));
+        // let whisper_handle = tokio::spawn(ai::whisper::Whisper::new(resources_dir_clone));
 
         let clip_result = clip_handle.await;
-        let whisper_result = whisper_handle.await;
+        // let whisper_result = whisper_handle.await;
 
         if let Err(clip_err) = clip_result.as_ref().unwrap() {
             return Err(anyhow!("Failed to download clip model: {clip_err}"));
         }
-        if let Err(whisper_err) = whisper_result.unwrap() {
-            return Err(anyhow!("Failed to download whisper model: {whisper_err}"));
-        }
+        // if let Err(whisper_err) = whisper_result.unwrap() {
+        //     return Err(anyhow!("Failed to download whisper model: {whisper_err}"));
+        // }
 
         debug!("clip and whisper models downloaded");
 
@@ -162,6 +164,15 @@ impl VideoHandler {
         let mut file = tokio::fs::File::create(&self.transcript_path).await?;
         let json = serde_json::to_string(&result)?;
         file.write_all(json.as_bytes()).await?;
+
+        // using transcript clip as video segmentation
+        self.create_video_clips(
+            result
+                .iter()
+                .map(|v| (v.start_timestamp as i32, v.end_timestamp as i32))
+                .collect(),
+        )
+        .await?;
 
         Ok(())
     }
@@ -385,6 +396,144 @@ impl VideoHandler {
         Ok(())
     }
 
+    /// Split video into multiple clips
+    pub async fn get_video_clips(&self) -> anyhow::Result<()> {
+        // for video with transcript results, it is fine to use transcript timestamp
+        // so we just ignore it
+
+        todo!("implement KTS algorithm");
+    }
+
+    pub async fn get_video_clips_summarization(&self) -> anyhow::Result<()> {
+        let llm = llm::LLM::new(self.resources_dir.clone(), llm::model::Model::Gemma2B).await?;
+        let llm = Arc::new(RwLock::new(llm));
+
+        let client = self.client.clone();
+
+        let video_frame_args =
+            video_frame::ManyArgs::new(vec![]).with(video_frame::caption::fetch());
+        let clips = client
+            .read()
+            .await
+            .video_clip()
+            .find_many(vec![video_clip::WhereParam::FileIdentifier(
+                prisma_lib::read_filters::StringFilter::Contains(self.file_identifier.clone()),
+            )])
+            .with(video_clip::WithParam::Frames(video_frame_args))
+            .exec()
+            .await?;
+
+        for clip in clips {
+            let frames = clip.frames()?;
+            let mut captions: Vec<(String, i32)> = frames
+                .iter()
+                .filter_map(|v| match v.caption().expect("failed to fetch caption") {
+                    Some(caption) => Some((caption.caption.clone(), v.timestamp)),
+                    _ => None,
+                })
+                .collect();
+            captions.sort_by(|a, b| a.1.cmp(&b.1));
+
+            let mut prompt = String::from(
+                r#"You are an AI assistant designed for summarizing a video.
+Following document records what people see and hear from a video.
+Please summarize the video content in one sentence based on the document.
+The sentence should not exceed 30 words.
+If you cannot summarize, just response with empty message.
+Please start with "The video contains".
+Do not repeat the information in document.
+Do not response any other information.
+
+Here is the document:"#,
+            );
+
+            captions.iter().for_each(|v| {
+                prompt = format!("{}\n{}", prompt, v.0);
+            });
+
+            let response = llm
+                .read()
+                .await
+                .call(
+                    vec![LLMMessage::User(prompt)],
+                    None,
+                    Some(StandardSampler {
+                        temp: 0.0,
+                        ..Default::default()
+                    }),
+                )
+                .await?;
+            let response = response.trim().to_string();
+
+            debug!("summarization response: {:?}", response);
+
+            client
+                .write()
+                .await
+                .video_clip()
+                .update(
+                    video_clip::UniqueWhereParam::IdEquals(clip.id),
+                    vec![video_clip::SetParam::SetCaption(Some(response))],
+                )
+                .exec()
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn create_video_clips(&self, timestamps: Vec<(i32, i32)>) -> anyhow::Result<()> {
+        let client = self.client.clone();
+        for (index, item) in timestamps.iter().enumerate() {
+            // find frames between [start, end)
+            let frames = client
+                .read()
+                .await
+                .video_frame()
+                .find_many(vec![
+                    video_frame::WhereParam::Timestamp(prisma_lib::read_filters::IntFilter::Gte(
+                        item.0,
+                    )),
+                    // for last clip, include the right bound
+                    if index == timestamps.len() - 1 {
+                        video_frame::WhereParam::Timestamp(
+                            prisma_lib::read_filters::IntFilter::Lte(item.1),
+                        )
+                    } else {
+                        video_frame::WhereParam::Timestamp(prisma_lib::read_filters::IntFilter::Lt(
+                            item.1,
+                        ))
+                    },
+                ])
+                .exec()
+                .await
+                .unwrap_or(vec![]);
+
+            let frames: Vec<video_frame::UniqueWhereParam> = frames
+                .iter()
+                .map(|v| video_frame::UniqueWhereParam::IdEquals(v.id))
+                .collect();
+
+            if let Err(e) = client
+                .write()
+                .await
+                .video_clip()
+                .create(
+                    self.file_identifier.clone(),
+                    item.0,
+                    item.1,
+                    vec![video_clip::SetParam::ConnectFrames(frames)],
+                )
+                .exec()
+                .await
+            {
+                error!("Failed to create video clip: {e}")
+            }
+        }
+
+        Ok(())
+    }
+
     async fn get_clip_instance(&self) -> anyhow::Result<ai::clip::CLIP> {
         ai::clip::CLIP::new(ai::clip::model::CLIPModel::ViTB32, &self.resources_dir).await
     }
@@ -504,12 +653,17 @@ async fn get_single_frame_caption_embedding(
 async fn test_handle_video() {
     let video_path = "/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4";
     // let video_path = "/Users/zhuo/Desktop/屏幕录制2022-11-30 11.43.29.mov";
-    let resources_dir = "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources";
+    // let resources_dir = "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources";
+    let resources_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local/resources";
     let local_data_dir =
         std::path::Path::new("/Users/zhuo/Library/Application Support/cc.musedam.local")
             .to_path_buf();
-    let library = content_library::create_library_with_title(&local_data_dir, "dev test library").await;
-    let library = content_library::load_library(&local_data_dir, &library.id);
+    // let library =
+    //     content_library::create_library_with_title(&local_data_dir, "dev test library").await;
+    let library = content_library::load_library(
+        &local_data_dir,
+        "98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797",
+    );
 
     let client = prisma_lib::new_client_with_url(&library.db_url)
         .await
@@ -531,47 +685,67 @@ async fn test_handle_video() {
         .await
         .expect("failed to get frames");
 
-    tracing::info!("got frames");
+    // tracing::info!("got frames");
 
-    video_handler
-        .get_frame_content_embedding()
-        .await
-        .expect("failed to get frame content embedding");
+    // video_handler
+    //     .get_frame_content_embedding()
+    //     .await
+    //     .expect("failed to get frame content embedding");
 
-    tracing::debug!("got frame content embedding");
+    // tracing::debug!("got frame content embedding");
 
-    video_handler
-        .indexes
-        .frame_index
-        .flush()
-        .await
-        .expect("failed to flush index");
+    // video_handler
+    //     .indexes
+    //     .frame_index
+    //     .flush()
+    //     .await
+    //     .expect("failed to flush index");
 
-    video_handler
-        .get_audio()
-        .await
-        .expect("failed to get audio");
+    // video_handler
+    //     .get_audio()
+    //     .await
+    //     .expect("failed to get audio");
 
-    tracing::info!("got audio");
+    // tracing::info!("got audio");
 
-    video_handler
-        .get_transcript()
-        .await
-        .expect("failed to get transcript");
+    // video_handler
+    //     .get_transcript()
+    //     .await
+    //     .expect("failed to get transcript");
 
-    tracing::info!("got transcript");
+    // tracing::info!("got transcript");
 
-    video_handler
-        .get_transcript_embedding()
-        .await
-        .expect("failed to get transcript embedding");
+    // video_handler
+    //     .get_transcript_embedding()
+    //     .await
+    //     .expect("failed to get transcript embedding");
 
-    video_handler
-        .indexes
-        .transcript_index
-        .flush()
-        .await
-        .expect("failed to flush index");
+    // video_handler
+    //     .indexes
+    //     .transcript_index
+    //     .flush()
+    //     .await
+    //     .expect("failed to flush index");
+
+    // video_handler
+    //     .get_frames_caption()
+    //     .await
+    //     .expect("failed to get frames caption");
+    // video_handler
+    //     .get_frame_caption_embedding()
+    //     .await
+    //     .expect("failed to get frame caption embedding");
+
+    // video_handler
+    //     .indexes
+    //     .flush()
+    //     .await
+    //     .expect("failed to flush index");
+
+    // video_handler
+    //     .get_video_clips_summarization()
+    //     .await
+    //     .expect("failed to get video clips summarization");
 
     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 }

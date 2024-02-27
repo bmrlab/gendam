@@ -41,8 +41,6 @@ fn save_video_frames(
     let decoder_context = ffmpeg_next::codec::Context::from_parameters(video_stream.parameters())?;
     let mut decoder = decoder_context.decoder().video()?;
 
-    // resize to make max size to 768
-    // TODO here 768 is hard coded, we need to put it into global config
     let (target_width, target_height) = if decoder.width() > decoder.height() {
         (
             768,
@@ -76,8 +74,8 @@ fn save_video_frames(
                 let current_timestamp =
                     (frame.timestamp().unwrap() as f64 * time_base * 1000.0) as i64;
 
-                // if frame is key frame or no key frame in 2000ms
-                if frame.is_key() || (current_timestamp - last_timestamp > 2000) {
+                // extract frame every 1 seconds
+                if current_timestamp == 0 || current_timestamp - last_timestamp >= 1_000 {
                     let mut scaled_frame = ffmpeg_next::frame::Video::empty();
                     scaler.run(&mut frame, &mut scaled_frame).unwrap();
                     let frames_dir = frames_dir.as_ref().to_path_buf().clone();

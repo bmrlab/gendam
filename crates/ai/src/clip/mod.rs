@@ -2,7 +2,7 @@ use super::{preprocess, utils};
 use anyhow::anyhow;
 use image::RgbImage;
 use ndarray::{Array1, ArrayView1, Axis};
-use ort::{GraphOptimizationLevel, Session};
+use ort::{CoreMLExecutionProvider, GraphOptimizationLevel, Session};
 use std::path::Path;
 use tokenizers::tokenizer::Tokenizer;
 pub mod model;
@@ -59,7 +59,12 @@ impl CLIP {
             .download_if_not_exists(&text_tokenizer_vocab_uri)
             .await?;
 
-        Self::from_file(image_model_path, text_model_path, text_tokenizer_vocab_path, dim)
+        Self::from_file(
+            image_model_path,
+            text_model_path,
+            text_tokenizer_vocab_path,
+            dim,
+        )
     }
 
     pub fn from_file(
@@ -69,11 +74,13 @@ impl CLIP {
         dim: usize,
     ) -> anyhow::Result<Self> {
         let image_model = Session::builder()?
+            .with_execution_providers([CoreMLExecutionProvider::default().build()])?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(1)?
             .with_model_from_file(image_model_path)?;
 
         let text_model = Session::builder()?
+            .with_execution_providers([CoreMLExecutionProvider::default().build()])?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(1)?
             .with_model_from_file(text_model_path)?;
@@ -135,9 +142,7 @@ impl CLIP {
             .view()
             .to_owned();
 
-        let output: CLIPEmbedding = output
-            .into_shape(self.dim)?
-            .into_dimensionality()?;
+        let output: CLIPEmbedding = output.into_shape(self.dim)?.into_dimensionality()?;
 
         Ok(normalize(output))
     }
@@ -177,9 +182,7 @@ impl CLIP {
             .view()
             .to_owned();
 
-        let output: CLIPEmbedding = output
-            .into_shape(self.dim)?
-            .into_dimensionality()?;
+        let output: CLIPEmbedding = output.into_shape(self.dim)?.into_dimensionality()?;
 
         Ok(normalize(output))
     }

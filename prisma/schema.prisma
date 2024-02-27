@@ -35,6 +35,9 @@ model VideoFrame {
 
   caption VideoFrameCaption?
 
+  videoClip   VideoClip? @relation(fields: [videoClipId], references: [id])
+  videoClipId Int?
+
   @@unique([fileIdentifier, timestamp])
 }
 
@@ -61,4 +64,18 @@ model VideoFrameCaption {
 
   frame        VideoFrame @relation(fields: [videoFrameId], references: [id])
   videoFrameId Int        @unique
+}
+
+model VideoClip {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fileIdentifier String
+  startTimestamp Int
+  endTimestamp   Int
+
+  frames VideoFrame[]
+
+  caption String?
 }
