@@ -1,6 +1,5 @@
-use crate::index;
+use crate::index::{self, EmbeddingIndex};
 use content_library::Library;
-use faiss::Index;
 use prisma_lib::{video_frame, video_frame_caption, video_transcript, PrismaClient};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
@@ -66,27 +65,14 @@ pub async fn handle_search(
     let mut search_results = vec![];
 
     for record_type in record_types {
-        let filename = library.index_dir
-            .join(record_type.index_name());
-        if !filename.exists() {
-            /*
-             * TODO: 这里可能是 faiss 的一个实现的缺陷，如果 index 文件不存在，会内部 panic 直接退出进程，
-             * 而下面通过 ? 或者 match 都无法捕捉到 Err。
-             * 所以这里提前判断下 filename
-             */
-            continue;
-        }
-        let mut index = faiss::read_index(
-            filename.to_str().unwrap()
-        )?
-        .into_id_map()?;
-
-        debug!("index vector count: {}", index.ntotal());
-        debug!("index dimension: {}", index.d());
+        let index = EmbeddingIndex::new(
+            &library.index_dir,
+            record_type.index_name(),
+            None,
+        )?;
 
         let limit = payload.limit.unwrap_or(10);
-
-        let results = index.search(embedding.as_slice(), limit)?;
+        let results = index.search(embedding.clone(), limit).await?;
 
         let mut id_distance_mapping = HashMap::new();
 

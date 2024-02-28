@@ -1,24 +1,19 @@
 use super::index::VideoIndex;
-use crate::index::EmbeddingIndex;
-use ai::whisper::WhisperItem;
-use anyhow::{anyhow, Ok};
+use anyhow::{bail, Ok};
 use content_library::Library;
-use llm::{LLMMessage, StandardSampler};
-use prisma_lib::{video_clip, video_frame, video_frame_caption, video_transcript, PrismaClient};
+use prisma_lib::PrismaClient;
 use std::fs;
-use std::fs::File;
-use std::io::BufReader;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
-use tracing::{debug, error};
 
-pub mod decoder;
-pub mod split;
+mod decoder;
+mod split;
+mod utils;
 
 /// Video Handler
 ///
-/// VideoHandler is a helper to struct video artifacts and get embeddings.
+/// VideoHandler is a helper to extract video artifacts and get embeddings, and save results using Prisma and faiss.
 ///
 /// All artifacts will be saved into `local_data_dir` (one of the input argument of `new` function).
 ///
@@ -32,12 +27,14 @@ pub mod split;
 /// let local_data_dir = "";
 /// let resources_dir = "";
 /// let db_url = "";
+/// let client = prisma_lib::new_client_with_url(&db_url).await.unwrap();
+/// let client = Arc::new(RwLock::new(client));
 ///
 /// let video_handler = VideoHandler::new(
 ///     video_path,
 ///     local_data_dir,
 ///     resources_dir,
-///     db_url,
+///     client,
 /// ).await.unwrap();
 ///
 /// // get frames and save their embedding into faiss
@@ -103,13 +100,11 @@ impl VideoHandler {
         // let whisper_result = whisper_handle.await;
 
         if let Err(clip_err) = clip_result.as_ref().unwrap() {
-            return Err(anyhow!("Failed to download clip model: {clip_err}"));
+            bail!("Failed to download clip model: {clip_err}");
         }
         // if let Err(whisper_err) = whisper_result.unwrap() {
-        //     return Err(anyhow!("Failed to download whisper model: {whisper_err}"));
+        //     bail!("Failed to download whisper model: {whisper_err}");
         // }
-
-        debug!("clip and whisper models downloaded");
 
         let indexes = VideoIndex::new(index_dir, clip_result.unwrap().unwrap().dim())
             .expect("Failed to create indexes");
@@ -137,7 +132,7 @@ impl VideoHandler {
     /// Extract key frames from video
     /// and save the results in local data directory (in a folder named by file identifier)
     pub async fn get_frames(&self) -> anyhow::Result<()> {
-        let video_decoder = decoder::video::VideoDecoder::new(&self.video_path);
+        let video_decoder = decoder::VideoDecoder::new(&self.video_path);
         video_decoder.save_video_frames(&self.frames_dir).await?;
 
         Ok(())
@@ -146,7 +141,7 @@ impl VideoHandler {
     /// Extract audio from video
     /// and save the results in local data directory (in a folder named by file identifier)
     pub async fn get_audio(&self) -> anyhow::Result<()> {
-        let video_decoder = decoder::video::VideoDecoder::new(&self.video_path);
+        let video_decoder = decoder::VideoDecoder::new(&self.video_path);
         video_decoder.save_video_audio(&self.audio_path).await?;
 
         Ok(())
@@ -165,87 +160,25 @@ impl VideoHandler {
         let json = serde_json::to_string(&result)?;
         file.write_all(json.as_bytes()).await?;
 
-        // using transcript clip as video segmentation
-        self.create_video_clips(
-            result
-                .iter()
-                .map(|v| (v.start_timestamp as i32, v.end_timestamp as i32))
-                .collect(),
-        )
-        .await?;
-
         Ok(())
     }
 
     /// Get transcript embedding
     /// this requires extracting transcript in advance
     pub async fn get_transcript_embedding(&self) -> anyhow::Result<()> {
-        let file = File::open(&self.transcript_path)?;
-        let reader = BufReader::new(file);
-
-        // Read the JSON contents of the file as an instance of `WhisperItem`
-        let whisper_results: Vec<WhisperItem> = serde_json::from_reader(reader)?;
-
         let clip_model = self.get_clip_instance().await?;
         let clip_model = Arc::new(RwLock::new(clip_model));
 
         let embedding_index = Arc::new(self.indexes.transcript_index.clone());
 
-        let mut join_set = tokio::task::JoinSet::new();
-
-        for item in whisper_results {
-            // if item is some like [MUSIC], just skip it
-            // TODO need to make sure all filter rules
-            if item.text.starts_with("[") || item.text.starts_with("(") {
-                continue;
-            }
-
-            let clip_model = Arc::clone(&clip_model);
-            let file_identifier = self.file_identifier.clone();
-            let embedding_index = Arc::clone(&embedding_index);
-            let client = self.client.clone();
-
-            join_set.spawn(async move {
-                // write data using prisma
-                // FIXME here use write to make sure only one thread can using prisma client
-                let client = client.write().await;
-                let x = client.video_transcript().upsert(
-                    video_transcript::file_identifier_start_timestamp_end_timestamp(
-                        file_identifier.clone(),
-                        item.start_timestamp as i32,
-                        item.end_timestamp as i32,
-                    ),
-                    (
-                        file_identifier,
-                        item.start_timestamp as i32,
-                        item.end_timestamp as i32,
-                        item.text.clone(),
-                        vec![],
-                    ),
-                    vec![],
-                );
-
-                match x.exec().await {
-                    std::result::Result::Ok(res) => {
-                        let _ = save_text_embedding(
-                            &item.text,
-                            res.id as u64,
-                            clip_model,
-                            embedding_index,
-                        )
-                        .await;
-                        debug!("transcript embedding saved");
-                    }
-                    Err(e) => {
-                        error!("failed to save transcript embedding: {:?}", e);
-                    }
-                }
-            });
-        }
-
-        while let Some(_) = join_set.join_next().await {}
-
-        Ok(())
+        utils::transcript::get_transcript_embedding(
+            self.file_identifier().into(),
+            self.client.clone(),
+            &self.transcript_path,
+            clip_model,
+            embedding_index,
+        )
+        .await
     }
 
     /// Get frame content embedding
@@ -255,71 +188,14 @@ impl VideoHandler {
 
         let embedding_index = Arc::new(self.indexes.frame_index.clone());
 
-        let frame_paths = std::fs::read_dir(&self.frames_dir)?
-            .map(|res| res.map(|e| e.path()))
-            .collect::<Result<Vec<_>, std::io::Error>>()?;
-
-        let mut join_set = tokio::task::JoinSet::new();
-
-        for path in frame_paths {
-            if path.extension() == Some(std::ffi::OsStr::new("png")) {
-                debug!("handle file: {:?}", path);
-
-                let clip_model = clip_model.clone();
-                let embedding_index = embedding_index.clone();
-                let client = self.client.clone();
-
-                let file_name = path
-                    .file_name()
-                    .ok_or(anyhow!("invalid path"))?
-                    .to_str()
-                    .ok_or(anyhow!("invalid path"))?;
-
-                let frame_timestamp: i64 = file_name
-                    .split(".")
-                    .next()
-                    .unwrap_or("0")
-                    .parse()
-                    .unwrap_or(0);
-
-                let file_identifier = self.file_identifier.clone();
-                let client = client.clone();
-
-                join_set.spawn(async move {
-                    // write data using prisma
-                    let client = client.write().await;
-                    let x = client.video_frame().upsert(
-                        video_frame::file_identifier_timestamp(
-                            file_identifier.clone(),
-                            frame_timestamp as i32,
-                        ),
-                        (file_identifier.clone(), frame_timestamp as i32, vec![]),
-                        vec![],
-                    );
-
-                    match x.exec().await {
-                        std::result::Result::Ok(res) => {
-                            let _ = get_single_frame_content_embedding(
-                                res.id as u64,
-                                path,
-                                clip_model,
-                                embedding_index,
-                            )
-                            .await;
-                            debug!("frame content embedding saved");
-                        }
-                        Err(e) => {
-                            error!("failed to save frame content embedding: {:?}", e);
-                        }
-                    }
-                });
-            }
-        }
-
-        // wait for all tasks
-        while let Some(_) = join_set.join_next().await {}
-
-        Ok(())
+        utils::frame::get_frame_content_embedding(
+            self.file_identifier.clone(),
+            self.client.clone(),
+            &self.frames_dir,
+            clip_model,
+            embedding_index,
+        )
+        .await
     }
 
     /// Get frames' captions of video
@@ -327,29 +203,10 @@ impl VideoHandler {
     ///
     /// All caption will be saved in .caption file in the same place with frame file
     pub async fn get_frames_caption(&self) -> anyhow::Result<()> {
-        let frame_paths = std::fs::read_dir(&self.frames_dir)?
-            .map(|res| res.map(|e| e.path()))
-            .collect::<Result<Vec<_>, std::io::Error>>()?;
-
         let blip_model = ai::blip::BLIP::new(&self.resources_dir).await?;
         let blip_model = Arc::new(RwLock::new(blip_model));
 
-        let mut join_set = tokio::task::JoinSet::new();
-
-        for path in frame_paths {
-            if path.extension() == Some(std::ffi::OsStr::new("png")) {
-                debug!("get_frames_caption: {:?}", path);
-                let blip_model = Arc::clone(&blip_model);
-
-                join_set.spawn(async move {
-                    let _ = get_single_frame_caption(blip_model, path).await;
-                });
-            }
-        }
-
-        while let Some(_) = join_set.join_next().await {}
-
-        Ok(())
+        utils::caption::get_frames_caption(&self.frames_dir, blip_model).await
     }
 
     /// Get frame caption embedding
@@ -360,293 +217,39 @@ impl VideoHandler {
 
         let embedding_index = Arc::new(self.indexes.frame_caption_index.clone());
 
-        let frame_paths = std::fs::read_dir(&self.frames_dir)?
-            .map(|res| res.map(|e| e.path()))
-            .collect::<Result<Vec<_>, std::io::Error>>()?;
-
-        let mut join_set = tokio::task::JoinSet::new();
-
-        for path in frame_paths {
-            if path.extension() == Some(std::ffi::OsStr::new("caption")) {
-                let clip_model = Arc::clone(&clip_model);
-                let embedding_index = Arc::clone(&embedding_index);
-                let file_identifier = self.file_identifier.clone();
-                let client = self.client.clone();
-
-                // FIXME 这里限制一下最大任务数量，因为出现过 axum 被 block 的情况
-                if join_set.len() >= 3 {
-                    while let Some(_) = join_set.join_next().await {}
-                }
-
-                join_set.spawn(async move {
-                    let _ = get_single_frame_caption_embedding(
-                        file_identifier,
-                        client,
-                        path,
-                        clip_model,
-                        embedding_index,
-                    )
-                    .await;
-                });
-            }
-        }
-
-        while let Some(_) = join_set.join_next().await {}
-
-        Ok(())
+        utils::caption::get_frame_caption_embedding(
+            self.file_identifier().into(),
+            self.client.clone(),
+            &self.frames_dir,
+            clip_model,
+            embedding_index,
+        )
+        .await
     }
 
     /// Split video into multiple clips
     pub async fn get_video_clips(&self) -> anyhow::Result<()> {
-        // for video with transcript results, it is fine to use transcript timestamp
-        // so we just ignore it
-
-        todo!("implement KTS algorithm");
+        utils::clip::get_video_clips(
+            self.file_identifier.clone(),
+            Some(&self.transcript_path),
+            Some(&self.frames_dir),
+            self.client.clone(),
+        )
+        .await
     }
 
     pub async fn get_video_clips_summarization(&self) -> anyhow::Result<()> {
-        let llm = llm::LLM::new(self.resources_dir.clone(), llm::model::Model::Gemma2B).await?;
-        let llm = Arc::new(RwLock::new(llm));
-
-        let client = self.client.clone();
-
-        let video_frame_args =
-            video_frame::ManyArgs::new(vec![]).with(video_frame::caption::fetch());
-        let clips = client
-            .read()
-            .await
-            .video_clip()
-            .find_many(vec![video_clip::WhereParam::FileIdentifier(
-                prisma_lib::read_filters::StringFilter::Contains(self.file_identifier.clone()),
-            )])
-            .with(video_clip::WithParam::Frames(video_frame_args))
-            .exec()
-            .await?;
-
-        for clip in clips {
-            let frames = clip.frames()?;
-            let mut captions: Vec<(String, i32)> = frames
-                .iter()
-                .filter_map(|v| match v.caption().expect("failed to fetch caption") {
-                    Some(caption) => Some((caption.caption.clone(), v.timestamp)),
-                    _ => None,
-                })
-                .collect();
-            captions.sort_by(|a, b| a.1.cmp(&b.1));
-
-            let mut prompt = String::from(
-                r#"You are an AI assistant designed for summarizing a video.
-Following document records what people see and hear from a video.
-Please summarize the video content in one sentence based on the document.
-The sentence should not exceed 30 words.
-If you cannot summarize, just response with empty message.
-Please start with "The video contains".
-Do not repeat the information in document.
-Do not response any other information.
-
-Here is the document:"#,
-            );
-
-            captions.iter().for_each(|v| {
-                prompt = format!("{}\n{}", prompt, v.0);
-            });
-
-            let response = llm
-                .read()
-                .await
-                .call(
-                    vec![LLMMessage::User(prompt)],
-                    None,
-                    Some(StandardSampler {
-                        temp: 0.0,
-                        ..Default::default()
-                    }),
-                )
-                .await?;
-            let response = response.trim().to_string();
-
-            debug!("summarization response: {:?}", response);
-
-            client
-                .write()
-                .await
-                .video_clip()
-                .update(
-                    video_clip::UniqueWhereParam::IdEquals(clip.id),
-                    vec![video_clip::SetParam::SetCaption(Some(response))],
-                )
-                .exec()
-                .await?;
-        }
-
-        Ok(())
-    }
-
-    async fn create_video_clips(&self, timestamps: Vec<(i32, i32)>) -> anyhow::Result<()> {
-        let client = self.client.clone();
-        for (index, item) in timestamps.iter().enumerate() {
-            // find frames between [start, end)
-            let frames = client
-                .read()
-                .await
-                .video_frame()
-                .find_many(vec![
-                    video_frame::WhereParam::Timestamp(prisma_lib::read_filters::IntFilter::Gte(
-                        item.0,
-                    )),
-                    // for last clip, include the right bound
-                    if index == timestamps.len() - 1 {
-                        video_frame::WhereParam::Timestamp(
-                            prisma_lib::read_filters::IntFilter::Lte(item.1),
-                        )
-                    } else {
-                        video_frame::WhereParam::Timestamp(prisma_lib::read_filters::IntFilter::Lt(
-                            item.1,
-                        ))
-                    },
-                ])
-                .exec()
-                .await
-                .unwrap_or(vec![]);
-
-            let frames: Vec<video_frame::UniqueWhereParam> = frames
-                .iter()
-                .map(|v| video_frame::UniqueWhereParam::IdEquals(v.id))
-                .collect();
-
-            if let Err(e) = client
-                .write()
-                .await
-                .video_clip()
-                .create(
-                    self.file_identifier.clone(),
-                    item.0,
-                    item.1,
-                    vec![video_clip::SetParam::ConnectFrames(frames)],
-                )
-                .exec()
-                .await
-            {
-                error!("Failed to create video clip: {e}")
-            }
-        }
-
-        Ok(())
+        utils::clip::get_video_clips_summarization(
+            self.file_identifier.clone(),
+            self.resources_dir.clone(),
+            self.client.clone(),
+        )
+        .await
     }
 
     async fn get_clip_instance(&self) -> anyhow::Result<ai::clip::CLIP> {
         ai::clip::CLIP::new(ai::clip::model::CLIPModel::ViTB32, &self.resources_dir).await
     }
-}
-
-async fn get_single_frame_caption(
-    blip_model: Arc<RwLock<ai::blip::BLIP>>,
-    path: impl AsRef<std::path::Path>,
-) -> anyhow::Result<()> {
-    let caption = blip_model.write().await.get_caption(path.as_ref()).await?;
-    debug!("caption: {:?}", caption);
-
-    // write into file
-    let caption_path = path
-        .as_ref()
-        .to_str()
-        .ok_or(anyhow!("invalid path"))?
-        .replace(".png", ".caption");
-    let mut file = tokio::fs::File::create(caption_path).await?;
-    file.write_all(caption.as_bytes()).await?;
-
-    Ok(())
-}
-
-async fn save_text_embedding(
-    text: &str,
-    id: u64,
-    clip: Arc<RwLock<ai::clip::CLIP>>,
-    embedding_index: Arc<EmbeddingIndex>,
-) -> anyhow::Result<()> {
-    let embedding = clip.read().await.get_text_embedding(text).await?;
-    let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
-
-    embedding_index.add(id, embedding).await?;
-
-    Ok(())
-}
-
-async fn get_single_frame_content_embedding(
-    id: u64,
-    path: impl AsRef<std::path::Path>,
-    clip_model: Arc<RwLock<ai::clip::CLIP>>,
-    embedding_index: Arc<EmbeddingIndex>,
-) -> anyhow::Result<()> {
-    let embedding = clip_model
-        .read()
-        .await
-        .get_image_embedding_from_file(path.as_ref())
-        .await?;
-    let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
-
-    embedding_index.add(id, embedding).await?;
-
-    Ok(())
-}
-
-async fn get_single_frame_caption_embedding(
-    file_identifier: String,
-    client: Arc<RwLock<PrismaClient>>,
-    path: impl AsRef<std::path::Path>,
-    clip_model: Arc<RwLock<ai::clip::CLIP>>,
-    embedding_index: Arc<EmbeddingIndex>,
-) -> anyhow::Result<()> {
-    let caption = tokio::fs::read_to_string(path.as_ref()).await?;
-    let file_name = path
-        .as_ref()
-        .file_name()
-        .ok_or(anyhow!("invalid path"))?
-        .to_str()
-        .ok_or(anyhow!("invalid path"))?;
-
-    let frame_timestamp: i64 = file_name
-        .split(".")
-        .next()
-        .unwrap_or("0")
-        .parse()
-        .unwrap_or(0);
-
-    let client = client.write().await;
-
-    let video_frame = client
-        .video_frame()
-        .upsert(
-            video_frame::UniqueWhereParam::FileIdentifierTimestampEquals(
-                file_identifier.clone(),
-                frame_timestamp as i32,
-            ),
-            (file_identifier.clone(), frame_timestamp as i32, vec![]),
-            vec![],
-        )
-        .exec()
-        .await?;
-
-    let x = client.video_frame_caption().upsert(
-        video_frame_caption::UniqueWhereParam::VideoFrameIdEquals(video_frame.id),
-        (
-            caption.clone(),
-            video_frame::UniqueWhereParam::IdEquals(video_frame.id),
-            vec![],
-        ),
-        vec![],
-    );
-
-    match x.exec().await {
-        std::result::Result::Ok(res) => {
-            save_text_embedding(&caption, res.id as u64, clip_model, embedding_index).await?;
-        }
-        Err(e) => {
-            error!("failed to save frame caption embedding: {:?}", e);
-        }
-    }
-
-    Ok(())
 }
 
 #[test_log::test(tokio::test)]
@@ -680,10 +283,10 @@ async fn test_handle_video() {
 
     tracing::info!("file handler initialized");
 
-    video_handler
-        .get_frames()
-        .await
-        .expect("failed to get frames");
+    // video_handler
+    //     .get_frames()
+    //     .await
+    //     .expect("failed to get frames");
 
     // tracing::info!("got frames");
 
@@ -743,9 +346,14 @@ async fn test_handle_video() {
     //     .expect("failed to flush index");
 
     // video_handler
-    //     .get_video_clips_summarization()
+    //     .get_video_clips()
     //     .await
-    //     .expect("failed to get video clips summarization");
+    //     .expect("failed to get video clips");
+
+    video_handler
+        .get_video_clips_summarization()
+        .await
+        .expect("failed to get video clips summarization");
 
     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 }

@@ -31,22 +31,8 @@ impl CLIP {
         model: model::CLIPModel,
         resources_dir: impl AsRef<Path>,
     ) -> anyhow::Result<Self> {
-        let (image_model_uri, text_model_uri, text_tokenizer_vocab_uri, dim) = {
-            match model {
-                model::CLIPModel::ViTB32 => {
-                    let model_uri = std::path::Path::new("CLIP-ViT-B-32-laion2B-s34B-b79K");
-                    (
-                        model_uri.join("visual.onnx"),
-                        model_uri.join("textual.onnx"),
-                        model_uri.join("tokenizer.json"),
-                        512,
-                    )
-                }
-                model::CLIPModel::ViTL14 => {
-                    todo!("add model info for ViT-L/14")
-                }
-            }
-        };
+        let (image_model_uri, text_model_uri, text_tokenizer_vocab_uri) = model.model_uri();
+        let dim = model.dim();
 
         let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
             resources_dir: resources_dir.as_ref().to_path_buf(),

@@ -2,18 +2,26 @@ use ndarray::Array2;
 
 mod kts;
 
-/// split video using frame features (e.g., CLIP feature) with Kernel Temporal Segmentation
+/// Split video using frame features (e.g., CLIP feature) with Kernel Temporal Segmentation.
 ///
 /// # Arguments
 /// * `features` - frame features, should be normalized by row
 /// * `alpha` - Determine the maximum segment number for KTS algorithm, the larger the value, the fewer segments, default is 10
+///
+/// # Returns
+/// * `Vec<usize>` - best split points for input features
 pub fn split_video(features: Array2<f64>, alpha: Option<usize>) -> anyhow::Result<Vec<usize>> {
+    let alpha = alpha.unwrap_or(10);
+
+    if features.shape()[0] <= alpha {
+        // not enough frames, just return empty vector
+        return Ok(vec![]);
+    }
+
     let features = features.dot(&features.t());
 
-    tracing::debug!("features: {:?}", features);
-
     let clip_num = features.shape()[0];
-    let max_seg_num = clip_num / alpha.unwrap_or(10);
+    let max_seg_num = clip_num / alpha;
 
     kts::cpd_auto(features, max_seg_num - 1, 1.0, None)
 }
@@ -63,8 +71,6 @@ async fn test_split_video() {
             n += 1;
         }
     }
-
-    tracing::debug!("features: {:?}", features);
 
     let features = ndarray::Array2::from_shape_vec((n, clip_model.dim()), features)
         .unwrap()

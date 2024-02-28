@@ -16,7 +16,7 @@ tokenizers = "0.15.1"
 sha256 = "1.5.0"
 image = "0.24.8"
 hound = "3.5.1"
-whisper-rs = { version = "0.10.0", features = ["coreml"] }
+whisper-rs = { version = "0.10.0" }
 candle-core = { git = "https://github.com/huggingface/candle.git", features = [
   "accelerate",
   "metal",

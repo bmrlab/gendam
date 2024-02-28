@@ -1,6 +1,9 @@
+use anyhow::bail;
+use faiss::index::SearchResult;
 use faiss::Index;
 use std::{path::Path, sync::Arc};
 use tokio::sync::mpsc::{self, Sender};
+use tokio::sync::oneshot;
 use tracing::debug;
 
 pub struct EmbeddingPayload {
@@ -10,6 +13,14 @@ pub struct EmbeddingPayload {
 
 pub enum IndexPayload {
     Data(EmbeddingPayload),
+    /// Search should be a tuple, with (query embedding, limit, oneshot sender)
+    Search(
+        (
+            Vec<f32>,
+            usize,
+            oneshot::Sender<anyhow::Result<SearchResult>>,
+        ),
+    ),
     Flush,
 }
 
@@ -30,7 +41,15 @@ pub const VIDEO_FRAME_CAPTION_INDEX_NAME: &str = "frame-caption-index";
 pub const VIDEO_TRANSCRIPT_INDEX_NAME: &str = "transcript-index";
 
 impl EmbeddingIndex {
-    pub fn new(dir: impl AsRef<Path>, name: &str, dim: usize) -> anyhow::Result<Self> {
+    /// Create or read an index according to `dir` and `name`.
+    ///
+    /// If the index file does not exist, and `dim` is not provided, will return Err.
+    ///
+    /// # Arguments
+    /// * `dir` - directory to store index
+    /// * `name` - name of the index
+    /// * `dim` - dimension of the index, can be None when index has already been created
+    pub fn new(dir: impl AsRef<Path>, name: &str, dim: Option<usize>) -> anyhow::Result<Self> {
         debug!("start creating {} index", name);
 
         let filename = dir.as_ref().to_path_buf().join(name);
@@ -41,15 +60,15 @@ impl EmbeddingIndex {
                 debug!("index {} exists, reading it", name);
                 let index = faiss::read_index(filename.to_str().unwrap())?;
                 index.into_id_map()
-            } else {
+            } else if let Some(dim) = dim {
                 debug!("index {} does not exist, creating it", name);
-                let index = faiss::index_factory(
-                    dim as u32,
-                    "Flat",
-                    faiss::MetricType::InnerProduct,
-                )?;
+
+                let index =
+                    faiss::index_factory(dim as u32, "Flat", faiss::MetricType::InnerProduct)?;
 
                 faiss::IdMap::new(index)
+            } else {
+                bail!("index {} does not exist, and dim is not provided", name);
             }
         };
 
@@ -82,6 +101,18 @@ impl EmbeddingIndex {
                                     {
                                         tracing::error!("add {} index error: {}", &name_cloned, e);
                                     };
+                                }
+                                IndexPayload::Search((query, limit, tx)) => {
+                                    let results = index.search(query.as_slice(), limit);
+                                    if let Err(_) = tx.send(results.map_err(|e| {
+                                        anyhow::anyhow!(
+                                            "search {} index error: {}",
+                                            &name_cloned,
+                                            e
+                                        )
+                                    })) {
+                                        tracing::error!("search {} index error", &name_cloned);
+                                    }
                                 }
                                 IndexPayload::Flush => {
                                     debug!(
@@ -134,15 +165,25 @@ impl EmbeddingIndex {
         self.index_tx.send(IndexPayload::Flush).await?;
         Ok(())
     }
+
+    pub async fn search(&self, query: Vec<f32>, limit: usize) -> anyhow::Result<SearchResult> {
+        let (tx, rx) = oneshot::channel();
+        self.index_tx
+            .send(IndexPayload::Search((query, limit, tx)))
+            .await?;
+
+        rx.await?
+    }
 }
 
 impl VideoIndex {
     pub fn new(dir: impl AsRef<Path>, dim: usize) -> anyhow::Result<Self> {
         debug!("start creating video index");
-        let frame_index = EmbeddingIndex::new(dir.as_ref(), VIDEO_FRAME_INDEX_NAME, dim)?;
+        let frame_index = EmbeddingIndex::new(dir.as_ref(), VIDEO_FRAME_INDEX_NAME, Some(dim))?;
         let frame_caption_index =
-            EmbeddingIndex::new(dir.as_ref(), VIDEO_FRAME_CAPTION_INDEX_NAME, dim)?;
-        let transcript_index = EmbeddingIndex::new(dir.as_ref(), VIDEO_TRANSCRIPT_INDEX_NAME, dim)?;
+            EmbeddingIndex::new(dir.as_ref(), VIDEO_FRAME_CAPTION_INDEX_NAME, Some(dim))?;
+        let transcript_index =
+            EmbeddingIndex::new(dir.as_ref(), VIDEO_TRANSCRIPT_INDEX_NAME, Some(dim))?;
 
         Ok(Self {
             frame_index,
