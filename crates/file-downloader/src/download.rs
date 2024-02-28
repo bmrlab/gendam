@@ -41,8 +41,7 @@ impl FileDownload {
             return Ok(file_path);
         }
 
-        info!("file {:?} does not exist, start downloading", file_path);
-
+        let temp_download_path = self.resources_dir.join(uri.as_ref().with_extension("temp"));
         let download_url = format!("{}/{}", self.url, uri.as_ref().to_str().unwrap());
 
         let mut response = reqwest::get(&download_url).await?;
@@ -52,10 +51,11 @@ impl FileDownload {
             fs::create_dir_all(parent_dir).await?;
         }
 
-        let mut file = File::create(&file_path).await?;
+        let mut file = File::create(&temp_download_path).await?;
         while let Some(chunk) = response.chunk().await? {
             file.write_all(&chunk).await?;
         }
+        fs::rename(&temp_download_path, &file_path).await?;
 
         info!("file {:?} downloaded", file_path);
 
