@@ -94,17 +94,17 @@ impl VideoHandler {
         ));
 
         let resources_dir_clone = resources_dir.as_ref().to_owned();
-        // let whisper_handle = tokio::spawn(ai::whisper::Whisper::new(resources_dir_clone));
+        let whisper_handle = tokio::spawn(ai::whisper::Whisper::new(resources_dir_clone));
 
         let clip_result = clip_handle.await;
-        // let whisper_result = whisper_handle.await;
+        let whisper_result = whisper_handle.await;
 
         if let Err(clip_err) = clip_result.as_ref().unwrap() {
-            bail!("Failed to download clip model: {clip_err}");
+            bail!("Failed to initialize clip model: {clip_err}");
         }
-        // if let Err(whisper_err) = whisper_result.unwrap() {
-        //     bail!("Failed to download whisper model: {whisper_err}");
-        // }
+        if let Err(whisper_err) = whisper_result.unwrap() {
+            bail!("Failed to initialize whisper model: {whisper_err}");
+        }
 
         let indexes = VideoIndex::new(index_dir, clip_result.unwrap().unwrap().dim())
             .expect("Failed to create indexes");
@@ -153,7 +153,7 @@ impl VideoHandler {
     /// And the transcript will be saved in the same directory with audio
     pub async fn get_transcript(&self) -> anyhow::Result<()> {
         let mut whisper = ai::whisper::Whisper::new(&self.resources_dir).await?;
-        let result = whisper.transcribe(&self.audio_path)?;
+        let result = whisper.transcribe(&self.audio_path, None)?;
 
         // write results into json file
         let mut file = tokio::fs::File::create(&self.transcript_path).await?;
@@ -311,10 +311,10 @@ async fn test_handle_video() {
 
     // tracing::info!("got audio");
 
-    // video_handler
-    //     .get_transcript()
-    //     .await
-    //     .expect("failed to get transcript");
+    video_handler
+        .get_transcript()
+        .await
+        .expect("failed to get transcript");
 
     // tracing::info!("got transcript");
 
@@ -350,10 +350,10 @@ async fn test_handle_video() {
     //     .await
     //     .expect("failed to get video clips");
 
-    video_handler
-        .get_video_clips_summarization()
-        .await
-        .expect("failed to get video clips summarization");
+    // video_handler
+    //     .get_video_clips_summarization()
+    //     .await
+    //     .expect("failed to get video clips summarization");
 
     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 }

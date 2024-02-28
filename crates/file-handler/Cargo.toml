@@ -17,7 +17,7 @@ test-log = { version = "0.2.14", features = ["trace"] }
 ndarray = { version = "0.15.6", features = ["serde"] }
 ffmpeg-next = "6.1.1"
 sha256 = "1.5.0"
-anyhow = "1.0.79"
+anyhow = { workspace = true }
 image = "0.24.8"
 futures = "0.3.30"
 faiss = { workspace = true }

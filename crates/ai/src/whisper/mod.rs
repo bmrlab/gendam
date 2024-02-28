@@ -1,18 +1,57 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
-use tracing::debug;
-use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
+use std::path::{Path, PathBuf};
 
 pub struct Whisper {
-    ctx: WhisperContext,
+    binary_path: PathBuf,
+    model_path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct WhisperTranscriptionOffset {
+    from: i64,
+    to: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct WhisperTranscription {
+    pub offsets: WhisperTranscriptionOffset,
+    pub text: String,
+    // TODO enable it when we need character level timestamp
+    // pub tokens: serde_json::Value,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WhisperResult {
+    transcription: Vec<WhisperTranscription>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WhisperItem {
-    pub text: String,
     pub start_timestamp: i64,
     pub end_timestamp: i64,
+    pub text: String,
+}
+
+impl WhisperResult {
+    pub fn items(&self) -> Vec<WhisperItem> {
+        self.transcription
+            .iter()
+            .map(|item| WhisperItem {
+                start_timestamp: item.offsets.from,
+                end_timestamp: item.offsets.to,
+                text: item.text.clone(),
+            })
+            .collect()
+    }
+}
+
+pub struct WhisperParams {}
+
+impl Default for WhisperParams {
+    fn default() -> Self {
+        Self {}
+    }
 }
 
 impl Whisper {
@@ -29,122 +68,77 @@ impl Whisper {
             .ok_or(anyhow!("invalid path"))?
             .to_string();
 
-        let ctx =
-            WhisperContext::new_with_params(&model_path, WhisperContextParameters::default())?;
+        let binary_path = download.download_if_not_exists("whisper/main").await?;
+        download
+            .download_if_not_exists("whisper/ggml-metal.metal")
+            .await?;
 
-        debug!("context initialized");
-
-        Ok(Self { ctx })
+        Ok(Self {
+            binary_path,
+            model_path,
+        })
     }
 
     pub fn transcribe(
         &mut self,
         audio_file_path: impl AsRef<Path>,
-    ) -> anyhow::Result<Vec<WhisperItem>> {
-        let mut state = self.ctx.create_state()?;
+        _params: Option<WhisperParams>,
+    ) -> anyhow::Result<WhisperResult> {
+        let output_file_path = audio_file_path.as_ref().with_file_name("transcript");
 
-        let mut params = FullParams::new(SamplingStrategy::default());
-
-        // Edit params as needed.
-        params.set_translate(true);
-
-        // TODO actually we need to use auto language detection
-        // however there is bug in whisper-rs
-
-        // Disable anything that prints to stdout.
-        params.set_print_special(false);
-        params.set_print_progress(false);
-        params.set_print_realtime(false);
-        params.set_print_timestamps(false);
-
-        // Open the audio file.
-        let mut reader = hound::WavReader::open(audio_file_path).expect("failed to open file");
-        #[allow(unused_variables)]
-        let hound::WavSpec {
-            channels,
-            sample_rate,
-            bits_per_sample,
-            ..
-        } = reader.spec();
-
-        // Convert the audio to floating point samples.
-        let mut audio = whisper_rs::convert_integer_to_float_audio(
-            &reader
-                .samples::<i16>()
-                .map(|s| s.expect("invalid sample"))
-                .collect::<Vec<_>>(),
-        );
-
-        // Convert audio to 16KHz mono f32 samples, as required by the model.
-        // These utilities are provided for convenience, but can be replaced with custom conversion logic.
-        // SIMD variants of these functions are also available on nightly Rust (see the docs).
-        if channels == 2 {
-            audio = whisper_rs::convert_stereo_to_mono_audio(&audio).map_err(|err| anyhow!(err))?;
-        } else if channels != 1 {
-            panic!(">2 channels unsupported");
+        match std::process::Command::new(self.binary_path.clone())
+            .args([
+                "-l",
+                "auto",
+                "-f",
+                audio_file_path.as_ref().to_str().unwrap(),
+                "-m",
+                &self.model_path,
+                "-ojf",
+                "-of",
+                output_file_path.to_str().unwrap(),
+                "-tr",
+            ])
+            .output()
+        {
+            Ok(output) => {
+                if !output.status.success() {
+                    bail!("{}", String::from_utf8_lossy(&output.stderr));
+                }
+            }
+            Err(e) => {
+                bail!("failed to run subprocess {}", e);
+            }
         }
 
-        if sample_rate != 16000 {
-            panic!("sample rate must be 16KHz");
-        }
+        let transcript = std::fs::read_to_string(output_file_path.with_extension("json"))?;
+        let items: WhisperResult = serde_json::from_str(&transcript)?;
 
-        // Run the model.
-        state.full(params, &audio[..])?;
-
-        // Iterate through the segments of the transcript.
-        let num_segments = state
-            .full_n_segments()
-            .expect("failed to get number of segments");
-
-        let mut results = Vec::new();
-
-        for i in 0..num_segments {
-            // Get the transcribed text and timestamps for the current segment.
-            let segment = state
-                .full_get_segment_text(i)
-                .expect("failed to get segment");
-
-            // it is strange that the timestamp is not in milliseconds
-            // here we just convert it
-            let start_timestamp = state
-                .full_get_segment_t0(i)
-                .expect("failed to get start timestamp")
-                * 10;
-            let end_timestamp = state
-                .full_get_segment_t1(i)
-                .expect("failed to get end timestamp")
-                * 10;
-
-            results.push(WhisperItem {
-                text: segment,
-                start_timestamp,
-                end_timestamp,
-            });
-        }
-
-        Ok(results)
+        Ok(items)
     }
 }
 
 #[test_log::test(tokio::test)]
 async fn test_whisper() {
+    use tracing::{debug, error};
+
     let mut whisper =
-        Whisper::new("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources")
+        Whisper::new("/Users/zhuo/Library/Application Support/cc.musedam.local/resources")
             .await
             .unwrap();
     match whisper
-        .transcribe("/Users/zhuo/Library/Application Support/cc.musedam.local/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/audio.wav")
+        .transcribe("/Users/zhuo/Library/Application Support/cc.musedam.local/libraries/98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797/artifacts/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/audio.wav", None)
     {
         Ok(result) => {
-            for item in result {
-                println!(
+            for item in result.items() {
+                debug!(
                     "[{}] [{}] {}",
                     item.start_timestamp, item.end_timestamp, item.text
                 );
             }
         }
         Err(e) => {
-            println!("{}", e);
+            error!("failed to transcribe: {}", e);
         }
     }
 }
