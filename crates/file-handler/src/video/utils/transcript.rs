@@ -38,7 +38,7 @@ pub async fn get_transcript_embedding(
 
         join_set.spawn(async move {
             // write data using prisma
-            // FIXME here use write to make sure only one thread can using prisma client
+            // here use write to make sure only one thread can using prisma client
             let client = client.write().await;
             let x = client.video_transcript().upsert(
                 video_transcript::file_identifier_start_timestamp_end_timestamp(
@@ -74,5 +74,5 @@ pub async fn get_transcript_embedding(
 
     while let Some(_) = join_set.join_next().await {}
 
-    todo!()
+    Ok(())
 }

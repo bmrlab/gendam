@@ -157,7 +157,7 @@ impl VideoHandler {
 
         // write results into json file
         let mut file = tokio::fs::File::create(&self.transcript_path).await?;
-        let json = serde_json::to_string(&result)?;
+        let json = serde_json::to_string(&result.items())?;
         file.write_all(json.as_bytes()).await?;
 
         Ok(())
