@@ -6,6 +6,7 @@ export type Procedures = {
         { key: "files.home_dir", input: never, result: string } | 
         { key: "files.ls", input: string, result: any } | 
         { key: "libraries.list", input: never, result: any } | 
+        { key: "radio.find_one", input: string, result: any } | 
         { key: "users.list", input: never, result: any } | 
         { key: "version", input: never, result: string } | 
         { key: "video.search.all", input: string, result: SearchResultPayload[] } | 
