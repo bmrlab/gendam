@@ -80,9 +80,6 @@
         "providerShortName": null,
         "signingIdentity": null
       },
-      "resources": [
-        "resources/*"
-      ],
       "shortDescription": "",
       "targets": "all",
       "windows": {
