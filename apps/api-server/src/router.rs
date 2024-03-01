@@ -14,6 +14,7 @@ pub fn get_router() -> Arc<BuiltRouter<Ctx>> {
     let router = R.router()
         .merge("users", routes::users::get_routes())
         .merge("files", routes::files::get_routes())
+        .merge("assets", routes::assets::get_routes())
         .merge("video", routes::video::get_routes())
         .merge("libraries", routes::library::get_routes())
         .procedure(

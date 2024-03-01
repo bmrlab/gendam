@@ -5,6 +5,18 @@ import Files from "./Files";
 
 export default function Library() {
   const { data: homeDir } = rspc.useQuery(["files.home_dir"]);
+  const assetsMutation = rspc.useMutation(["assets.create_file_path"]);
+  const assetsQuery = rspc.useQuery(["assets.list", {
+    path: "/", dirsOnly: true
+  }]);
+
+  const test = useCallback(() => {
+    assetsMutation.mutate({ path: "/", name: "level1" });
+  }, [assetsMutation]);
+
+  const test2 = useCallback(() => {
+    assetsQuery.refetch();
+  }, [assetsQuery]);
 
   let [fullPath, setFullPath] = useState<string>("/");
 
@@ -21,6 +33,10 @@ export default function Library() {
 
   return (
     <main className="min-h-screen p-12 flex flex-col">
+      <div>
+        <button className="m-2 p-2 bg-black text-white" onClick={() => test()}>test</button>
+        <button className="m-2 p-2 bg-black text-white" onClick={() => test2()}>list</button>
+      </div>
       <div className="text-xs font-mono p-1">{fullPath}</div>
       <div className="flex-1 bg-white">
         <Files folderPath={fullPath} goToFolder={goToFolder} />
