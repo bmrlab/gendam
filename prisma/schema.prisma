@@ -12,6 +12,32 @@ datasource db {
   // url      = env("LOCAL_DB_URL")
 }
 
+model FilePath {
+  id            Int       @id @default(autoincrement())
+  isDir         Boolean
+
+  materializedPath String
+  name          String
+
+  asssetObjectId  Int?
+  assetObject   AssetObject? @relation(fields: [asssetObjectId], references: [id], onDelete: SetNull)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([materializedPath, name])
+  @@index([materializedPath])
+}
+
+model AssetObject {
+  id            Int       @id @default(autoincrement())
+  note          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  file_paths    FilePath[]
+}
+
 model VideoTask {
   id            Int       @id @default(autoincrement())
   videoPath     String

@@ -53,7 +53,7 @@ pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -
     let client = new_client_with_url(db_url.as_str())
         .await
         .expect("failed to create prisma client");
-    client._db_push().await.expect("failed to push db"); // apply migrations
+    client._db_push().await.expect("failed to push db"); // apply migrations, 需要重启才能重新加载所有的 migrations
     Library {
         id: library_id,
         dir: library_dir,
