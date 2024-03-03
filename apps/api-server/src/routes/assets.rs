@@ -27,8 +27,9 @@ struct FilePathQueryPayload {
 
 #[derive(Serialize, Type, Debug)]
 struct FilePathQueryResult {
+    id: i32,
     name: String,
-    #[serde(rename = "idDir")]
+    #[serde(rename = "isDir")]
     is_dir: bool,
 }
 
@@ -49,11 +50,20 @@ pub fn get_routes() -> Router<Ctx> {
                     rspc::ErrorCode::InternalServerError,
                     format!("failed to create prisma client: {}", e)
                 ))?;
+            /*
+             * TODO
+             * 如果 path 是 /a/b/c/, 要确保存在一条数据 {path:"/a/b/",name:"c"}, 不然就是文件夹不存在
+             */
+            let materialized_path = if input.path.ends_with("/") {
+                input.path
+            } else {
+                format!("{}/", input.path)
+            };
             let res = client
                 .file_path()
                 .create(
                     true,
-                    input.path,
+                    materialized_path,
                     input.name,
                     vec![],
                 )
@@ -65,7 +75,7 @@ pub fn get_routes() -> Router<Ctx> {
             Ok(json!(res).to_string())
         })
     ).procedure("create_asset_object",
-        R.mutation(|ctx, payload: FilePathCreatePayload| async move {
+        R.mutation(|ctx, input: FilePathCreatePayload| async move {
             let client = new_client_with_url(ctx.library.db_url.as_str())
                 .await
                 .map_err(|e| rspc::Error::new(
@@ -80,12 +90,17 @@ pub fn get_routes() -> Router<Ctx> {
                     rspc::ErrorCode::InternalServerError,
                     format!("failed to create asset_object: {}", e)
                 ))?;
+            let materialized_path = if input.path.ends_with("/") {
+                input.path
+            } else {
+                format!("{}/", input.path)
+            };
             let res = client
                 .file_path()
                 .create(
                     false,
-                    payload.path,
-                    payload.name,
+                    materialized_path,
+                    input.name,
                     vec![
                         // file_path::SetParam::SetId(new_asset_object_record.id)
                         file_path::assset_object_id::set(Some(new_asset_object_record.id))
@@ -123,11 +138,13 @@ pub fn get_routes() -> Router<Ctx> {
                 ))?;
             let names: Vec<FilePathQueryResult> = res.iter().map(|r| {
                 FilePathQueryResult {
+                    id: r.id,
                     name: r.name.clone(),
                     is_dir: r.is_dir,
                 }
             }).collect::<Vec::<_>>();
-            Ok(json!(names).to_string())
+            // Ok(json!(names).to_string())
+            Ok(names)
         })
     );
     router

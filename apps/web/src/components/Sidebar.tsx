@@ -24,7 +24,8 @@ export default function Sidebar() {
           className="cursor-pointer text-blue-500 hover:underline">switch</div>
       </div>
       <div className="text-sm">
-        <Link href="/library" className="block px-4 py-2 my-2 bg-slate-300">本地文件</Link>
+        <Link href="/library" className="block px-4 py-2 my-2 bg-slate-300">本地文件(Test)</Link>
+        <Link href="/assets" className="block px-4 py-2 my-2 bg-slate-300">素材库</Link>
         <Link href="/search" className="block px-4 py-2 my-2 bg-slate-300">搜索</Link>
         <Link href="/video-tasks" className="block px-4 py-2 my-2 bg-slate-300">视频任务</Link>
       </div>

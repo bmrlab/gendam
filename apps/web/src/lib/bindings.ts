@@ -2,7 +2,7 @@
 
 export type Procedures = {
     queries: 
-        { key: "assets.list", input: FilePathQueryPayload, result: string } | 
+        { key: "assets.list", input: FilePathQueryPayload, result: FilePathQueryResult[] } | 
         { key: "files.home_dir", input: never, result: string } | 
         { key: "files.ls", input: string, result: any } | 
         { key: "libraries.list", input: never, result: any } | 
@@ -22,6 +22,8 @@ export type Procedures = {
 export type FilePathCreatePayload = { path: string; name: string }
 
 export type FilePathQueryPayload = { path: string; dirsOnly: boolean }
+
+export type FilePathQueryResult = { id: number; name: string; isDir: boolean }
 
 export type SearchResultPayload = { imagePath: string; videoPath: string; startTime: number }
 
