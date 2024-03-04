@@ -1,6 +1,8 @@
 use anyhow::{anyhow, bail};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::{
+    fs, os::unix::fs::PermissionsExt, path::{Path, PathBuf}
+};
 
 pub struct Whisper {
     binary_path: PathBuf,
@@ -72,6 +74,11 @@ impl Whisper {
         download
             .download_if_not_exists("whisper/ggml-metal.metal")
             .await?;
+
+        // set binary permission to executable
+        let mut perms = fs::metadata(&binary_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&binary_path, perms)?;
 
         Ok(Self {
             binary_path,

@@ -67,7 +67,6 @@ dependencies = [
  "candle-core",
  "candle-nn",
  "candle-transformers",
- "faiss",
  "file-downloader",
  "futures",
  "half",

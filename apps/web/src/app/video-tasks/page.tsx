@@ -141,7 +141,7 @@ export default function VideoTasks() {
           }}
           className="flex mb-4"
         >
-          <input ref={videoPathInputRef} type="text" className="block flex-1 px-4 py-2" />
+          <input ref={videoPathInputRef} type="text" className="text-black block flex-1 px-4 py-2" />
           <button className="ml-4 px-6 bg-black text-white" type="submit">get frames</button>
           <button className="ml-4 px-6 bg-slate-800 text-white"
             onClick={() => handleOpenFile()} type="button">选择文件</button>
