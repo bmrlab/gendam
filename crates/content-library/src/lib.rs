@@ -41,6 +41,7 @@ pub fn load_library(local_data_root: &PathBuf, library_id: &str) -> Library {
 
 pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -> Library {
     let _ = title;
+    // TODO: 使用时间戳作为 id，当用户导入别人分享的 library 的时候,可能会冲突 
     let library_id = sha256::digest(format!("{}", chrono::Utc::now()));
     let library_dir = local_data_root.join("libraries").join(&library_id);
     let db_dir = library_dir.join("databases");

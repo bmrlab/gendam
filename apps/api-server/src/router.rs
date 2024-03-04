@@ -16,7 +16,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
         .merge("files", routes::files::get_routes::<TCtx>())
         .merge("assets", routes::assets::get_routes::<TCtx>())
         .merge("video", routes::video::get_routes::<TCtx>())
-        .merge("radio", routes::radio::get_routes())
+        .merge("audio", routes::audio::get_routes::<TCtx>())
         .merge("libraries", routes::library::get_routes::<TCtx>())
         .procedure(
             "version",
