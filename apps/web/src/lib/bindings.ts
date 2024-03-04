@@ -21,11 +21,13 @@ export type Procedures = {
 
 export type AssetObjectCreatePayload = { path: string; localFullPath: string }
 
+export type AssetObjectQueryResult = { id: number }
+
 export type FilePathCreatePayload = { path: string; name: string }
 
 export type FilePathQueryPayload = { path: string; dirsOnly: boolean }
 
-export type FilePathQueryResult = { id: number; name: string; isDir: boolean }
+export type FilePathQueryResult = { id: number; name: string; isDir: boolean; assetObject: AssetObjectQueryResult | null }
 
 export type SearchResultPayload = { imagePath: string; videoPath: string; startTime: number }
 

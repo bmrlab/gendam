@@ -15,6 +15,7 @@ export default function Files() {
     dirsOnly: false,
   }]);
 
+  const revealMut = rspc.useMutation(["files.reveal"]);
   const createPathMut = rspc.useMutation(["assets.create_file_path"]);
   const createAssetMut = rspc.useMutation(["assets.create_asset_object"]);
 
@@ -31,10 +32,11 @@ export default function Files() {
   let handleDoubleClick = useCallback((asset: FilePathQueryResult/*(typeof assets)[number]*/) => {
     if (asset.isDir) {
       goToDir(asset.name);
-    } else {
-      //
+    } else if (asset.assetObject) {
+      // this will always be true if asset.isDir is false
+      revealMut.mutate('/' + asset.assetObject.id.toString());
     }
-  }, [goToDir]);
+  }, [goToDir, revealMut]);
 
   let handleCreateDir = useCallback(() => {
     let name = window.prompt("输入文件夹名称");

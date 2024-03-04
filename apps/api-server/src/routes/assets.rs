@@ -34,11 +34,19 @@ struct FilePathQueryPayload {
 }
 
 #[derive(Serialize, Type, Debug)]
+#[serde(rename_all = "camelCase")]
+struct AssetObjectQueryResult {
+    id: i32,
+    // note: String,
+}
+
+#[derive(Serialize, Type, Debug)]
+#[serde(rename_all = "camelCase")]
 struct FilePathQueryResult {
     id: i32,
     name: String,
-    #[serde(rename = "isDir")]
     is_dir: bool,
+    asset_object: Option<AssetObjectQueryResult>,
 }
 
 // fn server_error() {
@@ -108,9 +116,13 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
             } else {
                 format!("{}/", input.path)
             };
-
-            // get file name in a full path string
             let file_name = input.local_full_path.split("/").last().unwrap().to_owned();
+            let destination_path = library.files_dir.join(new_asset_object_record.id.to_string());
+            std::fs::copy(input.local_full_path, destination_path)
+                .map_err(|e| rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    format!("failed to copy file: {}", e)
+                ))?;
             let res = client
                 .file_path()
                 .create(
@@ -148,6 +160,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
             let res = client
                 .file_path()
                 .find_many(where_params)
+                .with(file_path::asset_object::fetch())
                 .exec().await
                 .map_err(|e| rspc::Error::new(
                     rspc::ErrorCode::InternalServerError,
@@ -158,6 +171,19 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
                     id: r.id,
                     name: r.name.clone(),
                     is_dir: r.is_dir,
+                    asset_object: match r.asset_object.as_ref() {
+                        Some(asset_object) => {
+                            match asset_object {
+                                None => None,
+                                Some(asset_object) => {
+                                    Some(AssetObjectQueryResult {
+                                        id: asset_object.id,
+                                    })
+                                }
+                            }
+                        },
+                        None => None,
+                    }
                 }
             }).collect::<Vec::<_>>();
             // Ok(json!(names).to_string())

@@ -69,8 +69,12 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
     )
     .procedure(
         "reveal",
-        Rspc::<TCtx>::new().mutation(|_ctx, path: String| async move {
-            let res = reveal_in_finder(&path);
+        Rspc::<TCtx>::new().mutation(|ctx, path: String| async move {
+            let library = ctx.load_library();
+            let relative_path = format!(".{}", path);
+            let files_dir = library.files_dir;
+            let reveal_path = files_dir.join(relative_path).into_os_string().into_string().unwrap();
+            let res = reveal_in_finder(&reveal_path);
             res.expect("failed reveal file in finder");
         })
     );
