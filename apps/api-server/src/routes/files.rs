@@ -4,6 +4,7 @@ use std::{
 };
 use serde::Serialize;
 use rspc::Router;
+use rspc::internal::middleware::MiddlewareContext;
 use crate::{Ctx, R};
 
 pub fn get_routes() -> Router<Ctx> {
@@ -24,7 +25,16 @@ pub fn get_routes() -> Router<Ctx> {
     //     })
     // )
     .procedure("home_dir",
-        R.query(|ctx, _input: ()| async move {
+        R
+        .with(|mw: MiddlewareContext, ctx| {
+            println!("mw: req {:?}, input {:?}", mw.req, mw.input);
+            // let local_data_root = ctx.local_data_root;
+            async move {
+                // let res = dirs::home_dir().unwrap();
+                Ok(mw.next(ctx))
+            }
+        })
+        .query(|ctx, _input: ()| async move {
             ctx.library.files_dir.to_str().unwrap().to_string()
             // dirs::home_dir().unwrap()
         })

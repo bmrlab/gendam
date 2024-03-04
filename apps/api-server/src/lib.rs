@@ -8,6 +8,13 @@ pub struct Ctx {
     pub resources_dir: PathBuf,
     pub library: Library,
 }
+
+impl Ctx {
+    pub fn load(&self) -> Library {
+        self.library.clone()
+    }
+}
+
 pub const R: Rspc<Ctx> = Rspc::new();
 
 pub mod routes;
