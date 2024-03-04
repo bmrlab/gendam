@@ -3,23 +3,29 @@ use std::{
     path::PathBuf,
 };
 use rspc::{
+    Rspc,
     BuiltRouter,
     ExportConfig,
 };
 
 use crate::routes;
-pub use crate::{R, Ctx};
+// pub use crate::{R, Ctx};
+use crate::CtxWithLibrary;
 
-pub fn get_router() -> Arc<BuiltRouter<Ctx>> {
-    let router = R.router()
-        .merge("users", routes::users::get_routes())
-        .merge("files", routes::files::get_routes())
-        .merge("assets", routes::assets::get_routes())
-        .merge("video", routes::video::get_routes())
-        .merge("libraries", routes::library::get_routes())
+pub fn get_router<TCtx>() -> Arc<BuiltRouter<TCtx>>
+where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+{
+    let router = Rspc::<TCtx>::new().router()
+        .merge("users", routes::users::get_routes::<TCtx>())
+        .merge("files", routes::files::get_routes::<TCtx>())
+        .merge("assets", routes::assets::get_routes::<TCtx>())
+        .merge("video", routes::video::get_routes::<TCtx>())
+        .merge("libraries", routes::library::get_routes::<TCtx>())
         .procedure(
             "version",
-            R.query(|_ctx, _input: ()| env!("CARGO_PKG_VERSION"))
+            {
+                Rspc::<TCtx>::new().query(|_ctx, _input: ()| env!("CARGO_PKG_VERSION"))
+            }
         );
     let router = router.build().unwrap();
 

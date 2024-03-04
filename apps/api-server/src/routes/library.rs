@@ -1,25 +1,25 @@
 use std::path::PathBuf;
-
 use content_library::Library;
-use rspc::Router;
+use rspc::{Rspc, Router};
 use serde_json::json;
-// use prisma_lib::user;
-// use prisma_lib::PrismaClient;
-use crate::{Ctx, R};
+// use crate::{Ctx, R};
+use crate::CtxWithLibrary;
 
-pub fn get_routes() -> Router<Ctx> {
-    R.router()
+pub fn get_routes<TCtx>() -> Router<TCtx>
+where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+{
+    Rspc::<TCtx>::new().router()
         .procedure(
             "list",
-            R.query(|ctx, _input: ()| async move {
-                let res = list_libraries(&ctx.local_data_root);
+            Rspc::<TCtx>::new().query(|ctx, _input: ()| async move {
+                let res = list_libraries(&ctx.get_local_data_root());
                 serde_json::to_value::<Vec<String>>(res).unwrap()
             })
         )
         .procedure(
             "create",
-            R.mutation(|ctx, title: String| async move {
-                let library = create_library(&ctx.local_data_root, title).await;
+            Rspc::<TCtx>::new().mutation(|ctx, title: String| async move {
+                let library = create_library(&ctx.get_local_data_root(), title).await;
                 json!({
                     "id": library.id,
                     "dir": library.dir,

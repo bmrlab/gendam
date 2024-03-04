@@ -1,13 +1,14 @@
-use rspc::Router;
-// use prisma_lib::user;
-// use prisma_lib::PrismaClient;
-use crate::{Ctx, R};
+use rspc::{Rspc, Router};
+// use crate::{Ctx, R};
+use crate::CtxWithLibrary;
 
-pub fn get_routes() -> Router<Ctx> {
-    R.router()
+pub fn get_routes<TCtx>() -> Router<TCtx>
+where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+{
+    Rspc::<TCtx>::new().router()
         .procedure(
             "list",
-            R.query(|_ctx, _input: ()| async move {
+            Rspc::<TCtx>::new().query(|_ctx, _input: ()| async move {
                 // let res = list_users().await;
                 serde_json::to_value::<Vec<String>>(vec![]).unwrap()
             })

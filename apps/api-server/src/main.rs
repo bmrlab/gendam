@@ -1,6 +1,10 @@
 extern crate api_server;  // 引入 lib.rs 里面的内容
 use dotenvy::dotenv;
-use std::{env, net::SocketAddr, path::Path};
+use std::{
+    env,
+    net::SocketAddr,
+    path::{Path, PathBuf},
+};
 use rspc::integrations::httpz::Request;
 use axum::routing::get;
 use tower_http::{
@@ -9,8 +13,31 @@ use tower_http::{
 };
 use tracing::debug;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use api_server::{router, Ctx};
-use content_library::load_library;
+use api_server::CtxWithLibrary;
+use content_library::{
+    load_library,
+    Library,
+};
+
+#[derive(Clone)]
+struct Ctx {
+    local_data_root: PathBuf,
+    resources_dir: PathBuf,
+    library_id: String,
+}
+
+impl CtxWithLibrary for Ctx {
+    fn get_local_data_root(&self) -> PathBuf {
+        self.local_data_root.clone()
+    }
+    fn get_resources_dir(&self) -> PathBuf {
+        self.resources_dir.clone()
+    }
+    fn load_library(&self) -> Library {
+        let library = load_library(&self.local_data_root, &self.library_id);
+        library
+    }
+}
 
 #[tokio::main]
 async fn main() {
@@ -33,7 +60,7 @@ async fn main() {
     let resources_dir = local_data_root.join("resources").to_str().unwrap().to_owned();
     let resources_dir = Path::new(&resources_dir).to_path_buf();
 
-    let router = router::get_router();
+    let router = api_server::router::get_router::<Ctx>();
 
     let cors = CorsLayer::new()
         .allow_methods(Any)
@@ -49,12 +76,11 @@ async fn main() {
                     Some(id) => id,
                     None => "default".to_string(),
                 };
-                let library = load_library(&local_data_root, &library_id);
                 println!("Client requested operation '{}'", req.uri().path());
                 Ctx {
                     local_data_root,
                     resources_dir,
-                    library,
+                    library_id,
                 }
             }).axum()
         )

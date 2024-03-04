@@ -3,12 +3,15 @@ use std::{
     process::Command,
 };
 use serde::Serialize;
-use rspc::Router;
+use rspc::{Rspc, Router};
 use rspc::internal::middleware::MiddlewareContext;
-use crate::{Ctx, R};
+// use crate::{Ctx, R};
+use crate::CtxWithLibrary;
 
-pub fn get_routes() -> Router<Ctx> {
-    let router = R.router()
+pub fn get_routes<TCtx>() -> Router<TCtx>
+where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+{
+    let router = Rspc::<TCtx>::new().router()
     // .procedure(
     //     "files",
     //     R.query(|_ctx, subpath: Option<String>| async move {
@@ -25,7 +28,7 @@ pub fn get_routes() -> Router<Ctx> {
     //     })
     // )
     .procedure("home_dir",
-        R
+        Rspc::<TCtx>::new()
         .with(|mw: MiddlewareContext, ctx| {
             println!("mw: req {:?}, input {:?}", mw.req, mw.input);
             // let local_data_root = ctx.local_data_root;
@@ -35,12 +38,14 @@ pub fn get_routes() -> Router<Ctx> {
             }
         })
         .query(|ctx, _input: ()| async move {
-            ctx.library.files_dir.to_str().unwrap().to_string()
+            let library = ctx.load_library();
+            library.files_dir.to_str().unwrap().to_string()
             // dirs::home_dir().unwrap()
         })
     )
     .procedure("ls",
-        R.query(|ctx, path: String| async move {
+        Rspc::<TCtx>::new().query(|ctx, path: String| async move {
+            let library = ctx.load_library();
             if !path.starts_with("/") {
                 // let res = serde_json::to_value::<Vec<File>>(vec![]);
                 // return res.map_err(|e| {
@@ -55,14 +60,14 @@ pub fn get_routes() -> Router<Ctx> {
                 ));
             }
             let relative_path = format!(".{}", path);
-            let files_dir = ctx.library.files_dir;
+            let files_dir = library.files_dir;
             let ls_dir = files_dir.join(relative_path);
             let res = get_files_in_path(&ls_dir);
             Ok(serde_json::to_value(res).unwrap())
         })
     )
     .procedure("reveal",
-        R.mutation(|_ctx, path: String| async move {
+        Rspc::<TCtx>::new().mutation(|_ctx, path: String| async move {
             let res = reveal_in_finder(&path);
             res.expect("failed reveal file in finder");
         })

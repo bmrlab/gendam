@@ -9,8 +9,9 @@ use prisma_lib::{
     new_client_with_url
 };
 use serde_json::json;
-use rspc::Router;
-use crate::{Ctx, R};
+use rspc::{Rspc, Router};
+// use crate::{Ctx, R};
+use crate::CtxWithLibrary;
 
 #[derive(Deserialize, Type, Debug)]
 struct FilePathCreatePayload {
@@ -40,11 +41,14 @@ struct FilePathQueryResult {
 //     ))
 // }
 
-pub fn get_routes() -> Router<Ctx> {
-    let router = R.router()
+pub fn get_routes<TCtx>() -> Router<TCtx>
+where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+{
+    let router = Rspc::<TCtx>::new().router()
     .procedure("create_file_path",
-        R.mutation(|ctx, input: FilePathCreatePayload| async move {
-            let client = new_client_with_url(ctx.library.db_url.as_str())
+        Rspc::<TCtx>::new().mutation(|ctx, input: FilePathCreatePayload| async move {
+            let library = ctx.load_library();
+            let client = new_client_with_url(library.db_url.as_str())
                 .await
                 .map_err(|e| rspc::Error::new(
                     rspc::ErrorCode::InternalServerError,
@@ -74,9 +78,11 @@ pub fn get_routes() -> Router<Ctx> {
                 ))?;
             Ok(json!(res).to_string())
         })
-    ).procedure("create_asset_object",
-        R.mutation(|ctx, input: FilePathCreatePayload| async move {
-            let client = new_client_with_url(ctx.library.db_url.as_str())
+    )
+    .procedure("create_asset_object",
+        Rspc::<TCtx>::new().mutation(|ctx, input: FilePathCreatePayload| async move {
+            let library = ctx.load_library();
+            let client = new_client_with_url(library.db_url.as_str())
                 .await
                 .map_err(|e| rspc::Error::new(
                     rspc::ErrorCode::InternalServerError,
@@ -115,8 +121,9 @@ pub fn get_routes() -> Router<Ctx> {
         })
     )
     .procedure("list",
-        R.query(|ctx, input: FilePathQueryPayload| async move {
-            let client = new_client_with_url(ctx.library.db_url.as_str())
+        Rspc::<TCtx>::new().query(|ctx, input: FilePathQueryPayload| async move {
+            let library = ctx.load_library();
+            let client = new_client_with_url(library.db_url.as_str())
                 .await
                 .map_err(|e| rspc::Error::new(
                     rspc::ErrorCode::InternalServerError,

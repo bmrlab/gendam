@@ -1,12 +1,13 @@
-use crate::{Ctx, R};
+use std::sync::Arc;
+// use crate::{Ctx, R};
+use crate::CtxWithLibrary;
+use rspc::{Rspc, Router};
 use file_handler::video::VideoHandler;
 use prisma_client_rust::Direction;
 use prisma_lib::{new_client_with_url, video_task, PrismaClient};
-use rspc::Router;
 use serde::Serialize;
 use serde_json::json;
 use specta::Type;
-use std::sync::Arc;
 use tokio::sync::{
     broadcast::{self, Sender},
     RwLock,
@@ -41,12 +42,14 @@ impl ToString for VideoTaskType {
     }
 }
 
-pub fn get_routes() -> Router<Ctx> {
+pub fn get_routes<TCtx>() -> Router<TCtx>
+where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+{
     let tx = init_task_pool();
-    R.router()
+    Rspc::<TCtx>::new().router()
         .procedure(
             "create",
-            R.mutation(move |ctx: Ctx, video_path: String| {
+            Rspc::<TCtx>::new().mutation(move |ctx: TCtx, video_path: String| {
                 let tx2 = Arc::clone(&tx);
                 async move {
                     if let Ok(res) = create_video_task(&ctx, &video_path, tx2).await {
@@ -61,8 +64,9 @@ pub fn get_routes() -> Router<Ctx> {
         )
         .procedure(
             "list",
-            R.query(move |ctx: Ctx, _input: ()| async move {
-                let client = new_client_with_url(ctx.library.db_url.as_str())
+            Rspc::<TCtx>::new().query(move |ctx: TCtx, _input: ()| async move {
+                let library = ctx.load_library();
+                let client = new_client_with_url(library.db_url.as_str())
                     .await
                     .expect("failed to create prisma client");
 
@@ -279,20 +283,23 @@ async fn process_task(task_payload: &TaskPayload) {
     };
 }
 
-async fn create_video_task(
-    ctx: &Ctx,
+async fn create_video_task<TCtx>(
+    ctx: &TCtx,
     video_path: &str,
     tx: Arc<Sender<TaskPayload>>,
-) -> Result<(), ()> {
-    let client = new_client_with_url(&ctx.library.db_url)
+) -> Result<(), ()>
+where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+{
+    let library = &ctx.load_library();
+    let client = new_client_with_url(&library.db_url)
         .await
         .expect("failed to create prisma client");
     client._db_push().await.expect("failed to push db"); // apply migrations
     let client = Arc::new(RwLock::new(client));
     let video_handler = match VideoHandler::new(
         video_path,
-        &ctx.resources_dir,
-        ctx.library.clone(),
+        &ctx.get_resources_dir(),
+        library.clone(),
         client,
     )
     .await
@@ -304,7 +311,7 @@ async fn create_video_task(
         }
     };
 
-    let client = new_client_with_url(ctx.library.db_url.as_str())
+    let client = new_client_with_url(library.db_url.as_str())
         .await
         .expect("failed to create prisma client");
 
@@ -345,7 +352,7 @@ async fn create_video_task(
     }
 
     let task_payload = TaskPayload {
-        db_url: ctx.library.db_url.clone(),
+        db_url: library.db_url.clone(),
         video_handler,
         video_path: String::from(video_path),
         // video_file_hash: String::from(video_handler.file_identifier()),

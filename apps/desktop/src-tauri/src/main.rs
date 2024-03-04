@@ -4,7 +4,41 @@ use dotenvy::dotenv;
 use tauri::Manager;
 // use tracing::{debug, error};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use content_library::load_library;
+use std::{
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
+use api_server::CtxWithLibrary;
+use content_library::{
+    load_library,
+    Library,
+};
+
+#[derive(Clone)]
+struct Ctx {
+    local_data_root: PathBuf,
+    resources_dir: PathBuf,
+    store: Arc<Mutex<tauri_plugin_store::Store<tauri::Wry>>>,
+}
+
+impl CtxWithLibrary for Ctx {
+    fn get_local_data_root(&self) -> PathBuf {
+        self.local_data_root.clone()
+    }
+    fn get_resources_dir(&self) -> PathBuf {
+        self.resources_dir.clone()
+    }
+    fn load_library(&self) -> Library {
+        let mut store = self.store.lock().unwrap();
+        let _ = store.load();
+        let library_id = match store.get("current-library-id") {
+            Some(value) => value.as_str().unwrap().to_owned(),
+            None => String::from("default"),
+        };
+        let library = load_library(&self.local_data_root, &library_id);
+        library
+    }
+}
 
 #[tokio::main]
 async fn main() {
@@ -14,7 +48,7 @@ async fn main() {
     };
     init_tracing();
 
-    let router = api_server::router::get_router();
+    let router = api_server::router::get_router::<Ctx>();
 
     tauri::Builder::default()
         .setup(|app| {
@@ -39,20 +73,14 @@ async fn main() {
                 .path_resolver()
                 .resolve_resource("resources")
                 .expect("failed to find resources dir");
-            let mut store = tauri_plugin_store::StoreBuilder::new(
+            let store = tauri_plugin_store::StoreBuilder::new(
                 app.app_handle(),
                 ".settings.json".parse().unwrap()
             ).build();
-            let _ = store.load();
-            let library_id = match store.get("current-library-id") {
-                Some(value) => value.as_str().unwrap().to_owned(),
-                None => String::from("default"),
-            };
-            let library = load_library(&local_data_root, &library_id);
-            api_server::router::Ctx {
+            Ctx {
                 local_data_root,
                 resources_dir,
-                library,
+                store: Arc::new(Mutex::new(store)),
             }
         }))
         .invoke_handler(tauri::generate_handler![

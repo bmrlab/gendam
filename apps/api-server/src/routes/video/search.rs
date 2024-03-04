@@ -1,18 +1,22 @@
 use std::sync::Arc;
 use super::task::VideoTaskType;
-use crate::{Ctx, R};
+// use crate::{Ctx, R};
+use rspc::{Rspc, Router};
+use crate::CtxWithLibrary;
 use file_handler::search::{SearchRecordType, SearchRequest, SearchResult};
 use prisma_lib::{new_client_with_url, video_task};
-use rspc::Router;
 use serde::Serialize;
 use specta::Type;
 use tokio::sync::RwLock;
 
-pub fn get_routes() -> Router<Ctx> {
-    R.router().procedure(
+pub fn get_routes<TCtx>() -> Router<TCtx>
+where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+{
+    Rspc::<TCtx>::new().router().procedure(
         "all",
-        R.query(move |ctx: Ctx, input: String| async move {
-            let client = new_client_with_url(&ctx.library.db_url)
+        Rspc::<TCtx>::new().query(move |ctx: TCtx, input: String| async move {
+            let library = ctx.load_library();
+            let client = new_client_with_url(&library.db_url)
                 .await
                 .expect("failed to create prisma client");
             client._db_push().await.expect("failed to push db"); // apply migrations
@@ -23,8 +27,8 @@ pub fn get_routes() -> Router<Ctx> {
                     record_type: Some(vec![SearchRecordType::FrameCaption]),
                     limit: None,
                 },
-                ctx.resources_dir,
-                ctx.library.clone(),
+                ctx.get_resources_dir(),
+                library.clone(),
                 client,
             )
             .await;
@@ -55,7 +59,7 @@ pub fn get_routes() -> Router<Ctx> {
 
             // println!("file_identifiers: {:?}", file_identifiers);
 
-            let client = new_client_with_url(ctx.library.db_url.as_str())
+            let client = new_client_with_url(library.db_url.as_str())
                 .await
                 .expect("failed to create prisma client");
             client._db_push().await.expect("failed to push db"); // apply migrations
@@ -95,8 +99,7 @@ pub fn get_routes() -> Router<Ctx> {
                         // TODO current version only support frame type
                         let image_path =
                             format!("{}/frames/{}.png", &file_identifier, &start_timestamp);
-                        let image_path = ctx
-                            .library
+                        let image_path = library
                             .artifacts_dir
                             .join(image_path)
                             .display()
