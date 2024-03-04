@@ -27,10 +27,10 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
     //         serde_json::to_value(res).unwrap()
     //     })
     // )
-    .procedure("home_dir",
+    .procedure(
+        "home_dir",
         Rspc::<TCtx>::new()
         .with(|mw: MiddlewareContext, ctx| {
-            println!("mw: req {:?}, input {:?}", mw.req, mw.input);
             // let local_data_root = ctx.local_data_root;
             async move {
                 // let res = dirs::home_dir().unwrap();
@@ -43,7 +43,8 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
             // dirs::home_dir().unwrap()
         })
     )
-    .procedure("ls",
+    .procedure(
+        "ls",
         Rspc::<TCtx>::new().query(|ctx, path: String| async move {
             let library = ctx.load_library();
             if !path.starts_with("/") {
@@ -66,7 +67,8 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
             Ok(serde_json::to_value(res).unwrap())
         })
     )
-    .procedure("reveal",
+    .procedure(
+        "reveal",
         Rspc::<TCtx>::new().mutation(|_ctx, path: String| async move {
             let res = reveal_in_finder(&path);
             res.expect("failed reveal file in finder");

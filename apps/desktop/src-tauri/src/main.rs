@@ -48,9 +48,7 @@ async fn main() {
     };
     init_tracing();
 
-    let router = api_server::router::get_router::<Ctx>();
-
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .setup(|app| {
             #[cfg(debug_assertions)] // only include this code on debug builds
             {
@@ -58,36 +56,49 @@ async fn main() {
                 window.open_devtools();
                 window.close_devtools();
             }
-
             Ok(())
         })
-        .plugin(tauri_plugin_store::Builder::default().build())
-        .plugin(rspc::integrations::tauri::plugin(router, |app| {
-            let local_data_root = app
-                .app_handle()
-                .path_resolver()
-                .app_local_data_dir()
-                .expect("failed to find local data dir");
-            let resources_dir = app
-                .app_handle()
-                .path_resolver()
-                .resolve_resource("resources")
-                .expect("failed to find resources dir");
-            let store = tauri_plugin_store::StoreBuilder::new(
-                app.app_handle(),
-                ".settings.json".parse().unwrap()
-            ).build();
-            Ctx {
-                local_data_root,
-                resources_dir,
-                store: Arc::new(Mutex::new(store)),
-            }
-        }))
         .invoke_handler(tauri::generate_handler![
             greet,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    let window = app.get_window("main").unwrap();
+    let local_data_root = window
+        .app_handle()
+        .path_resolver()
+        .app_local_data_dir()
+        .expect("failed to find local data dir");
+    let resources_dir = window
+        .app_handle()
+        .path_resolver()
+        .resolve_resource("resources")
+        .expect("failed to find resources dir");
+    let store = Arc::new(Mutex::new(
+        tauri_plugin_store::StoreBuilder::new(
+            window.app_handle(),
+            ".settings.json".parse().unwrap()
+        ).build()
+    ));
+
+    // app.app_handle()
+    window.app_handle()
+        .plugin(tauri_plugin_store::Builder::default().build())
+        .expect("failed to add store plugin");
+
+    let router = api_server::router::get_router::<Ctx>();
+    window.app_handle()
+        .plugin(rspc::integrations::tauri::plugin(router, move |_window| {
+            Ctx {
+                local_data_root: local_data_root.clone(),
+                resources_dir: resources_dir.clone(),
+                store: store.clone(),
+            }
+        }))
+        .expect("failed to add rspc plugin");
+
+    app.run(|_, _| {});
 }
 
 #[tauri::command]
