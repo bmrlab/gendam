@@ -98,4 +98,18 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+
+  /* 隐藏横向滚动条，className="no-scrollbar" */
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+  }
 }

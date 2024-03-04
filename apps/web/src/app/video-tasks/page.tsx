@@ -1,9 +1,11 @@
 "use client";
-import { useCallback, useEffect, useState, useRef, useMemo } from "react";
+import {useCallback, useState, useRef, useMemo, FC} from "react";
 import { rspc } from "@/lib/rspc";
 import { getLocalFileUrl } from "@/utils/file";
 import type { VideoTaskResult } from "@/lib/bindings";
 // import { selectFile } from "@/utils/file";
+import AudioDialog from "@/app/video-tasks/_compoents/audio/dialog";
+import TaskContextMenu from "./_compoents/task-context-menu";
 
 type VideoItem = {
   videoPath: string;
@@ -50,7 +52,7 @@ const VideoTaskStatus: React.FC<{
   }
 }
 
-const VideoTasksList: React.FC = () => {
+const VideoTasksList: FC = () => {
   const { data, isLoading, error } = rspc.useQuery(["video.tasks.list"]);
   const revealMut = rspc.useMutation("files.reveal");
 
@@ -90,6 +92,7 @@ const VideoTasksList: React.FC = () => {
     <div className="p-4">
       {videos.map((video: VideoItem) => {
         return (
+        <TaskContextMenu fileHash={video.videoFileHash} key={video.videoFileHash}>
           <div
             key={video.videoFileHash}
             className="flex justify-start py-3 px-5 border-b border-neutral-100 hover:bg-neutral-100"
@@ -122,6 +125,7 @@ const VideoTasksList: React.FC = () => {
               {video.tasks.map((task, index) => <VideoTaskStatus key={index} task={task} />)}
             </div>
           </div>
+        </TaskContextMenu>
         )
       })}
     </div>
@@ -138,7 +142,8 @@ export default function VideoTasksPage() {
           <div className="ml-2 text-sm">任务列表</div>
         </div>
       </div>
-      <VideoTasksList></VideoTasksList>
+      <VideoTasksList/>
+      <AudioDialog/>
     </main>
   );
 }
