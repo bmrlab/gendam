@@ -20,6 +20,13 @@ struct FilePathCreatePayload {
 }
 
 #[derive(Deserialize, Type, Debug)]
+#[serde(rename_all = "camelCase")]
+struct AssetObjectCreatePayload {
+    path: String,
+    local_full_path: String,
+}
+
+#[derive(Deserialize, Type, Debug)]
 struct FilePathQueryPayload {
     path: String,
     #[serde(rename = "dirsOnly")]
@@ -80,7 +87,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
         })
     )
     .procedure("create_asset_object",
-        Rspc::<TCtx>::new().mutation(|ctx, input: FilePathCreatePayload| async move {
+        Rspc::<TCtx>::new().mutation(|ctx, input: AssetObjectCreatePayload| async move {
             let library = ctx.load_library();
             let client = new_client_with_url(library.db_url.as_str())
                 .await
@@ -101,12 +108,15 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
             } else {
                 format!("{}/", input.path)
             };
+
+            // get file name in a full path string
+            let file_name = input.local_full_path.split("/").last().unwrap().to_owned();
             let res = client
                 .file_path()
                 .create(
                     false,
                     materialized_path,
-                    input.name,
+                    file_name,
                     vec![
                         // file_path::SetParam::SetId(new_asset_object_record.id)
                         file_path::assset_object_id::set(Some(new_asset_object_record.id))

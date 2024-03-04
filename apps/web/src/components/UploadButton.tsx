@@ -2,17 +2,22 @@
 import { useCallback, useEffect, useState, useContext } from "react";
 import { open } from '@tauri-apps/api/dialog';
 
-const TauriUploadButton: React.FC = () => {
+type Props = {
+  onSelectFile: (fileFullPath: string) => void;
+};
+
+const TauriUploadButton: React.FC<Props> = ({ onSelectFile }) => {
   // TODO: remove `selectFile` in utils/file.ts
   let handleClick = useCallback(async () => {
     const result = await open({ directory: false });
-    console.log("tauri selected file:", result);
+    // console.log("tauri selected file:", result);
     if (result) {
-      return result as string;
+      const fileFullPath = result as string;
+      onSelectFile(fileFullPath);
     } else {
       return null;
     }
-  }, []);
+  }, [onSelectFile]);
 
   return (
     <div>
@@ -49,9 +54,9 @@ const WebUploadButton: React.FC = () => {
   )
 }
 
-export default function UploadButton() {
+export default function UploadButton({ onSelectFile }: Props) {
   if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-    return <TauriUploadButton />;
+    return <TauriUploadButton onSelectFile={onSelectFile}/>;
   } else {
     return <WebUploadButton />
   }

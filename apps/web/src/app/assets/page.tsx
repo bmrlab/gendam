@@ -16,6 +16,7 @@ export default function Files() {
   }]);
 
   const createPathMut = rspc.useMutation(["assets.create_file_path"]);
+  const createAssetMut = rspc.useMutation(["assets.create_asset_object"]);
 
   const goToDir = useCallback((dirName: string) => {
     let newPath = currentPath;
@@ -48,6 +49,14 @@ export default function Files() {
 
   let [selectedId, setSelectedId] = useState<number|null>(null);
 
+  let handleSelectFile = useCallback((fileFullPath: string) => {
+    console.log("handleSelectFile", fileFullPath);
+    createAssetMut.mutate({
+      path: currentPath,
+      localFullPath: fileFullPath
+    })
+  }, [createAssetMut, currentPath]);
+
   return (
     <div className="h-full flex flex-col">
       <div className="px-4 py-2 border-b border-slate-100 flex justify-between">
@@ -64,7 +73,7 @@ export default function Files() {
             className="px-2 py-1 cursor-pointer text-sm"
             onClick={() => handleCreateDir()}
           >添加文件夹</div>
-          <UploadButton />
+          <UploadButton onSelectFile={handleSelectFile}/>
         </div>
       </div>
       <div
