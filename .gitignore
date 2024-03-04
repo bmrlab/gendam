@@ -3,3 +3,10 @@ node_modules
 /target
 .DS_Store
 .qdrant-initialized
+
+.idea
+
+# DB
+*.db
+*.db-journal
+*.docx
