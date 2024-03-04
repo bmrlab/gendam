@@ -1,11 +1,25 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useContext } from "react";
-import { rspc } from "@/lib/rspc";
+import { rspc, client } from "@/lib/rspc";
 import { CurrentLibrary } from "@/lib/library";
 import { invoke } from "@tauri-apps/api/tauri";
 
 export default function Home() {
+  // const versionQuery = rspc.useQuery(["version"]);
+  useEffect(() => {
+    // console.log("versionQuery data", versionQuery.data);
+    client.query(["version"], {
+      // context: {
+      //   headers: {
+      //     "X-ABC": "1234567"
+      //   }
+      // }
+    }).then((res: any) => {
+      console.log("client query res", res)
+    });
+  }, []);
+
   const doInvoke = async () => {
     /**
      * https://github.com/tauri-apps/tauri/discussions/5271#discussioncomment-3716246

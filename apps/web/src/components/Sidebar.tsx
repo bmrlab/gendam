@@ -9,7 +9,7 @@ export default function Sidebar() {
 
   const switchLibrary = useCallback(() => {
     console.log("switchLibrary");
-    currentLibrary.resetCurrentLibrary();
+    currentLibrary.resetContext();
   }, [currentLibrary]);
 
   return (

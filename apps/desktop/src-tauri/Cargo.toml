@@ -19,6 +19,7 @@ tauri = { version = "1.5.4", features = [ "dialog-ask", "dialog-open", "protocol
   "process-command-api",
   "fs-all",
 ] }
+tauri-plugin-store = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
 prisma-lib = { path = "../../../crates/prisma"}
 file-downloader = { path = "../../../crates/file-downloader"}
 file-handler = { path = "../../../crates/file-handler"}

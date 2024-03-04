@@ -3464,6 +3464,7 @@ dependencies = [
  "specta-macros 2.0.0-rc.1",
  "tauri",
  "tauri-build",
+ "tauri-plugin-store",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -6211,6 +6212,18 @@ dependencies = [
  "syn 1.0.109",
  "tauri-codegen",
  "tauri-utils",
+]
+
+[[package]]
+name = "tauri-plugin-store"
+version = "0.0.0"
+source = "git+https://github.com/tauri-apps/plugins-workspace?branch=v1#ed682dd96eb765e7cd3cdbc3cc64f794a0d6f9df"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
+ "tauri",
+ "thiserror",
 ]
 
 [[package]]

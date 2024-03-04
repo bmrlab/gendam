@@ -27,6 +27,7 @@ async fn main() {
 
             Ok(())
         })
+        .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(rspc::integrations::tauri::plugin(router, |app| {
             let local_data_root = app
                 .app_handle()
@@ -38,8 +39,15 @@ async fn main() {
                 .path_resolver()
                 .resolve_resource("resources")
                 .expect("failed to find resources dir");
-            // TODO: get library id from request header
-            let library_id = String::from("default");
+            let mut store = tauri_plugin_store::StoreBuilder::new(
+                app.app_handle(),
+                ".settings.json".parse().unwrap()
+            ).build();
+            let _ = store.load();
+            let library_id = match store.get("current-library-id") {
+                Some(value) => value.as_str().unwrap().to_owned(),
+                None => String::from("default"),
+            };
             let library = load_library(&local_data_root, &library_id);
             api_server::router::Ctx {
                 local_data_root,

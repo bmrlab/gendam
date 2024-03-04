@@ -13,8 +13,8 @@ export default function LibrariesSelect() {
   }, [libraryMut]);
 
   const currentLibrary = useContext(CurrentLibrary);
-  const handleLibraryClick = useCallback((libraryId: string) => {
-    currentLibrary.setCurrentLibrary(libraryId);
+  const handleLibraryClick = useCallback(async (libraryId: string) => {
+    await currentLibrary.setContext(libraryId);
   }, [currentLibrary]);
 
   return (
