@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Folder_Light, Document_Light } from "@muse/assets/icons";
 import { rspc } from "@/lib/rspc";
@@ -9,6 +10,7 @@ import { getLocalFileUrl } from "@/utils/file";
 import styles from "./styles.module.css";
 
 export default function Files() {
+  const router = useRouter();
   // currentPath 必须以 / 结尾, 调用 setCurrentPath 的地方自行确保格式正确
   const [currentPath, setCurrentPath] = useState<string>("/");
   const { data: assets, isLoading, error } = rspc.useQuery(["assets.list", {
@@ -19,6 +21,7 @@ export default function Files() {
   const revealMut = rspc.useMutation(["files.reveal"]);
   const createPathMut = rspc.useMutation(["assets.create_file_path"]);
   const createAssetMut = rspc.useMutation(["assets.create_asset_object"]);
+  const processVideoMut = rspc.useMutation(["assets.process_video_asset"]);
 
   const goToDir = useCallback((dirName: string) => {
     let newPath = currentPath;
@@ -35,9 +38,11 @@ export default function Files() {
       goToDir(asset.name);
     } else if (asset.assetObject) {
       // this will always be true if asset.isDir is false
-      revealMut.mutate('/' + asset.assetObject.id.toString());
+      // revealMut.mutate("/" + asset.assetObject.id.toString());
+      processVideoMut.mutate(asset.assetObject.id);
+      router.push("/video-tasks");
     }
-  }, [goToDir, revealMut]);
+  }, [goToDir, processVideoMut, router]);
 
   let handleCreateDir = useCallback(() => {
     let name = window.prompt("输入文件夹名称");
@@ -87,7 +92,7 @@ export default function Files() {
           <div
             key={asset.id}
             className={
-              `m-2 flex flex-col items-center justify-start overflow-hidden cursor-default select-none
+              `m-2 flex flex-col items-center justify-start cursor-default select-none
               ${selectedId === asset.id && styles["selected"]}`
             }
             onClick={(e) => {
@@ -100,15 +105,15 @@ export default function Files() {
               handleDoubleClick(asset);
             }}
           >
-            <div className={`${styles["image"]} w-32 h-32 rounded-lg`}>
+            <div className={`${styles["image"]} w-32 h-32 rounded-lg overflow-hidden`}>
               {asset.isDir ? (
                 <Image src={ Folder_Light } alt="folder"></Image>
               ) : (
                 // <Image src={ Document_Light } alt="folder"></Image>
-                <video controls={false} autoPlay muted style={{
+                <video controls={false} autoPlay muted loop style={{
                   width: "100%",
                   height: "100%",
-                  objectFit: "fill",
+                  objectFit: "cover",
                 }}>
                   <source src={getLocalFileUrl(asset.assetObject?.localFullPath ?? "")} type="video/mp4" />
                   Your browser does not support the video tag.

@@ -106,31 +106,30 @@ const VideoTasksList: React.FC = () => {
 }
 
 export default function VideoTasks() {
-  // const videoTasklList = rspc.useQuery(["video.list_video_tasks"]);
-  const videoTasklMut = rspc.useMutation("video.tasks.create");
-  let [videoPath, setVideoPath] = useState<string>("");
-  const videoPathInputRef = useRef<HTMLInputElement>(null);
+  // const videoTasklMut = rspc.useMutation("video.tasks.create");
+  // let [videoPath, setVideoPath] = useState<string>("");
+  // const videoPathInputRef = useRef<HTMLInputElement>(null);
 
-  const handleGetVideoFrames = useCallback((videoPath: string) => {
-    videoTasklMut.mutate(videoPath);
-  }, [videoTasklMut]);
+  // const handleGetVideoFrames = useCallback((videoPath: string) => {
+  //   videoTasklMut.mutate(videoPath);
+  // }, [videoTasklMut]);
 
-  const handleOpenFile = useCallback(async () => {
-    const selected = await selectFile();
-    if (selected) {
-      const videoPath = selected;
-      if (videoPathInputRef.current) {
-        videoPathInputRef.current.value = videoPath;
-      }
-      setVideoPath(videoPath);
-      videoTasklMut.mutate(videoPath);
-    }
-  }, [videoTasklMut]);
+  // const handleOpenFile = useCallback(async () => {
+  //   const selected = await selectFile();
+  //   if (selected) {
+  //     const videoPath = selected;
+  //     if (videoPathInputRef.current) {
+  //       videoPathInputRef.current.value = videoPath;
+  //     }
+  //     setVideoPath(videoPath);
+  //     videoTasklMut.mutate(videoPath);
+  //   }
+  // }, [videoTasklMut]);
 
   return (
     <main className="min-h-screen p-12">
       {/* <div>Path: {videoPath}</div> */}
-      <div className="">
+      {/* <div className="">
         <form onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
             e.preventDefault();
             if (videoPathInputRef.current) {
@@ -146,7 +145,7 @@ export default function VideoTasks() {
           <button className="ml-4 px-6 bg-slate-800 text-white"
             onClick={() => handleOpenFile()} type="button">选择文件</button>
         </form>
-      </div>
+      </div> */}
       <VideoTasksList></VideoTasksList>
     </main>
   );

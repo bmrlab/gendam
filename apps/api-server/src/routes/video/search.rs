@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use super::task::VideoTaskType;
+use crate::task_queue::VideoTaskType;
 // use crate::{Ctx, R};
 use rspc::{Rspc, Router};
 use crate::CtxWithLibrary;

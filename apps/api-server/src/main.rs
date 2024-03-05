@@ -1,4 +1,13 @@
 extern crate api_server;  // 引入 lib.rs 里面的内容
+use api_server::{
+    CtxWithLibrary,
+    task_queue::{
+        init_task_pool,
+        TaskPayload,
+    },
+};
+
+use std::sync::Arc;
 use dotenvy::dotenv;
 use std::{
     env,
@@ -13,7 +22,6 @@ use tower_http::{
 };
 use tracing::debug;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use api_server::CtxWithLibrary;
 use content_library::{
     upgrade_library_schemas,
     load_library,
@@ -25,6 +33,7 @@ struct Ctx {
     local_data_root: PathBuf,
     resources_dir: PathBuf,
     library_id: String,
+    tx: Arc<tokio::sync::broadcast::Sender<TaskPayload>>,
 }
 
 impl CtxWithLibrary for Ctx {
@@ -37,6 +46,9 @@ impl CtxWithLibrary for Ctx {
     fn load_library(&self) -> Library {
         let library = load_library(&self.local_data_root, &self.library_id);
         library
+    }
+    fn get_task_tx(&self) -> Arc<tokio::sync::broadcast::Sender<TaskPayload>> {
+        Arc::clone(&self.tx)
     }
 }
 
@@ -64,6 +76,7 @@ async fn main() {
     let resources_dir = local_data_root.join("resources").to_str().unwrap().to_owned();
     let resources_dir = Path::new(&resources_dir).to_path_buf();
 
+    let tx = init_task_pool();
     let router = api_server::router::get_router::<Ctx>();
 
     let cors = CorsLayer::new()
@@ -85,6 +98,7 @@ async fn main() {
                     local_data_root,
                     resources_dir,
                     library_id,
+                    tx,
                 }
             }).axum()
         )

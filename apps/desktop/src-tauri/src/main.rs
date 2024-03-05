@@ -8,7 +8,13 @@ use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
 };
-use api_server::CtxWithLibrary;
+use api_server::{
+    CtxWithLibrary,
+    task_queue::{
+        init_task_pool,
+        TaskPayload,
+    },
+};
 use content_library::{
     upgrade_library_schemas,
     load_library,
@@ -20,6 +26,7 @@ struct Ctx {
     local_data_root: PathBuf,
     resources_dir: PathBuf,
     store: Arc<Mutex<tauri_plugin_store::Store<tauri::Wry>>>,
+    tx: Arc<tokio::sync::broadcast::Sender<TaskPayload>>,
 }
 
 impl CtxWithLibrary for Ctx {
@@ -38,6 +45,9 @@ impl CtxWithLibrary for Ctx {
         };
         let library = load_library(&self.local_data_root, &library_id);
         library
+    }
+    fn get_task_tx(&self) -> Arc<tokio::sync::broadcast::Sender<TaskPayload>> {
+        Arc::clone(&self.tx)
     }
 }
 
@@ -89,6 +99,7 @@ async fn main() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .expect("failed to add store plugin");
 
+    let tx = init_task_pool();
     let router = api_server::router::get_router::<Ctx>();
     window.app_handle()
         .plugin(rspc::integrations::tauri::plugin(router, move |_window| {
@@ -96,6 +107,7 @@ async fn main() {
                 local_data_root: local_data_root.clone(),
                 resources_dir: resources_dir.clone(),
                 store: store.clone(),
+                tx: tx.clone(),
             }
         }))
         .expect("failed to add rspc plugin");
