@@ -33,11 +33,14 @@ pnpm dev:web
 pnpm dev:api-server
 ```
 
-**单独运行 api_server 需要设置环境变量指定本地目录, 比如**
+**单独运行 api_server 需要设置环境变量指定本地目录和资源目录, 比如**
 
 ```yaml
 # 根目录 .env 文件中配置
+# 本地数据目录，存储 Library 数据，包括素材文件、索引、数据库
 LOCAL_DATA_DIR="/Users/xddotcom/Library/Application Support/cc.musedam.local"
+# 本地资源目录，存储模型等，一般用当前项目目录下的 /apps/desktop/src-tauri/resources
+LOCAL_RESOURCES_DIR="/Users/xddotcom/workspace/muse/muse-v2-client/apps/desktop/src-tauri/resources"
 ```
 
 ## Prisma Rust Client

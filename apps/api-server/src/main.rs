@@ -64,17 +64,22 @@ async fn main() {
 		Ok(path) => Path::new(&path).to_path_buf(),
 		Err(_e) => {
 			// #[cfg(not(debug_assertions))]
-			// {
-				panic!("'$LOCAL_DATA_DIR' is not set ({})", _e)
-			// }
+			// {}
+            panic!("'$LOCAL_DATA_DIR' is not set ({})", _e)
 		}
 	};
+    std::fs::create_dir_all(&local_data_root).unwrap();
+
+    let resources_dir = match env::var("LOCAL_RESOURCES_DIR") {
+		Ok(path) => Path::new(&path).to_path_buf(),
+		Err(_e) => {
+            panic!("'$LOCAL_RESOURCES_DIR' is not set ({})", _e)
+		}
+	};
+    // let resources_dir = local_data_root.join("resources").to_str().unwrap().to_owned();
+    // let resources_dir = Path::new(&resources_dir).to_path_buf();
 
     upgrade_library_schemas(&local_data_root).await;
-
-    std::fs::create_dir_all(&local_data_root).unwrap();
-    let resources_dir = local_data_root.join("resources").to_str().unwrap().to_owned();
-    let resources_dir = Path::new(&resources_dir).to_path_buf();
 
     let tx = init_task_pool();
     let router = api_server::router::get_router::<Ctx>();
