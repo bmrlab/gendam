@@ -3,8 +3,10 @@ import Icon from '@/components/Icon'
 import MuseRadio from '@/components/Radio'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
-import { useState } from 'react'
+import { useBoundStore } from '@/store'
+import { Fragment, useMemo, useState } from 'react'
 
 export enum FileTypeEnum {
   txt = 'Plain Text (.txt)',
@@ -17,14 +19,32 @@ export enum FileTypeEnum {
 }
 
 export default function AudioExport() {
+  const { fileHash } = useBoundStore.use.audioDialogProps()
+  const { data: rawData, isLoading, error } = rspc.useQuery(['audio.find_by_hash', fileHash])
+
+  const data = useMemo(() => {
+    return Object.keys(FileTypeEnum).map((key) => {
+      return {
+        type: FileTypeEnum[key as keyof typeof FileTypeEnum],
+        content: rawData?.find((item) => item.type === key)?.content ?? '',
+      }
+    })
+  }, [rawData])
+
   // 顶部的文件类型
   const [fileType, setFileType] = useState(FileTypeEnum.txt)
+
+  const currentContent = useMemo(() => data?.find((item) => item.type === fileType)?.content, [data, fileType])
 
   const [selectFileGroup, setSelectFileGroup] = useState<boolean[]>(
     new Array(Object.keys(FileTypeEnum).length).fill(false),
   )
 
   const toggleSelectGroup = (index: number) => {
+    if (!selectFileGroup[index]) {
+      setFileType(Object.values(FileTypeEnum)[index])
+    }
+
     const updatedBools = selectFileGroup.map((item, i) => (i === index ? !item : item))
     setSelectFileGroup(updatedBools)
   }
@@ -52,33 +72,19 @@ export default function AudioExport() {
         </div>
         <div className="relative p-6 pt-0">
           <ScrollArea className="h-[582px] w-[592px] rounded-[6px] border">
-            <div>
-              <p className="p-4 text-[14px] font-normal leading-[21px] text-[#262626]">
-                First, let&apos;s look at the name of the product. The only version of the product is the main product
-                of the small-shaped product. The complete version of the product is signed and the logo is waiting. The
-                second version is the main product of the main product of the small-shaped product. The details are
-                posted. The right side of the purple is the same as the model lens. The first time is the first time to
-                use it, please note whether the model is placed in the correct mode. A very simple simple method, the
-                dot-shaped model is the original area. If the line of the line is in the same mode, it means that it is
-                in the right mode or it is placed in the correct mode. Once the line of the line is selected, the
-                dot-shaped model has a difference. Here is your product image. The image quality of the image quality of
-                the image quality is at the top of the tree, such as the height of the tree is 168×1152 or
-                960×1536×1152×768 or 960. The image quality of the image quality is at the top of the tree, which is not
-                necessary to modify the image quality of the image quality. The image quality of the image quality is at
-                the top of the tree, which is not necessary to modify the image quality of the image quality. Please
-                adjust the image quality before the image quality is adjusted.\nHere you can find the reference tool you
-                like. If the reference tool is not used, it will be cut in the middle. The flow of the flow will
-                automatically be transferred to the reference tool, and the reference tool will be transferred to the
-                reference tool. The detailed explanation and the control of the flow of the flow will be stored here. If
-                you don&apos;t use reference tool, you need to avoid this function, and then the reference tool will be
-                transferred to the reference tool. The second option of the keyboard tool is to select the second
-                option. The complicated product is not reliable, you need to use the reference tool for the keyboard.
-                The complicated product is not reliable, you need to use the reference tool for the keyboard. The
-                complicated product is not reliable, you need to use the reference tool for the keyboard.
-              </p>
-            </div>
+            <p className="p-4 text-[14px] font-normal leading-[21px] text-[#262626]">
+              {(currentContent || '').split('\n').map((line: string, index: number) => (
+                <Fragment key={index}>
+                  {line}
+                  <br />
+                </Fragment>
+              ))}
+            </p>
           </ScrollArea>
-          <MuseBadge className="absolute bottom-[34px] right-[34px]">
+          <MuseBadge
+            className="absolute bottom-[34px] right-[34px]"
+            onClick={() => navigator.clipboard.writeText(currentContent ?? '')}
+          >
             <div className="flex gap-0.5">
               <Icon.copy />
               <span className="select-none">复制</span>

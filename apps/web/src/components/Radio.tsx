@@ -21,7 +21,7 @@ export default function MuseRadio({ label, active, ...props }: MuseRadioProps) {
           active && 'border-[4px] border-[#017AFF] shadow-none',
         )}
       ></div>
-      <div className="text-[12px] font-medium leading-[14px] text-[#262626]">{label}</div>
+      <div className="select-none text-[12px] font-medium leading-[14px] text-[#262626]">{label}</div>
     </div>
   )
 }

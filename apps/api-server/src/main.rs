@@ -132,7 +132,7 @@ fn init_tracing() {
         .with(
             // load filters from the `RUST_LOG` environment variable.
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "api_server=info".into()),
+                .unwrap_or_else(|_| "api_server=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer().with_ansi(true))
         .init();

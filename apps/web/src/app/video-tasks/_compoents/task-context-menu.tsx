@@ -14,11 +14,12 @@ export type TaskContextMenuProps = PropsWithChildren<{
 
 export default function TaskContextMenu({ fileHash, children }: TaskContextMenuProps) {
   const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
+  const setAudioDialogProps = useBoundStore.use.setAudioDialogProps()
 
   const handleExportAudio = useCallback(() => {
-    console.log('fileHash', fileHash)
+    setAudioDialogProps({ fileHash })
     setIsOpenAudioDialog(true)
-  }, [fileHash, setIsOpenAudioDialog])
+  }, [fileHash, setAudioDialogProps, setIsOpenAudioDialog])
 
   return (
     <ContextMenu>

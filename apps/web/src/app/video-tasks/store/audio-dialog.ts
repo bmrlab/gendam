@@ -1,6 +1,8 @@
 import {type StateCreator} from 'zustand'
 
-type AudioDialogProps = {}
+type AudioDialogProps = {
+  fileHash: string
+}
 
 type State = {
     isOpenAudioDialog: boolean
@@ -16,21 +18,17 @@ type Action = {
 
 export type AudioDialogSlice = State & Action
 
-export const createAudioDialogSlice: StateCreator<
-    AudioDialogSlice,
-    [],
-    [],
-    AudioDialogSlice
-> = (set) => ({
-    isOpenAudioDialog: false,
-    audioDialogProps: {},
-    setIsOpenAudioDialog: (isOpen: boolean) =>
-        set(() => ({isOpenAudioDialog: isOpen})),
-    setAudioDialogProps: (audioDialogProps: AudioDialogProps) =>
-        set((state) => ({
-            audioDialogProps: {
-                ...state.audioDialogProps,
-                ...audioDialogProps,
-            },
-        })),
+export const createAudioDialogSlice: StateCreator<AudioDialogSlice, [], [], AudioDialogSlice> = (set) => ({
+  isOpenAudioDialog: false,
+  audioDialogProps: {
+    fileHash: '',
+  },
+  setIsOpenAudioDialog: (isOpen: boolean) => set(() => ({ isOpenAudioDialog: isOpen })),
+  setAudioDialogProps: (audioDialogProps: AudioDialogProps) =>
+    set((state) => ({
+      audioDialogProps: {
+        ...state.audioDialogProps,
+        ...audioDialogProps,
+      },
+    })),
 })

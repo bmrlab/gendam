@@ -4,7 +4,6 @@ export type Procedures = {
     queries:
         { key: "assets.list", input: FilePathQueryPayload, result: FilePathQueryResult[] } |
         { key: "audio.find_by_hash", input: string, result: any } |
-        { key: "audio.find_one", input: string, result: any } |
         { key: "files.home_dir", input: never, result: string } |
         { key: "files.ls", input: string, result: any } |
         { key: "libraries.list", input: never, result: any } |
@@ -31,6 +30,10 @@ export type FilePathCreatePayload = { path: string; name: string }
 export type FilePathQueryPayload = { path: string; dirsOnly: boolean }
 
 export type FilePathQueryResult = { id: number; name: string; isDir: boolean; assetObject: AssetObjectQueryResult | null }
+
+export type AudioResp = { type: AudioType; content: string }
+
+export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
 
 export type SearchResultPayload = { imagePath: string; videoPath: string; startTime: number }
 

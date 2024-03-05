@@ -2,6 +2,7 @@ use crate::routes::audio::reader::AudioReader;
 use crate::{Ctx, R};
 use rspc::Router;
 use serde::{Deserialize, Serialize};
+use specta_macros::Type;
 use std::path::PathBuf;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -15,13 +16,14 @@ pub fn get_routes() -> Router<Ctx> {
         R.query(|ctx, hash: String| async move {
             let artifacts_dir = ctx.library.artifacts_dir.clone();
             let path = artifacts_dir.join(hash).join("transcript.txt");
-            serde_json::to_value::<Vec<AudioResp>>(get_all_audio_format(path)).unwrap_or_default()
+            get_all_audio_format(path)
         }),
     );
     router
 }
 
-#[derive(EnumIter, Debug, Deserialize, Serialize, Clone)]
+#[derive(EnumIter, Debug, Deserialize, Serialize, Clone, Type)]
+#[serde(rename_all = "lowercase")]
 enum AudioType {
     Txt,
     Srt,
@@ -32,8 +34,9 @@ enum AudioType {
     Docx,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Type)]
 struct AudioResp {
+    #[serde(rename = "type")]
     audio_type: AudioType,
     content: String,
 }
