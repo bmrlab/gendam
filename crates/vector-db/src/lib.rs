@@ -59,7 +59,10 @@ impl FaissIndex {
 
                         // FIXME this is a little stupid
                         let info = info.unwrap_or(IndexInfo {
-                            path: current_index_path.as_ref().unwrap_or(&PathBuf::new()).clone(),
+                            path: current_index_path
+                                .as_ref()
+                                .unwrap_or(&PathBuf::new())
+                                .clone(),
                             dim: None,
                         });
 
@@ -171,7 +174,18 @@ impl FaissIndex {
                     }
                     _ => {
                         warn!("FaissIndex index_tx channel closed");
+                        break;
                     }
+                }
+            }
+
+            let mut current_index = current_index.lock().await;
+            let current_index_path = current_index_path.lock().await;
+
+            if let (Some(index), Some(path)) = (current_index.as_mut(), current_index_path.as_ref())
+            {
+                if let Err(e) = flush_index(index, path) {
+                    tracing::error!("flush index error: {}", e);
                 }
             }
         });
