@@ -3,6 +3,7 @@
 export type Procedures = {
     queries:
         { key: "assets.list", input: FilePathQueryPayload, result: FilePathQueryResult[] } |
+        { key: "audio.find_by_hash", input: string, result: any } |
         { key: "audio.find_one", input: string, result: any } |
         { key: "files.home_dir", input: never, result: string } |
         { key: "files.ls", input: string, result: any } |

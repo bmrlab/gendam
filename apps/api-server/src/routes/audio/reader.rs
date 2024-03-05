@@ -1,30 +1,12 @@
-use crate::{Ctx, R};
-use anyhow::anyhow;
 use csv::WriterBuilder;
-use docx_rs::{Docx, Paragraph, Run};
-use rspc::Router;
+use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize, Serializer};
 use std::fmt::Write;
-use std::fs::File;
 use std::path::PathBuf;
-use serde::ser::SerializeStruct;
-use tracing::info;
-
-pub fn get_routes() -> Router<Ctx> {
-    let router = R.router().procedure(
-        "find_one",
-        R.query(|ctx, hash: String| async move {
-            let artifacts_dir = ctx.library.artifacts_dir.clone();
-            let path = artifacts_dir.join(hash).join("transcript.txt");
-            let reader = AudioReader::new(path);
-            serde_json::to_value::<Vec<AudioData>>(reader.content()).unwrap_or_default()
-        }),
-    );
-    router
-}
+use tracing::debug;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-struct AudioData {
+pub struct AudioData {
     start_timestamp: u32,
     end_timestamp: u32,
     text: String,
@@ -35,12 +17,18 @@ struct AudioDataCsvSer<'a>(&'a AudioData);
 
 impl<'a> Serialize for AudioDataCsvSer<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+    where
+        S: Serializer,
     {
         let mut s = serializer.serialize_struct("AudioData", 3)?;
-        s.serialize_field("start_timestamp", &AudioData::format_timestamp(self.0.start_timestamp, b','))?;
-        s.serialize_field("end_timestamp", &AudioData::format_timestamp(self.0.end_timestamp, b','))?;
+        s.serialize_field(
+            "start_timestamp",
+            &AudioData::format_timestamp(self.0.start_timestamp, b','),
+        )?;
+        s.serialize_field(
+            "end_timestamp",
+            &AudioData::format_timestamp(self.0.end_timestamp, b','),
+        )?;
         s.serialize_field("text", &self.0.text.trim())?;
         s.end()
     }
@@ -61,7 +49,7 @@ impl AudioData {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-struct AudioReader {
+pub struct AudioReader {
     content: Vec<AudioData>,
 }
 
@@ -80,7 +68,7 @@ impl AudioReader {
     /// 文件格式为 JSON: [{"start_timestamp":0,"end_timestamp":1880,"text":"..."}]
     /// 返回 AudioData
     fn parse(path: PathBuf) -> anyhow::Result<Vec<AudioData>> {
-        info!("path {}", path.display());
+        debug!("audio parse path {}", path.display());
         let content = std::fs::read_to_string(path)?;
         Ok(serde_json::from_str(&content)?)
     }
@@ -133,9 +121,7 @@ impl AudioReader {
     }
 
     pub fn read_to_csv(&self) -> anyhow::Result<String> {
-        let mut wtr = WriterBuilder::new()
-            .delimiter(b';')
-            .from_writer(vec![]);
+        let mut wtr = WriterBuilder::new().delimiter(b';').from_writer(vec![]);
 
         // 序列化并写入每条音频数据
         for record in self.content.clone() {
@@ -148,7 +134,7 @@ impl AudioReader {
     }
 
     // read to avid log exchange
-    pub fn read_to_ale(&self) -> String {
+    pub fn read_to_ale(&self) -> anyhow::Result<String> {
         let mut ale_str = String::new();
 
         // 文件头
@@ -170,33 +156,35 @@ impl AudioReader {
             writeln!(ale_str, "{}\t{}\t{}", start_time, end_time, data.text).unwrap();
         }
 
-        ale_str
+        Ok(ale_str)
     }
 
     /// file_name: 文件名.docx
-    pub fn read_to_docx(&self, file_name: &str) -> anyhow::Result<File> {
-        let file =
-            File::create(&file_name).map_err(|err| anyhow!("Failed to create file: {:?}", err))?;
+    pub fn read_to_docx(&self) -> anyhow::Result<String> {
+        self.read_to_txt()
 
-        let mut doc = Docx::new();
-        for item in &self.content {
-            doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(&item.text)));
-        }
-
-        doc.build()
-            .pack(&file)
-            .map_err(|err| anyhow!("Failed to build docx: {}", err))?;
-
-        Ok(file)
+        // let file =
+        //     File::create(&file_name).map_err(|err| anyhow!("Failed to create file: {:?}", err))?;
+        //
+        // let mut doc = Docx::new();
+        // for item in &self.content {
+        //     doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().add_text(&item.text)));
+        // }
+        //
+        // doc.build()
+        //     .pack(&file)
+        //     .map_err(|err| anyhow!("Failed to build docx: {}", err))?;
+        //
+        // Ok(file)
     }
 }
 
 #[cfg(test)]
 mod audio_tests {
     use super::*;
+    use csv::ReaderBuilder;
     use serde_json::from_str;
     use std::env;
-    use csv::ReaderBuilder;
 
     fn setup() -> AudioReader {
         let path = env::current_dir()
@@ -326,9 +314,15 @@ mod audio_tests {
     fn test_audio_reader_to_ale() {
         let reader = setup();
         let ale = reader.read_to_ale();
-        assert!(ale.len() > 0);
+        assert!(ale.is_ok());
+        assert!(ale.unwrap().len() > 0);
     }
 
     #[test]
-    fn test_audio_reader_to_docx() {}
+    fn test_audio_reader_to_docx() {
+        let reader = setup();
+        let txt = reader.read_to_docx();
+        assert!(txt.is_ok());
+        assert_eq!(txt.unwrap().lines().count(), 40);
+    }
 }
