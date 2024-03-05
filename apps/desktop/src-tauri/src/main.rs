@@ -3,23 +3,17 @@
 use dotenvy::dotenv;
 use tauri::Manager;
 // use tracing::{debug, error};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use api_server::{
+    task_queue::{init_task_pool, TaskPayload},
+    CtxWithLibrary,
+};
+use content_library::{load_library, upgrade_library_schemas, Library};
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
 };
-use api_server::{
-    CtxWithLibrary,
-    task_queue::{
-        init_task_pool,
-        TaskPayload,
-    },
-};
-use content_library::{
-    upgrade_library_schemas,
-    load_library,
-    Library,
-};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use vector_db::FaissIndex;
 
 #[derive(Clone)]
 struct Ctx {
@@ -27,6 +21,7 @@ struct Ctx {
     resources_dir: PathBuf,
     store: Arc<Mutex<tauri_plugin_store::Store<tauri::Wry>>>,
     tx: Arc<tokio::sync::broadcast::Sender<TaskPayload>>,
+    index: FaissIndex,
 }
 
 impl CtxWithLibrary for Ctx {
@@ -49,6 +44,9 @@ impl CtxWithLibrary for Ctx {
     fn get_task_tx(&self) -> Arc<tokio::sync::broadcast::Sender<TaskPayload>> {
         Arc::clone(&self.tx)
     }
+    fn get_index(&self) -> FaissIndex {
+        self.index.clone()
+    }
 }
 
 #[tokio::main]
@@ -69,9 +67,7 @@ async fn main() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            greet,
-        ])
+        .invoke_handler(tauri::generate_handler![greet,])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
@@ -89,25 +85,30 @@ async fn main() {
     let store = Arc::new(Mutex::new(
         tauri_plugin_store::StoreBuilder::new(
             window.app_handle(),
-            ".settings.json".parse().unwrap()
-        ).build()
+            ".settings.json".parse().unwrap(),
+        )
+        .build(),
     ));
     upgrade_library_schemas(&local_data_root).await;
 
     // app.app_handle()
-    window.app_handle()
+    window
+        .app_handle()
         .plugin(tauri_plugin_store::Builder::default().build())
         .expect("failed to add store plugin");
 
     let tx = init_task_pool();
+    let index = FaissIndex::new();
     let router = api_server::router::get_router::<Ctx>();
-    window.app_handle()
+    window
+        .app_handle()
         .plugin(rspc::integrations::tauri::plugin(router, move |_window| {
             Ctx {
                 local_data_root: local_data_root.clone(),
                 resources_dir: resources_dir.clone(),
                 store: store.clone(),
                 tx: tx.clone(),
+                index: index.clone(),
             }
         }))
         .expect("failed to add rspc plugin");

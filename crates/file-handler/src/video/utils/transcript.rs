@@ -1,17 +1,18 @@
 use super::save_text_embedding;
-use crate::index::EmbeddingIndex;
 use ai::{clip::CLIP, whisper::WhisperItem};
 use prisma_lib::{video_transcript, PrismaClient};
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 use tokio::sync::RwLock;
 use tracing::error;
+use vector_db::{FaissIndex, IndexInfo};
 
 pub async fn get_transcript_embedding(
     file_identifier: String,
     client: Arc<RwLock<PrismaClient>>,
     path: impl AsRef<Path>,
     clip_model: Arc<RwLock<CLIP>>,
-    embedding_index: Arc<EmbeddingIndex>,
+    embedding_index: FaissIndex,
+    index_info: IndexInfo,
 ) -> anyhow::Result<()> {
     let file = File::open(path.as_ref())?;
     let reader = BufReader::new(file);
@@ -20,7 +21,6 @@ pub async fn get_transcript_embedding(
     let whisper_results: Vec<WhisperItem> = serde_json::from_reader(reader)?;
 
     let clip_model = clip_model.clone();
-    let embedding_index = embedding_index.clone();
 
     let mut join_set = tokio::task::JoinSet::new();
 
@@ -33,8 +33,9 @@ pub async fn get_transcript_embedding(
 
         let clip_model = Arc::clone(&clip_model);
         let file_identifier = file_identifier.clone();
-        let embedding_index = Arc::clone(&embedding_index);
+        let embedding_index = embedding_index.clone();
         let client = client.clone();
+        let index_info = index_info.clone();
 
         join_set.spawn(async move {
             // write data using prisma
@@ -58,9 +59,14 @@ pub async fn get_transcript_embedding(
 
             match x.exec().await {
                 std::result::Result::Ok(res) => {
-                    if let Err(e) =
-                        save_text_embedding(&item.text, res.id as u64, clip_model, embedding_index)
-                            .await
+                    if let Err(e) = save_text_embedding(
+                        &item.text,
+                        res.id as u64,
+                        clip_model,
+                        embedding_index,
+                        index_info,
+                    )
+                    .await
                     {
                         error!("failed to save transcript embedding: {:?}", e);
                     }

@@ -1,32 +1,26 @@
-extern crate api_server;  // 引入 lib.rs 里面的内容
+extern crate api_server; // 引入 lib.rs 里面的内容
 use api_server::{
+    task_queue::{init_task_pool, TaskPayload},
     CtxWithLibrary,
-    task_queue::{
-        init_task_pool,
-        TaskPayload,
-    },
 };
+use vector_db::FaissIndex;
 
-use std::sync::Arc;
+use axum::routing::get;
+use content_library::{load_library, upgrade_library_schemas, Library};
 use dotenvy::dotenv;
+use rspc::integrations::httpz::Request;
+use std::sync::Arc;
 use std::{
     env,
     net::SocketAddr,
     path::{Path, PathBuf},
 };
-use rspc::integrations::httpz::Request;
-use axum::routing::get;
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
 };
 use tracing::debug;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use content_library::{
-    upgrade_library_schemas,
-    load_library,
-    Library,
-};
 
 #[derive(Clone)]
 struct Ctx {
@@ -34,6 +28,7 @@ struct Ctx {
     resources_dir: PathBuf,
     library_id: String,
     tx: Arc<tokio::sync::broadcast::Sender<TaskPayload>>,
+    index: FaissIndex,
 }
 
 impl CtxWithLibrary for Ctx {
@@ -50,6 +45,9 @@ impl CtxWithLibrary for Ctx {
     fn get_task_tx(&self) -> Arc<tokio::sync::broadcast::Sender<TaskPayload>> {
         Arc::clone(&self.tx)
     }
+    fn get_index(&self) -> FaissIndex {
+        self.index.clone()
+    }
 }
 
 #[tokio::main]
@@ -58,8 +56,8 @@ async fn main() {
         Ok(path) => println!(".env read successfully from {}", path.display()),
         Err(e) => println!("Could not load .env file: {e}"),
     };
-    init_tracing();  // should be after dotenv() so RUST_LOG in .env file will be loaded
-    // debug!("test debug output");
+    init_tracing(); // should be after dotenv() so RUST_LOG in .env file will be loaded
+                    // debug!("test debug output");
     let local_data_root = match env::var("LOCAL_DATA_DIR") {
 		Ok(path) => Path::new(&path).to_path_buf(),
 		Err(_e) => {
@@ -83,6 +81,7 @@ async fn main() {
 
     let tx = init_task_pool();
     let router = api_server::router::get_router::<Ctx>();
+    let index = FaissIndex::new();
 
     let cors = CorsLayer::new()
         .allow_methods(Any)
@@ -92,20 +91,27 @@ async fn main() {
         .route("/", get(|| async { "Hello 'rspc'!" }))
         .nest(
             "/rspc",
-            router.clone().endpoint(|req: Request| {
-                let library_id_header = req.headers().get("x-library-id").map(|v| v.to_str().unwrap().to_string());
-                let library_id = match library_id_header {
-                    Some(id) => id,
-                    None => "default".to_string(),
-                };
-                println!("Client requested operation '{}'", req.uri().path());
-                Ctx {
-                    local_data_root,
-                    resources_dir,
-                    library_id,
-                    tx,
-                }
-            }).axum()
+            router
+                .clone()
+                .endpoint(|req: Request| {
+                    let library_id_header = req
+                        .headers()
+                        .get("x-library-id")
+                        .map(|v| v.to_str().unwrap().to_string());
+                    let library_id = match library_id_header {
+                        Some(id) => id,
+                        None => "default".to_string(),
+                    };
+                    println!("Client requested operation '{}'", req.uri().path());
+                    Ctx {
+                        local_data_root,
+                        resources_dir,
+                        library_id,
+                        tx,
+                        index,
+                    }
+                })
+                .axum(),
         )
         // .nest_service("/artifacts", ServeDir::new(local_data_dir.clone()))
         .nest_service("/file/localhost", ServeDir::new("/"))

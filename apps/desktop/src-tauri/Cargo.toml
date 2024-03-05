@@ -13,7 +13,10 @@ rust-version = "1.60"
 tauri-build = { version = "1.5.1", features = [] }
 
 [dependencies]
-tauri = { version = "1.5.4", features = [ "dialog-ask", "dialog-open", "protocol-all",
+tauri = { version = "1.5.4", features = [
+  "dialog-ask",
+  "dialog-open",
+  "protocol-all",
   "shell-sidecar",
   "shell-execute",
   "process-command-api",
@@ -21,11 +24,12 @@ tauri = { version = "1.5.4", features = [ "dialog-ask", "dialog-open", "protocol
   "devtools",
 ] }
 tauri-plugin-store = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
-prisma-lib = { path = "../../../crates/prisma"}
-file-downloader = { path = "../../../crates/file-downloader"}
-file-handler = { path = "../../../crates/file-handler"}
-content-library = { path = "../../../crates/content-library"}
-api-server = { path = "../../api-server"}
+prisma-lib = { path = "../../../crates/prisma" }
+file-downloader = { path = "../../../crates/file-downloader" }
+file-handler = { path = "../../../crates/file-handler" }
+content-library = { path = "../../../crates/content-library" }
+api-server = { path = "../../api-server" }
+vector-db = { path = "../../../crates/vector-db" }
 rspc = { workspace = true, features = ["tauri"] }
 specta-macros = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -35,7 +39,7 @@ prisma-client-rust-cli = { workspace = true }
 tokio = { workspace = true }
 dotenvy = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true , features = ["env-filter"] }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.

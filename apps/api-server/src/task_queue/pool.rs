@@ -12,7 +12,7 @@ use tracing::{
     // debug,
     info,
 };
-
+use vector_db::FaissIndex;
 
 pub enum VideoTaskType {
     Frame,
@@ -197,19 +197,20 @@ async fn process_task(task_payload: &TaskPayload) {
     );
     save_ends_at(&VideoTaskType::TranscriptEmbedding.to_string(), &client, vh).await;
 
-    // flush index into disk
-    if let Err(e) = vh.indexes().flush().await {
-        error!("failed to flush indexes: {}", e);
+    if let Err(e) = vh.flush().await {
+        error!("failed to flush: {}", e);
         return;
-    };
+    }
 }
 
 pub async fn create_video_task<TCtx>(
     ctx: &TCtx,
     video_path: &str,
     tx: Arc<Sender<TaskPayload>>,
+    index: FaissIndex,
 ) -> Result<(), ()>
-where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+where
+    TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
     let library = &ctx.load_library();
     let client = new_client_with_url(&library.db_url)
@@ -217,11 +218,13 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
         .expect("failed to create prisma client");
     client._db_push().await.expect("failed to push db"); // apply migrations
     let client = Arc::new(RwLock::new(client));
+
     let video_handler = match VideoHandler::new(
         video_path,
         &ctx.get_resources_dir(),
-        library.clone(),
+        &library,
         client,
+        index,
     )
     .await
     {

@@ -1,11 +1,11 @@
 use super::save_text_embedding;
-use crate::index::EmbeddingIndex;
 use anyhow::{anyhow, Ok};
 use prisma_lib::{video_frame, video_frame_caption, PrismaClient};
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
 use tracing::{debug, error};
+use vector_db::{FaissIndex, IndexInfo};
 
 pub async fn get_frames_caption(
     frames_dir: impl AsRef<std::path::Path>,
@@ -59,7 +59,8 @@ pub async fn get_frame_caption_embedding(
     client: Arc<RwLock<PrismaClient>>,
     frames_dir: impl AsRef<std::path::Path>,
     clip_model: Arc<RwLock<ai::clip::CLIP>>,
-    embedding_index: Arc<EmbeddingIndex>,
+    embedding_index: FaissIndex,
+    index_info: IndexInfo,
 ) -> anyhow::Result<()> {
     let frame_paths = std::fs::read_dir(&frames_dir)?
         .map(|res| res.map(|e| e.path()))
@@ -70,9 +71,10 @@ pub async fn get_frame_caption_embedding(
     for path in frame_paths {
         if path.extension() == Some(std::ffi::OsStr::new("caption")) {
             let clip_model = Arc::clone(&clip_model);
-            let embedding_index = Arc::clone(&embedding_index);
             let file_identifier = file_identifier.clone();
             let client = client.clone();
+            let embedding_index = embedding_index.clone();
+            let index_info = index_info.clone();
 
             // FIXME 这里限制一下最大任务数量，因为出现过 axum 被 block 的情况
             if join_set.len() >= 3 {
@@ -86,6 +88,7 @@ pub async fn get_frame_caption_embedding(
                     path,
                     clip_model,
                     embedding_index,
+                    index_info,
                 )
                 .await
                 {
@@ -105,7 +108,8 @@ async fn get_single_frame_caption_embedding(
     client: Arc<RwLock<PrismaClient>>,
     path: impl AsRef<std::path::Path>,
     clip_model: Arc<RwLock<ai::clip::CLIP>>,
-    embedding_index: Arc<EmbeddingIndex>,
+    embedding_index: FaissIndex,
+    index_info: IndexInfo,
 ) -> anyhow::Result<()> {
     let caption = tokio::fs::read_to_string(path.as_ref()).await?;
     let file_name = path
@@ -149,7 +153,14 @@ async fn get_single_frame_caption_embedding(
 
     match x.exec().await {
         std::result::Result::Ok(res) => {
-            save_text_embedding(&caption, res.id as u64, clip_model, embedding_index).await?;
+            save_text_embedding(
+                &caption,
+                res.id as u64,
+                clip_model,
+                embedding_index,
+                index_info,
+            )
+            .await?;
         }
         Err(e) => {
             error!("failed to save frame caption embedding: {:?}", e);

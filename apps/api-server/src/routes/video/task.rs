@@ -16,7 +16,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
             Rspc::<TCtx>::new().mutation(move |ctx: TCtx, video_path: String| {
                 let tx = ctx.get_task_tx();
                 async move {
-                    if let Ok(res) = create_video_task(&ctx, &video_path, tx).await {
+                    if let Ok(res) = create_video_task(&ctx, &video_path, tx, ctx.get_index()).await {
                         return serde_json::to_value(res).unwrap();
                     } else {
                         return json!({

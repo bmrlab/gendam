@@ -1,4 +1,3 @@
-use super::index::VideoIndex;
 use anyhow::{bail, Ok};
 use content_library::Library;
 use prisma_lib::PrismaClient;
@@ -6,6 +5,7 @@ use std::fs;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
+use vector_db::{FaissIndex, IndexInfo};
 
 mod decoder;
 mod split;
@@ -17,7 +17,7 @@ mod utils;
 ///
 /// All artifacts will be saved into `local_data_dir` (one of the input argument of `new` function).
 ///
-/// And in Tauri on macOS, it should be `/Users/xx/Library/Application Support/%APP_IDENTIFIER%`
+/// And in Tauri on macOS, it should be `/Users/%USER_NAME%/Library/Application Support/%APP_IDENTIFIER%`
 /// where `APP_IDENTIFIER` is configured in `tauri.conf.json`.
 ///
 /// # Examples
@@ -45,9 +45,6 @@ mod utils;
 /// video_handler.get_audio().await;
 /// video_handler.get_transcript().await;
 /// video_handler.get_transcript_embedding().await;
-///
-/// // flush embedding index into disk
-/// video_handler.indexes().flush().await;
 /// ```
 #[derive(Clone, Debug)]
 pub struct VideoHandler {
@@ -57,8 +54,9 @@ pub struct VideoHandler {
     frames_dir: std::path::PathBuf,
     audio_path: std::path::PathBuf,
     transcript_path: std::path::PathBuf,
+    library: Library,
     client: Arc<RwLock<PrismaClient>>,
-    indexes: VideoIndex,
+    index: FaissIndex,
 }
 
 impl VideoHandler {
@@ -73,14 +71,15 @@ impl VideoHandler {
     pub async fn new(
         video_path: impl AsRef<std::path::Path>,
         resources_dir: impl AsRef<std::path::Path>,
-        library: Library,
+        library: &Library,
         client: Arc<RwLock<PrismaClient>>,
+        index: FaissIndex,
     ) -> anyhow::Result<Self> {
         let bytes = std::fs::read(&video_path)?;
         let file_sha256 = sha256::digest(&bytes);
         let artifacts_dir = library.artifacts_dir.join(&file_sha256);
         let frames_dir = artifacts_dir.join("frames");
-        let index_dir = library.index_dir;
+        let index_dir = library.index_dir.clone();
 
         fs::create_dir_all(&artifacts_dir)?;
         fs::create_dir_all(&frames_dir)?;
@@ -106,9 +105,6 @@ impl VideoHandler {
             bail!("Failed to initialize whisper model: {whisper_err}");
         }
 
-        let indexes = VideoIndex::new(index_dir, clip_result.unwrap().unwrap().dim())
-            .expect("Failed to create indexes");
-
         Ok(Self {
             video_path: video_path.as_ref().to_owned(),
             resources_dir: resources_dir.as_ref().to_owned(),
@@ -116,17 +112,14 @@ impl VideoHandler {
             audio_path: artifacts_dir.join("audio.wav"),
             frames_dir,
             transcript_path: artifacts_dir.join("transcript.txt"),
-            indexes,
+            library: library.clone(),
+            index,
             client,
         })
     }
 
     pub fn file_identifier(&self) -> &str {
         &self.file_identifier
-    }
-
-    pub fn indexes(&self) -> &VideoIndex {
-        &self.indexes
     }
 
     /// Extract key frames from video
@@ -169,33 +162,50 @@ impl VideoHandler {
         let clip_model = self.get_clip_instance().await?;
         let clip_model = Arc::new(RwLock::new(clip_model));
 
-        let embedding_index = Arc::new(self.indexes.transcript_index.clone());
+        let index_info = IndexInfo {
+            path: self
+                .library
+                .index_dir
+                .join(vector_db::VIDEO_TRANSCRIPT_INDEX_NAME),
+            dim: Some(clip_model.read().await.dim()),
+        };
 
         utils::transcript::get_transcript_embedding(
             self.file_identifier().into(),
             self.client.clone(),
             &self.transcript_path,
             clip_model,
-            embedding_index,
+            self.index.clone(),
+            index_info,
         )
-        .await
+        .await?;
+
+        Ok(())
     }
 
     /// Get frame content embedding
     pub async fn get_frame_content_embedding(&self) -> anyhow::Result<()> {
         let clip_model = self.get_clip_instance().await?;
         let clip_model = Arc::new(RwLock::new(clip_model));
-
-        let embedding_index = Arc::new(self.indexes.frame_index.clone());
+        let index_info = IndexInfo {
+            path: self
+                .library
+                .index_dir
+                .join(vector_db::VIDEO_FRAME_INDEX_NAME),
+            dim: Some(clip_model.read().await.dim()),
+        };
 
         utils::frame::get_frame_content_embedding(
             self.file_identifier.clone(),
             self.client.clone(),
             &self.frames_dir,
             clip_model,
-            embedding_index,
+            self.index.clone(),
+            index_info,
         )
-        .await
+        .await?;
+
+        Ok(())
     }
 
     /// Get frames' captions of video
@@ -215,16 +225,25 @@ impl VideoHandler {
         let clip_model = self.get_clip_instance().await?;
         let clip_model = Arc::new(RwLock::new(clip_model));
 
-        let embedding_index = Arc::new(self.indexes.frame_caption_index.clone());
+        let index_info = IndexInfo {
+            path: self
+                .library
+                .index_dir
+                .join(vector_db::VIDEO_FRAME_CAPTION_INDEX_NAME),
+            dim: Some(clip_model.read().await.dim()),
+        };
 
         utils::caption::get_frame_caption_embedding(
             self.file_identifier().into(),
             self.client.clone(),
             &self.frames_dir,
             clip_model,
-            embedding_index,
+            self.index.clone(),
+            index_info,
         )
-        .await
+        .await?;
+
+        Ok(())
     }
 
     /// Split video into multiple clips
@@ -250,6 +269,10 @@ impl VideoHandler {
     async fn get_clip_instance(&self) -> anyhow::Result<ai::clip::CLIP> {
         ai::clip::CLIP::new(ai::clip::model::CLIPModel::ViTB32, &self.resources_dir).await
     }
+
+    pub async fn flush(&self) -> anyhow::Result<()> {
+        self.index.flush_current().await
+    }
 }
 
 #[test_log::test(tokio::test)]
@@ -274,7 +297,9 @@ async fn test_handle_video() {
     client._db_push().await.expect("failed to push db"); // apply migrations
     let client = Arc::new(RwLock::new(client));
 
-    let video_handler = VideoHandler::new(video_path, resources_dir, library, client).await;
+    let index = FaissIndex::new();
+
+    let video_handler = VideoHandler::new(video_path, resources_dir, &library, client, index).await;
 
     if video_handler.is_err() {
         tracing::error!("failed to create video handler: {:?}", video_handler);

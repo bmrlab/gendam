@@ -8,6 +8,7 @@ ai = { path = "../ai" }
 file-downloader = { path = "../file-downloader" }
 content-library = { path = "../content-library" }
 llm = { path = "../llm" }
+vector-db = {path="../vector-db"}
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tokio = { workspace = true }
@@ -20,6 +21,5 @@ sha256 = "1.5.0"
 anyhow = { workspace = true }
 image = "0.24.8"
 futures = "0.3.30"
-faiss = { workspace = true }
 prisma-lib = { path = "../../crates/prisma" }
 prisma-client-rust = { workspace = true }
