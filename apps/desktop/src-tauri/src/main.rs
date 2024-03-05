@@ -131,3 +131,25 @@ fn init_tracing() {
         .with(tracing_subscriber::fmt::layer().with_ansi(true))
         .init();
 }
+
+// fn init_tracing_file() {
+//     use std::fs::File;
+//     let file = File::create("/Users/xddotcom/Library/Application Support/cc.musedam.local/debug.log");
+//     let file = match file  {Ok(file) => file,Err(error) => panic!("Error: {:?}",error),};
+
+//     tracing_subscriber::registry()
+//         .with(
+//             tracing_subscriber::EnvFilter::try_from_default_env()
+//                 .unwrap_or_else(|_| "debug".into())
+//         )
+//         .with(
+//             tracing_subscriber::fmt::layer()
+//             .with_ansi(true)
+//             .and_then(
+//                 tracing_subscriber::fmt::layer()
+//                 .with_writer(Arc::new(file))
+//                 .with_ansi(false)
+//             )
+//         )
+//         .init();
+// }

@@ -1,11 +1,7 @@
-use std::{
-    sync::Arc,
-    path::PathBuf,
-};
+use std::sync::Arc;
 use rspc::{
     Rspc,
     BuiltRouter,
-    ExportConfig,
 };
 
 use crate::routes;
@@ -31,6 +27,8 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
 
     #[cfg(debug_assertions)] // Only export in development builds
     {
+        use std::path::PathBuf;
+        use rspc::ExportConfig;
         router
             .export_ts(ExportConfig::new(
                 PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../apps/web/src/lib/bindings.ts"),
