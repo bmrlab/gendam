@@ -10,6 +10,7 @@ use std::{
 };
 use api_server::CtxWithLibrary;
 use content_library::{
+    upgrade_library_schemas,
     load_library,
     Library,
 };
@@ -81,6 +82,7 @@ async fn main() {
             ".settings.json".parse().unwrap()
         ).build()
     ));
+    upgrade_library_schemas(&local_data_root).await;
 
     // app.app_handle()
     window.app_handle()

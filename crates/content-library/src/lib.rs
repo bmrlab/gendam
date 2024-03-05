@@ -1,5 +1,6 @@
 use prisma_lib::new_client_with_url;
-use std::path::PathBuf;
+use std::path:: PathBuf;
+use tracing::info;
 
 #[derive(Clone, Debug)]
 pub struct Library {
@@ -61,5 +62,22 @@ pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -
         artifacts_dir,
         index_dir,
         db_url,
+    }
+}
+
+pub async fn upgrade_library_schemas(local_data_root: &PathBuf) {
+    let dirs = local_data_root.join("libraries")
+        .read_dir().unwrap().into_iter()
+        .filter(|entry| entry.as_ref().unwrap().path().is_dir())
+        .map(|entry| entry.unwrap().path())
+        .collect::<Vec<PathBuf>>();
+    for dir in dirs {
+        let library_id = dir.file_name().unwrap().to_str().unwrap();
+        let library = load_library(local_data_root, library_id);
+        let client = new_client_with_url(library.db_url.as_str())
+            .await
+            .expect("failed to create prisma client");
+        client._db_push().await.expect("failed to push db"); // apply migrations
+        info!("Upgraded library '{}'", library_id);
     }
 }

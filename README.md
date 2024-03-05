@@ -1,9 +1,18 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
-
 ## Getting Started
 
-可以增加 `RUST_LOG` 环境变量，进行 `debug!` 日志的输出:
-`RUST_LOG=debug cargo tauri dev`
+### 日志
+
+~~可以增加 `RUST_LOG` 环境变量，进行 `debug!` 日志的输出: `RUST_LOG=debug cargo tauri dev`~~
+
+项目使用 `tracing_subscriber` 来配置日志,，api_server 和 tauri 的 main 入口启动的时候通过 `init_tracing` 方法来进行日志格式的初始化，并支持每个 crate 单独配置日志 level，格式是：
+
+```yaml
+# 根目录 .env 文件中配置
+# 配置单个
+RUST_LOG="api_server=debug"
+# 配置多个
+RUST_LOG="api_server=debug,ai=debug,file_downloader=debug,file_handler=debug,muse_desktop=debug,content_library=debug"
+```
 
 ### 运行 tauri
 
@@ -24,6 +33,12 @@ pnpm dev:web
 pnpm dev:api-server
 ```
 
+**单独运行 api_server 需要设置环境变量指定本地目录, 比如**
+
+```yaml
+# 根目录 .env 文件中配置
+LOCAL_DATA_DIR="/Users/xddotcom/Library/Application Support/cc.musedam.local"
+```
 
 ## Prisma Rust Client
 
@@ -46,7 +61,7 @@ prisma = "run --bin prisma --"
 
 3. 执行 `cargo prisma init` 初始化 prisma 配置, 这时候会在 `src-tauri` 下生成一个 `prisma` 目录, 接着需要把 schema.prisma 里面的 client 配置修改成如下
 
-```
+```prisma
 generator client {
   provider = "cargo prisma"
   output = "src/prisma/mod.rs"

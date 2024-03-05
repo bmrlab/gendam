@@ -15,6 +15,7 @@ use tracing::debug;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use api_server::CtxWithLibrary;
 use content_library::{
+    upgrade_library_schemas,
     load_library,
     Library,
 };
@@ -56,6 +57,9 @@ async fn main() {
 			// }
 		}
 	};
+
+    upgrade_library_schemas(&local_data_root).await;
+
     std::fs::create_dir_all(&local_data_root).unwrap();
     let resources_dir = local_data_root.join("resources").to_str().unwrap().to_owned();
     let resources_dir = Path::new(&resources_dir).to_path_buf();
