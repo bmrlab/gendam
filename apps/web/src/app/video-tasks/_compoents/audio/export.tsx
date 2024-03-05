@@ -51,7 +51,7 @@ export default function AudioExport() {
           </div>
         </div>
         <div className="relative p-6 pt-0">
-          <ScrollArea className="h-[528px] w-[592px] rounded-[6px] border">
+          <ScrollArea className="h-[582px] w-[592px] rounded-[6px] border">
             <div>
               <p className="p-4 text-[14px] font-normal leading-[21px] text-[#262626]">
                 First, let&apos;s look at the name of the product. The only version of the product is the main product

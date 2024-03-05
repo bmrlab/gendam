@@ -8,7 +8,7 @@ export default function AudioDialog() {
 
   return (
     <Dialog open={isOpenAudioDialog} onOpenChange={setIsOpenAudioDialog}>
-      <DialogContent overlayClassName="bg-white/90" className="w-[920px] max-w-full gap-0 p-0 shadow-lg">
+      <DialogContent closeHidden overlayClassName="bg-white/90" className="w-[920px] max-w-full gap-0 p-0 shadow-lg">
         <DialogHeader className="border-b py-4">
           <DialogTitle className="pl-6 text-[16px] font-medium leading-[22.4px] text-[#262626]">
             导出语音转译

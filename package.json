@@ -4,23 +4,20 @@
   "private": true,
   "scripts": {
     "prisma": "cargo prisma --",
-
-		"web": "pnpm run --filter @muse/web --",
+    "web": "pnpm run --filter @muse/web --",
     "dev:web": "pnpm web dev",
     "build:web": "pnpm web build",
-
     "desktop": "pnpm run --filter @muse/desktop --",
-		"tauri": "pnpm desktop tauri",
-
+    "tauri": "pnpm desktop tauri",
     "api-server": "pnpm run --filter @muse/api-server --",
     "dev:api-server": "pnpm api-server dev"
   },
   "dependencies": {},
   "devDependencies": {},
   "engines": {
-		"pnpm": ">=8.0.0",
-		"npm": "pnpm",
-		"yarn": "pnpm",
-		"node": ">=20.1 <21"
-	}
+    "pnpm": ">=8.0.0",
+    "npm": "pnpm",
+    "yarn": "pnpm",
+    "node": ">=20.1 <21"
+  }
 }
