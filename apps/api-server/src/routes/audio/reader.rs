@@ -5,6 +5,17 @@ use std::fmt::Write;
 use std::path::PathBuf;
 use tracing::debug;
 
+// 检查 content 是否为空，如何为空直接返回空字符串
+macro_rules! check_empty {
+    ($self:expr, $body:block) => {
+        if $self.content.is_empty() {
+            Ok(String::new())
+        } else {
+            $body
+        }
+    };
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct AudioData {
     start_timestamp: u32,
@@ -98,65 +109,71 @@ impl AudioReader {
     }
 
     pub fn read_to_json(&self) -> anyhow::Result<String> {
-        Ok(serde_json::to_string(&self.content)?)
+        check_empty!(self, { Ok(serde_json::to_string(&self.content)?) })
     }
 
     pub fn read_to_vtt(&self) -> anyhow::Result<String> {
-        // Prepare the result string
-        let mut result = "WEBVTT\n\n".to_string();
+        check_empty!(self, {
+            // Prepare the result string
+            let mut result = "WEBVTT\n\n".to_string();
 
-        // Loop over the content
-        for (i, data) in self.content.iter().enumerate() {
-            let cue = format!(
-                "{}\n{} --> {}\n{}\n\n",
-                i + 1,
-                AudioData::format_timestamp(data.start_timestamp, b'.'),
-                AudioData::format_timestamp(data.end_timestamp, b'.'),
-                data.text
-            );
-            result.push_str(&cue);
-        }
+            // Loop over the content
+            for (i, data) in self.content.iter().enumerate() {
+                let cue = format!(
+                    "{}\n{} --> {}\n{}\n\n",
+                    i + 1,
+                    AudioData::format_timestamp(data.start_timestamp, b'.'),
+                    AudioData::format_timestamp(data.end_timestamp, b'.'),
+                    data.text
+                );
+                result.push_str(&cue);
+            }
 
-        Ok(result)
+            Ok(result)
+        })
     }
 
     pub fn read_to_csv(&self) -> anyhow::Result<String> {
-        let mut wtr = WriterBuilder::new().delimiter(b';').from_writer(vec![]);
+        check_empty!(self, {
+            let mut wtr = WriterBuilder::new().delimiter(b';').from_writer(vec![]);
 
-        // 序列化并写入每条音频数据
-        for record in self.content.clone() {
-            wtr.serialize(AudioDataCsvSer(&record))?;
-        }
-        wtr.flush()?;
-        // 从内存中获取生成的 CSV 字符串
-        let csv_content = String::from_utf8(wtr.into_inner()?)?;
-        Ok(csv_content)
+            // 序列化并写入每条音频数据
+            for record in self.content.clone() {
+                wtr.serialize(AudioDataCsvSer(&record))?;
+            }
+            wtr.flush()?;
+            // 从内存中获取生成的 CSV 字符串
+            let csv_content = String::from_utf8(wtr.into_inner()?)?;
+            Ok(csv_content)
+        })
     }
 
     // read to avid log exchange
     pub fn read_to_ale(&self) -> anyhow::Result<String> {
-        let mut ale_str = String::new();
+        check_empty!(self, {
+            let mut ale_str = String::new();
 
-        // 文件头
-        writeln!(ale_str, "Heading").unwrap();
-        writeln!(ale_str, "FIELD_DELIM	TABS").unwrap();
-        writeln!(ale_str, "VIDEO_FORMAT	1080").unwrap();
-        writeln!(ale_str, "AUDIO_FORMAT	48khz").unwrap();
-        writeln!(ale_str, "FPS	25").unwrap();
-        writeln!(ale_str, "\nColumn").unwrap();
+            // 文件头
+            writeln!(ale_str, "Heading").unwrap();
+            writeln!(ale_str, "FIELD_DELIM	TABS").unwrap();
+            writeln!(ale_str, "VIDEO_FORMAT	1080").unwrap();
+            writeln!(ale_str, "AUDIO_FORMAT	48khz").unwrap();
+            writeln!(ale_str, "FPS	25").unwrap();
+            writeln!(ale_str, "\nColumn").unwrap();
 
-        // 列定义
-        writeln!(ale_str, "Start\tEnd\tName").unwrap();
-        writeln!(ale_str, "\nData").unwrap();
+            // 列定义
+            writeln!(ale_str, "Start\tEnd\tName").unwrap();
+            writeln!(ale_str, "\nData").unwrap();
 
-        // 数据行
-        for data in &self.content {
-            let start_time = AudioData::format_timestamp(data.start_timestamp, b':');
-            let end_time = AudioData::format_timestamp(data.end_timestamp, b':');
-            writeln!(ale_str, "{}\t{}\t{}", start_time, end_time, data.text).unwrap();
-        }
+            // 数据行
+            for data in &self.content {
+                let start_time = AudioData::format_timestamp(data.start_timestamp, b':');
+                let end_time = AudioData::format_timestamp(data.end_timestamp, b':');
+                writeln!(ale_str, "{}\t{}\t{}", start_time, end_time, data.text).unwrap();
+            }
 
-        Ok(ale_str)
+            Ok(ale_str)
+        })
     }
 
     /// file_name: 文件名.docx
