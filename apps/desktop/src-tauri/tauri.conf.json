@@ -92,7 +92,7 @@
       }
     },
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost"
+      "csp": "default-src 'self' asset: https://asset.localhost; img-src 'self' asset: https://asset.localhost"
     },
     "updater": {
       "active": false

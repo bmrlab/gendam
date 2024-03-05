@@ -85,7 +85,7 @@ export default function Files() {
         </div>
       </div>
       <div
-        className="p-6 flex-1 flex flex-wrap items-start justify-start"
+        className="p-6 flex-1 flex flex-wrap content-start items-start justify-start"
         onClick={() => setSelectedId(null)}
       >
         {assets && assets.map((asset) => (
