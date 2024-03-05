@@ -5,6 +5,7 @@ import { Folder_Light, Document_Light } from "@muse/assets/icons";
 import { rspc } from "@/lib/rspc";
 import type { FilePathQueryResult } from "@/lib/bindings";
 import UploadButton from "@/components/UploadButton";
+import { getLocalFileUrl } from "@/utils/file";
 import styles from "./styles.module.css";
 
 export default function Files() {
@@ -52,7 +53,7 @@ export default function Files() {
   let [selectedId, setSelectedId] = useState<number|null>(null);
 
   let handleSelectFile = useCallback((fileFullPath: string) => {
-    console.log("handleSelectFile", fileFullPath);
+    // console.log("handleSelectFile", fileFullPath);
     createAssetMut.mutate({
       path: currentPath,
       localFullPath: fileFullPath
@@ -86,7 +87,7 @@ export default function Files() {
           <div
             key={asset.id}
             className={
-              `w-36 m-2 flex flex-col justify-between overflow-hidden cursor-default select-none
+              `m-2 flex flex-col items-center justify-start overflow-hidden cursor-default select-none
               ${selectedId === asset.id && styles["selected"]}`
             }
             onClick={(e) => {
@@ -99,14 +100,22 @@ export default function Files() {
               handleDoubleClick(asset);
             }}
           >
-            <div className={`${styles["image"]} rounded-lg`}>
+            <div className={`${styles["image"]} w-32 h-32 rounded-lg`}>
               {asset.isDir ? (
                 <Image src={ Folder_Light } alt="folder"></Image>
               ) : (
-                <Image src={ Document_Light } alt="folder"></Image>
+                // <Image src={ Document_Light } alt="folder"></Image>
+                <video controls={false} autoPlay muted style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "fill",
+                }}>
+                  <source src={getLocalFileUrl(asset.assetObject?.localFullPath ?? "")} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
               )}
             </div>
-            <div className={`${styles["title"]} p-1 mt-1 mb-2 rounded-lg`}>
+            <div className={`${styles["title"]} w-32 p-1 mt-1 mb-2 rounded-lg`}>
               <div
                 className="leading-[1.4em] h-[2.8em] line-clamp-2 text-xs text-center"
               >{asset.name}</div>

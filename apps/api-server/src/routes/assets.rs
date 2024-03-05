@@ -38,6 +38,7 @@ struct FilePathQueryPayload {
 struct AssetObjectQueryResult {
     id: i32,
     // note: String,
+    local_full_path: String,
 }
 
 #[derive(Serialize, Type, Debug)]
@@ -178,6 +179,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
                                 Some(asset_object) => {
                                     Some(AssetObjectQueryResult {
                                         id: asset_object.id,
+                                        local_full_path: format!("{}/{}", library.files_dir.to_str().unwrap(), asset_object.id)
                                     })
                                 }
                             }

@@ -7,7 +7,7 @@ use candle_core::{Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 use candle_transformers::models::blip;
 use candle_transformers::models::quantized_blip;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tokenizers::Tokenizer;
 use tracing::debug;
 

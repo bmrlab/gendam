@@ -9,7 +9,14 @@ type Props = {
 const TauriUploadButton: React.FC<Props> = ({ onSelectFile }) => {
   // TODO: remove `selectFile` in utils/file.ts
   let handleClick = useCallback(async () => {
-    const result = await open({ directory: false });
+    const result = await open({
+      directory: false,
+      multiple: false,
+      filters: [{
+        name: "Video",
+        extensions: ["mp4", "mov", "avi", "mkv"],
+      }]
+    });
     // console.log("tauri selected file:", result);
     if (result) {
       const fileFullPath = result as string;

@@ -21,7 +21,7 @@ export type Procedures = {
 
 export type AssetObjectCreatePayload = { path: string; localFullPath: string }
 
-export type AssetObjectQueryResult = { id: number }
+export type AssetObjectQueryResult = { id: number; localFullPath: string }
 
 export type FilePathCreatePayload = { path: string; name: string }
 
