@@ -1,6 +1,6 @@
 use crate::video::split::split_video;
 use ai::whisper::WhisperItem;
-use llm::{LLMMessage, StandardSampler};
+use llm::LLMMessage;
 use prisma_lib::{
     video_clip,
     video_frame::{self, OrderByParam},
@@ -207,18 +207,7 @@ Here is the document:"#,
         let response = llm
             .read()
             .await
-            .call(
-                vec![LLMMessage::User(prompt)],
-                Some(llm::SessionParams {
-                    // FIXME there might be error when input prompt exceeds n_ctx
-                    n_ctx: 1024,
-                    ..Default::default()
-                }),
-                Some(StandardSampler {
-                    temp: 0.0,
-                    ..Default::default()
-                }),
-            )
+            .call(vec![LLMMessage::User(prompt)], None)
             .await?;
         let response = response.trim().to_string();
 

@@ -1,4 +1,4 @@
-use crate::LLMMessage;
+use super::LLMMessage;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Model {

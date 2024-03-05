@@ -9,7 +9,5 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "fs"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 test-log = { version = "0.2.14", features = ["trace"] }
-llama_cpp = { git = "https://github.com/edgenai/llama_cpp-rs.git", default-features = false, features = [
-  "metal",
-] }
 anyhow = { workspace = true }
+llama-cpp-2 = { version = "0.1.34" }

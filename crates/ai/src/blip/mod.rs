@@ -7,7 +7,7 @@ use candle_core::{Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 use candle_transformers::models::blip;
 use candle_transformers::models::quantized_blip;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tokenizers::Tokenizer;
 use tracing::debug;
 
@@ -110,12 +110,34 @@ pub fn load_image<P: AsRef<std::path::Path>>(p: P) -> candle_core::Result<Tensor
 #[test_log::test(tokio::test)]
 async fn test_caption() {
     let blip =
-        BLIP::new("/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources").await;
+        BLIP::new("/Users/zhuo/Library/Application Support/cc.musedam.local/resources").await;
 
     assert!(blip.is_ok());
     let mut blip = blip.unwrap();
 
-    let caption = blip.get_caption("/Users/zhuo/Desktop/avatar.JPG").await;
-    debug!("caption: {:?}", caption);
-    assert!(caption.is_ok());
+    tracing::info!("start execution");
+    let start = std::time::Instant::now();
+
+    let frame_paths: Vec<String> = std::fs::read_dir("/Users/zhuo/Library/Application Support/cc.musedam.local/libraries/1234567/artifacts/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/frames")
+        .unwrap()
+        .map(|res|   res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, std::io::Error>>()
+        .unwrap().iter().filter_map(|v| {
+            if v.extension() == Some("png".as_ref()) { Some(v.to_str().unwrap().to_string()) }
+            else {None}
+        }).collect();
+
+    for path in frame_paths {
+        let temp_start = std::time::Instant::now();
+
+        let caption = blip.get_caption(path).await;
+        debug!("caption: {:?}", caption);
+        assert!(caption.is_ok());
+
+        let duration = temp_start.elapsed();
+        tracing::info!("Time elapsed in execution is: {:?}", duration);
+    }
+
+    let duration = start.elapsed();
+    tracing::info!("Time elapsed in execution is: {:?}", duration);
 }

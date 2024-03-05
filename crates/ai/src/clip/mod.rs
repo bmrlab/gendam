@@ -2,7 +2,7 @@ use super::{preprocess, utils};
 use anyhow::anyhow;
 use image::RgbImage;
 use ndarray::{Array1, ArrayView1, Axis};
-use ort::{CoreMLExecutionProvider, GraphOptimizationLevel, Session};
+use ort::{CPUExecutionProvider, CoreMLExecutionProvider, GraphOptimizationLevel, Session};
 use std::path::Path;
 use tokenizers::tokenizer::Tokenizer;
 pub mod model;
@@ -60,15 +60,21 @@ impl CLIP {
         dim: usize,
     ) -> anyhow::Result<Self> {
         let image_model = Session::builder()?
-            .with_execution_providers([CoreMLExecutionProvider::default().build()])?
+            .with_execution_providers([
+                CPUExecutionProvider::default().build(),
+                CoreMLExecutionProvider::default().build(),
+            ])?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(1)?
+            .with_intra_threads(16)?
             .with_model_from_file(image_model_path)?;
 
         let text_model = Session::builder()?
-            .with_execution_providers([CoreMLExecutionProvider::default().build()])?
+            .with_execution_providers([
+                CPUExecutionProvider::default().build(),
+                CoreMLExecutionProvider::default().build(),
+            ])?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(1)?
+            .with_intra_threads(16)?
             .with_model_from_file(text_model_path)?;
 
         let text_tokenizer = match Tokenizer::from_file(text_tokenizer_vocab_path) {

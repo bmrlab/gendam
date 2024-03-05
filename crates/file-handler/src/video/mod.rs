@@ -311,10 +311,10 @@ async fn test_handle_video() {
 
     // tracing::info!("got audio");
 
-    video_handler
-        .get_transcript()
-        .await
-        .expect("failed to get transcript");
+    // video_handler
+    //     .get_transcript()
+    //     .await
+    //     .expect("failed to get transcript");
 
     // tracing::info!("got transcript");
 
@@ -350,10 +350,10 @@ async fn test_handle_video() {
     //     .await
     //     .expect("failed to get video clips");
 
-    // video_handler
-    //     .get_video_clips_summarization()
-    //     .await
-    //     .expect("failed to get video clips summarization");
+    video_handler
+        .get_video_clips_summarization()
+        .await
+        .expect("failed to get video clips summarization");
 
     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 }
