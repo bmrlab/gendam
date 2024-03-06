@@ -8,3 +8,5 @@ resources/*
 !resources/.gitkeep
 
 .data/
+
+/debug.log
