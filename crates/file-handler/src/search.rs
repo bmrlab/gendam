@@ -3,7 +3,7 @@ use prisma_lib::{video_frame, video_frame_caption, video_transcript, PrismaClien
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 use tracing::debug;
-use vector_db::{self, IndexInfo};
+use vector_db::{self, FaissIndex, IndexInfo};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum SearchRecordType {
@@ -38,6 +38,7 @@ pub async fn handle_search(
     resources_dir: impl AsRef<std::path::Path>,
     library: Library,
     client: Arc<RwLock<PrismaClient>>,
+    index: FaissIndex,
 ) -> anyhow::Result<Vec<SearchResult>> {
     let clip_model =
         ai::clip::CLIP::new(ai::clip::model::CLIPModel::ViTB32, &resources_dir).await?;
@@ -53,8 +54,6 @@ pub async fn handle_search(
         SearchRecordType::Transcript,
     ]);
     let mut search_results = vec![];
-
-    let index = vector_db::FaissIndex::new();
 
     for record_type in record_types {
         let path = match record_type {
@@ -177,6 +176,7 @@ async fn test_handle_search() {
         .expect("failed to create prisma client");
     client._db_push().await.expect("failed to push db"); // apply migrations
     let client = Arc::new(RwLock::new(client));
+    let index = FaissIndex::new();
 
     let results = handle_search(
         SearchRequest {
@@ -187,6 +187,7 @@ async fn test_handle_search() {
         "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources",
         library,
         client,
+        index,
     )
     .await;
 

@@ -1,16 +1,17 @@
-use std::sync::Arc;
 use crate::task_queue::VideoTaskType;
+use std::sync::Arc;
 // use crate::{Ctx, R};
-use rspc::{Rspc, Router};
 use crate::CtxWithLibrary;
 use file_handler::search::{SearchRecordType, SearchRequest, SearchResult};
 use prisma_lib::{new_client_with_url, video_task};
+use rspc::{Router, Rspc};
 use serde::Serialize;
 use specta::Type;
 use tokio::sync::RwLock;
 
 pub fn get_routes<TCtx>() -> Router<TCtx>
-where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+where
+    TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
     Rspc::<TCtx>::new().router().procedure(
         "all",
@@ -30,6 +31,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
                 ctx.get_resources_dir(),
                 library.clone(),
                 client,
+                ctx.get_index(),
             )
             .await;
             // .unwrap();
@@ -99,11 +101,8 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
                         // TODO current version only support frame type
                         let image_path =
                             format!("{}/frames/{}.png", &file_identifier, &start_timestamp);
-                        let image_path = library
-                            .artifacts_dir
-                            .join(image_path)
-                            .display()
-                            .to_string();
+                        let image_path =
+                            library.artifacts_dir.join(image_path).display().to_string();
                         let video_path = tasks_hash_map
                             .get(file_identifier)
                             .unwrap_or(&"".to_string())

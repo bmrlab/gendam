@@ -1,10 +1,11 @@
+use anyhow::bail;
 use faiss::index::{IndexImpl, SearchResult};
 use faiss::{IdMap, Index};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::mpsc::{self, Sender};
 use tokio::sync::{oneshot, Mutex};
-use tracing::{debug, error, warn};
+use tracing::{debug, warn};
 
 pub struct EmbeddingPayload {
     id: u64,
@@ -33,108 +34,89 @@ pub const VIDEO_FRAME_INDEX_NAME: &str = "frame-index";
 pub const VIDEO_FRAME_CAPTION_INDEX_NAME: &str = "frame-caption-index";
 pub const VIDEO_TRANSCRIPT_INDEX_NAME: &str = "transcript-index";
 
+struct EmbeddingIndex {
+    pub index: IdMap<IndexImpl>,
+    pub path: PathBuf,
+}
+
 #[derive(Clone, Debug)]
 pub struct FaissIndex {
-    pub index_tx: Arc<Sender<(IndexPayload, Option<IndexInfo>)>>,
+    // actually, IndexInfo can only be None when IndexPayload is Flush
+    // we can find better way to 
+    index_tx: Arc<Sender<(IndexPayload, Option<IndexInfo>)>>,
 }
 
 impl FaissIndex {
     pub fn new() -> Self {
+        debug!("FaissIndex `new` called");
+
         let (tx, mut rx) = mpsc::channel::<(IndexPayload, Option<IndexInfo>)>(512);
         let index_tx = Arc::new(tx);
-        let current_index_path: Option<PathBuf> = None;
-        let current_index_path = Arc::new(Mutex::new(current_index_path));
-        let current_index: Option<faiss::IdMap<IndexImpl>> = None;
-        let current_index = Arc::new(Mutex::new(current_index));
+
+        let current: Option<EmbeddingIndex> = None;
+        let current = Arc::new(Mutex::new(current));
 
         tokio::spawn(async move {
             loop {
                 match rx.recv().await {
                     Some((payload, info)) => {
-                        let current_index_path = current_index_path.clone();
-                        let current_index = current_index.clone();
+                        let current = current.clone();
+                        let mut current = current.lock().await;
 
-                        let mut current_index_path = current_index_path.lock().await;
-                        let mut current_index = current_index.lock().await;
-
-                        // FIXME this is a little stupid
-                        let info = info.unwrap_or(IndexInfo {
-                            path: current_index_path
-                                .as_ref()
-                                .unwrap_or(&PathBuf::new())
-                                .clone(),
-                            dim: None,
-                        });
-
-                        if current_index_path.is_none()
-                            || &info.path != current_index_path.as_ref().unwrap()
-                        {
-                            let index = current_index.as_mut();
-                            match index {
-                                Some(index) => {
-                                    // flush current index onto disk
+                        match (current.as_mut(), info) {
+                            (Some(index), Some(info)) => {
+                                if index.path != info.path {
+                                    // flush current index to disk
                                     if let Err(e) =
-                                        flush_index(index, current_index_path.as_ref().unwrap())
+                                        flush_index(&mut index.index, index.path.clone())
                                     {
                                         tracing::error!("flush index error: {}", e);
                                         continue;
                                     }
-                                }
-                                _ => {}
-                            }
 
-                            // load index
-                            let index = {
-                                if info.path.exists() {
-                                    let index =
-                                        faiss::read_index(info.path.to_str().unwrap()).expect("");
-                                    index.into_id_map()
-                                } else if let Some(dim) = info.dim {
-                                    let index = faiss::index_factory(
-                                        dim as u32,
-                                        "Flat",
-                                        faiss::MetricType::InnerProduct,
-                                    )
-                                    .expect("failed to create index");
-
-                                    faiss::IdMap::new(index)
-                                } else {
-                                    error!(
-                                        "index {} does not exist, and dim is not provided",
-                                        info.path.to_str().unwrap()
-                                    );
-                                    continue;
-                                }
-                            };
-
-                            match index {
-                                Ok(index) => {
-                                    debug!("dim: {}, ntotal: {}", index.d(), index.ntotal());
-                                    if let Some(dim) = info.dim {
-                                        if index.d() != dim as u32 {
-                                            error!(
-                                                "index {} has different dimension to {}",
-                                                info.path.to_str().unwrap(),
-                                                dim
-                                            );
+                                    // and load new index from disk
+                                    match load_index(info.path.clone(), info.dim) {
+                                        Ok(new_index) => {
+                                            *current = Some(EmbeddingIndex {
+                                                index: new_index,
+                                                path: info.path.clone(),
+                                            });
+                                        }
+                                        Err(e) => {
+                                            tracing::error!("load index error: {:?}", e);
                                             continue;
                                         }
                                     }
-
-                                    *current_index_path = Some(info.path.clone());
-                                    *current_index = Some(index);
                                 }
-                                Err(e) => {
-                                    tracing::error!(
-                                        "load {} index error: {}",
-                                        info.path.to_str().unwrap(),
-                                        e
-                                    );
+                            }
+                            (None, Some(info)) => {
+                                // just load new index
+                                match load_index(info.path.clone(), info.dim) {
+                                    Ok(index) => {
+                                        *current = Some(EmbeddingIndex {
+                                            index,
+                                            path: info.path.clone(),
+                                        });
+                                    }
+                                    Err(e) => {
+                                        tracing::error!("load index error: {:?}", e);
+                                        continue;
+                                    }
                                 }
+                            }
+                            _ => {
+                                // do nothing
                             }
                         }
 
-                        let current_index = current_index.as_mut().unwrap();
+                        let current = current.as_mut();
+
+                        if current.is_none() {
+                            tracing::error!("faiss current index is None");
+                            continue;
+                        }
+
+                        let current = current.unwrap();
 
                         match payload {
                             IndexPayload::Data(payload) => {
@@ -144,17 +126,20 @@ impl FaissIndex {
                                 if let Ok(ids_selector) =
                                     faiss::selector::IdSelector::batch(&[xids])
                                 {
-                                    let _ = current_index.remove_ids(&ids_selector);
+                                    // remove results can be safely ignored
+                                    let _ = current.index.remove_ids(&ids_selector);
                                 }
 
-                                if let Err(e) = current_index
+                                if let Err(e) = current
+                                    .index
                                     .add_with_ids(payload.embedding.as_slice(), &[xids])
                                 {
                                     tracing::error!("add index error: {}", e);
                                 };
                             }
                             IndexPayload::Search(payload) => {
-                                let results = current_index
+                                let results = current
+                                    .index
                                     .search(payload.embedding.as_slice(), payload.limit);
                                 if let Err(e) = payload.tx.send(
                                     results
@@ -164,9 +149,7 @@ impl FaissIndex {
                                 }
                             }
                             IndexPayload::Flush => {
-                                if let Err(e) =
-                                    flush_index(current_index, current_index_path.as_ref().unwrap())
-                                {
+                                if let Err(e) = flush_index(&mut current.index, &current.path) {
                                     tracing::error!("flush index error: {}", e);
                                 }
                             }
@@ -179,12 +162,10 @@ impl FaissIndex {
                 }
             }
 
-            let mut current_index = current_index.lock().await;
-            let current_index_path = current_index_path.lock().await;
-
-            if let (Some(index), Some(path)) = (current_index.as_mut(), current_index_path.as_ref())
-            {
-                if let Err(e) = flush_index(index, path) {
+            // flush index at the end of the loop
+            let mut current = current.lock().await;
+            if let Some(current) = current.as_mut() {
+                if let Err(e) = flush_index(&mut current.index, &current.path) {
                     tracing::error!("flush index error: {}", e);
                 }
             }
@@ -235,11 +216,7 @@ impl FaissIndex {
 
     pub async fn flush_current(&self) -> anyhow::Result<()> {
         self.index_tx
-            .send((
-                IndexPayload::Flush,
-                // TODO maybe just make index_info optional
-                None,
-            ))
+            .send((IndexPayload::Flush, None))
             .await
             .map_err(|e| anyhow::anyhow!("flush index error: {}", e))
     }
@@ -254,6 +231,25 @@ fn flush_index(index: &mut IdMap<IndexImpl>, path: impl AsRef<Path>) -> anyhow::
     }
 }
 
+fn load_index(path: impl AsRef<Path>, dim: Option<usize>) -> anyhow::Result<IdMap<IndexImpl>> {
+    if path.as_ref().exists() {
+        let index = faiss::read_index(path.as_ref().to_str().unwrap()).expect("");
+        index
+            .into_id_map()
+            .map_err(|e| anyhow::anyhow!("load index error: {}", e))
+    } else if let Some(dim) = dim {
+        let index = faiss::index_factory(dim as u32, "Flat", faiss::MetricType::InnerProduct)
+            .expect("failed to create index");
+
+        faiss::IdMap::new(index).map_err(|e| anyhow::anyhow!("load index error: {}", e))
+    } else {
+        bail!(
+            "index {} does not exist, and dim is not provided",
+            path.as_ref().to_str().unwrap()
+        );
+    }
+}
+
 #[test_log::test(tokio::test)]
 async fn test_faiss_index() {
     let index = FaissIndex::new();
@@ -263,20 +259,9 @@ async fn test_faiss_index() {
     };
 
     index
-        .index_tx
-        .send((
-            IndexPayload::Data(EmbeddingPayload {
-                id: 1,
-                embedding: vec![1.0, 2.0, 3.0],
-            }),
-            Some(index_info.clone()),
-        ))
+        .add(1, vec![1.0, 2.0, 3.0], index_info.clone())
         .await
-        .unwrap();
+        .expect("failed to add");
 
-    index
-        .index_tx
-        .send((IndexPayload::Flush, None))
-        .await
-        .unwrap();
+    index.flush_current().await.expect("failed to flush");
 }
