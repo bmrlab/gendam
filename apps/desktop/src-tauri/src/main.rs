@@ -122,40 +122,40 @@ fn greet(name: &str) -> String {
     format!("Hello, {}, in Client!", name)
 }
 
-// fn init_tracing() {
-//     tracing_subscriber::registry()
-//         .with(
-//             // load filters from the `RUST_LOG` environment variable.
-//             tracing_subscriber::EnvFilter::try_from_default_env()
-//                 .unwrap_or_else(|_| "muse_desktop=info".into()),
-//         )
-//         .with(tracing_subscriber::fmt::layer().with_ansi(true))
-//         .init();
-// }
-
 fn init_tracing() {
-    use std::fs::File;
-    use tracing_subscriber::Layer;
-    // create debug.log in current directory
-    let file = File::create("debug.log");
-    let file = match file {
-        Ok(file) => file,
-        Err(error) => panic!("Error: {:?}",error)
-    };
     tracing_subscriber::registry()
         .with(
+            // load filters from the `RUST_LOG` environment variable.
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "debug".into())
-                // .unwrap_or_else(|_| "muse_desktop=info".into()),
+                .unwrap_or_else(|_| "muse_desktop=info".into()),
         )
-        .with(
-            tracing_subscriber::fmt::layer()
-            .with_ansi(true)
-            .and_then(
-                tracing_subscriber::fmt::layer()
-                .with_writer(Arc::new(file))
-                .with_ansi(false)
-            )
-        )
+        .with(tracing_subscriber::fmt::layer().with_ansi(true))
         .init();
 }
+
+// fn init_tracing() {
+//     use std::fs::File;
+//     use tracing_subscriber::Layer;
+//     // create debug.log in current directory
+//     let file = File::create("debug.log");
+//     let file = match file {
+//         Ok(file) => file,
+//         Err(error) => panic!("Error: {:?}",error)
+//     };
+//     tracing_subscriber::registry()
+//         .with(
+//             tracing_subscriber::EnvFilter::try_from_default_env()
+//                 .unwrap_or_else(|_| "debug".into())
+//                 // .unwrap_or_else(|_| "muse_desktop=info".into()),
+//         )
+//         .with(
+//             tracing_subscriber::fmt::layer()
+//             .with_ansi(true)
+//             .and_then(
+//                 tracing_subscriber::fmt::layer()
+//                 .with_writer(Arc::new(file))
+//                 .with_ansi(false)
+//             )
+//         )
+//         .init();
+// }
