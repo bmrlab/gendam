@@ -1,8 +1,8 @@
 use crate::routes::audio::constant::TRANSCRIPT_FILE_NAME;
 use crate::routes::audio::downloader::DownloadHelper;
 use crate::routes::audio::reader::AudioReader;
-use crate::{Ctx, R};
-use rspc::Router;
+use crate::CtxWithLibrary;
+use rspc::{Rspc, Router};
 use serde::{Deserialize, Serialize};
 use specta_macros::Type;
 use std::fmt;
@@ -28,21 +28,25 @@ struct ExportInput {
     file_name: Option<String>,
 }
 
-pub fn get_routes() -> Router<Ctx> {
-    let router = R
+pub fn get_routes<TCtx>() -> Router<TCtx>
+where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+{
+    let router = Rspc::<TCtx>::new()
         .router()
         .procedure(
             "find_by_hash",
-            R.query(|ctx, hash: String| async move {
-                let artifacts_dir = ctx.library.artifacts_dir.clone();
+            Rspc::<TCtx>::new().query(|ctx, hash: String| async move {
+                let library = ctx.load_library();
+                let artifacts_dir = library.artifacts_dir.clone();
                 let path = artifacts_dir.join(hash).join(TRANSCRIPT_FILE_NAME);
                 get_all_audio_format(path)
             }),
         )
         .procedure(
             "export",
-            R.mutation(|_ctx, input: ExportInput| async move {
-                let artifacts_dir = _ctx.library.artifacts_dir.clone();
+            Rspc::<TCtx>::new().mutation(|ctx, input: ExportInput| async move {
+                let library = ctx.load_library();
+                let artifacts_dir = library.artifacts_dir.clone();
                 let save_dir = PathBuf::from(input.path);
                 let types = input.type_group.clone();
                 let reader =
