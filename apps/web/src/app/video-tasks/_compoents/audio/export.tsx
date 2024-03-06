@@ -3,6 +3,8 @@ import Icon from '@/components/Icon'
 import MuseRadio from '@/components/Radio'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useToast } from '@/components/ui/use-toast'
+import { AudioType } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
 import { useBoundStore } from '@/store'
@@ -19,8 +21,12 @@ export enum FileTypeEnum {
 }
 
 export default function AudioExport() {
+  const { toast } = useToast()
+
   const { fileHash } = useBoundStore.use.audioDialogProps()
+  const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
   const { data: rawData, isLoading, error } = rspc.useQuery(['audio.find_by_hash', fileHash])
+  const { mutateAsync } = rspc.useMutation(['audio.export'])
 
   const data = useMemo(() => {
     return Object.keys(FileTypeEnum).map((key) => {
@@ -47,6 +53,31 @@ export default function AudioExport() {
 
     const updatedBools = selectFileGroup.map((item, i) => (i === index ? !item : item))
     setSelectFileGroup(updatedBools)
+  }
+
+  const handleDownload = async () => {
+    let types: AudioType[] = []
+    selectFileGroup.forEach((item, index) => {
+      if (item) {
+        types.push(Object.keys(FileTypeEnum)[index] as AudioType)
+      }
+    })
+    const errorList = await mutateAsync({
+      types: types,
+      hash: fileHash,
+      path: '/Users/zingerbee/Downloads',
+    })
+    if (errorList.length > 0) {
+      toast({
+        title: `${errorList.join('、')}，格式导出失败`,
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: '导出成功',
+      })
+    }
+    setIsOpenAudioDialog(false)
   }
 
   return (
@@ -115,7 +146,9 @@ export default function AudioExport() {
           <MuseRadio label="222" />
         </div>
         <div className="flex w-full flex-1 items-end">
-          <Button className="mt-4 w-full">导出</Button>
+          <Button className="mt-4 w-full" onClick={handleDownload}>
+            导出
+          </Button>
         </div>
       </div>
     </div>

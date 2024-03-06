@@ -15,6 +15,7 @@ export type Procedures = {
         { key: "assets.create_asset_object", input: AssetObjectCreatePayload, result: string } |
         { key: "assets.create_file_path", input: FilePathCreatePayload, result: string } |
         { key: "assets.process_video_asset", input: number, result: any } |
+        { key: "audio.export", input: ExportInput, result: AudioType[] } |
         { key: "files.reveal", input: string, result: null } |
         { key: "libraries.create", input: string, result: any } |
         { key: "video.tasks.create", input: string, result: any },
@@ -34,6 +35,8 @@ export type FilePathQueryResult = { id: number; name: string; isDir: boolean; as
 export type AudioResp = { type: AudioType; content: string }
 
 export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
+
+export type ExportInput = { types: AudioType[]; hash: string; path: string; fileName?: string | null }
 
 export type SearchResultPayload = { imagePath: string; videoPath: string; startTime: number }
 

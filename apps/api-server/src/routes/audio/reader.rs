@@ -46,6 +46,10 @@ impl<'a> Serialize for AudioDataCsvSer<'a> {
 }
 
 impl AudioData {
+    pub fn text(&self) -> String {
+        self.text.clone()
+    }
+
     pub fn format_timestamp(time_in_milliseconds: u32, millis_delimiter: u8) -> String {
         let hours = time_in_milliseconds / 3600000;
         let minutes = (time_in_milliseconds % 3600000) / 60000;
