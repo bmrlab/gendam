@@ -5,15 +5,9 @@ import { rspc, client } from "@/lib/rspc";
 import { getLocalFileUrl } from "@/utils/file";
 import type { SearchResultPayload } from "@/lib/bindings";
 
-type VideoItem = {
-  videoSrc: string;
-  startTime: number;
-};
-
-const VideoPreview: React.FC<{ videoItem: VideoItem }> = ({ videoItem }) => {
+const VideoPreview: React.FC<{ item: SearchResultPayload }> = ({ item }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { videoSrc } = videoItem;
-  let startTime = Math.max(0, (videoItem.startTime / 1e3) - 0.5);
+  let startTime = Math.max(0, (item.startTime / 1e3) - 0.5);
   let endTime = startTime + 2;
 
   useEffect(() => {
@@ -34,10 +28,51 @@ const VideoPreview: React.FC<{ videoItem: VideoItem }> = ({ videoItem }) => {
       height: "100%",
       objectFit: "contain",
     }}>
-      <source src={videoSrc} type="video/mp4" />
-      Your browser does not support the video tag.
+      <source src={getLocalFileUrl(item.videoPath)} type="video/mp4" />
     </video>
   );
+}
+
+const VideoItem: React.FC<{
+  item: SearchResultPayload,
+  handleVideoClick: (item: SearchResultPayload) => void;
+}> = ({ item, handleVideoClick }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    let startTime = Math.max(0, (item.startTime / 1e3) - 0.5);
+    let endTime = startTime + 2;
+    video.currentTime = startTime;
+    video.ontimeupdate = () => {
+      if (video.currentTime >= endTime) {
+        // video.pause();
+        // video.ontimeupdate = null;
+        video.currentTime = startTime;
+      }
+    };
+  }, [item]);
+
+  return (
+    <div className="m-4">
+      <div className="relative w-64 h-36 rounded-md overflow-hidden shadow-md cursor-pointer"
+        onClick={() => handleVideoClick(item)}
+      >
+        {/* <Image
+          fill={true} style={{ objectFit: "cover" }}
+          src={getLocalFileUrl(item.imagePath)}
+          alt={item.imagePath}
+        ></Image> */}
+        <video ref={videoRef} controls={false} autoPlay muted loop style={{
+          width: "100%", height: "100%", objectFit: "cover",
+        }}>
+          <source src={getLocalFileUrl(item.videoPath)} type="video/mp4" />
+        </video>
+      </div>
+      <div className="text-sm text-center py-1 px-2 mt-2">Video.mp4</div>
+    </div>
+  )
 }
 
 export default function Search() {
@@ -45,14 +80,11 @@ export default function Search() {
   const queryRes = rspc.useQuery(["video.search.all", searchKeyword]);
   // cosnt { data, isLoading, error } = queryRes;
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [videoItem, setVideoItem] = useState<VideoItem | null>(null);
+  const [previewItem, setPreviewItem] = useState<SearchResultPayload | null>(null);
 
   const handleVideoClick = useCallback((item: SearchResultPayload) => {
-    setVideoItem({
-      videoSrc: getLocalFileUrl(item.videoPath),
-      startTime: item.startTime,
-    });
-  }, [setVideoItem]);
+    setPreviewItem(item);
+  }, [setPreviewItem]);
 
   const handleSearch = useCallback((e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -62,39 +94,44 @@ export default function Search() {
   }, [setSearchKeyword]);
 
   return (
-    <main className="min-h-screen p-12">
-      <div>
-        <form onSubmit={handleSearch} className="flex mb-4">
-          <input ref={searchInputRef} type="text" className="text-black block flex-1 px-4 py-2" />
-          <button className="ml-4 px-6 bg-black text-white" type="submit">Search</button>
-        </form>
-      </div>
-      {queryRes.isLoading ? (
-        <div className="flex px-2 py-8 items-center justify-center">正在搜索...</div>
-      ) : (
-        <div className="flex flex-wrap">
-          {queryRes.data?.map((item: SearchResultPayload) => {
-            return (
-              <div key={item.imagePath} className="m-4">
-                <div className="relative w-64 h-36">
-                  <Image
-                    fill={true} style={{ objectFit: "cover" }}
-                    src={getLocalFileUrl(item.imagePath)}
-                    alt={item.imagePath}
-                  ></Image>
-                </div>
-                <div className="cursor-pointer text-center" onClick={() => handleVideoClick(item)}>查看</div>
-              </div>
-            )
-          })}
+    <main className="h-full flex flex-col">
+      <div className="h-12 px-4 border-b border-neutral-100 flex items-center justify-start">
+        <div className="flex items-center select-none w-1/4">
+          <div className="px-2 py-1">&lt;</div>
+          <div className="px-2 py-1">&gt;</div>
+          <div className="ml-2 text-sm">搜索</div>
         </div>
-      )}
-      {videoItem && (
+        <div className="w-1/2">
+          <form onSubmit={handleSearch} className="block">
+            <input
+              ref={searchInputRef} type="text"
+              className="block text-black bg-neutral-100 rounded-md px-4 py-2 text-sm
+                w-80 ml-auto mr-auto"
+              placeholder="搜索"
+            />
+            {/* <button className="ml-4 px-6 bg-black text-white" type="submit">Search</button> */}
+          </form>
+        </div>
+      </div>
+      <div className="p-6">
+        {queryRes.isLoading ? (
+          <div className="flex px-2 py-8 items-center justify-center">正在搜索...</div>
+        ) : (
+          <div className="flex flex-wrap">
+            {queryRes.data?.map((item: SearchResultPayload, index: number) => {
+              return (
+                <VideoItem key={index} item={item} handleVideoClick={handleVideoClick}></VideoItem>
+              )
+            })}
+          </div>
+        )}
+      </div>
+      {previewItem && (
         <div className="fixed left-0 top-0 w-full h-full flex items-center justify-center">
           <div className="bg-black absolute left-0 top-0 w-full h-full opacity-70"
-            onClick={() => setVideoItem(null)}></div>
+            onClick={() => setPreviewItem(null)}></div>
           <div className="relative w-[80%] h-[90%]">
-            <VideoPreview videoItem={videoItem}></VideoPreview>
+            <VideoPreview item={previewItem}></VideoPreview>
           </div>
         </div>
       )}

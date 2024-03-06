@@ -67,7 +67,7 @@ export default function Files() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-4 py-2 border-b border-neutral-100 flex justify-between">
+      <div className="h-12 px-4 border-b border-neutral-100 flex justify-between">
         <div className="flex items-center select-none">
           <div className="px-2 py-1">&lt;</div>
           <div className="px-2 py-1">&gt;</div>
