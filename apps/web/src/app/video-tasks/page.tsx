@@ -150,14 +150,16 @@ export default function VideoTasksPage() {
       </div>
       <VideoTasksList />
       <AudioDialog />
-      <MuseMultiSelect
-        showValue
-        placeholder="选择格式"
-        options={Object.keys(FileTypeEnum).map((type) => ({
-          label: FileTypeEnum[type as keyof typeof FileTypeEnum],
-          value: type.toString(),
-        }))}
-      />
+      <div className="w-[240px]">
+        <MuseMultiSelect
+          showValue
+          placeholder="选择格式"
+          options={Object.keys(FileTypeEnum).map((type) => ({
+            label: FileTypeEnum[type as keyof typeof FileTypeEnum],
+            value: type.toString(),
+          }))}
+        />
+      </div>
     </main>
   )
 }

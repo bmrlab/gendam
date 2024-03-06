@@ -25,13 +25,10 @@ const MuseMultiSelect: FC<MuseMultiSelectProps> = ({ showValue, options, placeho
     <MultiSelect {...props}>
       <MultiSelectTrigger
         icon={(open) => (
-          <Icon.arrowDown
-            aria-hidden
-            className={cn('h-4 w-4 cursor-pointer', open ? 'text-[#262626]' : 'text-[#95989F]')}
-          />
+          <Icon.arrowDown aria-hidden className={cn('h-4 w-4', open ? 'text-[#262626]' : 'text-[#95989F]')} />
         )}
         openClassName="ring-2 ring-[#017AFF]"
-        className="w-[240px] border-[#DDDDDE] px-2 py-[6px]"
+        className="w-full cursor-pointer border-[#DDDDDE] px-2 py-[6px]"
       >
         <MultiSelectValue
           badge={(child) => (
