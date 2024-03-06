@@ -6,7 +6,7 @@ const CURRENT_LIBRARY_KEY = "current-library-id";
 export const CurrentLibraryStorage = {
   set: async (libraryId: string) => {
     if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-      const store = new Store(".settings.json");
+      const store = new Store("settings.json");
       await store.set(CURRENT_LIBRARY_KEY, libraryId);
       await store.save();
     } else if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
@@ -18,7 +18,7 @@ export const CurrentLibraryStorage = {
 
   get: async (): Promise<string|null> => {
     if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-      const store = new Store(".settings.json");
+      const store = new Store("settings.json");
       return await store.get(CURRENT_LIBRARY_KEY) ?? null;
     } else if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
       return window.localStorage.getItem(CURRENT_LIBRARY_KEY) ?? null;
@@ -29,7 +29,7 @@ export const CurrentLibraryStorage = {
 
   reset: async () => {
     if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-      const store = new Store(".settings.json");
+      const store = new Store("settings.json");
       await store.delete(CURRENT_LIBRARY_KEY);
       await store.save();
     } else if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {

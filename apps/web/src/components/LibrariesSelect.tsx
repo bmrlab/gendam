@@ -23,7 +23,7 @@ export default function LibrariesSelect() {
     <div className="bg-white w-screen h-screen flex flex-col items-center justify-center">
       <Image src={Muse_Logo} alt="Muse" className="w-8 h-8 mb-4"></Image>
       <div className="w-80 my-4 p-1 rounded-md bg-neutral-100 border border-neutral-200 shadow-sm">
-        {libraries.length === 0 ? (
+        {(libraries??[]).length === 0 ? (
           <div className="px-3 py-2 text-xs text-center text-neutral-600">还未创建任何素材库，点击下方“创建”后继续</div>
         ) : (
           <div className="px-3 py-2 text-xs text-center text-neutral-600">选择素材库</div>

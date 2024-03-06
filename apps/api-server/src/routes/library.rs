@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use content_library::Library;
 use rspc::{Rspc, Router};
 use serde_json::json;
-// use crate::{Ctx, R};
+use tracing::error;
 use crate::CtxWithLibrary;
 
 pub fn get_routes<TCtx>() -> Router<TCtx>
@@ -46,7 +46,7 @@ fn list_libraries(local_data_root: &PathBuf) -> Vec<String> {
                         }
                     }
                     Err(e) => {
-                        println!("Error: {:?}", e);
+                        error!("Failed to read library dir: {}", e);
                         continue;
                     }
                 };
@@ -54,7 +54,7 @@ fn list_libraries(local_data_root: &PathBuf) -> Vec<String> {
             res
         }
         Err(e) => {
-            println!("Error: {:?}", e);
+            error!("Failed to read libraries dir: {}", e);
             vec![]
         }
     }

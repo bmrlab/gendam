@@ -85,7 +85,7 @@ async fn main() {
     let store = Arc::new(Mutex::new(
         tauri_plugin_store::StoreBuilder::new(
             window.app_handle(),
-            ".settings.json".parse().unwrap(),
+            "settings.json".parse().unwrap(),
         )
         .build(),
     ));
