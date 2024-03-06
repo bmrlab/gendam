@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { rspc } from "@/lib/rspc";
 import { getLocalFileUrl } from "@/utils/file";
 import type { VideoTaskResult } from "@/lib/bindings";
-import { selectFile } from "@/utils/file";
+// import { selectFile } from "@/utils/file";
 
 type VideoItem = {
   videoPath: string;

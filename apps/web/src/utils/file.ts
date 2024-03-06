@@ -25,16 +25,16 @@ export const getLocalFileUrl = (fileFullPath: string): string => {
   }
 };
 
-export const selectFile = async (): Promise<string | null> => {
-  if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-    const result = await open({ directory: false });
-    if (result) {
-      return result as string;
-    } else {
-      return null;
-    }
-  } else {
-    // 网页版无法使用 js 选择文件, 这里要改成做一个 FileSelect 组件, 然后在页面中引入
-    return null;
-  }
-};
+// export const selectFile = async (): Promise<string | null> => {
+//   if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
+//     const result = await open({ directory: false });
+//     if (result) {
+//       return result as string;
+//     } else {
+//       return null;
+//     }
+//   } else {
+//     // 网页版无法使用 js 选择文件, 这里要改成做一个 FileSelect 组件, 然后在页面中引入
+//     return null;
+//   }
+// };
