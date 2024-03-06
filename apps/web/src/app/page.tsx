@@ -1,11 +1,20 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, useContext } from "react";
 import { rspc, client } from "@/lib/rspc";
 import { CurrentLibrary } from "@/lib/library";
 import { invoke } from "@tauri-apps/api/tauri";
 
-export default function Home() {
+export default function HomePage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.push("/assets");
+  }, [router]);
+  return <></>;
+}
+
+function Home() {
   // const versionQuery = rspc.useQuery(["version"]);
   useEffect(() => {
     // console.log("versionQuery data", versionQuery.data);
