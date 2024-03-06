@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Folder_Light, Document_Light } from "@muse/assets/icons";
@@ -8,6 +8,38 @@ import type { FilePathQueryResult } from "@/lib/bindings";
 import UploadButton from "@/components/UploadButton";
 import { getLocalFileUrl } from "@/utils/file";
 import styles from "./styles.module.css";
+
+const TitleDialog: React.FC<{
+  onConfirm: (title: string) => void,
+  onCancel: () => void,
+}> = ({ onConfirm, onCancel }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const handleSearch = useCallback((e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const keyword = inputRef.current?.value;
+    if (!keyword) return;
+    onConfirm(keyword);
+  }, [onConfirm]);
+  return (
+    <div
+      className="fixed z-20 left-0 top-0 w-full h-full bg-neutral-50/50 flex items-center justify-center"
+      onClick={() => onCancel()}
+    >
+      <form
+        className="block w-96 p-6 border bg-white/90 border-neutral-100 rounded-md shadow"
+        onSubmit={handleSearch} onClick={(e) => e.stopPropagation()}
+      >
+        <div>创建文件夹</div>
+        <input
+          ref={inputRef} type="text"
+          className="block w-full text-black bg-neutral-100 rounded-md my-4 px-4 py-2 text-sm"
+          placeholder="搜索"
+        />
+        <button className="block w-full p-2 rounded-md text-sm text-center bg-blue-500 text-white" type="submit">确认</button>
+      </form>
+    </div>
+  );
+}
 
 export default function Files() {
   const router = useRouter();
@@ -44,26 +76,35 @@ export default function Files() {
     }
   }, [goToDir, processVideoMut, router]);
 
-  let handleCreateDir = useCallback(() => {
-    let name = window.prompt("输入文件夹名称");
-    if (!name) {
-      return;
-    }
-    createPathMut.mutate({
-      path: currentPath,
-      name: name
-    });
-  }, [createPathMut, currentPath]);
-
   let [selectedId, setSelectedId] = useState<number|null>(null);
 
   let handleSelectFile = useCallback((fileFullPath: string) => {
-    // console.log("handleSelectFile", fileFullPath);
     createAssetMut.mutate({
       path: currentPath,
       localFullPath: fileFullPath
     })
   }, [createAssetMut, currentPath]);
+
+  const [titleInputDialogVisible, setTitleInputDialogVisible] = useState(false);
+
+  let handleCreateDir = useCallback(() => {
+    setTitleInputDialogVisible(true);
+  }, [setTitleInputDialogVisible]);
+
+  const onConfirmTitleInput = useCallback((title: string) => {
+    if (!title) {
+      return;
+    }
+    createPathMut.mutate({
+      path: currentPath,
+      name: title,
+    });
+    setTitleInputDialogVisible(false);
+  }, [createPathMut, currentPath]);
+
+  const onCancelTitleInput = useCallback(() => {
+    setTitleInputDialogVisible(false);
+  }, [setTitleInputDialogVisible]);
 
   return (
     <div className="h-full flex flex-col">
@@ -128,6 +169,7 @@ export default function Files() {
           </div>
         ))}
       </div>
+      {titleInputDialogVisible && <TitleDialog onConfirm={onConfirmTitleInput} onCancel={onCancelTitleInput}/>}
     </div>
   );
 }
