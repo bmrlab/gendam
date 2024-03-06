@@ -66,8 +66,14 @@ pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -
 }
 
 pub async fn upgrade_library_schemas(local_data_root: &PathBuf) {
-    let dirs = local_data_root.join("libraries")
-        .read_dir().unwrap().into_iter()
+    let dirs = match local_data_root.join("libraries").read_dir() {
+        Ok(dirs) => dirs,
+        Err(e) => {
+            info!("Failed to read libraries dir: {}", e);
+            return;
+        }
+    };
+    let dirs = dirs.into_iter()
         .filter(|entry| entry.as_ref().unwrap().path().is_dir())
         .map(|entry| entry.unwrap().path())
         .collect::<Vec<PathBuf>>();

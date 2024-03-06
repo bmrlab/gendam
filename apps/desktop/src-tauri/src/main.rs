@@ -135,9 +135,9 @@ fn init_tracing() {
 
 // fn init_tracing_file() {
 //     use std::fs::File;
+//     use tracing_subscriber::Layer;
 //     let file = File::create("/Users/xddotcom/Library/Application Support/cc.musedam.local/debug.log");
 //     let file = match file  {Ok(file) => file,Err(error) => panic!("Error: {:?}",error),};
-
 //     tracing_subscriber::registry()
 //         .with(
 //             tracing_subscriber::EnvFilter::try_from_default_env()
