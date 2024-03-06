@@ -115,7 +115,7 @@ export default function Search() {
       </div>
       <div className="p-6">
         {queryRes.isLoading ? (
-          <div className="flex px-2 py-8 items-center justify-center">正在搜索...</div>
+          <div className="flex px-2 py-8 text-sm text-neutral-400 items-center justify-center">正在搜索...</div>
         ) : (
           <div className="flex flex-wrap">
             {queryRes.data?.map((item: SearchResultPayload, index: number) => {

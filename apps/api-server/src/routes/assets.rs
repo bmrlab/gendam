@@ -108,6 +108,8 @@ where
                             format!("failed to create prisma client: {}", e),
                         )
                     })?;
+
+                // create asset object record
                 let new_asset_object_record = client
                     .asset_object()
                     .create(vec![])
@@ -119,6 +121,8 @@ where
                             format!("failed to create asset_object: {}", e),
                         )
                     })?;
+
+                // copy file and rename to asset object id
                 let materialized_path = if input.path.ends_with("/") {
                     input.path
                 } else {
@@ -134,6 +138,8 @@ where
                         format!("failed to copy file: {}", e),
                     )
                 })?;
+
+                // create file_path
                 let res = client
                     .file_path()
                     .create(
@@ -153,6 +159,23 @@ where
                             format!("failed to create file_path: {}", e),
                         )
                     })?;
+
+                // create video task
+                let local_full_path = format!(
+                    "{}/{}",
+                    library.files_dir.to_str().unwrap(),
+                    new_asset_object_record.id
+                );
+                let tx = ctx.get_task_tx();
+                create_video_task(&ctx, &local_full_path, tx, ctx.get_index())
+                    .await
+                    .map_err(|_| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("failed to create video task"),
+                        )
+                    })?;
+
                 Ok(json!(res).to_string())
             }),
         )

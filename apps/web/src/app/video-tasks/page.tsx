@@ -83,7 +83,7 @@ const VideoTasksList: React.FC = () => {
   }, [revealMut]);
 
   if (isLoading) {
-    return <div>Loading</div>
+    return <div className="flex px-2 py-8 text-sm text-neutral-400 items-center justify-center">正在加载...</div>
   }
 
   return (

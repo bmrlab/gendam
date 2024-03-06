@@ -157,7 +157,6 @@ export default function Files() {
                   objectFit: "cover",
                 }}>
                   <source src={getLocalFileUrl(asset.assetObject?.localFullPath ?? "")} type="video/mp4" />
-                  Your browser does not support the video tag.
                 </video>
               )}
             </div>
