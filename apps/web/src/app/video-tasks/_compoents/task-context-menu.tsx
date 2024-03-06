@@ -17,7 +17,7 @@ export default function TaskContextMenu({ fileHash, children }: TaskContextMenuP
   const setAudioDialogProps = useBoundStore.use.setAudioDialogProps()
 
   const handleExportAudio = useCallback(() => {
-    setAudioDialogProps({ fileHash })
+    setAudioDialogProps({ fileHash, title: '导出语音转译' })
     setIsOpenAudioDialog(true)
   }, [fileHash, setAudioDialogProps, setIsOpenAudioDialog])
 

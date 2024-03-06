@@ -9,6 +9,8 @@ import TaskContextMenu from "./_compoents/task-context-menu";
 
 import { FileTypeEnum } from "@/app/video-tasks/_compoents/audio/export";
 import MuseMultiSelect from "@/components/MultiSelect";
+import { Button } from "@/components/ui/button";
+import { useBoundStore } from "@/store";
 
 type VideoItem = {
   videoPath: string
@@ -139,6 +141,14 @@ const VideoTasksList: FC = () => {
 }
 
 export default function VideoTasksPage() {
+  const setAudioDialogProps = useBoundStore.use.setAudioDialogProps()
+  const setAudioDialogOpen = useBoundStore.use.setIsOpenAudioDialog()
+
+  const handleBatchExport = () => {
+    setAudioDialogProps({ fileHash: [], title: '批量导出语音转译' })
+    setAudioDialogOpen(true)
+  }
+
   return (
     <main className="h-full flex flex-col">
       <div className="h-12 px-4 border-b border-neutral-100 flex justify-between">
@@ -160,6 +170,9 @@ export default function VideoTasksPage() {
           }))}
         />
       </div>
+      <Button className="mt-4" onClick={handleBatchExport}>
+        批量音频导出
+      </Button>
     </main>
   )
 }

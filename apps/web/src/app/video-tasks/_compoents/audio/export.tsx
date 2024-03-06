@@ -25,7 +25,7 @@ export default function AudioExport() {
 
   const { fileHash } = useBoundStore.use.audioDialogProps()
   const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
-  const { data: rawData, isLoading, error } = rspc.useQuery(['audio.find_by_hash', fileHash])
+  const { data: rawData, isLoading, error } = rspc.useQuery(['audio.find_by_hash', fileHash as string])
   const { mutateAsync } = rspc.useMutation(['audio.export'])
 
   const data = useMemo(() => {
@@ -64,7 +64,7 @@ export default function AudioExport() {
     })
     const errorList = await mutateAsync({
       types: types,
-      hash: fileHash,
+      hash: fileHash as string,
       path: '/Users/zingerbee/Downloads',
     })
     if (errorList.length > 0) {
