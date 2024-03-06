@@ -62,9 +62,7 @@ export default function ClientLayout({
         {libraryId ? (
           <>{children}</>
         ) : (
-          <div className="bg-white w-screen h-screen flex items-center justify-center">
-            <LibrariesSelect />
-          </div>
+          <LibrariesSelect />
         )}
       </rspc.Provider>
     </CurrentLibrary.Provider>
