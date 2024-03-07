@@ -2,7 +2,7 @@ use crate::routes::audio::constant::TRANSCRIPT_FILE_NAME;
 use crate::routes::audio::downloader::DownloadHelper;
 use crate::routes::audio::reader::AudioReader;
 use crate::CtxWithLibrary;
-use rspc::{Rspc, Router};
+use rspc::{Router, Rspc};
 use serde::{Deserialize, Serialize};
 use specta_macros::Type;
 use std::fmt;
@@ -22,14 +22,15 @@ struct ExportInput {
     type_group: Vec<AudioType>,
     hash: String,
     path: String,
-    /// 保存的文件名，包含文件后缀
+    /// 保存的文件名，不包含文件后缀
     #[serde(rename = "fileName")]
     #[specta(optional)]
     file_name: Option<String>,
 }
 
 pub fn get_routes<TCtx>() -> Router<TCtx>
-where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+    where
+        TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
     let router = Rspc::<TCtx>::new()
         .router()
@@ -45,43 +46,29 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
         .procedure(
             "export",
             Rspc::<TCtx>::new().mutation(|ctx, input: ExportInput| async move {
-                let library = ctx.load_library();
-                let artifacts_dir = library.artifacts_dir.clone();
-                let save_dir = PathBuf::from(input.path);
-                let types = input.type_group.clone();
-                let reader =
-                    AudioReader::new(artifacts_dir.join(input.hash).join(TRANSCRIPT_FILE_NAME));
-                let downloader = DownloadHelper::new(reader, save_dir.clone());
-
+                return audio_export(ctx.load_library().artifacts_dir.clone(), input)
+                    .unwrap_or_else(|err| {
+                        error!("Failed to export audio: {err}",);
+                        vec![]
+                    });
+            }),
+        )
+        .procedure(
+            "batch_export",
+            Rspc::<TCtx>::new().mutation(|ctx, input: Vec<ExportInput>| async move {
                 let mut error_list = vec![];
-
-                types.iter().for_each(|audio_type| {
-                    let file_name = input
-                        .file_name
-                        .clone()
-                        .unwrap_or(format!("transcript.{audio_type}"));
-                    let res = match audio_type {
-                        AudioType::Csv => downloader.download_to_csv(file_name.clone()),
-                        AudioType::Ale => downloader.download_to_ale(file_name.clone()),
-                        AudioType::Docx => downloader.download_to_docx(file_name.clone()),
-                        AudioType::Srt => downloader.download_to_srt(file_name.clone()),
-                        AudioType::Json => downloader.download_to_json(file_name.clone()),
-                        AudioType::Vtt => downloader.download_to_vtt(file_name.clone()),
-                        AudioType::Txt => downloader.download_to_txt(file_name.clone()),
-                    };
-                    if let Err(err) = res {
-                        error!("Failed to download {audio_type:?}: {err}",);
-                        error_list.push(audio_type.clone());
-                    }
-                });
-                if !error_list.is_empty() {
-                    warn!("Failed to download error list: {error_list:?}",);
-                    Ok(error_list)
-                } else {
-                    Ok(vec![])
+                for item in input {
+                    let res = audio_export(ctx.load_library().artifacts_dir.clone(), item)
+                        .unwrap_or_else(|err| {
+                            error!("Failed to export audio: {err}",);
+                            vec![]
+                        });
+                    error_list.extend(res);
                 }
+                error_list
             }),
         );
+
     router
 }
 
@@ -130,4 +117,40 @@ fn get_all_audio_format(path: PathBuf) -> Vec<AudioResp> {
             }
         })
         .collect()
+}
+
+fn audio_export(artifacts_dir: PathBuf, input: ExportInput) -> anyhow::Result<Vec<AudioType>> {
+    let save_dir = PathBuf::from(input.path);
+    let types = input.type_group.clone();
+    let reader = AudioReader::new(artifacts_dir.join(input.hash).join(TRANSCRIPT_FILE_NAME));
+    let downloader = DownloadHelper::new(reader, save_dir.clone());
+
+    let mut error_list = vec![];
+
+    types.iter().for_each(|audio_type| {
+        let file_name = input
+            .file_name
+            .clone()
+            .map(|file_name| format!("{file_name}.{audio_type}"))
+            .unwrap_or(format!("transcript.{audio_type}"));
+        let res = match audio_type {
+            AudioType::Csv => downloader.download_to_csv(file_name.clone()),
+            AudioType::Ale => downloader.download_to_ale(file_name.clone()),
+            AudioType::Docx => downloader.download_to_docx(file_name.clone()),
+            AudioType::Srt => downloader.download_to_srt(file_name.clone()),
+            AudioType::Json => downloader.download_to_json(file_name.clone()),
+            AudioType::Vtt => downloader.download_to_vtt(file_name.clone()),
+            AudioType::Txt => downloader.download_to_txt(file_name.clone()),
+        };
+        if let Err(err) = res {
+            error!("Failed to download {audio_type:?}: {err}",);
+            error_list.push(audio_type.clone());
+        }
+    });
+    if !error_list.is_empty() {
+        warn!("Failed to download error list: {error_list:?}",);
+        Ok(error_list)
+    } else {
+        Ok(vec![])
+    }
 }

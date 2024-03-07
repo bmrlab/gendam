@@ -160,19 +160,20 @@ export default function VideoTasksPage() {
   const setAudioDialogProps = useBoundStore.use.setAudioDialogProps()
   const setAudioDialogOpen = useBoundStore.use.setIsOpenAudioDialog()
 
+  // TODO 换为真实数据
   const handleBatchExport = () => {
     setAudioDialogProps({
       type: AudioDialogEnum.batch,
       title: '批量导出语音转译',
       params: [
         {
-          id: '1',
-          label: 'test',
+          id: '71a4c82148fb9a991fd5ebd93699eddebd11b321c79e2b85929cf5aee9e071f1',
+          label: '视频1号',
           image: 'https://placehold.co/100x200',
         },
         {
-          id: '2',
-          label: 'test2',
+          id: 'bc9570687a9a2644baeac0be8b25f22d6b018d6e3d093403383a17e6ba594f6a',
+          label: '视频2号',
           image: 'https://placehold.co/100x200',
         },
       ],

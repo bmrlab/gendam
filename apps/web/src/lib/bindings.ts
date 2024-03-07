@@ -15,6 +15,7 @@ export type Procedures = {
         { key: "assets.create_asset_object", input: AssetObjectCreatePayload, result: string } | 
         { key: "assets.create_file_path", input: FilePathCreatePayload, result: string } | 
         { key: "assets.process_video_asset", input: number, result: any } | 
+        { key: "audio.batch_export", input: ExportInput[], result: AudioType[] } | 
         { key: "audio.export", input: ExportInput, result: AudioType[] } | 
         { key: "files.reveal", input: string, result: null } | 
         { key: "libraries.create", input: string, result: any } | 

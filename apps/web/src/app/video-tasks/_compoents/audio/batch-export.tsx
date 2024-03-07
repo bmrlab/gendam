@@ -4,6 +4,9 @@ import Icon from '@/components/Icon'
 import MuseMultiSelect from '@/components/MultiSelect'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useToast } from '@/components/ui/use-toast'
+import { AudioType, ExportInput } from '@/lib/bindings'
+import { rspc } from '@/lib/rspc'
 import { useBoundStore } from '@/store'
 import { produce } from 'immer'
 import Image from 'next/image'
@@ -16,8 +19,12 @@ export type BatchExportProps = {
 }[]
 
 export default function BatchExport() {
+  const { toast } = useToast()
+
   const audioDialogProps = useBoundStore.use.audioDialogProps()
   const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
+
+  const { mutateAsync: batchExport } = rspc.useMutation('audio.batch_export')
 
   const data = useMemo(() => audioDialogProps.params as BatchExportProps, [])
 
@@ -65,8 +72,26 @@ export default function BatchExport() {
     [multiValues],
   )
 
-  const handleExport = () => {
-    console.log('multiValues', multiValues)
+  // TODO 调用 tauri 来选择文件夹
+  const handleExport = async () => {
+    const input: ExportInput[] = multiValues.map(({ id, types }) => ({
+      hash: id,
+      types: types as AudioType[],
+      path: '/Users/zingerbee/Downloads',
+      fileName: data.find((d) => d.id === id)?.label,
+    }))
+    const errorList = await batchExport(input)
+    setIsOpenAudioDialog(false)
+    if (errorList.length > 0) {
+      toast({
+        title: `${errorList.join('、')}，格式导出失败`,
+        variant: 'destructive',
+      })
+    } else {
+      toast({
+        title: '导出成功',
+      })
+    }
   }
 
   return (
