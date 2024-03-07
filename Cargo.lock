@@ -3012,9 +3012,9 @@ checksum = "b4ce301924b7887e9d637144fdade93f9dfff9b60981d4ac161db09720d39aa5"
 
 [[package]]
 name = "llama-cpp-2"
-version = "0.1.34"
+version = "0.1.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "557f49841417441b7a444a0fa86d9d4d0925346277f58685e4fe74e5a7d0e751"
+checksum = "6ac364fec653e1f0ec7b68a3adb103aae699d8c237379ebc041148b14bb8561e"
 dependencies = [
  "llama-cpp-sys-2",
  "thiserror",
@@ -3023,9 +3023,9 @@ dependencies = [
 
 [[package]]
 name = "llama-cpp-sys-2"
-version = "0.1.34"
+version = "0.1.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "556e9013cb093ec0722844812d0eb7b87fd55a1e9f5f31b4ab321b20fbfcf9c2"
+checksum = "edb9c1b262b5d5b09771fbf9c4736acd160293bc6f59a416b1d982f20a42d905"
 dependencies = [
  "bindgen 0.69.4",
  "cc",
@@ -3036,8 +3036,12 @@ name = "llm"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "file-downloader",
  "llama-cpp-2",
+ "reqwest",
+ "serde",
+ "serde_json",
  "test-log",
  "tokio",
  "tracing",

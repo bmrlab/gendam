@@ -156,7 +156,12 @@ pub async fn get_video_clips_summarization(
     resources_dir: impl AsRef<std::path::Path>,
     client: Arc<RwLock<PrismaClient>>,
 ) -> anyhow::Result<()> {
-    let llm = llm::LLM::new(resources_dir.as_ref(), llm::model::Model::Gemma2B).await?;
+    let llm = llm::LLM::new_llama_cpp_model(
+        resources_dir.as_ref(),
+        llm::model::LlamaCppModel::Gemma2B,
+        None,
+    )
+    .await?;
     let llm = Arc::new(RwLock::new(llm));
 
     let video_frame_args = video_frame::ManyArgs::new(vec![]).with(video_frame::caption::fetch());
@@ -207,7 +212,7 @@ Here is the document:"#,
         let response = llm
             .read()
             .await
-            .call(vec![LLMMessage::User(prompt)], None)
+            .get_completion(vec![LLMMessage::User(prompt)], None, None)
             .await?;
         let response = response.trim().to_string();
 
