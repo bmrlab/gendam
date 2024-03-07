@@ -1,9 +1,26 @@
+import { BatchExportProps } from '@/app/video-tasks/_compoents/audio/batch-export'
 import { type StateCreator } from 'zustand'
 
-type AudioDialogProps = {
-  title: string
-  fileHash: string | string[]
+export enum AudioDialogEnum {
+  single,
+  batch,
 }
+
+type SingleExportProps = {
+  fileHash: string
+}
+
+type AudioDialogProps =
+  | {
+      type: AudioDialogEnum.single
+      title: string
+      params: SingleExportProps
+    }
+  | {
+      type: AudioDialogEnum.batch
+      title: string
+      params: BatchExportProps
+    }
 
 type State = {
   isOpenAudioDialog: boolean
@@ -20,8 +37,11 @@ export type AudioDialogSlice = State & Action
 export const createAudioDialogSlice: StateCreator<AudioDialogSlice, [], [], AudioDialogSlice> = (set) => ({
   isOpenAudioDialog: false,
   audioDialogProps: {
+    type: AudioDialogEnum.single,
     title: '',
-    fileHash: '',
+    params: {
+      fileHash: '',
+    },
   },
   setIsOpenAudioDialog: (isOpen: boolean) => set(() => ({ isOpenAudioDialog: isOpen })),
   setAudioDialogProps: (audioDialogProps: AudioDialogProps) =>

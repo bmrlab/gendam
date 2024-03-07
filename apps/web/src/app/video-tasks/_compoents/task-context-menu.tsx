@@ -1,3 +1,4 @@
+import { AudioDialogEnum } from '@/app/video-tasks/store/audio-dialog'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -17,7 +18,13 @@ export default function TaskContextMenu({ fileHash, children }: TaskContextMenuP
   const setAudioDialogProps = useBoundStore.use.setAudioDialogProps()
 
   const handleExportAudio = useCallback(() => {
-    setAudioDialogProps({ fileHash, title: '导出语音转译' })
+    setAudioDialogProps({
+      type: AudioDialogEnum.single,
+      title: '导出语音转译',
+      params: {
+        fileHash,
+      },
+    })
     setIsOpenAudioDialog(true)
   }, [fileHash, setAudioDialogProps, setIsOpenAudioDialog])
 

@@ -1,16 +1,17 @@
-"use client";
-import { useCallback, useState, useRef, useMemo, FC } from "react";
-import { rspc } from "@/lib/rspc";
-import { getLocalFileUrl } from "@/utils/file";
-import type { VideoTaskResult } from "@/lib/bindings";
+'use client'
+import type { VideoTaskResult } from '@/lib/bindings'
+import { rspc } from '@/lib/rspc'
+import { getLocalFileUrl } from '@/utils/file'
+import { FC, useCallback, useMemo } from 'react'
 // import { selectFile } from "@/utils/file";
-import AudioDialog from "@/app/video-tasks/_compoents/audio/dialog";
-import TaskContextMenu from "./_compoents/task-context-menu";
+import AudioDialog from '@/app/video-tasks/_compoents/audio/dialog'
+import TaskContextMenu from './_compoents/task-context-menu'
 
-import { FileTypeEnum } from "@/app/video-tasks/_compoents/audio/export";
-import MuseMultiSelect from "@/components/MultiSelect";
-import { Button } from "@/components/ui/button";
-import { useBoundStore } from "@/store";
+import { FileTypeEnum } from '@/app/video-tasks/_compoents/audio/export'
+import { AudioDialogEnum } from '@/app/video-tasks/store/audio-dialog'
+import MuseMultiSelect from '@/components/MultiSelect'
+import { Button } from '@/components/ui/button'
+import { useBoundStore } from '@/store'
 
 type VideoItem = {
   videoPath: string
@@ -23,37 +24,40 @@ type VideoItem = {
 }
 
 const VideoTaskStatus: React.FC<{
-  task: VideoItem["tasks"][number];
+  task: VideoItem['tasks'][number]
 }> = ({ task }) => {
   const typeToName: { [key: string]: string } = {
-    "Audio": "语音转译",
+    Audio: '语音转译',
     // "Transcript": "语音转译",
-    "TranscriptEmbedding": "语音转译",
+    TranscriptEmbedding: '语音转译',
     // "FrameCaption": "图像描述",
-    "FrameCaptionEmbedding": "图像描述",
+    FrameCaptionEmbedding: '图像描述',
     // "Frame": "图像特征",
-    "FrameContentEmbedding": "图像特征",
-  };
+    FrameContentEmbedding: '图像特征',
+  }
   if (!typeToName[task.taskType]) {
     return <></>
   }
   if (!task.startsAt) {
     return (
-      <div className="mr-2 px-3 py-1 bg-neutral-100/80 text-neutral-600 font-light text-xs rounded-full overflow-hidden overflow-ellipsis whitespace-nowrap"
-      >{typeToName[task.taskType]}</div>
-    );
+      <div className="mr-2 overflow-hidden overflow-ellipsis whitespace-nowrap rounded-full bg-neutral-100/80 px-3 py-1 text-xs font-light text-neutral-600">
+        {typeToName[task.taskType]}
+      </div>
+    )
   } else if (task.startsAt && !task.endsAt) {
     return (
-      <div className="mr-2 px-3 py-1 bg-orange-100/80 text-orange-600 font-light text-xs rounded-full overflow-hidden overflow-ellipsis whitespace-nowrap"
-      >{typeToName[task.taskType]}</div>
-    );
+      <div className="mr-2 overflow-hidden overflow-ellipsis whitespace-nowrap rounded-full bg-orange-100/80 px-3 py-1 text-xs font-light text-orange-600">
+        {typeToName[task.taskType]}
+      </div>
+    )
   } else if (task.startsAt && task.endsAt) {
     return (
-      <div className="mr-2 px-3 py-1 bg-green-100/80 text-green-600 font-light text-xs rounded-full overflow-hidden overflow-ellipsis whitespace-nowrap"
-      >{typeToName[task.taskType]}</div>
-    );
+      <div className="mr-2 overflow-hidden overflow-ellipsis whitespace-nowrap rounded-full bg-green-100/80 px-3 py-1 text-xs font-light text-green-600">
+        {typeToName[task.taskType]}
+      </div>
+    )
   } else {
-    return <></>;
+    return <></>
   }
 }
 
@@ -93,7 +97,7 @@ const VideoTasksList: FC = () => {
   )
 
   if (isLoading) {
-    return <div className="flex px-2 py-8 text-sm text-neutral-400 items-center justify-center">正在加载...</div>
+    return <div className="flex items-center justify-center px-2 py-8 text-sm text-neutral-400">正在加载...</div>
   }
 
   return (
@@ -103,25 +107,35 @@ const VideoTasksList: FC = () => {
           <TaskContextMenu fileHash={video.videoFileHash} key={video.videoFileHash}>
             <div
               key={video.videoFileHash}
-              className="flex justify-start py-3 px-5 border-b border-neutral-100 hover:bg-neutral-100"
+              className="flex justify-start border-b border-neutral-100 px-5 py-3 hover:bg-neutral-100"
             >
               <div
-                className="w-16 h-16 bg-neutral-200 mr-4 flex items-center justify-center cursor-pointer"
+                className="mr-4 flex h-16 w-16 cursor-pointer items-center justify-center bg-neutral-200"
                 onClick={() => handleClickVideoFile(video)}
               >
-                <video controls={false} autoPlay muted loop style={{
-                  width: "100%", height: "100%", objectFit: "cover",
-                }}>
+                <video
+                  controls={false}
+                  autoPlay
+                  muted
+                  loop
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                >
                   <source src={getLocalFileUrl(video.videoPath)} type="video/mp4" />
                 </video>
               </div>
-              <div className="mb-2 break-words w-96">
+              <div className="mb-2 w-96 break-words">
                 {/* {video.videoPath} ({video.videoFileHash}) */}
                 <div className="mb-2 flex">
                   <div className="mr-3">MUSE 的视频</div>
-                  <div className="w-32 overflow-hidden overflow-ellipsis whitespace-nowrap text-neutral-400 font-light text-sm">{video.videoPath}</div>
+                  <div className="w-32 overflow-hidden overflow-ellipsis whitespace-nowrap text-sm font-light text-neutral-400">
+                    {video.videoPath}
+                  </div>
                 </div>
-                <div className="text-neutral-400 font-light text-sm flex">
+                <div className="flex text-sm font-light text-neutral-400">
                   <div>00:01:04</div>
                   <div className="mx-2">·</div>
                   <div>10.87 MB</div>
@@ -129,8 +143,10 @@ const VideoTasksList: FC = () => {
                   <div>1440 x 1080</div>
                 </div>
               </div>
-              <div className="flex flex-wrap items-end ml-auto">
-                {video.tasks.map((task, index) => <VideoTaskStatus key={index} task={task} />)}
+              <div className="ml-auto flex flex-wrap items-end">
+                {video.tasks.map((task, index) => (
+                  <VideoTaskStatus key={index} task={task} />
+                ))}
               </div>
             </div>
           </TaskContextMenu>
@@ -145,14 +161,29 @@ export default function VideoTasksPage() {
   const setAudioDialogOpen = useBoundStore.use.setIsOpenAudioDialog()
 
   const handleBatchExport = () => {
-    setAudioDialogProps({ fileHash: [], title: '批量导出语音转译' })
+    setAudioDialogProps({
+      type: AudioDialogEnum.batch,
+      title: '批量导出语音转译',
+      params: [
+        {
+          id: '1',
+          label: 'test',
+          image: 'https://placehold.co/100x200',
+        },
+        {
+          id: '2',
+          label: 'test2',
+          image: 'https://placehold.co/100x200',
+        },
+      ],
+    })
     setAudioDialogOpen(true)
   }
 
   return (
-    <main className="h-full flex flex-col">
-      <div className="h-12 px-4 border-b border-neutral-100 flex justify-between">
-        <div className="flex items-center select-none">
+    <main className="flex h-full flex-col">
+      <div className="flex h-12 justify-between border-b border-neutral-100 px-4">
+        <div className="flex select-none items-center">
           <div className="px-2 py-1">&lt;</div>
           <div className="px-2 py-1">&gt;</div>
           <div className="ml-2 text-sm">任务列表</div>

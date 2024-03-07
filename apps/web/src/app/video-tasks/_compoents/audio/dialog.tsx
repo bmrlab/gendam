@@ -2,6 +2,7 @@ import BatchExport from '@/app/video-tasks/_compoents/audio/batch-export'
 import AudioExport from '@/app/video-tasks/_compoents/audio/export'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useBoundStore } from '@/store'
+import { AudioDialogEnum } from '@/app/video-tasks/store/audio-dialog'
 
 export default function AudioDialog() {
   const isOpenAudioDialog = useBoundStore.use.isOpenAudioDialog()
@@ -16,7 +17,7 @@ export default function AudioDialog() {
             {audioDialogProps.title}
           </DialogTitle>
         </DialogHeader>
-        {Array.isArray(audioDialogProps.fileHash) ? <BatchExport /> : <AudioExport />}
+        {audioDialogProps.type === AudioDialogEnum.single ? <AudioExport /> : <BatchExport />}
       </DialogContent>
     </Dialog>
   )
