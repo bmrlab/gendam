@@ -16,6 +16,9 @@
       "fs": {
         "all": true
       },
+      "path": {
+        "all": true
+      },
       "shell": {
         "all": false,
         "execute": true,

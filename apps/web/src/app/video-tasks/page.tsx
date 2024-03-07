@@ -7,9 +7,7 @@ import { FC, useCallback, useMemo } from 'react'
 import AudioDialog from '@/app/video-tasks/_compoents/audio/dialog'
 import TaskContextMenu from './_compoents/task-context-menu'
 
-import { FileTypeEnum } from '@/app/video-tasks/_compoents/audio/export'
 import { AudioDialogEnum } from '@/app/video-tasks/store/audio-dialog'
-import MuseMultiSelect from '@/components/MultiSelect'
 import { Button } from '@/components/ui/button'
 import { useBoundStore } from '@/store'
 
@@ -192,17 +190,7 @@ export default function VideoTasksPage() {
       </div>
       <VideoTasksList />
       <AudioDialog />
-      <div className="w-[240px]">
-        <MuseMultiSelect
-          showValue
-          placeholder="选择格式"
-          options={Object.keys(FileTypeEnum).map((type) => ({
-            label: FileTypeEnum[type as keyof typeof FileTypeEnum],
-            value: type.toString(),
-          }))}
-        />
-      </div>
-      <Button className="mt-4" onClick={handleBatchExport}>
+      <Button className="mt-4 w-60" onClick={handleBatchExport}>
         批量音频导出
       </Button>
     </main>

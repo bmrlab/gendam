@@ -5,6 +5,7 @@ import MuseMultiSelect from '@/components/MultiSelect'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/components/ui/use-toast'
+import { WithDownloadDialogButton } from '@/hoc/withDownloadDialog'
 import { AudioType, ExportInput } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { useBoundStore } from '@/store'
@@ -73,11 +74,11 @@ export default function BatchExport() {
   )
 
   // TODO 调用 tauri 来选择文件夹
-  const handleExport = async () => {
+  const handleExport = async (dir: string) => {
     const input: ExportInput[] = multiValues.map(({ id, types }) => ({
       hash: id,
       types: types as AudioType[],
-      path: '/Users/zingerbee/Downloads',
+      path: dir,
       fileName: data.find((d) => d.id === id)?.label,
     }))
     const errorList = await batchExport(input)
@@ -111,7 +112,7 @@ export default function BatchExport() {
               </div>
               <p className="text-[13px] font-medium leading-[18px] text-[#323438]">{label}</p>
             </div>
-            <div className="col-span-3 w-[240px]">
+            <div className="col-span-3 max-w-[240px]">
               <MuseMultiSelect
                 value={multiValues.find((v) => v.id === id)?.types || []}
                 onValueChange={(value) => updateItemTypes(id, value)}
@@ -136,9 +137,9 @@ export default function BatchExport() {
         <Button variant="outline" className="px-[41px]" onClick={() => setIsOpenAudioDialog(false)}>
           取消
         </Button>
-        <Button className="px-[76px]" onClick={handleExport}>
+        <WithDownloadDialogButton className="px-[76px]" onSelection={handleExport}>
           导出
-        </Button>
+        </WithDownloadDialogButton>
       </div>
     </div>
   )

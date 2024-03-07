@@ -2,9 +2,9 @@ import { SingleExportProps } from '@/app/video-tasks/store/audio-dialog'
 import MuseBadge from '@/components/Badge'
 import Icon from '@/components/Icon'
 import MuseRadio from '@/components/Radio'
-import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/components/ui/use-toast'
+import { WithDownloadDialogButton } from '@/hoc/withDownloadDialog'
 import { AudioType } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
@@ -58,7 +58,7 @@ export default function AudioExport() {
     setSelectFileGroup(updatedBools)
   }
 
-  const handleDownload = async () => {
+  const handleDownload = async (dir: string) => {
     let types: AudioType[] = []
     selectFileGroup.forEach((item, index) => {
       if (item) {
@@ -68,7 +68,7 @@ export default function AudioExport() {
     const errorList = await mutateAsync({
       types: types,
       hash: fileHash as string,
-      path: '/Users/zingerbee/Downloads',
+      path: dir,
     })
     if (errorList.length > 0) {
       toast({
@@ -149,9 +149,9 @@ export default function AudioExport() {
           <MuseRadio label="222" />
         </div>
         <div className="flex w-full flex-1 items-end">
-          <Button className="mt-4 w-full" onClick={handleDownload}>
+          <WithDownloadDialogButton className="mt-4 w-full" onSelection={handleDownload}>
             导出
-          </Button>
+          </WithDownloadDialogButton>
         </div>
       </div>
     </div>
