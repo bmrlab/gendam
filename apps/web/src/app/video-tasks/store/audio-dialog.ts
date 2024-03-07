@@ -6,7 +6,7 @@ export enum AudioDialogEnum {
   batch,
 }
 
-type SingleExportProps = {
+export type SingleExportProps = {
   fileHash: string
 }
 

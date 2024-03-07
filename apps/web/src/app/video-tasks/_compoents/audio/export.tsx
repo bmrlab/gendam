@@ -1,3 +1,4 @@
+import { SingleExportProps } from '@/app/video-tasks/store/audio-dialog'
 import MuseBadge from '@/components/Badge'
 import Icon from '@/components/Icon'
 import MuseRadio from '@/components/Radio'
@@ -23,8 +24,10 @@ export enum FileTypeEnum {
 export default function AudioExport() {
   const { toast } = useToast()
 
-  const { fileHash } = useBoundStore.use.audioDialogProps()
+  const audioDialogProps = useBoundStore.use.audioDialogProps()
   const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
+  const fileHash = useMemo(() => (audioDialogProps.params as SingleExportProps)?.fileHash, [audioDialogProps])
+
   const { data: rawData, isLoading, error } = rspc.useQuery(['audio.find_by_hash', fileHash as string])
   const { mutateAsync } = rspc.useMutation(['audio.export'])
 
