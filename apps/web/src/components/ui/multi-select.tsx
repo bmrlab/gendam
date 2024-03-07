@@ -221,7 +221,7 @@ interface MultiSelectValueProps extends ComponentPropsWithoutRef<typeof Primitiv
   placeholderClassName?: string
   maxDisplay?: number
   maxItemLength?: number
-  badge?: (children: unknown) => ReactNode
+  badge?: (key: string, children: unknown) => ReactNode
 }
 
 // eslint-disable-next-line react/display-name
@@ -261,7 +261,7 @@ const MultiSelectValue = forwardRef<ElementRef<typeof Primitive.div>, MultiSelec
                 : content
 
             const el = badge ? (
-              badge(child)
+              badge(value, child)
             ) : (
               <Badge
                 variant="outline"

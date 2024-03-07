@@ -31,8 +31,8 @@ const MuseMultiSelect: FC<MuseMultiSelectProps> = ({ showValue, options, placeho
         className="w-full cursor-pointer border-[#DDDDDE] px-2 py-[6px]"
       >
         <MultiSelectValue
-          badge={(child) => (
-            <div className="block rounded border border-[#DDDDDE] px-2.5 py-1">
+          badge={(key, child) => (
+            <div key={key} className="block rounded border border-[#DDDDDE] px-2.5 py-1">
               <p className="text-[12px] font-semibold uppercase leading-[12px]">
                 {showValue ? options.find((o) => o.label === (child as string))?.value : (child as string)}
               </p>
