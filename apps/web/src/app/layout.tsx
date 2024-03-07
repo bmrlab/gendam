@@ -1,7 +1,7 @@
 // "use client";
-import { Inter } from "next/font/google";
-import "./globals.css";
 import { Toaster } from '@/components/ui/toaster'
+import { Inter } from 'next/font/google'
+import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -12,11 +12,13 @@ const inter = Inter({ subsets: ['latin'] })
 //   ssr: false,
 // });
 
-import type { Metadata } from "next";
+import ClientLayout from '@/components/ClientLayout'
+import Sidebar from '@/components/Sidebar'
+import type { Metadata } from 'next'
 export const metadata: Metadata = {
-  title: "Muse | a local DAM of videos",
-  description: "Muse is a local DAM for videos",
-};
+  title: 'Muse | a local DAM of videos',
+  description: 'Muse is a local DAM for videos',
+}
 
 export default function RootLayout({
   children,
@@ -26,7 +28,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        {children}
+        <ClientLayout>
+          <main className="flex">
+            <Sidebar />
+            <div className="min-h-screen flex-1 bg-white">{children}</div>
+          </main>
+        </ClientLayout>
         <Toaster />
       </body>
     </html>
