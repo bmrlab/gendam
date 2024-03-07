@@ -125,8 +125,19 @@ impl VideoHandler {
     /// Extract key frames from video
     /// and save the results in local data directory (in a folder named by file identifier)
     pub async fn get_frames(&self) -> anyhow::Result<()> {
-        let video_decoder = decoder::VideoDecoder::new(&self.video_path);
-        video_decoder.save_video_frames(&self.frames_dir).await?;
+        let video_path = &self.video_path;
+
+        #[cfg(feature = "ffmpeg-binary")]
+        {
+            let video_decoder = decoder::VideoDecoder::new(video_path, &self.resources_dir).await?;
+            video_decoder.save_video_frames(&self.frames_dir).await?;
+        }
+
+        #[cfg(feature = "ffmpeg-dylib")]
+        {
+            let video_decoder = decoder::VideoDecoder::new(video_path);
+            video_decoder.save_video_frames(&self.frames_dir).await?;
+        }
 
         Ok(())
     }
@@ -134,8 +145,18 @@ impl VideoHandler {
     /// Extract audio from video
     /// and save the results in local data directory (in a folder named by file identifier)
     pub async fn get_audio(&self) -> anyhow::Result<()> {
-        let video_decoder = decoder::VideoDecoder::new(&self.video_path);
-        video_decoder.save_video_audio(&self.audio_path).await?;
+        #[cfg(feature = "ffmpeg-binary")]
+        {
+            let video_decoder =
+                decoder::VideoDecoder::new(&self.video_path, &self.resources_dir).await?;
+            video_decoder.save_video_audio(&self.audio_path).await?;
+        }
+
+        #[cfg(feature = "ffmpeg-dylib")]
+        {
+            let video_decoder = decoder::VideoDecoder::new(&self.video_path);
+            video_decoder.save_video_audio(&self.audio_path).await?;
+        }
 
         Ok(())
     }

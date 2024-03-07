@@ -1,15 +1,22 @@
+#[cfg(feature = "ffmpeg-binary")]
+mod ffmpeg;
+#[cfg(feature = "ffmpeg-dylib")]
+mod ffmpeg_lib;
+#[cfg(feature = "ffmpeg-dylib")]
 mod transcode;
+#[cfg(feature = "ffmpeg-dylib")]
 mod utils;
 
-use transcode::transcoder;
-use ffmpeg_next::ffi::*;
-use std::path::Path;
-use tracing::{debug, error};
-
+#[cfg(feature = "ffmpeg-dylib")]
 pub struct VideoDecoder {
     video_file_path: std::path::PathBuf,
 }
 
+use anyhow::bail;
+use std::path::Path;
+use tracing::debug;
+
+#[cfg(feature = "ffmpeg-dylib")]
 impl VideoDecoder {
     pub fn new(filename: impl AsRef<Path>) -> Self {
         debug!("Successfully opened {}", filename.as_ref().display());
@@ -20,151 +27,135 @@ impl VideoDecoder {
 
         decoder
     }
+}
 
+#[cfg(feature = "ffmpeg-binary")]
+pub struct VideoDecoder {
+    video_file_path: std::path::PathBuf,
+    binary_file_path: std::path::PathBuf,
+}
+
+#[cfg(feature = "ffmpeg-binary")]
+impl VideoDecoder {
+    pub async fn new(
+        filename: impl AsRef<Path>,
+        resources_dir: impl AsRef<Path>,
+    ) -> anyhow::Result<Self> {
+        let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
+            resources_dir: resources_dir.as_ref().to_path_buf(),
+            ..Default::default()
+        });
+
+        let binary_file_path = download.download_if_not_exists("ffmpeg").await?;
+
+        Ok(Self {
+            video_file_path: filename.as_ref().to_path_buf(),
+            binary_file_path,
+        })
+    }
+}
+
+#[cfg(feature = "ffmpeg-binary")]
+impl VideoDecoder {
     pub async fn save_video_frames(&self, frames_dir: impl AsRef<Path>) -> anyhow::Result<()> {
-        save_video_frames(self.video_file_path.to_path_buf(), frames_dir)
+        match std::process::Command::new(&self.binary_file_path)
+            .args([
+                "-i",
+                self.video_file_path
+                    .to_str()
+                    .expect("invalid video file path"),
+                "-vf",
+                &format!("fps=1"),
+                "-vsync",
+                "vfr",
+                frames_dir
+                    .as_ref()
+                    .join("%d000.png")
+                    .to_str()
+                    .expect("invalid frames dir path"),
+            ])
+            .output()
+        {
+            Ok(output) => {
+                if !output.status.success() {
+                    bail!(
+                        "Failed to save video frames: {}",
+                        String::from_utf8_lossy(&output.stderr)
+                    );
+                }
+            }
+            Err(e) => {
+                bail!("Failed to save video frames: {e}");
+            }
+        }
+
+        Ok(())
     }
 
     pub async fn save_video_audio(&self, audio_path: impl AsRef<Path>) -> anyhow::Result<()> {
-        save_video_audio(self.video_file_path.to_path_buf(), audio_path)
-    }
-}
-
-fn save_video_frames(
-    video_path: impl AsRef<Path>,
-    frames_dir: impl AsRef<Path>,
-) -> anyhow::Result<()> {
-    let mut video = ffmpeg_next::format::input(&video_path.as_ref().to_path_buf())?;
-    let video_stream = &video
-        .streams()
-        .best(ffmpeg_next::media::Type::Video)
-        .ok_or(anyhow::anyhow!("no video stream found"))?;
-    let video_stream_index = video_stream.index();
-
-    let decoder_context = ffmpeg_next::codec::Context::from_parameters(video_stream.parameters())?;
-    let mut decoder = decoder_context.decoder().video()?;
-
-    let (target_width, target_height) = if decoder.width() > decoder.height() {
-        (
-            768,
-            (768.0 * decoder.height() as f32 / decoder.width() as f32) as u32,
-        )
-    } else {
-        (
-            (768.0 * decoder.width() as f32 / decoder.height() as f32) as u32,
-            768,
-        )
-    };
-
-    let mut scaler = ffmpeg_next::software::scaling::context::Context::get(
-        decoder.format(),
-        decoder.width(),
-        decoder.height(),
-        AVPixelFormat::AV_PIX_FMT_RGB24.into(),
-        target_width,
-        target_height,
-        ffmpeg_next::software::scaling::flag::Flags::BICUBIC,
-    )?;
-
-    let time_base: f64 = video_stream.time_base().into();
-    let mut last_timestamp = 0;
-
-    let mut receive_and_process_decoded_frames =
-        |decoder: &mut ffmpeg_next::decoder::Video| -> Result<(), ffmpeg_next::Error> {
-            let mut frame = ffmpeg_next::frame::Video::empty();
-            while decoder.receive_frame(&mut frame).is_ok() {
-                // get timestamp in milliseconds
-                let current_timestamp =
-                    (frame.timestamp().unwrap() as f64 * time_base * 1000.0) as i64;
-
-                // extract frame every 1 seconds
-                if current_timestamp == 0 || current_timestamp - last_timestamp >= 1_000 {
-                    let mut scaled_frame = ffmpeg_next::frame::Video::empty();
-                    scaler.run(&mut frame, &mut scaled_frame).unwrap();
-                    let frames_dir = frames_dir.as_ref().to_path_buf().clone();
-
-                    let array = utils::convert_frame_to_ndarray_rgb24(&mut scaled_frame).expect("");
-                    let image = utils::array_to_image(array);
-
-                    if let Err(e) =
-                        image.save(frames_dir.join(format!("{}.png", current_timestamp)))
-                    {
-                        error!("Failed to save frame: {}", e);
-                    }
-
-                    last_timestamp = current_timestamp;
+        match std::process::Command::new(&self.binary_file_path)
+            .args([
+                "-i",
+                self.video_file_path
+                    .to_str()
+                    .expect("invalid video file path"),
+                "-vn",
+                "-ar",
+                // the rate must be 16KHz to fit whisper.cpp
+                "16000",
+                "-ac",
+                "1",
+                audio_path.as_ref().to_str().expect("invalid audio path"),
+            ])
+            .output()
+        {
+            Ok(output) => {
+                if !output.status.success() {
+                    bail!(
+                        "Failed to save video frames: {}",
+                        String::from_utf8_lossy(&output.stderr)
+                    );
                 }
             }
-            Ok(())
-        };
-
-    for (stream, packet) in video.packets() {
-        if stream.index() == video_stream_index {
-            if decoder.send_packet(&packet).is_ok() {
-                receive_and_process_decoded_frames(&mut decoder)?;
+            Err(e) => {
+                bail!("Failed to save video frames: {e}");
             }
         }
+
+        Ok(())
     }
-
-    decoder.send_eof()?;
-    receive_and_process_decoded_frames(&mut decoder)?;
-
-    Ok(())
 }
 
-fn save_video_audio(
-    video_path: impl AsRef<Path>,
-    audio_path: impl AsRef<Path>,
-) -> anyhow::Result<()> {
-    let mut video = ffmpeg_next::format::input(&video_path.as_ref().to_path_buf())?;
-    let mut inner_output = ffmpeg_next::format::output(&audio_path)?;
-
-    let audio_stream = video
-        .streams()
-        .best(ffmpeg_next::media::Type::Audio)
-        .ok_or(anyhow::anyhow!("no audio found in video"))?;
-    let audio_stream_index = audio_stream.index();
-
-    let mut transcoder = transcoder(&mut video, &mut inner_output, &audio_path, "anull")?;
-
-    inner_output.set_metadata(video.metadata().to_owned());
-    inner_output.write_header()?;
-
-    for (stream, mut packet) in video.packets() {
-        if stream.index() == audio_stream_index {
-            packet.rescale_ts(stream.time_base(), transcoder.in_time_base);
-            transcoder.send_packet_to_decoder(&packet);
-            transcoder.receive_and_process_decoded_frames(&mut inner_output);
-        }
+#[cfg(feature = "ffmpeg-dylib")]
+impl VideoDecoder {
+    pub async fn save_video_frames(&self, frames_dir: impl AsRef<Path>) -> anyhow::Result<()> {
+        ffmpeg_lib::save_video_frames(self.video_file_path.to_path_buf(), frames_dir)
     }
 
-    transcoder.send_eof_to_decoder();
-    transcoder.receive_and_process_decoded_frames(&mut inner_output);
-
-    transcoder.flush_filter();
-    transcoder.get_and_process_filtered_frames(&mut inner_output);
-
-    transcoder.send_eof_to_encoder();
-    transcoder.receive_and_process_encoded_packets(&mut inner_output);
-
-    inner_output.write_trailer().unwrap();
-
-    Ok(())
+    pub async fn save_video_audio(&self, audio_path: impl AsRef<Path>) -> anyhow::Result<()> {
+        ffmpeg_lib::save_video_audio(self.video_file_path.to_path_buf(), audio_path)
+    }
 }
 
 #[test_log::test(tokio::test)]
 async fn test_video_decoder() {
-    let video_decoder =
-        VideoDecoder::new("/Users/zhuo/Desktop/20240218-143801.mp4");
+    #[cfg(feature = "ffmpeg-dylib")]
+    {
+        let video_decoder = VideoDecoder::new("/Users/zhuo/Desktop/20240218-143801.mp4");
 
-    let frames_fut = video_decoder
-        .save_video_frames(
-            "/Users/zhuo/Library/Application Support/cc.musedam.local/3fcab714ed229fdbb82653cf250cf5de797b3896353c82a315f9a4ff0feeb2d5/frames",
-        );
-    let audio_fut = video_decoder
-        .save_video_audio(
-            "/Users/zhuo/Library/Application Support/cc.musedam.local/3fcab714ed229fdbb82653cf250cf5de797b3896353c82a315f9a4ff0feeb2d5/audio.wav",
-        );
+        let frames_fut = video_decoder.save_video_frames("/Users/zhuo/Desktop/frames");
+        let audio_fut = video_decoder.save_video_audio("/Users/zhuo/Desktop/audio.wav");
 
-    let (_res1, _res2) = tokio::join!(frames_fut, audio_fut);
+        let (_res1, _res2) = tokio::join!(frames_fut, audio_fut);
+    }
+
+    #[cfg(feature = "ffmpeg-binary")]
+    {
+        let video_decoder = VideoDecoder::new("/Users/zhuo/Desktop/20240218-143801.mp4", "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources/ffmpeg").await.expect("failed to find ffmpeg binary file");
+
+        let frames_fut = video_decoder.save_video_frames("/Users/zhuo/Desktop/frames");
+        let audio_fut = video_decoder.save_video_audio("/Users/zhuo/Desktop/audio.wav");
+
+        let (_res1, _res2) = tokio::join!(frames_fut, audio_fut);
+    }
 }

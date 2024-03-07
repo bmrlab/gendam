@@ -5,7 +5,7 @@ edition = { workspace = true }
 
 [dependencies]
 prisma-lib = { path = "../../crates/prisma" }
-file-handler = { path = "../../crates/file-handler" }
+file-handler = { path = "../../crates/file-handler", features = ["ffmpeg-binary"] }
 content-library = { path = "../../crates/content-library" }
 vector-db = { path = "../../crates/vector-db" }
 rspc = { workspace = true, features = ["axum"] }
