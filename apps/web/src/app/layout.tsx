@@ -4,9 +4,8 @@ import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
-// import ClientLayout from "./ClientLayout";
 // import dynamic from 'next/dynamic';
-// const ClientLayout = dynamic(() => import('./ClientLayout'), {
+// const ClientLayout = dynamic(() => import('@/components/ClientLayout'), {
 //   loading: () => <div className="w-screen h-screen bg-white flex items-center justify-center">Loading...</div>,
 //   ssr: false,
 // });

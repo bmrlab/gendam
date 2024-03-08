@@ -168,7 +168,9 @@ impl QdrantChannel {
                                 }
                             }
                         },
-                        _ => {}
+                        Err(e) => {
+                            error!("error receive qdrant channel payload: {}", e);
+                        }
                     }
                 }
             });
