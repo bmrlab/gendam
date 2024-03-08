@@ -45,11 +45,15 @@ export default function AudioExport() {
 
   const currentContent = useMemo(() => data?.find((item) => item.type === fileType)?.content, [data, fileType])
 
-  const [selectFileGroup, setSelectFileGroup] = useState<boolean[]>(
-    new Array(Object.keys(FileTypeEnum).length).fill(false),
-  )
+  const [selectFileGroup, setSelectFileGroup] = useState<boolean[]>([
+    true,
+    ...new Array(Object.keys(FileTypeEnum).length - 1).fill(false),
+  ])
 
   const toggleSelectGroup = (index: number) => {
+    // 至少选择一项
+    if (selectFileGroup.filter((s) => s).length === 1 && selectFileGroup[index]) return
+
     if (!selectFileGroup[index]) {
       setFileType(Object.values(FileTypeEnum)[index])
     }

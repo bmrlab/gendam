@@ -73,7 +73,6 @@ export default function BatchExport() {
     [multiValues],
   )
 
-  // TODO 调用 tauri 来选择文件夹
   const handleExport = async (dir: string) => {
     const input: ExportInput[] = multiValues.map(({ id, types }) => ({
       hash: id,
