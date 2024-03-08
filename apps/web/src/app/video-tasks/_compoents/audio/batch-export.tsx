@@ -9,14 +9,15 @@ import { WithDownloadDialogButton } from '@/hoc/withDownloadDialog'
 import { AudioType, ExportInput } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { useBoundStore } from '@/store'
+import { getLocalFileUrl } from '@/utils/file'
 import { produce } from 'immer'
-import Image from 'next/image'
 import { useCallback, useMemo, useState } from 'react'
+import { cn } from '@/lib/utils'
 
 export type BatchExportProps = {
   id: string
   label: string
-  image: string
+  video: string
 }[]
 
 export default function BatchExport() {
@@ -27,7 +28,7 @@ export default function BatchExport() {
 
   const { mutateAsync: batchExport } = rspc.useMutation('audio.batch_export')
 
-  const data = useMemo(() => audioDialogProps.params as BatchExportProps, [])
+  const data = useMemo(() => audioDialogProps.params as BatchExportProps, [audioDialogProps.params])
 
   const [multiValues, setMultiValues] = useState<{ id: string; types: string[] }[]>(
     data.map((option) => ({ id: option.id, types: [] })),
@@ -70,7 +71,7 @@ export default function BatchExport() {
         },
       ]
     },
-    [multiValues],
+    [data, multiValues],
   )
 
   const handleExport = async (dir: string) => {
@@ -102,14 +103,34 @@ export default function BatchExport() {
         <p className="col-span-1">数量</p>
         <div className="col-span-1"></div>
       </div>
-      <ScrollArea className="h-[200px]">
-        {data.map(({ id, label, image }) => (
-          <div key={id} className="grid grid-cols-10 items-center border-b px-6 py-3">
+      <ScrollArea className="h-[576px]">
+        {data.map(({ id, label, video }, index) => (
+          <div
+            key={id}
+            className={cn(
+              'grid grid-cols-10 items-center px-6 py-3',
+              data.length === index + 1 ? 'border-b-0' : 'border-b',
+            )}
+          >
             <div className="col-span-5 flex items-center gap-[30px]">
               <div className="relative h-9 w-9 bg-[#F6F7F9]">
-                <Image src={image} alt="" fill className="object-contain" />
+                {/*<Image src={image} alt="" fill className="object-contain" />*/}
+                <video
+                  controls={false}
+                  autoPlay
+                  muted
+                  loop
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                  className="h-9 w-9"
+                >
+                  <source src={getLocalFileUrl(video)} type="video/mp4" />
+                </video>
               </div>
-              <p className="text-[13px] font-medium leading-[18px] text-[#323438]">{label}</p>
+              <p className="truncate text-[13px] font-medium leading-[18px] text-[#323438]">{label}</p>
             </div>
             <div className="col-span-3 max-w-[240px]">
               <MuseMultiSelect

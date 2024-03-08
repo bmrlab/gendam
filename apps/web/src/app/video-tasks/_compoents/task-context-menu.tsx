@@ -7,17 +7,21 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { useBoundStore } from '@/store'
-import { PropsWithChildren, useCallback } from 'react'
+import { PropsWithChildren, useCallback, useMemo } from 'react'
 
 export type TaskContextMenuProps = PropsWithChildren<{
   fileHash: string
 }>
 
 export default function TaskContextMenu({ fileHash, children }: TaskContextMenuProps) {
+  const taskSelected = useBoundStore.use.taskSelected()
   const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
   const setAudioDialogProps = useBoundStore.use.setAudioDialogProps()
+  const setAudioDialogOpen = useBoundStore.use.setIsOpenAudioDialog()
 
-  const handleExportAudio = useCallback(() => {
+  const isBatchSelected = useMemo(() => taskSelected.length > 1, [taskSelected])
+
+  const handleSingleExport = useCallback(() => {
     setAudioDialogProps({
       type: AudioDialogEnum.single,
       title: '导出语音转译',
@@ -28,6 +32,23 @@ export default function TaskContextMenu({ fileHash, children }: TaskContextMenuP
     setIsOpenAudioDialog(true)
   }, [fileHash, setAudioDialogProps, setIsOpenAudioDialog])
 
+  const handleBatchExport = () => {
+    let orderTaskSelected = [...taskSelected]
+    orderTaskSelected.sort((a, b) => a.index - b.index)
+    setAudioDialogProps({
+      type: AudioDialogEnum.batch,
+      title: '批量导出语音转译',
+      params: orderTaskSelected.map((item) => ({
+        id: item.videoFileHash,
+        label: item.videoFileHash,
+        video: item.videoPath,
+      })),
+    })
+    setAudioDialogOpen(true)
+  }
+
+  const handleExport = isBatchSelected ? handleBatchExport : handleSingleExport
+
   return (
     <ContextMenu>
       <ContextMenuTrigger className="flex cursor-default items-center justify-center rounded-md text-sm">
@@ -35,7 +56,7 @@ export default function TaskContextMenu({ fileHash, children }: TaskContextMenuP
       </ContextMenuTrigger>
       <ContextMenuContent className="w-[215px]">
         <ContextMenuItem inset>重新触发任务</ContextMenuItem>
-        <ContextMenuItem inset onClick={handleExportAudio}>
+        <ContextMenuItem inset onClick={handleExport}>
           导出语音转译
         </ContextMenuItem>
         <ContextMenuSeparator />

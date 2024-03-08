@@ -16,6 +16,9 @@
       "fs": {
         "all": true
       },
+      "os": {
+        "all": true
+      },
       "path": {
         "all": true
       },
@@ -52,6 +55,7 @@
         "ask": true,
         "open": true
       },
+
       "protocol": {
         "all": true,
         "assetScope": [

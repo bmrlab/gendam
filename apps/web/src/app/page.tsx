@@ -1,33 +1,34 @@
-"use client";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, useContext } from "react";
-import { rspc, client } from "@/lib/rspc";
-import { CurrentLibrary } from "@/lib/library";
-import { invoke } from "@tauri-apps/api/tauri";
+'use client'
+import { client } from '@/lib/rspc'
+import { invoke } from '@tauri-apps/api/tauri'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect } from 'react'
 
 export default function HomePage() {
-  const router = useRouter();
+  const router = useRouter()
   useEffect(() => {
-    router.push("/assets");
-  }, [router]);
-  return <></>;
+    router.push('/assets')
+  }, [router])
+  return <></>
 }
 
 function Home() {
   // const versionQuery = rspc.useQuery(["version"]);
   useEffect(() => {
     // console.log("versionQuery data", versionQuery.data);
-    client.query(["version"], {
-      // context: {
-      //   headers: {
-      //     "X-ABC": "1234567"
-      //   }
-      // }
-    }).then((res: any) => {
-      console.log("client query res", res)
-    });
-  }, []);
+    client
+      .query(['version'], {
+        // context: {
+        //   headers: {
+        //     "X-ABC": "1234567"
+        //   }
+        // }
+      })
+      .then((res: any) => {
+        console.log('client query res', res)
+      })
+  }, [])
 
   const doInvoke = async () => {
     /**
@@ -40,42 +41,40 @@ function Home() {
      * 不然 @tauri-apps/api/helpers/os-check.js 会报错 navigator is not defined
      */
     // const { invoke } = await import('@tauri-apps/api');
-    invoke("greet", { name: "World" }).then((response) => console.log(response));
-  };
+    invoke('greet', { name: 'World' }).then((response) => console.log(response))
+  }
 
   let click = useCallback(async () => {
-    await doInvoke();
-  }, []);
+    await doInvoke()
+  }, [])
 
   return (
     <main className="min-h-screen">
       <div>
-        <button className="w-24 h-24 bg-white" onClick={() => click()}>
+        <button className="h-24 w-24 bg-white" onClick={() => click()}>
           test
         </button>
       </div>
       <div>
-        <Link href="/library" className="block p-2 bg-blue-400">
+        <Link href="/library" className="block bg-blue-400 p-2">
           go to library
         </Link>
       </div>
       <div>
-        <Link href="/video-tasks" className="block p-2 bg-green-400">
+        <Link href="/video-tasks" className="block bg-green-400 p-2">
           go to video-tasks
         </Link>
       </div>
       <div>
-        <Link href="/search" className="block p-2 bg-green-200">
+        <Link href="/search" className="block bg-green-200 p-2">
           go to search
         </Link>
       </div>
       <div className="bg-blue-500 p-4">
         <Link href="/files">
-          <button className="p-4 text-white bg-black rounded-lg">
-            direct to search test page
-          </button>
+          <button className="rounded-lg bg-black p-4 text-white">direct to search test page</button>
         </Link>
       </div>
     </main>
-  );
+  )
 }
