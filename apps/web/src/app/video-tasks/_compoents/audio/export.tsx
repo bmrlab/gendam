@@ -149,8 +149,8 @@ export default function AudioExport() {
         </div>
         <div className="mt-2.5 flex flex-col gap-3">
           <p className="text-[14px] font-medium leading-5">导出选项</p>
-          <MuseRadio label="11" />
-          <MuseRadio label="222" />
+          <MuseRadio label="显示时间戳" />
+          <MuseRadio label="显示发言者" />
         </div>
         <div className="flex w-full flex-1 items-end">
           <WithDownloadDialogButton className="mt-4 w-full" onSelection={handleDownload}>

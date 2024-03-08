@@ -74,6 +74,11 @@ body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
   user-select: none;
+  /*禁用视口弹性溢出*/
+  /*height: 100%;*/
+  /*width: 100%;*/
+  /*overflow: hidden;*/
+  /*position: fixed;*/
 }
 
 @layer base {
@@ -106,5 +111,14 @@ body {
 
   .muse-border {
     @apply border border-[#DDDDDE];
+  }
+
+  /* "视口弹性溢出"（overflow bouncing）或者 "橡皮筋效应"（rubber banding）*/
+  /* 这一特性默认存在于iPadOS，iOS和macOS等操作系统的触摸设备和触摸板上 */
+  .no-overflow-bouncing {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    position: fixed;
   }
 }
