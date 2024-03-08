@@ -2,12 +2,18 @@ use crate::task_queue::VideoTaskType;
 use std::sync::Arc;
 // use crate::{Ctx, R};
 use crate::CtxWithLibrary;
-use file_handler::search::{SearchRecordType, SearchRequest, SearchResult};
+use file_handler::{
+    search::{SearchRequest, SearchResult},
+    SearchRecordType,
+};
 use prisma_lib::{new_client_with_url, video_task};
+use qdrant_client::client::QdrantClient;
 use rspc::{Router, Rspc};
 use serde::Serialize;
 use specta::Type;
 use tokio::sync::RwLock;
+use tracing::warn;
+use vector_db::QdrantParams;
 
 pub fn get_routes<TCtx>() -> Router<TCtx>
 where
@@ -22,16 +28,38 @@ where
                 .expect("failed to create prisma client");
             client._db_push().await.expect("failed to push db"); // apply migrations
             let client = Arc::new(RwLock::new(client));
+
+            warn!("start updating qdrant");
+
+            let qdrant_channel = ctx.get_qdrant_channel();
+            qdrant_channel
+                .update(QdrantParams {
+                    dir: library.qdrant_dir.clone(),
+                    http_port: None,
+                    grpc_port: None,
+                })
+                .await
+                .expect("failed to update qdrant");
+            let qdrant_url = qdrant_channel.get_url().await;
+
+            let qdrant = Arc::new(
+                QdrantClient::from_url(&qdrant_url)
+                    .build()
+                    .expect("failed to build qdrant client"),
+            );
+
+            warn!("finish updating qdrant");
+
             let res = file_handler::search::handle_search(
                 SearchRequest {
                     text: input,
                     record_type: Some(vec![SearchRecordType::FrameCaption]),
                     limit: None,
+                    skip: None,
                 },
                 ctx.get_resources_dir(),
-                library.clone(),
                 client,
-                ctx.get_index(),
+                qdrant,
             )
             .await;
             // .unwrap();

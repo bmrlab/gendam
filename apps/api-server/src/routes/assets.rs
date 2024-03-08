@@ -167,7 +167,7 @@ where
                     new_asset_object_record.id
                 );
                 let tx = ctx.get_task_tx();
-                create_video_task(&ctx, &local_full_path, tx, ctx.get_index())
+                create_video_task(&ctx, &local_full_path, tx)
                     .await
                     .map_err(|_| {
                         rspc::Error::new(
@@ -244,9 +244,7 @@ where
                     library.files_dir.to_str().unwrap(),
                     asset_object_id
                 );
-                if let Ok(res) =
-                    create_video_task(&ctx, &local_full_path, tx, ctx.get_index()).await
-                {
+                if let Ok(res) = create_video_task(&ctx, &local_full_path, tx).await {
                     return serde_json::to_value(res).unwrap();
                 } else {
                     return json!({

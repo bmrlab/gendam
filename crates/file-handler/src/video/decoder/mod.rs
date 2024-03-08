@@ -14,7 +14,6 @@ pub struct VideoDecoder {
 
 use anyhow::bail;
 use std::path::Path;
-use tracing::debug;
 
 #[cfg(feature = "ffmpeg-dylib")]
 impl VideoDecoder {

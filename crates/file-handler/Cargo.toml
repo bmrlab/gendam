@@ -23,9 +23,11 @@ image = "0.24.8"
 futures = "0.3.30"
 prisma-lib = { path = "../../crates/prisma" }
 prisma-client-rust = { workspace = true }
+qdrant-client = { workspace = true }
+uuid = { version = "1.7.0", features = ["v5"] }
 
 [features]
-default = []
+default = ["ffmpeg-binary"]
 ffmpeg-binary = []
 ffmpeg-dylib = ["dep:ffmpeg-next"]
 ffmpeg-static = ["ffmpeg-dylib", "ffmpeg-next/static"]

@@ -1,11 +1,11 @@
 use anyhow::{bail, Ok};
 use content_library::Library;
 use prisma_lib::PrismaClient;
+use qdrant_client::client::QdrantClient;
 use std::fs;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
-use vector_db::{FaissIndex, IndexInfo};
 
 mod decoder;
 mod split;
@@ -46,7 +46,8 @@ mod utils;
 /// video_handler.get_transcript().await;
 /// video_handler.get_transcript_embedding().await;
 /// ```
-#[derive(Clone, Debug)]
+#[allow(dead_code)]
+#[derive(Clone)]
 pub struct VideoHandler {
     video_path: std::path::PathBuf,
     resources_dir: std::path::PathBuf,
@@ -56,7 +57,7 @@ pub struct VideoHandler {
     transcript_path: std::path::PathBuf,
     library: Library,
     client: Arc<RwLock<PrismaClient>>,
-    index: FaissIndex,
+    qdrant: Arc<QdrantClient>,
 }
 
 impl VideoHandler {
@@ -73,17 +74,15 @@ impl VideoHandler {
         resources_dir: impl AsRef<std::path::Path>,
         library: &Library,
         client: Arc<RwLock<PrismaClient>>,
-        index: FaissIndex,
+        qdrant: Arc<QdrantClient>,
     ) -> anyhow::Result<Self> {
         let bytes = std::fs::read(&video_path)?;
         let file_sha256 = sha256::digest(&bytes);
         let artifacts_dir = library.artifacts_dir.join(&file_sha256);
         let frames_dir = artifacts_dir.join("frames");
-        let index_dir = library.index_dir.clone();
 
         fs::create_dir_all(&artifacts_dir)?;
         fs::create_dir_all(&frames_dir)?;
-        fs::create_dir_all(&index_dir)?;
 
         // make sure clip files are downloaded
         let resources_dir_clone = resources_dir.as_ref().to_owned();
@@ -113,7 +112,7 @@ impl VideoHandler {
             frames_dir,
             transcript_path: artifacts_dir.join("transcript.txt"),
             library: library.clone(),
-            index,
+            qdrant,
             client,
         })
     }
@@ -183,21 +182,12 @@ impl VideoHandler {
         let clip_model = self.get_clip_instance().await?;
         let clip_model = Arc::new(RwLock::new(clip_model));
 
-        let index_info = IndexInfo {
-            path: self
-                .library
-                .index_dir
-                .join(vector_db::VIDEO_TRANSCRIPT_INDEX_NAME),
-            dim: Some(clip_model.read().await.dim()),
-        };
-
         utils::transcript::get_transcript_embedding(
             self.file_identifier().into(),
             self.client.clone(),
             &self.transcript_path,
             clip_model,
-            self.index.clone(),
-            index_info,
+            self.qdrant.clone(),
         )
         .await?;
 
@@ -208,21 +198,13 @@ impl VideoHandler {
     pub async fn get_frame_content_embedding(&self) -> anyhow::Result<()> {
         let clip_model = self.get_clip_instance().await?;
         let clip_model = Arc::new(RwLock::new(clip_model));
-        let index_info = IndexInfo {
-            path: self
-                .library
-                .index_dir
-                .join(vector_db::VIDEO_FRAME_INDEX_NAME),
-            dim: Some(clip_model.read().await.dim()),
-        };
 
         utils::frame::get_frame_content_embedding(
             self.file_identifier.clone(),
             self.client.clone(),
             &self.frames_dir,
             clip_model,
-            self.index.clone(),
-            index_info,
+            self.qdrant.clone(),
         )
         .await?;
 
@@ -246,21 +228,12 @@ impl VideoHandler {
         let clip_model = self.get_clip_instance().await?;
         let clip_model = Arc::new(RwLock::new(clip_model));
 
-        let index_info = IndexInfo {
-            path: self
-                .library
-                .index_dir
-                .join(vector_db::VIDEO_FRAME_CAPTION_INDEX_NAME),
-            dim: Some(clip_model.read().await.dim()),
-        };
-
         utils::caption::get_frame_caption_embedding(
             self.file_identifier().into(),
             self.client.clone(),
             &self.frames_dir,
             clip_model,
-            self.index.clone(),
-            index_info,
+            self.qdrant.clone(),
         )
         .await?;
 
@@ -290,10 +263,6 @@ impl VideoHandler {
     async fn get_clip_instance(&self) -> anyhow::Result<ai::clip::CLIP> {
         ai::clip::CLIP::new(ai::clip::model::CLIPModel::ViTB32, &self.resources_dir).await
     }
-
-    pub async fn flush(&self) -> anyhow::Result<()> {
-        self.index.flush_current().await
-    }
 }
 
 #[test_log::test(tokio::test)]
@@ -318,12 +287,16 @@ async fn test_handle_video() {
     client._db_push().await.expect("failed to push db"); // apply migrations
     let client = Arc::new(RwLock::new(client));
 
-    let index = FaissIndex::new();
+    let qdrant_client = QdrantClient::from_url("http://localhost:6333")
+        .build()
+        .expect("failed to build qdrant client");
+    let qdrant_client = Arc::new(qdrant_client);
 
-    let video_handler = VideoHandler::new(video_path, resources_dir, &library, client, index).await;
+    let video_handler =
+        VideoHandler::new(video_path, resources_dir, &library, client, qdrant_client).await;
 
     if video_handler.is_err() {
-        tracing::error!("failed to create video handler: {:?}", video_handler);
+        tracing::error!("failed to create video handler");
     }
     let video_handler = video_handler.unwrap();
 

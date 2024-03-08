@@ -1,16 +1,9 @@
-use content_library::Library;
+use crate::search_payload::{SearchPayload, SearchRecordType};
 use prisma_lib::{video_frame, video_frame_caption, video_transcript, PrismaClient};
+use qdrant_client::{client::QdrantClient, qdrant::SearchPoints};
+use serde_json::json;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
-use tracing::debug;
-use vector_db::{self, FaissIndex, IndexInfo};
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub enum SearchRecordType {
-    Frame,
-    FrameCaption,
-    Transcript,
-}
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct SearchResult {
@@ -24,7 +17,8 @@ pub struct SearchResult {
 pub struct SearchRequest {
     pub text: String,
     pub record_type: Option<Vec<SearchRecordType>>,
-    pub limit: Option<usize>,
+    pub limit: Option<u64>,
+    pub skip: Option<u64>,
 }
 
 pub enum SearchType {
@@ -36,17 +30,14 @@ pub enum SearchType {
 pub async fn handle_search(
     payload: SearchRequest,
     resources_dir: impl AsRef<std::path::Path>,
-    library: Library,
     client: Arc<RwLock<PrismaClient>>,
-    index: FaissIndex,
+    qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<Vec<SearchResult>> {
     let clip_model =
         ai::clip::CLIP::new(ai::clip::model::CLIPModel::ViTB32, &resources_dir).await?;
 
     let embedding = clip_model.get_text_embedding(&payload.text).await?;
     let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
-
-    debug!("embedding of search text: {:?}", embedding);
 
     let record_types = payload.record_type.unwrap_or(vec![
         SearchRecordType::Frame,
@@ -56,35 +47,41 @@ pub async fn handle_search(
     let mut search_results = vec![];
 
     for record_type in record_types {
-        let path = match record_type {
+        let collection_name = match record_type {
             SearchRecordType::Frame => vector_db::VIDEO_FRAME_INDEX_NAME,
             SearchRecordType::FrameCaption => vector_db::VIDEO_FRAME_CAPTION_INDEX_NAME,
             SearchRecordType::Transcript => vector_db::VIDEO_TRANSCRIPT_INDEX_NAME,
         };
 
-        let limit = payload.limit.unwrap_or(10);
-        let results = index
-            .search(
-                embedding.clone(),
-                limit,
-                IndexInfo {
-                    path: library.index_dir.join(path),
-                    dim: None,
-                },
-            )
+        let search_result = qdrant
+            .search_points(&SearchPoints {
+                collection_name: collection_name.into(),
+                vector: embedding.clone(),
+                limit: payload.limit.unwrap_or(10),
+                offset: payload.skip,
+                with_payload: Some(true.into()),
+                ..Default::default()
+            })
             .await?;
 
-        let mut id_distance_mapping = HashMap::new();
+        let mut id_score_mapping = HashMap::new();
 
-        let ids = results
-            .labels
+        let ids = search_result
+            .result
             .iter()
-            .zip(results.distances.iter())
-            .filter(|(id, _)| id.is_some())
-            .map(|(id, &distance)| {
-                let id = id.get().unwrap() as i32;
-                id_distance_mapping.insert(id, distance);
-                id
+            .filter_map(|v| {
+                let payload = serde_json::from_value::<SearchPayload>(json!(v.payload));
+
+                match payload {
+                    Ok(payload) => {
+                        let id = payload.id();
+
+                        id_score_mapping.insert(id, v.score);
+
+                        Some(id)
+                    }
+                    _ => None,
+                }
             })
             .collect();
 
@@ -105,7 +102,7 @@ pub async fn handle_search(
                         file_identifier: v.file_identifier.clone(),
                         start_timestamp: v.timestamp,
                         end_timestamp: v.timestamp,
-                        score: *id_distance_mapping.get(&v.id).unwrap(),
+                        score: *id_score_mapping.get(&v.id).unwrap(),
                     })
                 });
             }
@@ -130,7 +127,7 @@ pub async fn handle_search(
                         file_identifier: frame.file_identifier.clone(),
                         start_timestamp: frame.timestamp,
                         end_timestamp: frame.timestamp,
-                        score: *id_distance_mapping.get(&v.id).unwrap(),
+                        score: *id_score_mapping.get(&v.id).unwrap(),
                     })
                 });
             }
@@ -148,7 +145,7 @@ pub async fn handle_search(
                         file_identifier: v.file_identifier.clone(),
                         start_timestamp: v.start_timestamp,
                         end_timestamp: v.end_timestamp,
-                        score: *id_distance_mapping.get(&v.id).unwrap(),
+                        score: *id_score_mapping.get(&v.id).unwrap(),
                     })
                 });
             }
@@ -157,39 +154,5 @@ pub async fn handle_search(
 
     // order results by score
     search_results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
-    Ok(search_results
-        .into_iter()
-        .take(payload.limit.unwrap_or(10))
-        .collect())
-}
-
-#[test_log::test(tokio::test)]
-async fn test_handle_search() {
-    let local_data_dir =
-        std::path::Path::new("/Users/zhuo/Library/Application Support/cc.musedam.local")
-            .to_path_buf();
-    let library =
-        content_library::create_library_with_title(&local_data_dir, "dev test library").await;
-    let library = content_library::load_library(&local_data_dir, &library.id);
-    let client = prisma_lib::new_client_with_url(&library.db_url)
-        .await
-        .expect("failed to create prisma client");
-    client._db_push().await.expect("failed to push db"); // apply migrations
-    let client = Arc::new(RwLock::new(client));
-    let index = FaissIndex::new();
-
-    let results = handle_search(
-        SearchRequest {
-            text: "a photo of a girl".into(),
-            record_type: None,
-            limit: None,
-        },
-        "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources",
-        library,
-        client,
-        index,
-    )
-    .await;
-
-    debug!("results: {:?}", results);
+    Ok(search_results.into_iter().collect())
 }

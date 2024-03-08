@@ -135,6 +135,8 @@ impl LocalModel {
             }
         }
 
+        args.push("--log-disable".into());
+
         let (tx, rx) = std::sync::mpsc::channel::<ServerAction>();
 
         // run llama cpp server

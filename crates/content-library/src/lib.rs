@@ -1,24 +1,25 @@
 use prisma_lib::new_client_with_url;
-use std::path:: PathBuf;
+use std::path::PathBuf;
 use tracing::info;
 
 #[derive(Clone, Debug)]
 pub struct Library {
     pub id: String,
     pub dir: PathBuf,
-    pub files_dir: PathBuf,  // for content files
+    pub files_dir: PathBuf, // for content files
     pub artifacts_dir: PathBuf,
-    pub index_dir: PathBuf,  // for faiss
     pub db_url: String,
+    pub qdrant_dir: PathBuf,
 }
 
 pub fn load_library(local_data_root: &PathBuf, library_id: &str) -> Library {
     let library_dir = local_data_root.join("libraries").join(library_id);
     let db_dir = library_dir.join("databases");
-    let index_dir = library_dir.join("index");
     let artifacts_dir = library_dir.join("artifacts");
     let files_dir = library_dir.join("files");
+    let qdrant_dir = library_dir.join("qdrant");
     let db_url = format!("file:{}", db_dir.join("muse-v2.db").to_str().unwrap());
+
     /*
      * TODO: _db_push 还是需要的, 确保数据库更新以后每个库也都会更新,
      * 现在 load_library 展示无法实现成 async 的,
@@ -33,8 +34,8 @@ pub fn load_library(local_data_root: &PathBuf, library_id: &str) -> Library {
         dir: library_dir,
         files_dir,
         artifacts_dir,
-        index_dir,
         db_url,
+        qdrant_dir,
     }
 }
 
@@ -43,10 +44,12 @@ pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -
     let library_id = sha256::digest(format!("{}", chrono::Utc::now()));
     let library_dir = local_data_root.join("libraries").join(&library_id);
     let db_dir = library_dir.join("databases");
+    let qdrant_dir = library_dir.join("qdrant");
     let index_dir = library_dir.join("index");
     let artifacts_dir = library_dir.join("artifacts");
     let files_dir = library_dir.join("files");
     std::fs::create_dir_all(&db_dir).unwrap();
+    std::fs::create_dir_all(&qdrant_dir).unwrap();
     std::fs::create_dir_all(&index_dir).unwrap();
     std::fs::create_dir_all(&artifacts_dir).unwrap();
     std::fs::create_dir_all(&files_dir).unwrap();
@@ -60,8 +63,8 @@ pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -
         dir: library_dir,
         files_dir,
         artifacts_dir,
-        index_dir,
         db_url,
+        qdrant_dir,
     }
 }
 
@@ -73,7 +76,8 @@ pub async fn upgrade_library_schemas(local_data_root: &PathBuf) {
             return;
         }
     };
-    let dirs = dirs.into_iter()
+    let dirs = dirs
+        .into_iter()
         .filter(|entry| entry.as_ref().unwrap().path().is_dir())
         .map(|entry| entry.unwrap().path())
         .collect::<Vec<PathBuf>>();

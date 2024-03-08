@@ -3,8 +3,6 @@ use api_server::{
     task_queue::{init_task_pool, TaskPayload},
     CtxWithLibrary,
 };
-use vector_db::FaissIndex;
-
 use axum::routing::get;
 use content_library::{load_library, upgrade_library_schemas, Library};
 use dotenvy::dotenv;
@@ -21,6 +19,7 @@ use tower_http::{
 };
 use tracing::debug;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use vector_db::QdrantChannel;
 
 #[derive(Clone)]
 struct Ctx {
@@ -28,7 +27,7 @@ struct Ctx {
     resources_dir: PathBuf,
     library_id: String,
     tx: Arc<tokio::sync::broadcast::Sender<TaskPayload>>,
-    index: FaissIndex,
+    qdrant_channel: Arc<QdrantChannel>,
 }
 
 impl CtxWithLibrary for Ctx {
@@ -45,8 +44,8 @@ impl CtxWithLibrary for Ctx {
     fn get_task_tx(&self) -> Arc<tokio::sync::broadcast::Sender<TaskPayload>> {
         Arc::clone(&self.tx)
     }
-    fn get_index(&self) -> FaissIndex {
-        self.index.clone()
+    fn get_qdrant_channel(&self) -> Arc<QdrantChannel> {
+        Arc::clone(&self.qdrant_channel)
     }
 }
 
@@ -59,21 +58,21 @@ async fn main() {
     init_tracing(); // should be after dotenv() so RUST_LOG in .env file will be loaded
                     // debug!("test debug output");
     let local_data_root = match env::var("LOCAL_DATA_DIR") {
-		Ok(path) => Path::new(&path).to_path_buf(),
-		Err(_e) => {
-			// #[cfg(not(debug_assertions))]
-			// {}
+        Ok(path) => Path::new(&path).to_path_buf(),
+        Err(_e) => {
+            // #[cfg(not(debug_assertions))]
+            // {}
             panic!("'$LOCAL_DATA_DIR' is not set ({})", _e)
-		}
-	};
+        }
+    };
     std::fs::create_dir_all(&local_data_root).unwrap();
 
     let resources_dir = match env::var("LOCAL_RESOURCES_DIR") {
-		Ok(path) => Path::new(&path).to_path_buf(),
-		Err(_e) => {
+        Ok(path) => Path::new(&path).to_path_buf(),
+        Err(_e) => {
             panic!("'$LOCAL_RESOURCES_DIR' is not set ({})", _e)
-		}
-	};
+        }
+    };
     // let resources_dir = local_data_root.join("resources").to_str().unwrap().to_owned();
     // let resources_dir = Path::new(&resources_dir).to_path_buf();
 
@@ -81,7 +80,10 @@ async fn main() {
 
     let tx = init_task_pool();
     let router = api_server::router::get_router::<Ctx>();
-    let index = FaissIndex::new();
+
+    // TODO qdrant should be placed in sidecar
+    let qdrant_channel = QdrantChannel::new(&resources_dir).await;
+    let qdrant_channel = Arc::new(qdrant_channel);
 
     let cors = CorsLayer::new()
         .allow_methods(Any)
@@ -108,7 +110,7 @@ async fn main() {
                         resources_dir,
                         library_id,
                         tx,
-                        index,
+                        qdrant_channel,
                     }
                 })
                 .axum(),

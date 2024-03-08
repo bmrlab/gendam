@@ -1,11 +1,13 @@
+use crate::search_payload::{FrameCaptionPayload, SearchPayload};
+
 use super::save_text_embedding;
 use anyhow::{anyhow, Ok};
 use prisma_lib::{video_frame, video_frame_caption, PrismaClient};
+use qdrant_client::client::QdrantClient;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
 use tracing::{debug, error};
-use vector_db::{FaissIndex, IndexInfo};
 
 pub async fn get_frames_caption(
     frames_dir: impl AsRef<std::path::Path>,
@@ -59,12 +61,19 @@ pub async fn get_frame_caption_embedding(
     client: Arc<RwLock<PrismaClient>>,
     frames_dir: impl AsRef<std::path::Path>,
     clip_model: Arc<RwLock<ai::clip::CLIP>>,
-    embedding_index: FaissIndex,
-    index_info: IndexInfo,
+    qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
     let frame_paths = std::fs::read_dir(&frames_dir)?
         .map(|res| res.map(|e| e.path()))
         .collect::<Result<Vec<_>, std::io::Error>>()?;
+
+    // make sure collection have been crated
+    super::make_sure_collection_created(
+        qdrant.clone(),
+        vector_db::VIDEO_FRAME_CAPTION_INDEX_NAME,
+        clip_model.read().await.dim() as u64,
+    )
+    .await?;
 
     let mut join_set = tokio::task::JoinSet::new();
 
@@ -73,8 +82,7 @@ pub async fn get_frame_caption_embedding(
             let clip_model = Arc::clone(&clip_model);
             let file_identifier = file_identifier.clone();
             let client = client.clone();
-            let embedding_index = embedding_index.clone();
-            let index_info = index_info.clone();
+            let qdrant = qdrant.clone();
 
             // FIXME 这里限制一下最大任务数量，因为出现过 axum 被 block 的情况
             if join_set.len() >= 3 {
@@ -87,8 +95,7 @@ pub async fn get_frame_caption_embedding(
                     client,
                     path,
                     clip_model,
-                    embedding_index,
-                    index_info,
+                    qdrant,
                 )
                 .await
                 {
@@ -108,8 +115,7 @@ async fn get_single_frame_caption_embedding(
     client: Arc<RwLock<PrismaClient>>,
     path: impl AsRef<std::path::Path>,
     clip_model: Arc<RwLock<ai::clip::CLIP>>,
-    embedding_index: FaissIndex,
-    index_info: IndexInfo,
+    qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
     let caption = tokio::fs::read_to_string(path.as_ref()).await?;
     let file_name = path
@@ -153,12 +159,19 @@ async fn get_single_frame_caption_embedding(
 
     match x.exec().await {
         std::result::Result::Ok(res) => {
+            let payload = SearchPayload::FrameCaption(FrameCaptionPayload {
+                id: res.id,
+                file_identifier: file_identifier.clone(),
+                frame_filename: file_name.to_string(),
+                caption: caption.clone(),
+                timestamp: frame_timestamp,
+            });
             save_text_embedding(
                 &caption,
-                res.id as u64,
+                payload,
                 clip_model,
-                embedding_index,
-                index_info,
+                qdrant,
+                vector_db::VIDEO_FRAME_CAPTION_INDEX_NAME,
             )
             .await?;
         }

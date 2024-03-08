@@ -37,6 +37,7 @@ impl FileDownload {
         uri: impl AsRef<std::path::Path>,
     ) -> anyhow::Result<std::path::PathBuf> {
         let file_path = self.resources_dir.join(&uri);
+        info!("check file path: {:?}", file_path);
         if file_path.exists() {
             return Ok(file_path);
         }

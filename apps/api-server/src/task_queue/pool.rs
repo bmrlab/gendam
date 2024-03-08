@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::CtxWithLibrary;
 use file_handler::video::VideoHandler;
 use prisma_lib::{new_client_with_url, video_task, PrismaClient};
+use qdrant_client::client::QdrantClient;
 use tokio::sync::{
     broadcast::{self, Sender},
     RwLock,
@@ -12,7 +13,7 @@ use tracing::{
     // debug,
     info,
 };
-use vector_db::FaissIndex;
+use vector_db::QdrantParams;
 
 pub enum VideoTaskType {
     Frame,
@@ -117,29 +118,58 @@ async fn process_task(task_payload: &TaskPayload) {
     info!("successfully got frames, {}", &task_payload.video_path);
     save_ends_at(&VideoTaskType::Frame.to_string(), &client, vh).await;
 
-    save_starts_at(&VideoTaskType::FrameContentEmbedding.to_string(), &client, vh).await;
+    save_starts_at(
+        &VideoTaskType::FrameContentEmbedding.to_string(),
+        &client,
+        vh,
+    )
+    .await;
     if let Err(e) = vh.get_frame_content_embedding().await {
         error!("failed to get frame content embedding: {}", e);
         // return;
     }
-    info!("successfully got frame content embedding, {}", &task_payload.video_path);
-    save_ends_at(&VideoTaskType::FrameContentEmbedding.to_string(), &client, vh).await;
+    info!(
+        "successfully got frame content embedding, {}",
+        &task_payload.video_path
+    );
+    save_ends_at(
+        &VideoTaskType::FrameContentEmbedding.to_string(),
+        &client,
+        vh,
+    )
+    .await;
 
     save_starts_at(&VideoTaskType::FrameCaption.to_string(), &client, vh).await;
     if let Err(e) = vh.get_frames_caption().await {
         error!("failed to get frames caption: {}", e);
         // return;
     }
-    info!("successfully got frames caption, {}", &task_payload.video_path);
+    info!(
+        "successfully got frames caption, {}",
+        &task_payload.video_path
+    );
     save_ends_at(&VideoTaskType::FrameCaption.to_string(), &client, vh).await;
 
-    save_starts_at(&VideoTaskType::FrameCaptionEmbedding.to_string(), &client, vh).await;
+    save_starts_at(
+        &VideoTaskType::FrameCaptionEmbedding.to_string(),
+        &client,
+        vh,
+    )
+    .await;
     if let Err(e) = vh.get_frame_caption_embedding().await {
         error!("failed to get frames caption embedding: {}", e);
         // return;
     }
-    info!("successfully got frames caption embedding, {}", &task_payload.video_path);
-    save_ends_at(&VideoTaskType::FrameCaptionEmbedding.to_string(), &client, vh).await;
+    info!(
+        "successfully got frames caption embedding, {}",
+        &task_payload.video_path
+    );
+    save_ends_at(
+        &VideoTaskType::FrameCaptionEmbedding.to_string(),
+        &client,
+        vh,
+    )
+    .await;
 
     save_starts_at(&VideoTaskType::Audio.to_string(), &client, vh).await;
     if let Err(e) = vh.get_audio().await {
@@ -162,37 +192,51 @@ async fn process_task(task_payload: &TaskPayload) {
         error!("failed to get transcript embedding: {}", e);
         // return;
     }
-    info!("successfully got transcript embedding, {}", &task_payload.video_path);
+    info!(
+        "successfully got transcript embedding, {}",
+        &task_payload.video_path
+    );
     save_ends_at(&VideoTaskType::TranscriptEmbedding.to_string(), &client, vh).await;
-
-    if let Err(e) = vh.flush().await {
-        error!("failed to flush: {}", e);
-        // return;
-    }
 }
 
 pub async fn create_video_task<TCtx>(
     ctx: &TCtx,
     video_path: &str,
     tx: Arc<Sender<TaskPayload>>,
-    index: FaissIndex,
 ) -> Result<(), ()>
 where
     TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
     let library = &ctx.load_library();
+
     let client = new_client_with_url(&library.db_url)
         .await
         .expect("failed to create prisma client");
     client._db_push().await.expect("failed to push db"); // apply migrations
     let client = Arc::new(RwLock::new(client));
 
+    let qdrant_channel = ctx.get_qdrant_channel();
+    qdrant_channel
+        .update(QdrantParams {
+            dir: library.qdrant_dir.clone(),
+            http_port: None,
+            grpc_port: None,
+        })
+        .await
+        .expect("failed to update qdrant");
+    let qdrant_url = qdrant_channel.get_url().await;
+    let qdrant = Arc::new(
+        QdrantClient::from_url(&qdrant_url)
+            .build()
+            .expect("failed to build qdrant client"),
+    );
+
     let video_handler = match VideoHandler::new(
         video_path,
         &ctx.get_resources_dir(),
         &library,
         client,
-        index,
+        qdrant,
     )
     .await
     {

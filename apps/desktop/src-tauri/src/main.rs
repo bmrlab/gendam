@@ -13,7 +13,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use vector_db::FaissIndex;
+use vector_db::QdrantChannel;
 
 #[derive(Clone)]
 struct Ctx {
@@ -21,7 +21,7 @@ struct Ctx {
     resources_dir: PathBuf,
     store: Arc<Mutex<tauri_plugin_store::Store<tauri::Wry>>>,
     tx: Arc<tokio::sync::broadcast::Sender<TaskPayload>>,
-    index: FaissIndex,
+    qdrant_channel: Arc<QdrantChannel>,
 }
 
 impl CtxWithLibrary for Ctx {
@@ -44,8 +44,8 @@ impl CtxWithLibrary for Ctx {
     fn get_task_tx(&self) -> Arc<tokio::sync::broadcast::Sender<TaskPayload>> {
         Arc::clone(&self.tx)
     }
-    fn get_index(&self) -> FaissIndex {
-        self.index.clone()
+    fn get_qdrant_channel(&self) -> Arc<QdrantChannel> {
+        Arc::clone(&self.qdrant_channel)
     }
 }
 
@@ -98,8 +98,11 @@ async fn main() {
         .expect("failed to add store plugin");
 
     let tx = init_task_pool();
-    let index = FaissIndex::new();
     let router = api_server::router::get_router::<Ctx>();
+
+    let qdrant_channel = QdrantChannel::new(&resources_dir).await;
+    let qdrant_channel = Arc::new(qdrant_channel);
+
     window
         .app_handle()
         .plugin(rspc::integrations::tauri::plugin(router, move |_window| {
@@ -108,7 +111,7 @@ async fn main() {
                 resources_dir: resources_dir.clone(),
                 store: store.clone(),
                 tx: tx.clone(),
-                index: index.clone(),
+                qdrant_channel: qdrant_channel.clone(),
             }
         }))
         .expect("failed to add rspc plugin");
