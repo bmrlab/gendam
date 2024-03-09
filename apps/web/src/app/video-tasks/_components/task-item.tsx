@@ -1,15 +1,63 @@
 'use client'
 
-import { VideoItem, VideoTaskStatus } from './task-list'
 import { cn } from '@/lib/utils'
 import { getLocalFileUrl } from '@/utils/file'
 import { HTMLAttributes } from 'react'
+
+export type VideoItem = {
+  videoPath: string
+  videoFileHash: string
+  tasks: {
+    taskType: string
+    startsAt: string | null
+    endsAt: string | null
+  }[]
+} & { index: number }
 
 export type VideoTaskItemProps = {
   isSelect?: boolean
   handleClick: () => void
 } & VideoItem &
   HTMLAttributes<HTMLDivElement>
+
+export const VideoTaskStatus: React.FC<{
+  task: VideoItem['tasks'][number]
+}> = ({ task }) => {
+  const typeToName: { [key: string]: string } = {
+    // Audio: '语音转译',
+    // "Transcript": "语音转译",
+    TranscriptEmbedding: '语音转译',
+    // "FrameCaption": "图像描述",
+    FrameCaptionEmbedding: '图像描述',
+    // "Frame": "图像特征",
+    FrameContentEmbedding: '图像特征',
+  }
+  if (!typeToName[task.taskType]) {
+    return <></>
+  }
+  if (!task.startsAt) {
+    return (
+      <div className="mr-2 overflow-hidden overflow-ellipsis whitespace-nowrap rounded-full bg-neutral-100/80 px-3 py-1 text-xs font-light text-neutral-600">
+        {typeToName[task.taskType]}
+      </div>
+    )
+  } else if (task.startsAt && !task.endsAt) {
+    return (
+      <div className="mr-2 overflow-hidden overflow-ellipsis whitespace-nowrap rounded-full bg-orange-100/80 px-3 py-1 text-xs font-light text-orange-600">
+        {typeToName[task.taskType]}
+      </div>
+    )
+  } else if (task.startsAt && task.endsAt) {
+    return (
+      <div className="mr-2 overflow-hidden overflow-ellipsis whitespace-nowrap rounded-full bg-green-100/80 px-3 py-1 text-xs font-light text-green-600">
+        {typeToName[task.taskType]}
+      </div>
+    )
+  } else {
+    return <></>
+  }
+}
+
 
 export default function VideoTaskItem({
   videoPath,

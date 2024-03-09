@@ -1,7 +1,7 @@
 'use client'
 
-import VideoTaskItem, { VideoTaskItemProps } from './task-item'
-import { VideoItem } from './task-list'
+import VideoTaskItem from './task-item'
+import type { VideoItem, VideoTaskItemProps } from './task-item'
 import useKeyPress, { KeyType } from '@/hooks/useKeyPress'
 import { useBoundStore } from '@/store'
 import React from 'react'
