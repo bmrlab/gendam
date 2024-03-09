@@ -303,11 +303,12 @@ mod audio_tests {
             if line.trim().is_empty() {
                 continue;
             }
-            return if line.starts_with("WEBVTT") {
-                is_vtt = true
+            is_vtt = if line.starts_with("WEBVTT") {
+                true
             } else {
-                is_vtt = false
+                false
             };
+            break;
         }
 
         assert!(is_vtt);
