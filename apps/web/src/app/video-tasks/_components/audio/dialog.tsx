@@ -1,5 +1,5 @@
-import BatchExport from '@/app/video-tasks/_compoents/audio/batch-export'
-import AudioExport from '@/app/video-tasks/_compoents/audio/export'
+import BatchExport from './batch-export'
+import AudioExport from './export'
 import { AudioDialogEnum } from '@/app/video-tasks/store/audio-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useBoundStore } from '@/store'

@@ -1,4 +1,4 @@
-import { FileTypeEnum } from '@/app/video-tasks/_compoents/audio/export'
+import { FileTypeEnum } from './export'
 import MuseDropdownMenu from '@/components/DropdownMenu'
 import Icon from '@/components/Icon'
 import MuseMultiSelect from '@/components/MultiSelect'

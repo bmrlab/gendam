@@ -1,7 +1,7 @@
 'use client'
-import AudioDialog from '@/app/video-tasks/_compoents/audio/dialog'
+import AudioDialog from '@/app/video-tasks/_components/audio/dialog'
 
-import VideoTasksList from '@/app/video-tasks/_compoents/task-list'
+import VideoTasksList from '@/app/video-tasks/_components/task-list'
 
 export default function VideoTasksPage() {
 

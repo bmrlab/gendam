@@ -1,6 +1,6 @@
 'use client'
 
-import { VideoItem, VideoTaskStatus } from '@/app/video-tasks/_compoents/task-list'
+import { VideoItem, VideoTaskStatus } from './task-list'
 import { cn } from '@/lib/utils'
 import { getLocalFileUrl } from '@/utils/file'
 import { HTMLAttributes } from 'react'

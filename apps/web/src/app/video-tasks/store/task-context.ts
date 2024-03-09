@@ -1,4 +1,4 @@
-import { VideoItem } from '@/app/video-tasks/_compoents/task-list'
+import { VideoItem } from '@/app/video-tasks/_components/task-list'
 import { ImmerStateCreator } from '@/store'
 
 type TaskSelectedState = VideoItem[]

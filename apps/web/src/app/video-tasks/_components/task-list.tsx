@@ -1,7 +1,7 @@
 'use client'
 
-import TaskContextMenu from '@/app/video-tasks/_compoents/task-context-menu'
-import { WithSelectVideoItem } from '@/hoc/with-select'
+import TaskContextMenu from './task-context-menu'
+import { WithSelectVideoItem } from './with-select'
 import type { VideoTaskResult } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { useBoundStore } from '@/store'
@@ -77,7 +77,7 @@ export const VideoTaskStatus: FC<{
   task: VideoItem['tasks'][number]
 }> = ({ task }) => {
   const typeToName: { [key: string]: string } = {
-    Audio: '语音转译',
+    // Audio: '语音转译',
     // "Transcript": "语音转译",
     TranscriptEmbedding: '语音转译',
     // "FrameCaption": "图像描述",
