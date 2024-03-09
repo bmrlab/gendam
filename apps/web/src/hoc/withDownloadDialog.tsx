@@ -1,7 +1,5 @@
 'use client'
 import { Button, ButtonProps } from '@/components/ui/button'
-import { open } from '@tauri-apps/api/dialog'
-import { downloadDir } from '@tauri-apps/api/path'
 import React from 'react'
 
 interface WithOpenProps {
@@ -12,6 +10,8 @@ function withDownloadDialog<T extends WithOpenProps>(Component: React.ComponentT
   return function dialog({ ...props }: T & WithOpenProps) {
     const handleClick = async () => {
       const { onSelection } = props as WithOpenProps
+      const { open } = await import('@tauri-apps/api/dialog')
+      const { downloadDir } = await import('@tauri-apps/api/path')
       const selected = await open({
         multiple: false,
         directory: true,
