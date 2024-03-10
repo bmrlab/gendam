@@ -59,17 +59,20 @@ pub async fn get_frame_content_embedding(
 
             join_set.spawn(async move {
                 // write data using prisma
-                let client = client.write().await;
-                let x = client.video_frame().upsert(
-                    video_frame::file_identifier_timestamp(
-                        file_identifier.clone(),
-                        frame_timestamp as i32,
-                    ),
-                    (file_identifier.clone(), frame_timestamp as i32, vec![]),
-                    vec![],
-                );
+                let x = {
+                    let client = client.write().await;
+                    client.video_frame().upsert(
+                        video_frame::file_identifier_timestamp(
+                            file_identifier.clone(),
+                            frame_timestamp as i32,
+                        ),
+                        (file_identifier.clone(), frame_timestamp as i32, vec![]),
+                        vec![],
+                    ).exec().await
+                    // drop the rwlock
+                };
 
-                match x.exec().await {
+                match x {
                     std::result::Result::Ok(res) => {
                         let payload = SearchPayload::Frame(FramePayload {
                             id: res.id,

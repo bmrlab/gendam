@@ -132,32 +132,29 @@ async fn get_single_frame_caption_embedding(
         .parse()
         .unwrap_or(0);
 
-    let client = client.write().await;
-
-    let video_frame = client
-        .video_frame()
-        .upsert(
+    let x = {
+        let client = client.write().await;
+        let video_frame = client.video_frame().upsert(
             video_frame::UniqueWhereParam::FileIdentifierTimestampEquals(
                 file_identifier.clone(),
                 frame_timestamp as i32,
             ),
             (file_identifier.clone(), frame_timestamp as i32, vec![]),
             vec![],
-        )
-        .exec()
-        .await?;
-
-    let x = client.video_frame_caption().upsert(
-        video_frame_caption::UniqueWhereParam::VideoFrameIdEquals(video_frame.id),
-        (
-            caption.clone(),
-            video_frame::UniqueWhereParam::IdEquals(video_frame.id),
+        ).exec().await?;
+        client.video_frame_caption().upsert(
+            video_frame_caption::UniqueWhereParam::VideoFrameIdEquals(video_frame.id),
+            (
+                caption.clone(),
+                video_frame::UniqueWhereParam::IdEquals(video_frame.id),
+                vec![],
+            ),
             vec![],
-        ),
-        vec![],
-    );
+        ).exec().await
+        // drop the rwlock
+    };
 
-    match x.exec().await {
+    match x {
         std::result::Result::Ok(res) => {
             let payload = SearchPayload::FrameCaption(FrameCaptionPayload {
                 id: res.id,
