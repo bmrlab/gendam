@@ -41,6 +41,11 @@ impl CtxWithLibrary for Ctx {
         let library = load_library(&self.local_data_root, &library_id);
         library
     }
+    fn switch_current_library(&self, library_id: &str) {
+        let mut store = self.store.lock().unwrap();
+        let _ = store.insert(String::from("current-library-id"), library_id.into());
+        let _ = store.save();
+    }
     fn get_task_tx(&self) -> Arc<tokio::sync::broadcast::Sender<TaskPayload>> {
         Arc::clone(&self.tx)
     }

@@ -4,7 +4,7 @@ pub mod router;
 
 use std::{
     path::PathBuf,
-    sync::Arc,
+    sync::Arc
 };
 use tokio::sync::broadcast;
 // use rspc::Rspc;
@@ -23,6 +23,7 @@ pub trait CtxWithLibrary {
     fn get_local_data_root(&self) -> PathBuf;
     fn get_resources_dir(&self) -> PathBuf;
     fn load_library(&self) -> Library;
+    fn switch_current_library(&self, library_id: &str);
     fn get_task_tx(&self) -> Arc<broadcast::Sender<TaskPayload>>;
     fn get_qdrant_channel(&self) -> Arc<QdrantChannel>;
 }

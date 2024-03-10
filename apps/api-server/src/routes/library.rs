@@ -29,6 +29,20 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
                 })
             })
         )
+        .procedure(
+            "set_current_library",
+            Rspc::<TCtx>::new().mutation(|ctx, library_id: String| async move {
+                ctx.switch_current_library(&library_id);
+                json!({ "status": "ok" })
+            })
+        )
+        .procedure(
+            "get_current_library",
+            Rspc::<TCtx>::new().query(|ctx, _input: ()| async move {
+                let library = ctx.load_library();
+                Ok(library.id)
+            })
+        )
 }
 
 fn list_libraries(local_data_root: &PathBuf) -> Vec<String> {

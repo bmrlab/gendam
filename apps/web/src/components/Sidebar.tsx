@@ -16,7 +16,6 @@ export default function Sidebar() {
 
   const switchLibrary = useCallback(async (libraryId: string) => {
     // console.log("switchLibrary");
-    // currentLibrary.resetContext();
     await currentLibrary.setContext(libraryId);
   }, [currentLibrary]);
 

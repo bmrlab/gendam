@@ -15,25 +15,6 @@ export const client = initRspc<Procedures>({
   ]
 });
 
-export const createClientWithLibraryId = (libraryId: string) => {
-  if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-    return client;
-  } else {
-    return initRspc<Procedures>({
-      links: [
-        httpLink({
-          url: "http://localhost:3001/rspc",
-          headers() {
-            return {
-              "X-Library-ID": libraryId,
-            };
-          },
-        })
-      ]
-    });
-  }
-}
-
 export const rspc = createReactQueryHooks<Procedures>(client);
 
 export const queryClient: QueryClient = new QueryClient({

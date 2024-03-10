@@ -6,6 +6,7 @@ export type Procedures = {
         { key: "audio.find_by_hash", input: string, result: AudioResp[] } | 
         { key: "files.home_dir", input: never, result: string } | 
         { key: "files.ls", input: string, result: any } | 
+        { key: "libraries.get_current_library", input: never, result: string } | 
         { key: "libraries.list", input: never, result: any } | 
         { key: "users.list", input: never, result: any } | 
         { key: "version", input: never, result: string } | 
@@ -19,6 +20,7 @@ export type Procedures = {
         { key: "audio.export", input: ExportInput, result: AudioType[] } | 
         { key: "files.reveal", input: string, result: null } | 
         { key: "libraries.create", input: string, result: any } | 
+        { key: "libraries.set_current_library", input: string, result: any } | 
         { key: "video.tasks.create", input: string, result: any },
     subscriptions: never
 };
