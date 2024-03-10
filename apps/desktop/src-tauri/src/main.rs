@@ -8,9 +8,12 @@ use api_server::{
     CtxWithLibrary,
 };
 use content_library::{load_library, upgrade_library_schemas, Library};
+use tokio::sync::broadcast;
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
+    pin::Pin,
+    boxed::Box,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use vector_db::QdrantChannel;
@@ -21,7 +24,7 @@ struct Ctx {
     resources_dir: PathBuf,
     store: Arc<Mutex<tauri_plugin_store::Store<tauri::Wry>>>,
     current_library: Arc<Mutex<Option<Library>>>,
-    tx: Arc<tokio::sync::broadcast::Sender<TaskPayload>>,
+    tx: Arc<broadcast::Sender<TaskPayload>>,
     qdrant_channel: Arc<QdrantChannel>,
 }
 
@@ -41,25 +44,32 @@ impl CtxWithLibrary for Ctx {
             )),
         }
     }
-    fn switch_current_library(&self, library_id: &str) {
+    fn switch_current_library<'async_trait>(&'async_trait self, library_id: &'async_trait str)
+        -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
+    where
+        Self: Sync + 'async_trait,
+    {
         let mut store = self.store.lock().unwrap();
         let _ = store.insert(String::from("current-library-id"), library_id.into());
         let _ = store.save();
         // try to load library, but this is not necessary
         let _ = store.load();
-        let mut current_library = self.current_library.lock().unwrap();
-        if let Some(value) = store.get("current-library-id") {
+        if let Some(value) = store.get(String::from("current-library-id")) {
             let library_id = value.as_str().unwrap().to_owned();
-            let library = load_library(&self.local_data_root, &library_id);
-            current_library.replace(library);
-            info!("Current library switched to {}", library_id);
+            return Box::pin(async move {
+                let library = load_library(&self.local_data_root, &library_id).await;
+                self.current_library.lock().unwrap().replace(library);
+                info!("Current library switched to {}", library_id);
+            });
         } else {
             // 这里实际上不可能被执行，除非 settings.json 数据有问题
-            current_library.take();
-            info!("Current library is unset");
+            return Box::pin(async move {
+                self.current_library.lock().unwrap().take();
+                info!("Current library is unset");
+            });
         }
     }
-    fn get_task_tx(&self) -> Arc<tokio::sync::broadcast::Sender<TaskPayload>> {
+    fn get_task_tx(&self) -> Arc<broadcast::Sender<TaskPayload>> {
         Arc::clone(&self.tx)
     }
     fn get_qdrant_channel(&self) -> Arc<QdrantChannel> {
@@ -110,15 +120,14 @@ async fn main() {
         )
         .build(),
     ));
-    let current_library = Arc::new(Mutex::new(None));
+    let current_library = Arc::new(Mutex::<Option<Library>>::new(None));
     {
         let mut store_mut = store.lock().unwrap();
-        let mut current_library_mut = current_library.lock().unwrap();
         let _ = store_mut.load();
         if let Some(value) = store_mut.get("current-library-id") {
             let library_id = value.as_str().unwrap().to_owned();
-            let library = load_library(&local_data_root, &library_id);
-            current_library_mut.replace(library);
+            let library = load_library(&local_data_root, &library_id).await;
+            current_library.lock().unwrap().replace(library);
         }
     }
 

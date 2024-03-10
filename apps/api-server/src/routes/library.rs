@@ -32,7 +32,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
         .procedure(
             "set_current_library",
             Rspc::<TCtx>::new().mutation(|ctx, library_id: String| async move {
-                ctx.switch_current_library(&library_id);
+                ctx.switch_current_library(&library_id).await;
                 json!({ "status": "ok" })
             })
         )

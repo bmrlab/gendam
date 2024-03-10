@@ -4,10 +4,11 @@ pub mod router;
 
 use std::{
     path::PathBuf,
+    pin::Pin,
+    boxed::Box,
     sync::Arc
 };
 use tokio::sync::broadcast;
-// use rspc::Rspc;
 use content_library::Library;
 use task_queue::TaskPayload;
 use vector_db::QdrantChannel;
@@ -22,8 +23,14 @@ use vector_db::QdrantChannel;
 pub trait CtxWithLibrary {
     fn get_local_data_root(&self) -> PathBuf;
     fn get_resources_dir(&self) -> PathBuf;
+
+    fn switch_current_library<'async_trait>(&'async_trait self, library_id: &'async_trait str)
+        -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
+    where
+        Self: Sync + 'async_trait;
+
     fn library(&self) -> Result<Library, rspc::Error>;
-    fn switch_current_library(&self, library_id: &str);
+
     fn get_task_tx(&self) -> Arc<broadcast::Sender<TaskPayload>>;
     fn get_qdrant_channel(&self) -> Arc<QdrantChannel>;
 }
