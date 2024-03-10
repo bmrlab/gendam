@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use dotenvy::dotenv;
 use tauri::Manager;
-// use tracing::{debug, error};
+use tracing::info;
 use api_server::{
     task_queue::{init_task_pool, TaskPayload},
     CtxWithLibrary,
@@ -20,6 +20,7 @@ struct Ctx {
     local_data_root: PathBuf,
     resources_dir: PathBuf,
     store: Arc<Mutex<tauri_plugin_store::Store<tauri::Wry>>>,
+    current_library: Arc<Mutex<Option<Library>>>,
     tx: Arc<tokio::sync::broadcast::Sender<TaskPayload>>,
     qdrant_channel: Arc<QdrantChannel>,
 }
@@ -32,19 +33,31 @@ impl CtxWithLibrary for Ctx {
         self.resources_dir.clone()
     }
     fn load_library(&self) -> Result<Library, rspc::Error> {
-        let mut store = self.store.lock().unwrap();
-        let _ = store.load();
-        let library_id = match store.get("current-library-id") {
-            Some(value) => value.as_str().unwrap().to_owned(),
-            None => String::from("default"),
-        };
-        let library = load_library(&self.local_data_root, &library_id);
-        Ok(library)
+        match self.current_library.lock().unwrap().as_ref() {
+            Some(library) => Ok(library.clone()),
+            None => Err(rspc::Error::new(
+                rspc::ErrorCode::BadRequest,
+                String::from("No current library is set"),
+            )),
+        }
     }
     fn switch_current_library(&self, library_id: &str) {
         let mut store = self.store.lock().unwrap();
         let _ = store.insert(String::from("current-library-id"), library_id.into());
         let _ = store.save();
+        // try to load library, but this is not necessary
+        let _ = store.load();
+        let mut current_library = self.current_library.lock().unwrap();
+        if let Some(value) = store.get("current-library-id") {
+            let library_id = value.as_str().unwrap().to_owned();
+            let library = load_library(&self.local_data_root, &library_id);
+            current_library.replace(library);
+            info!("Current library switched to {}", library_id);
+        } else {
+            // 这里实际上不可能被执行，除非 settings.json 数据有问题
+            current_library.take();
+            info!("Current library is unset");
+        }
     }
     fn get_task_tx(&self) -> Arc<tokio::sync::broadcast::Sender<TaskPayload>> {
         Arc::clone(&self.tx)
@@ -87,6 +100,9 @@ async fn main() {
         .path_resolver()
         .resolve_resource("resources")
         .expect("failed to find resources dir");
+
+    upgrade_library_schemas(&local_data_root).await;
+
     let store = Arc::new(Mutex::new(
         tauri_plugin_store::StoreBuilder::new(
             window.app_handle(),
@@ -94,7 +110,17 @@ async fn main() {
         )
         .build(),
     ));
-    upgrade_library_schemas(&local_data_root).await;
+    let current_library = Arc::new(Mutex::new(None));
+    {
+        let mut store_mut = store.lock().unwrap();
+        let mut current_library_mut = current_library.lock().unwrap();
+        let _ = store_mut.load();
+        if let Some(value) = store_mut.get("current-library-id") {
+            let library_id = value.as_str().unwrap().to_owned();
+            let library = load_library(&local_data_root, &library_id);
+            current_library_mut.replace(library);
+        }
+    }
 
     // app.app_handle()
     window
@@ -115,6 +141,7 @@ async fn main() {
                 local_data_root: local_data_root.clone(),
                 resources_dir: resources_dir.clone(),
                 store: store.clone(),
+                current_library: current_library.clone(),
                 tx: tx.clone(),
                 qdrant_channel: qdrant_channel.clone(),
             }
