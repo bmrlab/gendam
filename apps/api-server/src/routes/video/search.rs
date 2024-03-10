@@ -22,7 +22,7 @@ where
     Rspc::<TCtx>::new().router().procedure(
         "all",
         Rspc::<TCtx>::new().query(move |ctx: TCtx, input: String| async move {
-            let library = ctx.load_library()?;
+            let library = ctx.library()?;
             let client = new_client_with_url(&library.db_url)
                 .await
                 .expect("failed to create prisma client");

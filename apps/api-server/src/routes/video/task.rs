@@ -29,7 +29,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
         .procedure(
             "list",
             Rspc::<TCtx>::new().query(move |ctx: TCtx, _input: ()| async move {
-                let library = ctx.load_library()?;
+                let library = ctx.library()?;
                 let client = new_client_with_url(library.db_url.as_str())
                     .await
                     .expect("failed to create prisma client");

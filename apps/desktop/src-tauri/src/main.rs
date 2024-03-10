@@ -32,7 +32,7 @@ impl CtxWithLibrary for Ctx {
     fn get_resources_dir(&self) -> PathBuf {
         self.resources_dir.clone()
     }
-    fn load_library(&self) -> Result<Library, rspc::Error> {
+    fn library(&self) -> Result<Library, rspc::Error> {
         match self.current_library.lock().unwrap().as_ref() {
             Some(library) => Ok(library.clone()),
             None => Err(rspc::Error::new(

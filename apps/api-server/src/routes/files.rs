@@ -38,7 +38,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
             }
         })
         .query(|ctx, _input: ()| async move {
-            let library = ctx.load_library()?;
+            let library = ctx.library()?;
             Ok(library.files_dir.to_str().unwrap().to_string())
             // dirs::home_dir().unwrap()
         })
@@ -46,7 +46,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
     .procedure(
         "ls",
         Rspc::<TCtx>::new().query(|ctx, path: String| async move {
-            let library = ctx.load_library()?;
+            let library = ctx.library()?;
             if !path.starts_with("/") {
                 // let res = serde_json::to_value::<Vec<File>>(vec![]);
                 // return res.map_err(|e| {
@@ -70,7 +70,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
     .procedure(
         "reveal",
         Rspc::<TCtx>::new().mutation(|ctx, path: String| async move {
-            let library = ctx.load_library()?;
+            let library = ctx.library()?;
             let relative_path = format!(".{}", path);
             let files_dir = library.files_dir;
             let reveal_path = files_dir.join(relative_path).into_os_string().into_string().unwrap();

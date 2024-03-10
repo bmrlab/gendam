@@ -37,7 +37,7 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
         .procedure(
             "find_by_hash",
             Rspc::<TCtx>::new().query(|ctx, hash: String| async move {
-                let library = ctx.load_library()?;
+                let library = ctx.library()?;
                 let artifacts_dir = library.artifacts_dir.clone();
                 let path = artifacts_dir.join(hash).join(TRANSCRIPT_FILE_NAME);
                 Ok(get_all_audio_format(path))
@@ -46,7 +46,7 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
         .procedure(
             "export",
             Rspc::<TCtx>::new().mutation(|ctx, input: ExportInput| async move {
-                let library = ctx.load_library()?;
+                let library = ctx.library()?;
                 let export_result = audio_export(library.artifacts_dir.clone(), input)
                     .unwrap_or_else(|err| {
                         error!("Failed to export audio: {err}",);
@@ -58,7 +58,7 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
         .procedure(
             "batch_export",
             Rspc::<TCtx>::new().mutation(|ctx, input: Vec<ExportInput>| async move {
-                let library = ctx.load_library()?;
+                let library = ctx.library()?;
                 let mut error_list = vec![];
                 for item in input {
                     let res = audio_export(library.artifacts_dir.clone(), item)

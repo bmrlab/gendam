@@ -22,7 +22,7 @@ use vector_db::QdrantChannel;
 pub trait CtxWithLibrary {
     fn get_local_data_root(&self) -> PathBuf;
     fn get_resources_dir(&self) -> PathBuf;
-    fn load_library(&self) -> Result<Library, rspc::Error>;
+    fn library(&self) -> Result<Library, rspc::Error>;
     fn switch_current_library(&self, library_id: &str);
     fn get_task_tx(&self) -> Arc<broadcast::Sender<TaskPayload>>;
     fn get_qdrant_channel(&self) -> Arc<QdrantChannel>;
