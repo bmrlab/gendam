@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { client, queryClient, rspc } from "@/lib/rspc";
-import { CurrentLibrary, CurrentLibraryStorage } from "@/lib/library";
+import { CurrentLibrary } from "@/lib/library";
 import LibrariesSelect from "@/components/LibrariesSelect";
 
 export default function ClientLayout({
@@ -13,7 +13,7 @@ export default function ClientLayout({
   const [libraryId, setLibraryId] = useState<string|null>(null);
 
   useEffect(() => {
-    CurrentLibraryStorage.get().then((libraryIdInStorage) => {
+    client.query(["libraries.get_current_library"]).then((libraryIdInStorage) => {
       setLibraryId(libraryIdInStorage);
       setPending(false);
     }).catch(error => {
@@ -26,10 +26,14 @@ export default function ClientLayout({
   const setContext = useCallback(async (id: string) => {
     setLibraryId(id);
     setPending(true);
-    await CurrentLibraryStorage.set(id)
-    setPending(false);
-    // 最后 reload 一下，用新的 library 请求数据过程中，页面上还残留着上个 library 已请求的数据
-    location.reload();
+    try {
+      await client.mutation(["libraries.set_current_library", id]);
+      setPending(false);
+      // 最后 reload 一下，用新的 library 请求数据过程中，页面上还残留着上个 library 已请求的数据
+      location.reload();
+    } catch(err) {
+      console.error('CurrentLibraryStorage.set() error:', err);
+    }
   }, [setLibraryId]);
 
   return pending ? (<></>) : (
