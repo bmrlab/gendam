@@ -17,7 +17,7 @@ use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
 };
-use tracing::debug;
+use tracing::{debug, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use vector_db::QdrantChannel;
 
@@ -83,13 +83,16 @@ impl CtxWithLibrary for Ctx {
         let _ = store.insert("current-library-id", library_id);
         let _ = store.save();
         // try to load library, but this is not necessary
+        let _ = store.load();
         let mut current_library = self.current_library.lock().unwrap();
         if let Some(library_id) = store.get("current-library-id") {
             let library = load_library(&self.local_data_root, &library_id);
             current_library.replace(library);
+            info!("Current library switched to {}", library_id);
         } else {
             // 这里实际上不可能被执行，除非 settings.json 数据有问题
             current_library.take();
+            info!("Current library is unset");
         }
     }
     fn get_task_tx(&self) -> Arc<tokio::sync::broadcast::Sender<TaskPayload>> {
@@ -135,8 +138,16 @@ async fn main() {
     let store = Arc::new(Mutex::new(
         Store::new(local_data_root.join("settings.json"))
     ));
-
     let current_library = Arc::new(Mutex::new(None));
+    {
+        let mut store_mut = store.lock().unwrap();
+        let mut current_library_mut = current_library.lock().unwrap();
+        let _ = store_mut.load();
+        if let Some(library_id) = store_mut.get("current-library-id") {
+            let library = load_library(&local_data_root, &library_id);
+            current_library_mut.replace(library);
+        }
+    }
 
     // TODO qdrant should be placed in sidecar
     let qdrant_channel = QdrantChannel::new(&resources_dir).await;

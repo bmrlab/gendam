@@ -16,8 +16,12 @@ export default function ClientLayout({
     CurrentLibraryStorage.get().then((libraryIdInStorage) => {
       setLibraryId(libraryIdInStorage);
       setPending(false);
+    }).catch(error => {
+      console.log('CurrentLibraryStorage.get() error:', error);
+      setLibraryId(null);
+      setPending(false);
     })
-  }, [setLibraryId]);
+  }, [setLibraryId, setPending]);
 
   const setContext = useCallback(async (id: string) => {
     setLibraryId(id);
