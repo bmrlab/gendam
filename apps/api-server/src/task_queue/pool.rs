@@ -207,7 +207,9 @@ pub async fn create_video_task<TCtx>(
 where
     TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
-    let library = &ctx.load_library();
+    let library = &ctx.load_library().map_err(|e| {
+        error!("library must be set before triggering create_video_task: {}", e);
+    })?;
 
     let client = new_client_with_url(&library.db_url)
         .await

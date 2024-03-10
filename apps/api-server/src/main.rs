@@ -69,13 +69,13 @@ impl CtxWithLibrary for Ctx {
     fn get_resources_dir(&self) -> PathBuf {
         self.resources_dir.clone()
     }
-    fn load_library(&self) -> Library {
+    fn load_library(&self) -> Result<Library, rspc::Error> {
         match self.current_library.lock().unwrap().as_ref() {
-            Some(library) => library.clone(),
-            None => {
-                // TODO: 这里要抛出异常，然后 rspc 接口中要处理异常并返回给前端
-                load_library(&self.local_data_root, "default")
-            }
+            Some(library) => Ok(library.clone()),
+            None => Err(rspc::Error::new(
+                rspc::ErrorCode::BadRequest,
+                String::from("No current library is set"),
+            )),
         }
     }
     fn switch_current_library(&self, library_id: &str) {

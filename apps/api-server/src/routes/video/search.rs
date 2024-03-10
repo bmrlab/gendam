@@ -22,7 +22,7 @@ where
     Rspc::<TCtx>::new().router().procedure(
         "all",
         Rspc::<TCtx>::new().query(move |ctx: TCtx, input: String| async move {
-            let library = ctx.load_library();
+            let library = ctx.load_library()?;
             let client = new_client_with_url(&library.db_url)
                 .await
                 .expect("failed to create prisma client");
@@ -69,7 +69,10 @@ where
                 Ok(res) => res,
                 Err(e) => {
                     println!("error: {:?}", e);
-                    return vec![];
+                    return Err(rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("failed to search: {}", e),
+                    ));
                 }
             };
 
@@ -119,7 +122,7 @@ where
                 pub start_time: i32,
             }
 
-            res.iter()
+            let search_result = res.iter()
                 .map(
                     |SearchResult {
                          file_identifier,
@@ -142,7 +145,8 @@ where
                         }
                     },
                 )
-                .collect::<Vec<SearchResultPayload>>()
+                .collect::<Vec<SearchResultPayload>>();
+            Ok(search_result)
         }),
     )
 }

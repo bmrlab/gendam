@@ -38,15 +38,15 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
             }
         })
         .query(|ctx, _input: ()| async move {
-            let library = ctx.load_library();
-            library.files_dir.to_str().unwrap().to_string()
+            let library = ctx.load_library()?;
+            Ok(library.files_dir.to_str().unwrap().to_string())
             // dirs::home_dir().unwrap()
         })
     )
     .procedure(
         "ls",
         Rspc::<TCtx>::new().query(|ctx, path: String| async move {
-            let library = ctx.load_library();
+            let library = ctx.load_library()?;
             if !path.starts_with("/") {
                 // let res = serde_json::to_value::<Vec<File>>(vec![]);
                 // return res.map_err(|e| {
@@ -70,12 +70,17 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
     .procedure(
         "reveal",
         Rspc::<TCtx>::new().mutation(|ctx, path: String| async move {
-            let library = ctx.load_library();
+            let library = ctx.load_library()?;
             let relative_path = format!(".{}", path);
             let files_dir = library.files_dir;
             let reveal_path = files_dir.join(relative_path).into_os_string().into_string().unwrap();
-            let res = reveal_in_finder(&reveal_path);
-            res.expect("failed reveal file in finder");
+            match reveal_in_finder(&reveal_path) {
+                Ok(_) => Ok(()),
+                Err(e) => Err(rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    format!("failed reveal file in finder: {}", e)
+                ))
+            }
         })
     );
     return router;

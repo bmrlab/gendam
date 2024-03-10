@@ -39,7 +39,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
         .procedure(
             "get_current_library",
             Rspc::<TCtx>::new().query(|ctx, _input: ()| async move {
-                let library = ctx.load_library();
+                let library = ctx.load_library()?;
                 Ok(library.id)
             })
         )

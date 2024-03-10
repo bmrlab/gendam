@@ -29,7 +29,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
         .procedure(
             "list",
             Rspc::<TCtx>::new().query(move |ctx: TCtx, _input: ()| async move {
-                let library = ctx.load_library();
+                let library = ctx.load_library()?;
                 let client = new_client_with_url(library.db_url.as_str())
                     .await
                     .expect("failed to create prisma client");
@@ -58,7 +58,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
                     pub ends_at: Option<String>,
                 }
 
-                res.iter()
+                let videos_with_tasks = res.iter()
                     .map(|item| VideoTaskResult {
                         id: item.id,
                         video_path: item.video_path.clone(),
@@ -75,8 +75,8 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
                             None
                         },
                     })
-                    .collect::<Vec<_>>()
-                // serde_json::to_value(res).unwrap()
+                    .collect::<Vec<_>>();
+                Ok(videos_with_tasks)
             }),
         )
 }

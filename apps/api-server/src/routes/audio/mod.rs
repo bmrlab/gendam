@@ -37,35 +37,38 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
         .procedure(
             "find_by_hash",
             Rspc::<TCtx>::new().query(|ctx, hash: String| async move {
-                let library = ctx.load_library();
+                let library = ctx.load_library()?;
                 let artifacts_dir = library.artifacts_dir.clone();
                 let path = artifacts_dir.join(hash).join(TRANSCRIPT_FILE_NAME);
-                get_all_audio_format(path)
+                Ok(get_all_audio_format(path))
             }),
         )
         .procedure(
             "export",
             Rspc::<TCtx>::new().mutation(|ctx, input: ExportInput| async move {
-                return audio_export(ctx.load_library().artifacts_dir.clone(), input)
+                let library = ctx.load_library()?;
+                let export_result = audio_export(library.artifacts_dir.clone(), input)
                     .unwrap_or_else(|err| {
                         error!("Failed to export audio: {err}",);
                         vec![]
                     });
+                Ok(export_result)
             }),
         )
         .procedure(
             "batch_export",
             Rspc::<TCtx>::new().mutation(|ctx, input: Vec<ExportInput>| async move {
+                let library = ctx.load_library()?;
                 let mut error_list = vec![];
                 for item in input {
-                    let res = audio_export(ctx.load_library().artifacts_dir.clone(), item)
+                    let res = audio_export(library.artifacts_dir.clone(), item)
                         .unwrap_or_else(|err| {
                             error!("Failed to export audio: {err}",);
                             vec![]
                         });
                     error_list.extend(res);
                 }
-                error_list
+                Ok(error_list)
             }),
         );
 

@@ -64,7 +64,7 @@ where
         .procedure(
             "create_file_path",
             Rspc::<TCtx>::new().mutation(|ctx, input: FilePathCreatePayload| async move {
-                let library = ctx.load_library();
+                let library = ctx.load_library()?;
                 let client = new_client_with_url(library.db_url.as_str())
                     .await
                     .map_err(|e| {
@@ -99,7 +99,7 @@ where
         .procedure(
             "create_asset_object",
             Rspc::<TCtx>::new().mutation(|ctx, input: AssetObjectCreatePayload| async move {
-                let library = ctx.load_library();
+                let library = ctx.load_library()?;
                 let client = new_client_with_url(library.db_url.as_str())
                     .await
                     .map_err(|e| {
@@ -182,7 +182,7 @@ where
         .procedure(
             "list",
             Rspc::<TCtx>::new().query(|ctx, input: FilePathQueryPayload| async move {
-                let library = ctx.load_library();
+                let library = ctx.load_library()?;
                 let client = new_client_with_url(library.db_url.as_str())
                     .await
                     .map_err(|e| {
@@ -236,7 +236,7 @@ where
         .procedure(
             "process_video_asset",
             Rspc::<TCtx>::new().mutation(|ctx, input: i32| async move {
-                let library = ctx.load_library();
+                let library = ctx.load_library()?;
                 let tx = ctx.get_task_tx();
                 let asset_object_id = input;
                 let local_full_path = format!(
@@ -244,12 +244,12 @@ where
                     library.files_dir.to_str().unwrap(),
                     asset_object_id
                 );
-                if let Ok(res) = create_video_task(&ctx, &local_full_path, tx).await {
-                    return serde_json::to_value(res).unwrap();
-                } else {
-                    return json!({
-                        "error": "failed to create video task"
-                    });
+                match create_video_task(&ctx, &local_full_path, tx).await {
+                    Ok(res) => Ok(serde_json::to_value(res).unwrap()),
+                    Err(_) => Err(rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        String::from("failed to create video task"),
+                    )),
                 }
             }),
         );

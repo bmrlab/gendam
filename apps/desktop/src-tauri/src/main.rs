@@ -31,7 +31,7 @@ impl CtxWithLibrary for Ctx {
     fn get_resources_dir(&self) -> PathBuf {
         self.resources_dir.clone()
     }
-    fn load_library(&self) -> Library {
+    fn load_library(&self) -> Result<Library, rspc::Error> {
         let mut store = self.store.lock().unwrap();
         let _ = store.load();
         let library_id = match store.get("current-library-id") {
@@ -39,7 +39,7 @@ impl CtxWithLibrary for Ctx {
             None => String::from("default"),
         };
         let library = load_library(&self.local_data_root, &library_id);
-        library
+        Ok(library)
     }
     fn switch_current_library(&self, library_id: &str) {
         let mut store = self.store.lock().unwrap();
