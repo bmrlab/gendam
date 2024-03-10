@@ -56,8 +56,8 @@ impl Store {
 struct Ctx {
     local_data_root: PathBuf,
     resources_dir: PathBuf,
-    // library_id: String,
     store: Arc<Mutex<Store>>,
+    current_library: Arc<Mutex<Option<Library>>>,
     tx: Arc<tokio::sync::broadcast::Sender<TaskPayload>>,
     qdrant_channel: Arc<QdrantChannel>,
 }
@@ -69,24 +69,28 @@ impl CtxWithLibrary for Ctx {
     fn get_resources_dir(&self) -> PathBuf {
         self.resources_dir.clone()
     }
-    // fn load_library(&self) -> Library {
-    //     let library = load_library(&self.local_data_root, &self.library_id);
-    //     library
-    // }
     fn load_library(&self) -> Library {
-        let mut store = self.store.lock().unwrap();
-        let _ = store.load();
-        let library_id = match store.get("current-library-id") {
-            Some(value) => value.to_owned(),
-            None => String::from("default"),
-        };
-        let library = load_library(&self.local_data_root, &library_id);
-        library
+        match self.current_library.lock().unwrap().as_ref() {
+            Some(library) => library.clone(),
+            None => {
+                // TODO: 这里要抛出异常，然后 rspc 接口中要处理异常并返回给前端
+                load_library(&self.local_data_root, "default")
+            }
+        }
     }
     fn switch_current_library(&self, library_id: &str) {
         let mut store = self.store.lock().unwrap();
         let _ = store.insert("current-library-id", library_id);
         let _ = store.save();
+        // try to load library, but this is not necessary
+        let mut current_library = self.current_library.lock().unwrap();
+        if let Some(library_id) = store.get("current-library-id") {
+            let library = load_library(&self.local_data_root, &library_id);
+            current_library.replace(library);
+        } else {
+            // 这里实际上不可能被执行，除非 settings.json 数据有问题
+            current_library.take();
+        }
     }
     fn get_task_tx(&self) -> Arc<tokio::sync::broadcast::Sender<TaskPayload>> {
         Arc::clone(&self.tx)
@@ -132,6 +136,8 @@ async fn main() {
         Store::new(local_data_root.join("settings.json"))
     ));
 
+    let current_library = Arc::new(Mutex::new(None));
+
     // TODO qdrant should be placed in sidecar
     let qdrant_channel = QdrantChannel::new(&resources_dir).await;
     let qdrant_channel = Arc::new(qdrant_channel);
@@ -147,19 +153,11 @@ async fn main() {
             router
                 .clone()
                 .endpoint(|req: Request| {
-                    // let library_id_header = req
-                    //     .headers()
-                    //     .get("x-library-id")
-                    //     .map(|v| v.to_str().unwrap().to_string());
-                    // let library_id = match library_id_header {
-                    //     Some(id) => id,
-                    //     None => "default".to_string(),
-                    // };
                     println!("Client requested operation '{}'", req.uri().path());
                     Ctx {
                         local_data_root,
                         resources_dir,
-                        // library_id,
+                        current_library,
                         store,
                         tx,
                         qdrant_channel,
