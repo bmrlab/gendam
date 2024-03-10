@@ -307,11 +307,7 @@ async fn test_video_clip() {
     let library = content_library::load_library(
         &local_data_dir,
         "98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797",
-    );
-    let client = prisma_lib::new_client_with_url(&library.db_url)
-        .await
-        .expect("");
-    let client = Arc::new(RwLock::new(client));
+    ).await;
 
     let file_identifier =
         String::from("1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b");
@@ -321,7 +317,7 @@ async fn test_video_clip() {
         file_identifier,
         None::<std::path::PathBuf>,
         Some(frames_dir),
-        client,
+        Arc::clone(&library.prisma_client),
     )
     .await;
 

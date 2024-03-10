@@ -1,8 +1,4 @@
-use prisma_lib::{
-    // asset_object,
-    file_path,
-    new_client_with_url,
-};
+use prisma_lib::file_path;
 use rspc::{Router, Rspc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -65,14 +61,7 @@ where
             "create_file_path",
             Rspc::<TCtx>::new().mutation(|ctx, input: FilePathCreatePayload| async move {
                 let library = ctx.library()?;
-                let client = new_client_with_url(library.db_url.as_str())
-                    .await
-                    .map_err(|e| {
-                        rspc::Error::new(
-                            rspc::ErrorCode::InternalServerError,
-                            format!("failed to create prisma client: {}", e),
-                        )
-                    })?;
+                let client_w = library.prisma_client.write().await;
                 /*
                  * TODO
                  * 如果 path 是 /a/b/c/, 要确保存在一条数据 {path:"/a/b/",name:"c"}, 不然就是文件夹不存在
@@ -82,7 +71,7 @@ where
                 } else {
                     format!("{}/", input.path)
                 };
-                let res = client
+                let res = client_w
                     .file_path()
                     .create(true, materialized_path, input.name, vec![])
                     .exec()
@@ -100,17 +89,10 @@ where
             "create_asset_object",
             Rspc::<TCtx>::new().mutation(|ctx, input: AssetObjectCreatePayload| async move {
                 let library = ctx.library()?;
-                let client = new_client_with_url(library.db_url.as_str())
-                    .await
-                    .map_err(|e| {
-                        rspc::Error::new(
-                            rspc::ErrorCode::InternalServerError,
-                            format!("failed to create prisma client: {}", e),
-                        )
-                    })?;
+                let client_w = library.prisma_client.write().await;
 
                 // create asset object record
-                let new_asset_object_record = client
+                let new_asset_object_record = client_w
                     .asset_object()
                     .create(vec![])
                     .exec()
@@ -140,7 +122,7 @@ where
                 })?;
 
                 // create file_path
-                let res = client
+                let res = client_w
                     .file_path()
                     .create(
                         false,
@@ -183,19 +165,12 @@ where
             "list",
             Rspc::<TCtx>::new().query(|ctx, input: FilePathQueryPayload| async move {
                 let library = ctx.library()?;
-                let client = new_client_with_url(library.db_url.as_str())
-                    .await
-                    .map_err(|e| {
-                        rspc::Error::new(
-                            rspc::ErrorCode::InternalServerError,
-                            format!("failed to create prisma client: {}", e),
-                        )
-                    })?;
+                let client_r = library.prisma_client.read().await;
                 let mut where_params = vec![file_path::materialized_path::equals(input.path)];
                 if input.dirs_only {
                     where_params.push(file_path::is_dir::equals(true));
                 }
-                let res = client
+                let res = client_r
                     .file_path()
                     .find_many(where_params)
                     .with(file_path::asset_object::fetch())

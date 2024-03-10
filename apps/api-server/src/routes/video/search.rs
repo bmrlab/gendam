@@ -6,12 +6,11 @@ use file_handler::{
     search::{SearchRequest, SearchResult},
     SearchRecordType,
 };
-use prisma_lib::{new_client_with_url, video_task};
+use prisma_lib::video_task;
 use qdrant_client::client::QdrantClient;
 use rspc::{Router, Rspc};
 use serde::Serialize;
 use specta::Type;
-use tokio::sync::RwLock;
 use tracing::warn;
 use vector_db::QdrantParams;
 
@@ -23,14 +22,8 @@ where
         "all",
         Rspc::<TCtx>::new().query(move |ctx: TCtx, input: String| async move {
             let library = ctx.library()?;
-            let client = new_client_with_url(&library.db_url)
-                .await
-                .expect("failed to create prisma client");
-            client._db_push().await.expect("failed to push db"); // apply migrations
-            let client = Arc::new(RwLock::new(client));
 
             warn!("start updating qdrant");
-
             let qdrant_channel = ctx.get_qdrant_channel();
             qdrant_channel
                 .update(QdrantParams {
@@ -47,7 +40,6 @@ where
                     .build()
                     .expect("failed to build qdrant client"),
             );
-
             warn!("finish updating qdrant");
 
             let res = file_handler::search::handle_search(
@@ -58,7 +50,7 @@ where
                     skip: None,
                 },
                 ctx.get_resources_dir(),
-                client,
+                Arc::clone(&library.prisma_client),
                 qdrant,
             )
             .await;
@@ -92,11 +84,8 @@ where
 
             // println!("file_identifiers: {:?}", file_identifiers);
 
-            let client = new_client_with_url(library.db_url.as_str())
-                .await
-                .expect("failed to create prisma client");
-            client._db_push().await.expect("failed to push db"); // apply migrations
-            let tasks = client
+            let client_r = library.prisma_client.read().await;
+            let tasks = client_r
                 .video_task()
                 .find_many(vec![
                     video_task::video_file_hash::in_vec(file_identifiers),

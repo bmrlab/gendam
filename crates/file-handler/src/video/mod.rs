@@ -279,13 +279,7 @@ async fn test_handle_video() {
     let library = content_library::load_library(
         &local_data_dir,
         "98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797",
-    );
-
-    let client = prisma_lib::new_client_with_url(&library.db_url)
-        .await
-        .expect("failed to create prisma client");
-    client._db_push().await.expect("failed to push db"); // apply migrations
-    let client = Arc::new(RwLock::new(client));
+    ).await;
 
     let qdrant_client = QdrantClient::from_url("http://localhost:6333")
         .build()
@@ -293,7 +287,8 @@ async fn test_handle_video() {
     let qdrant_client = Arc::new(qdrant_client);
 
     let video_handler =
-        VideoHandler::new(video_path, resources_dir, &library, client, qdrant_client).await;
+        VideoHandler::new(video_path, resources_dir, &library,
+            Arc::clone(&library.prisma_client), qdrant_client).await;
 
     if video_handler.is_err() {
         tracing::error!("failed to create video handler");

@@ -2,7 +2,7 @@ use std::sync::Arc;
 // use crate::{Ctx, R};
 use crate::CtxWithLibrary;
 use file_handler::video::VideoHandler;
-use prisma_lib::{new_client_with_url, video_task, PrismaClient};
+use prisma_lib::{video_task, PrismaClient};
 use qdrant_client::client::QdrantClient;
 use tokio::sync::{
     broadcast::{self, Sender},
@@ -41,7 +41,7 @@ impl ToString for VideoTaskType {
 
 #[derive(Clone)]
 pub struct TaskPayload {
-    pub db_url: String,
+    pub prisma_client: Arc<RwLock<PrismaClient>>,
     pub video_handler: VideoHandler,
     pub video_path: String,
     // pub video_file_hash: String,
@@ -103,24 +103,20 @@ async fn process_task(task_payload: &TaskPayload) {
     // let sleep_time = rand::random::<u64>() % 10;
     // tokio::time::sleep(tokio::time::Duration::from_secs(sleep_time)).await;
     // info!("Task finished {}", &task_payload.video_path);
-    let client = new_client_with_url(task_payload.db_url.as_str())
-        .await
-        .expect("failed to create prisma client");
-
-    let client = Arc::new(client);
+    let client_w = task_payload.prisma_client.write().await;
     let vh: &VideoHandler = &task_payload.video_handler;
 
-    save_starts_at(&VideoTaskType::Frame.to_string(), &client, vh).await;
+    save_starts_at(&VideoTaskType::Frame.to_string(), &client_w, vh).await;
     if let Err(e) = vh.get_frames().await {
         error!("failed to get frames: {}", e);
         // return;
     }
     info!("successfully got frames, {}", &task_payload.video_path);
-    save_ends_at(&VideoTaskType::Frame.to_string(), &client, vh).await;
+    save_ends_at(&VideoTaskType::Frame.to_string(), &client_w, vh).await;
 
     save_starts_at(
         &VideoTaskType::FrameContentEmbedding.to_string(),
-        &client,
+        &client_w,
         vh,
     )
     .await;
@@ -134,12 +130,12 @@ async fn process_task(task_payload: &TaskPayload) {
     );
     save_ends_at(
         &VideoTaskType::FrameContentEmbedding.to_string(),
-        &client,
+        &client_w,
         vh,
     )
     .await;
 
-    save_starts_at(&VideoTaskType::FrameCaption.to_string(), &client, vh).await;
+    save_starts_at(&VideoTaskType::FrameCaption.to_string(), &client_w, vh).await;
     if let Err(e) = vh.get_frames_caption().await {
         error!("failed to get frames caption: {}", e);
         // return;
@@ -148,11 +144,11 @@ async fn process_task(task_payload: &TaskPayload) {
         "successfully got frames caption, {}",
         &task_payload.video_path
     );
-    save_ends_at(&VideoTaskType::FrameCaption.to_string(), &client, vh).await;
+    save_ends_at(&VideoTaskType::FrameCaption.to_string(), &client_w, vh).await;
 
     save_starts_at(
         &VideoTaskType::FrameCaptionEmbedding.to_string(),
-        &client,
+        &client_w,
         vh,
     )
     .await;
@@ -166,28 +162,28 @@ async fn process_task(task_payload: &TaskPayload) {
     );
     save_ends_at(
         &VideoTaskType::FrameCaptionEmbedding.to_string(),
-        &client,
+        &client_w,
         vh,
     )
     .await;
 
-    save_starts_at(&VideoTaskType::Audio.to_string(), &client, vh).await;
+    save_starts_at(&VideoTaskType::Audio.to_string(), &client_w, vh).await;
     if let Err(e) = vh.get_audio().await {
         error!("failed to get audio: {}", e);
         // return;
     }
     info!("successfully got audio, {}", &task_payload.video_path);
-    save_ends_at(&VideoTaskType::Audio.to_string(), &client, vh).await;
+    save_ends_at(&VideoTaskType::Audio.to_string(), &client_w, vh).await;
 
-    save_starts_at(&VideoTaskType::Transcript.to_string(), &client, vh).await;
+    save_starts_at(&VideoTaskType::Transcript.to_string(), &client_w, vh).await;
     if let Err(e) = vh.get_transcript().await {
         error!("failed to get transcript: {}", e);
         // return;
     }
     info!("successfully got transcript, {}", &task_payload.video_path);
-    save_ends_at(&VideoTaskType::Transcript.to_string(), &client, vh).await;
+    save_ends_at(&VideoTaskType::Transcript.to_string(), &client_w, vh).await;
 
-    save_starts_at(&VideoTaskType::TranscriptEmbedding.to_string(), &client, vh).await;
+    save_starts_at(&VideoTaskType::TranscriptEmbedding.to_string(), &client_w, vh).await;
     if let Err(e) = vh.get_transcript_embedding().await {
         error!("failed to get transcript embedding: {}", e);
         // return;
@@ -196,7 +192,7 @@ async fn process_task(task_payload: &TaskPayload) {
         "successfully got transcript embedding, {}",
         &task_payload.video_path
     );
-    save_ends_at(&VideoTaskType::TranscriptEmbedding.to_string(), &client, vh).await;
+    save_ends_at(&VideoTaskType::TranscriptEmbedding.to_string(), &client_w, vh).await;
 }
 
 pub async fn create_video_task<TCtx>(
@@ -210,12 +206,6 @@ where
     let library = &ctx.library().map_err(|e| {
         error!("library must be set before triggering create_video_task: {}", e);
     })?;
-
-    let client = new_client_with_url(&library.db_url)
-        .await
-        .expect("failed to create prisma client");
-    client._db_push().await.expect("failed to push db"); // apply migrations
-    let client = Arc::new(RwLock::new(client));
 
     let qdrant_channel = ctx.get_qdrant_channel();
     qdrant_channel
@@ -237,7 +227,7 @@ where
         video_path,
         &ctx.get_resources_dir(),
         &library,
-        client,
+        Arc::clone(&library.prisma_client),
         qdrant,
     )
     .await
@@ -249,9 +239,7 @@ where
         }
     };
 
-    let client = new_client_with_url(library.db_url.as_str())
-        .await
-        .expect("failed to create prisma client");
+    let client_w = library.prisma_client.write().await;
 
     for task_type in vec![
         VideoTaskType::Frame,
@@ -262,7 +250,7 @@ where
         VideoTaskType::Transcript,
         VideoTaskType::TranscriptEmbedding,
     ] {
-        let x = client.video_task().upsert(
+        let x = client_w.video_task().upsert(
             video_task::video_file_hash_task_type(
                 String::from(video_handler.file_identifier()),
                 task_type.to_string(),
@@ -290,7 +278,7 @@ where
     }
 
     let task_payload = TaskPayload {
-        db_url: library.db_url.clone(),
+        prisma_client: Arc::clone(&library.prisma_client),
         video_handler,
         video_path: String::from(video_path),
         // video_file_hash: String::from(video_handler.file_identifier()),

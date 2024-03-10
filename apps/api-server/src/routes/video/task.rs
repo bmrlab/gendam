@@ -1,7 +1,7 @@
 use crate::CtxWithLibrary;
 use rspc::{Rspc, Router};
 use prisma_client_rust::Direction;
-use prisma_lib::{new_client_with_url, video_task};
+use prisma_lib::video_task;
 use serde::Serialize;
 use serde_json::json;
 use specta::Type;
@@ -30,11 +30,9 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
             "list",
             Rspc::<TCtx>::new().query(move |ctx: TCtx, _input: ()| async move {
                 let library = ctx.library()?;
-                let client = new_client_with_url(library.db_url.as_str())
-                    .await
-                    .expect("failed to create prisma client");
+                let client_r = library.prisma_client.read().await;
 
-                let res = client
+                let res = client_r
                     .video_task()
                     .find_many(vec![])
                     .order_by(video_task::id::order(Direction::Desc))

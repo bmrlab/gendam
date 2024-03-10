@@ -5,6 +5,7 @@ edition = { workspace = true }
 
 [dependencies]
 prisma-lib = { path = "../prisma"}
+tokio = { workspace = true }
 tracing = { workspace = true }
 chrono = "0.4.34"
 sha256 = "1.5.0"

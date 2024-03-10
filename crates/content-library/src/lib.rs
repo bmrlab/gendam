@@ -3,8 +3,9 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
+use tokio::sync::RwLock;
 use prisma_lib::PrismaClient;
-use tracing::info;
+// use tracing::info;
 
 #[derive(Clone, Debug)]
 pub struct Library {
@@ -12,9 +13,10 @@ pub struct Library {
     pub dir: PathBuf,
     pub files_dir: PathBuf, // for content files
     pub artifacts_dir: PathBuf,
-    pub db_url: String,
     pub qdrant_dir: PathBuf,
-    pub prisma_client: Arc<PrismaClient>,
+
+    // db_url: String,
+    pub prisma_client: Arc<RwLock<PrismaClient>>,
 }
 
 pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Library {
@@ -29,14 +31,14 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Librar
         .await
         .expect("failed to create prisma client");
     client._db_push().await.expect("failed to push db"); // apply migrations
-    let prisma_client = Arc::new(client);
+    let prisma_client = Arc::new(RwLock::new(client));
 
     Library {
         id: library_id.to_string(),
         dir: library_dir,
         files_dir,
         artifacts_dir,
-        db_url,
+        // db_url,
         prisma_client,
         qdrant_dir,
     }
@@ -62,25 +64,27 @@ pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -
 
 pub async fn upgrade_library_schemas(local_data_root: &PathBuf) {
     // TODO: 现在 load library 里面会进行 migrate, 这个方法可以不要了
-    let dirs = match local_data_root.join("libraries").read_dir() {
-        Ok(dirs) => dirs,
-        Err(e) => {
-            info!("Failed to read libraries dir: {}", e);
-            return;
-        }
-    };
-    let dirs = dirs
-        .into_iter()
-        .filter(|entry| entry.as_ref().unwrap().path().is_dir())
-        .map(|entry| entry.unwrap().path())
-        .collect::<Vec<PathBuf>>();
-    for dir in dirs {
-        let library_id = dir.file_name().unwrap().to_str().unwrap();
-        let library = load_library(local_data_root, library_id).await;
-        let client = new_client_with_url(library.db_url.as_str())
-            .await
-            .expect("failed to create prisma client");
-        client._db_push().await.expect("failed to push db"); // apply migrations
-        info!("Upgraded library '{}'", library_id);
-    }
+    let _ = local_data_root;
+    return;
+    // let dirs = match local_data_root.join("libraries").read_dir() {
+    //     Ok(dirs) => dirs,
+    //     Err(e) => {
+    //         info!("Failed to read libraries dir: {}", e);
+    //         return;
+    //     }
+    // };
+    // let dirs = dirs
+    //     .into_iter()
+    //     .filter(|entry| entry.as_ref().unwrap().path().is_dir())
+    //     .map(|entry| entry.unwrap().path())
+    //     .collect::<Vec<PathBuf>>();
+    // for dir in dirs {
+    //     let library_id = dir.file_name().unwrap().to_str().unwrap();
+    //     let library = load_library(local_data_root, library_id).await;
+    //     let client = new_client_with_url(library.db_url.as_str())
+    //         .await
+    //         .expect("failed to create prisma client");
+    //     client._db_push().await.expect("failed to push db"); // apply migrations
+    //     info!("Upgraded library '{}'", library_id);
+    // }
 }
