@@ -13,7 +13,7 @@ export type MuseBadgeProps = {
   name: string
 } & HTMLAttributes<HTMLDivElement>
 
-export default function MuseBadge({ status, name, className }: MuseBadgeProps) {
+export function MuseTaskBadge({ status, name, className }: MuseBadgeProps) {
   const {
     fgColor,
     bgColor,
@@ -45,6 +45,20 @@ export default function MuseBadge({ status, name, className }: MuseBadgeProps) {
     <div className={cn('flex items-center gap-0.5 rounded-[1000px] py-1 pl-2 pr-[10px]', fgColor, bgColor, className)}>
       <IconComponent className={cn(status === MuseStatus.Processing && 'animate-spin')} />
       <p className="text-[12px] leading-4">{name}</p>
+    </div>
+  )
+}
+
+export function MuseBadge({ children, className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      {...props}
+      className={cn(
+        'cursor-pointer rounded-[1000px] bg-black/60 px-2 py-[5px] text-[12px] font-normal leading-4 text-white transition hover:bg-black/80 hover:shadow-sm',
+        className,
+      )}
+    >
+      {children}
     </div>
   )
 }

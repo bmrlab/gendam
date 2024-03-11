@@ -1,5 +1,5 @@
 import { SingleExportProps } from '@/app/video-tasks/store/audio-dialog'
-import MuseBadge from '@/components/Badge'
+import { MuseBadge } from '@/components/Badge'
 import Icon from '@/components/Icon'
 import MuseRadio from '@/components/Radio'
 import { ScrollArea } from '@/components/ui/scroll-area'
