@@ -33,6 +33,7 @@ pub async fn load_library(
     let qdrant_dir = library_dir.join("qdrant");
 
     let db_url = format!(
+        // "file:{}?socket_timeout=1&connection_limit=10",
         "file:{}?connection_limit=1",
         db_dir.join("muse-v2.db").to_str().unwrap()
     );

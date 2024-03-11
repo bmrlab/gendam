@@ -45,7 +45,7 @@ mod prisma_tests {
             .with(
                 // load filters from the `RUST_LOG` environment variable.
                 tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| "debug".into()),
+                    .unwrap_or_else(|_| "info".into()),
             )
             .with(tracing_subscriber::fmt::layer().with_ansi(false))
             .init();
