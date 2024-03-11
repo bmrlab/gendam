@@ -221,4 +221,16 @@ export default {
       />
     </svg>
   ),
+  audio: (props: SvgIconProps) => (
+    <svg width="16" height="17" viewBox="0 0 16 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M5 11H2C1.86739 11 1.74021 10.9473 1.64645 10.8536C1.55268 10.7598 1.5 10.6326 1.5 10.5V6.5C1.5 6.36739 1.55268 6.24021 1.64645 6.14645C1.74021 6.05268 1.86739 6 2 6H5L9.5 2.5V14.5L5 11Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M15 7L12 10" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15 10L12 7" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 }
