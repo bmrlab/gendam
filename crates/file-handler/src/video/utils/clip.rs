@@ -289,11 +289,11 @@ async fn create_video_clips(
 
 #[test_log::test(tokio::test)]
 async fn test_video_clip() {
-    let local_data_dir =
-        std::path::Path::new("/Users/zhuo/Library/Application Support/cc.musedam.local")
-            .to_path_buf();
+    let local_data_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local";
+    let resources_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local/resources";
     let library = content_library::load_library(
-        &local_data_dir,
+        &local_data_dir.into(),
+        &resources_dir.into(),
         "98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797",
     ).await;
 

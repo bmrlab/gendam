@@ -194,10 +194,3 @@ if let Err(audio_err) = audio_results.unwrap() {
 # 仅在 Apple Silicon 上测试，需要安装以下库
 brew install cmake llvm libomp
 ```
-
-### 相关 TODO
-
-- [ ] 模型应该通过一个thread启动，然后通过channel丢入数据，再拿到返回结果（参照 spacedrive 的模式）
-- [ ] 向量数据库的 payload 过滤代码还有待优化，包括枚举值的自动生成以及payload的格式（现在直接用SearchPayload转为json，多了一层没有用的数据）
-- [ ] 整体处理速度、代码拆分逻辑还有待讨论和实现
-- [] 现在只有一个 prisma 实例，会导致视频任务进行过程中因为 write 锁，让接口拿不到 prisma client，所以卡住。解决办法是即时释放 lock，但写起来有点儿麻烦。

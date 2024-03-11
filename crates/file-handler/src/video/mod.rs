@@ -276,6 +276,7 @@ async fn test_handle_video() {
     //     content_library::create_library_with_title(&local_data_dir, "dev test library").await;
     let library = content_library::load_library(
         &local_data_dir,
+        &resources_dir.into(),
         "98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797",
     )
     .await;
