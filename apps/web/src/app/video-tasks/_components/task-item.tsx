@@ -1,8 +1,9 @@
 'use client'
 
+import MuseBadge, { MuseStatus } from '@/components/Badge'
 import { cn } from '@/lib/utils'
 import { getLocalFileUrl } from '@/utils/file'
-import { HTMLAttributes } from 'react'
+import { HTMLAttributes, useCallback, useMemo } from 'react'
 
 export type VideoItem = {
   videoPath: string
@@ -58,15 +59,34 @@ export const VideoTaskStatus: React.FC<{
   }
 }
 
+export default function VideoTaskItem({ videoPath, videoFileHash, tasks, isSelect, handleClick, ...props }: VideoTaskItemProps) {
+  const typeToName: Record<string, string> = useMemo(
+    () => ({
+      // Audio: '语音转译',
+      // "Transcript": "语音转译",
+      TranscriptEmbedding: '语音转译',
+      // "FrameCaption": "图像描述",
+      FrameCaptionEmbedding: '图像描述',
+      // "Frame": "图像特征",
+      // FrameContentEmbedding: '图像特征',
+    }),
+    [],
+  )
 
-export default function VideoTaskItem({
-  videoPath,
-  videoFileHash,
-  tasks,
-  isSelect,
-  handleClick,
-  ...props
-}: VideoTaskItemProps) {
+  const showTask = useMemo(() => {
+    return tasks.filter((task) => typeToName[task.taskType])
+  }, [tasks, typeToName])
+
+  const status = useCallback((task: VideoItem['tasks'][number]) => {
+    if (task.startsAt && !task.endsAt) {
+      return MuseStatus.Processing
+    }
+    if (task.startsAt && task.endsAt) {
+      return MuseStatus.Done
+    }
+    return MuseStatus.Failed
+  }, [])
+
   return (
     <div
       key={videoFileHash}
@@ -113,9 +133,9 @@ export default function VideoTaskItem({
           <div>1440 x 1080</div>
         </div>
       </div>
-      <div className="ml-auto flex flex-wrap items-end">
-        {tasks.map((task, index) => (
-          <VideoTaskStatus key={index} task={task} />
+      <div className="ml-auto flex flex-wrap items-end gap-1.5">
+        {showTask.map((task, index) => (
+          <MuseBadge key={index} name={typeToName[task.taskType]} status={status(task)}></MuseBadge>
         ))}
       </div>
     </div>

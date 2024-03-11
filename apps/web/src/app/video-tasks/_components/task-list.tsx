@@ -1,11 +1,13 @@
 'use client'
-import type { VideoItem } from './task-item'
-import TaskContextMenu from './task-context-menu'
-import { WithSelectVideoItem } from './with-select'
 import type { VideoTaskResult } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { useBoundStore } from '@/store'
+import Image from 'next/image'
 import { useMemo } from 'react'
+import TaskContextMenu from './task-context-menu'
+import type { VideoItem } from './task-item'
+import { WithSelectVideoItem } from './with-select'
+import EmptyList from '/public/svg/empty-list.svg'
 
 export default function VideoTasksList() {
   const { data, isLoading, error } = rspc.useQuery(['video.tasks.list'])
@@ -40,11 +42,19 @@ export default function VideoTasksList() {
   }, [data, isLoading])
 
   if (isLoading) {
-    return <div className="flex items-center justify-center px-2 py-8 text-sm text-neutral-400">正在加载...</div>
+    return (
+      <div className="relative h-full">
+        <div className="absolute left-1/2 top-1/2 grid translate-x-[-50%] translate-y-[-50%]">
+          <Image src={EmptyList} width={250} height={250} alt="empty-list" />
+          <p className="mt-6 text-center text-[20px] font-medium leading-6 text-[#262626]">拖放或粘贴视频到此区域</p>
+          <p className="mt-2 text-center text-[14px] leading-5 text-[#AAADB2]">多个视频/视频文件夹</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="p-4">
+    <div className="h-full p-4">
       {videos.map((video: VideoItem) => {
         return (
           <TaskContextMenu key={video.videoFileHash} fileHash={video.videoFileHash}>
