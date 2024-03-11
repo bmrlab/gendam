@@ -8,19 +8,15 @@ mod prisma_tests {
     use super::*;
     use futures::future::join_all;
     use std::sync::Arc;
-    use prisma_client_rust::{
-        // raw,
-        QueryError,
-    };
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
     async fn exec(client: Arc<PrismaClient>, i: i32)
-        -> Result<asset_object::Data, QueryError>
+        // -> Result<asset_object::Data, prisma_client_rust::QueryError>
     {
         let start = std::time::Instant::now();
         // wait for random seconds
-        // let millis = rand::random::<u64>() % 1000;
-        let millis = 0;
+        let millis = rand::random::<u64>() % 1000;
+        // let millis = 0;
         println!("executing {:<5}, wait for {:<5} ms", i, millis);
         tokio::time::sleep(tokio::time::Duration::from_millis(millis)).await;
         // let client = new_client().await.unwrap();
@@ -32,8 +28,15 @@ mod prisma_tests {
             .exec()
             .await;
         let duration = start.elapsed();
-        println!("executed {:<5}, wait for {:<5}, duration {:<5}", i, millis, duration.as_millis());
-        return res;
+        match res {
+            Ok(_) => {
+                println!("executed {:<5}, wait for {:<5}, duration {:<5}", i, millis, duration.as_millis());
+            }
+            Err(err) => {
+                println!("executed {:<5}, wait for {:<5}, duration {:<5}, error: {:?}", i, millis, duration.as_millis(), err);
+            }
+        };
+        // return res;
     }
 
     #[tokio::test]
@@ -42,22 +45,22 @@ mod prisma_tests {
             .with(
                 // load filters from the `RUST_LOG` environment variable.
                 tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| "info".into()),
+                    .unwrap_or_else(|_| "debug".into()),
             )
-            .with(tracing_subscriber::fmt::layer().with_ansi(true))
+            .with(tracing_subscriber::fmt::layer().with_ansi(false))
             .init();
 
         let client = new_client().await.unwrap();
         client._db_push().await.expect("failed to push db");
+        // match client._execute_raw(prisma_client_rust::raw!("PRAGMA journal_mode = WAL;")).exec().await {
+        //     Ok(res) => println!("journal_mode res: {:?}", res),
+        //     Err(err) => println!("journal_mode err: {:?}", err),
+        // };
         // clear asset objects
         client.asset_object().delete_many(vec![]).exec().await.unwrap();
 
         // let client = Arc::new(new_client().await.unwrap());
         let client = Arc::new(client);
-        // match client._execute_raw(raw!("PRAGMA journal_mode = WAL;")).exec().await {
-        //     Ok(res) => println!("res: {:?}", res),
-        //     Err(err) => println!("err: {:?}", err),
-        // };
         let mut x: Vec<_> = vec![];
         let start = std::time::Instant::now();
         let n = 10000;
@@ -70,13 +73,16 @@ mod prisma_tests {
         let duration = start.elapsed();
         println!("\nSQL finished in {:?} millis\n", duration.as_millis());
 
-        let res = client.asset_object().count(vec![]).exec().await.unwrap();
-        println!("final count: {:?}", res);
-        assert!(res as i32 == n);
         // let results = client.asset_object().find_many(vec![]).exec().await.unwrap();
         // println!("results:");
         // results.iter().for_each(|x| {
-        //     println!("{:?}, {:?}", x.id, x.note);
+        //     let note = x.note.clone().unwrap();
+        //     // println!("{:?}, {:?}", x.id, note);
+        //     println!("{:>6}", note);
         // });
+
+        let res = client.asset_object().count(vec![]).exec().await.unwrap();
+        println!("final count: {:?}", res);
+        assert!(res as i32 == n);
     }
 }
