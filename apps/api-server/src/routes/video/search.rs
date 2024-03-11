@@ -29,7 +29,7 @@ where
                 },
                 ctx.get_resources_dir(),
                 Arc::clone(&library.prisma_client),
-                Arc::clone(&library.qdrant_client),
+                Arc::clone(&library.qdrant_server.get_client()),
             )
             .await;
             // .unwrap();

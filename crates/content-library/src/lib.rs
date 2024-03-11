@@ -1,12 +1,11 @@
 use prisma_lib::new_client_with_url;
 use prisma_lib::PrismaClient;
-use qdrant_client::client::QdrantClient;
 use std::{path::PathBuf, sync::Arc};
 use tokio::sync::RwLock;
 use vector_db::{QdrantParams, QdrantServer};
 // use tracing::info;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Library {
     pub id: String,
     pub dir: PathBuf,
@@ -14,25 +13,7 @@ pub struct Library {
     pub artifacts_dir: PathBuf,
     // db_url: String,
     pub prisma_client: Arc<RwLock<PrismaClient>>,
-    // add server as field to avoid the server to be dropped
-    // but actually we do not need to use it
-    #[allow(dead_code)]
-    qdrant_server: Arc<QdrantServer>,
-    pub qdrant_client: Arc<QdrantClient>,
-}
-
-// QdrantClient doesn't implement Debug
-// so implement it manually
-impl std::fmt::Debug for Library {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Library")
-            .field("id", &self.id)
-            .field("dir", &self.dir)
-            .field("files_dir", &self.files_dir)
-            .field("artifacts_dir", &self.artifacts_dir)
-            .field("prisma_client", &self.prisma_client)
-            .finish()
-    }
+    pub qdrant_server: Arc<QdrantServer>,
 }
 
 pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Library {
@@ -60,7 +41,6 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Librar
     )
     .await
     .expect("failed to start qdrant server");
-    let qdrant_client = qdrant_server.get_client().clone();
 
     Library {
         id: library_id.to_string(),
@@ -70,7 +50,6 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Librar
         // db_url,
         prisma_client,
         qdrant_server: Arc::new(qdrant_server),
-        qdrant_client,
     }
 }
 

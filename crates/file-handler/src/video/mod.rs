@@ -110,7 +110,7 @@ impl VideoHandler {
             frames_dir,
             transcript_path: artifacts_dir.join("transcript.txt"),
             library: library.clone(),
-            qdrant: library.qdrant_client.clone(),
+            qdrant: library.qdrant_server.get_client().clone(),
             client: library.prisma_client.clone(),
         })
     }
