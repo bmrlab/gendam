@@ -79,9 +79,16 @@ impl Into<QdrantServerServiceConfig> for QdrantParams {
     }
 }
 
+#[derive(Clone)]
 pub struct QdrantServer {
     tx: Sender<QdrantServerPayload>,
     client: Arc<QdrantClient>,
+}
+
+impl std::fmt::Debug for QdrantServer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("QdrantServer").finish()
+    }
 }
 
 impl QdrantServer {
