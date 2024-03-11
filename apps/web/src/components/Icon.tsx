@@ -116,4 +116,84 @@ export default {
       </defs>
     </svg>
   ),
+  moreVertical: (props: SvgIconProps) => (
+    <svg {...props} width="25" height="25" viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M12.5 16.4375C13.2249 16.4375 13.8125 17.0251 13.8125 17.75C13.8125 18.4749 13.2249 19.0625 12.5 19.0625C11.7751 19.0625 11.1875 18.4749 11.1875 17.75C11.1875 17.0251 11.7751 16.4375 12.5 16.4375ZM12.5 11.1875C13.2249 11.1875 13.8125 11.7751 13.8125 12.5C13.8125 13.2249 13.2249 13.8125 12.5 13.8125C11.7751 13.8125 11.1875 13.2249 11.1875 12.5C11.1875 11.7751 11.7751 11.1875 12.5 11.1875ZM13.8125 7.25C13.8125 6.52513 13.2249 5.9375 12.5 5.9375C11.7751 5.9375 11.1875 6.52513 11.1875 7.25C11.1875 7.97487 11.7751 8.5625 12.5 8.5625C13.2249 8.5625 13.8125 7.97487 13.8125 7.25Z"
+        fill="#676C77"
+      />
+    </svg>
+  ),
+  circleX: (props: SvgIconProps) => (
+    <svg width="25" height="25" viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M12.5 18.5C15.8137 18.5 18.5 15.8137 18.5 12.5C18.5 9.18629 15.8137 6.5 12.5 6.5C9.18629 6.5 6.5 9.18629 6.5 12.5C6.5 15.8137 9.18629 18.5 12.5 18.5Z"
+        stroke="#676C77"
+        strokeWidth="0.9"
+        strokeMiterlimit="10"
+      />
+      <path
+        d="M14.5 10.5L10.5 14.5"
+        stroke="currentColor"
+        strokeWidth="0.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M14.5 14.5L10.5 10.5"
+        stroke="currentColor"
+        strokeWidth="0.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+  trash: (props: SvgIconProps) => (
+    <svg width="16" height="17" viewBox="0 0 16 17" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M10.8645 14.6538H5.1361C4.14729 14.6538 3.34283 13.8494 3.34283 12.8606V4.41486H3.99157V12.8606C3.99157 13.4917 4.50498 14.0051 5.1361 14.0051H10.8645C11.4956 14.0051 12.009 13.4917 12.009 12.8606V4.41486H12.6577V12.8606C12.6577 13.8494 11.8533 14.6538 10.8645 14.6538Z"
+        fill="#currentColor"
+        stroke="currentColor"
+        strokeWidth="0.292685"
+      />
+      <path
+        d="M13.8386 4.73894H2.1614C1.98224 4.73894 1.83704 4.59374 1.83704 4.41458C1.83704 4.23541 1.98224 4.09021 2.1614 4.09021H13.8386C14.0178 4.09021 14.163 4.23541 14.163 4.41458C14.163 4.59374 14.0178 4.73894 13.8386 4.73894Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="0.292685"
+      />
+      <path
+        d="M10.206 4.41479H9.55726V3.40494C9.55726 3.17884 9.37328 2.99492 9.14724 2.99492H6.85209C6.62605 2.99492 6.44207 3.17884 6.44207 3.40494V4.41479H5.79333V3.40494C5.79333 2.82115 6.26823 2.34619 6.85209 2.34619H9.14724C9.7311 2.34619 10.206 2.82115 10.206 3.40494V4.41479Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="0.292685"
+      />
+      <path
+        d="M6.28012 12.1668C6.10095 12.1668 5.95575 12.0216 5.95575 11.8425V7.08181C5.95575 6.90265 6.10095 6.75745 6.28012 6.75745C6.45928 6.75745 6.60448 6.90265 6.60448 7.08181V11.8425C6.60448 12.0216 6.45928 12.1668 6.28012 12.1668Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="0.292685"
+      />
+      <path
+        d="M9.71908 12.1668C9.53992 12.1668 9.39471 12.0216 9.39471 11.8425V7.08181C9.39471 6.90265 9.53992 6.75745 9.71908 6.75745C9.89824 6.75745 10.0434 6.90265 10.0434 7.08181V11.8425C10.0434 12.0216 9.89824 12.1668 9.71908 12.1668Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="0.292685"
+      />
+    </svg>
+  ),
+  cancel: (props: SvgIconProps) => (
+    <svg width="16" height="17" viewBox="0 0 16 17" fill="transparent" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M8 14.5C11.3137 14.5 14 11.8137 14 8.5C14 5.18629 11.3137 2.5 8 2.5C4.68629 2.5 2 5.18629 2 8.5C2 11.8137 4.68629 14.5 8 14.5Z"
+        stroke="currentColor"
+        strokeWidth="0.9"
+        strokeMiterlimit="10"
+      />
+      <path d="M10 6.5L6 10.5" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 10.5L6 6.5" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
 }

@@ -1,6 +1,6 @@
 import Icon from '@/components/Icon'
 import { cn } from '@/lib/utils'
-import { useMemo } from 'react'
+import { HTMLAttributes, useMemo } from 'react'
 
 export enum MuseStatus {
   Processing,
@@ -11,9 +11,9 @@ export enum MuseStatus {
 export type MuseBadgeProps = {
   status: MuseStatus
   name: string
-}
+} & HTMLAttributes<HTMLDivElement>
 
-export default function MuseBadge({ status, name }: MuseBadgeProps) {
+export default function MuseBadge({ status, name, className }: MuseBadgeProps) {
   const {
     fgColor,
     bgColor,
@@ -42,9 +42,9 @@ export default function MuseBadge({ status, name }: MuseBadgeProps) {
   }, [status])
 
   return (
-    <div className={cn('flex items-center gap-0.5 rounded-[1000px] py-1 pl-2 pr-[10px]', fgColor, bgColor)}>
+    <div className={cn('flex items-center gap-0.5 rounded-[1000px] py-1 pl-2 pr-[10px]', fgColor, bgColor, className)}>
       <IconComponent className={cn(status === MuseStatus.Processing && 'animate-spin')} />
-      <p>{name}</p>
+      <p className="text-[12px] leading-4">{name}</p>
     </div>
   )
 }
