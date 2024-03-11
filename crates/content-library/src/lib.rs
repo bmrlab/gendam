@@ -23,7 +23,10 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Librar
     let files_dir = library_dir.join("files");
     let qdrant_dir = library_dir.join("qdrant");
 
-    let db_url = format!("file:{}", db_dir.join("muse-v2.db").to_str().unwrap());
+    let db_url = format!(
+        "file:{}?connection_limit=1",
+        db_dir.join("muse-v2.db").to_str().unwrap()
+    );
     let client = new_client_with_url(db_url.as_str())
         .await
         .expect("failed to create prisma client");
