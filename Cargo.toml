@@ -20,6 +20,7 @@ prisma-client-rust-cli = { git = "https://github.com/Brendonovich/prisma-client-
   "sqlite",
 ], default-features = false }
 tokio = "1.35"
+futures = "0.3.30"
 serde_json = "1.0"
 serde = "1.0"
 dotenvy = "0.15.7"

@@ -4490,9 +4490,14 @@ dependencies = [
 name = "prisma-lib"
 version = "0.1.0"
 dependencies = [
+ "futures",
  "prisma-client-rust",
  "prisma-client-rust-cli",
+ "rand 0.8.5",
  "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
