@@ -33,4 +33,4 @@ ort = { version = "2.0.0-alpha.4" }
 anyhow = { workspace = true }
 num-traits = "0.2.17"
 reqwest = "0.11.24"
-futures = "0.3.30"
+futures = { workspace = true }
