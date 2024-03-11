@@ -2,7 +2,6 @@ use std::sync::Arc;
 use crate::CtxWithLibrary;
 use file_handler::video::VideoHandler;
 use prisma_lib::{video_task, PrismaClient};
-use qdrant_client::client::QdrantClient;
 use tokio::sync::{
     broadcast::{self, Sender},
     RwLock,
@@ -12,7 +11,6 @@ use tracing::{
     // debug,
     info,
 };
-use vector_db::QdrantParams;
 
 pub enum VideoTaskType {
     Frame,
@@ -207,28 +205,10 @@ where
         error!("library must be set before triggering create_video_task: {}", e);
     })?;
 
-    let qdrant_channel = ctx.get_qdrant_channel();
-    qdrant_channel
-        .update(QdrantParams {
-            dir: library.qdrant_dir.clone(),
-            http_port: None,
-            grpc_port: None,
-        })
-        .await
-        .expect("failed to update qdrant");
-    let qdrant_url = qdrant_channel.get_url().await;
-    let qdrant = Arc::new(
-        QdrantClient::from_url(&qdrant_url)
-            .build()
-            .expect("failed to build qdrant client"),
-    );
-
     let video_handler = match VideoHandler::new(
         video_path,
         &ctx.get_resources_dir(),
         &library,
-        Arc::clone(&library.prisma_client),
-        qdrant,
     )
     .await
     {

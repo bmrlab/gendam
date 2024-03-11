@@ -1,14 +1,17 @@
 use anyhow::bail;
+pub use qdrant_client::client::QdrantClient;
 use serde::{Deserialize, Serialize};
 use std::{
+    fs,
+    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     sync::{
         mpsc::{self, Sender},
         Arc,
     },
 };
-use tokio::sync::{oneshot, Mutex};
-use tracing::{debug, error, info};
+use tokio::sync::oneshot;
+use tracing::{debug, error, info, warn};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 struct QdrantServerStorageConfig {
@@ -64,27 +67,55 @@ pub struct QdrantParams {
     pub grpc_port: Option<usize>,
 }
 
-struct QdrantServer {
+impl Into<QdrantServerServiceConfig> for QdrantParams {
+    fn into(self) -> QdrantServerServiceConfig {
+        let default = QdrantServerServiceConfig::default();
+
+        QdrantServerServiceConfig {
+            http_port: self.http_port.unwrap_or(default.http_port),
+            grpc_port: self.grpc_port.unwrap_or(default.grpc_port),
+            ..Default::default()
+        }
+    }
+}
+
+pub struct QdrantServer {
     tx: Sender<QdrantServerPayload>,
-    url: String,
-    dir: PathBuf,
+    client: Arc<QdrantClient>,
 }
 
-#[derive(Clone)]
-pub struct QdrantChannel {
-    tx: Sender<QdrantChannelPayload>,
-}
+impl QdrantServer {
+    pub async fn new(
+        resources_dir: impl AsRef<Path>,
+        params: QdrantParams,
+    ) -> anyhow::Result<Self> {
+        // create config path for qdrant in storage_path
+        let config_path = params.dir.join("config");
+        std::fs::create_dir_all(&config_path)?;
+        let config_path = config_path.join("config.yaml");
 
-pub enum QdrantChannelPayload {
-    Update((QdrantParams, tokio::sync::oneshot::Sender<bool>)),
-    GetCurrent(tokio::sync::oneshot::Sender<Option<String>>),
-}
+        debug!("qdrant config: {}", config_path.display());
 
-impl QdrantChannel {
-    pub async fn new(resources_dir: impl AsRef<Path>) -> Self {
-        let (tx, rx) = mpsc::channel::<QdrantChannelPayload>();
-        let current_server: Option<QdrantServer> = None;
-        let current_server = Arc::new(Mutex::new(current_server));
+        let storage_path = params.dir.join("storage");
+        let snapshots_path = params.dir.join("snapshots");
+
+        std::fs::create_dir_all(&storage_path)?;
+        std::fs::create_dir_all(&snapshots_path)?;
+
+        // write config into it
+        let config = QdrantServerConfig {
+            storage: QdrantServerStorageConfig {
+                storage_path,
+                snapshots_path,
+            },
+            service: params.into(),
+            ..Default::default()
+        };
+
+        let yaml = serde_yaml::to_string(&config)?;
+        std::fs::write(&config_path, yaml)?;
+
+        debug!("qdrant reading config from {}", config_path.display());
 
         let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
             resources_dir: resources_dir.as_ref().to_path_buf(),
@@ -96,162 +127,14 @@ impl QdrantChannel {
             .await
             .expect("failed to download qdrant");
 
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("failed to build tokio runtime");
-
-        std::thread::spawn(move || {
-            let local = tokio::task::LocalSet::new();
-            local.spawn_local(async move {
-                loop {
-                    match rx.recv() {
-                        Ok(payload) => match payload {
-                            QdrantChannelPayload::Update((params, tx)) => {
-                                debug!("update params: {:?}", params);
-
-                                let current = current_server.clone();
-                                let mut current = current.lock().await;
-
-                                if current.is_none() {
-                                    // start new one
-                                    match QdrantServer::new(
-                                        binary_file_path.clone(),
-                                        params.dir,
-                                        params.http_port,
-                                        params.grpc_port,
-                                    )
-                                    .await
-                                    {
-                                        Ok(server) => {
-                                            *current = Some(server);
-                                            tx.send(true).unwrap();
-                                        }
-                                        Err(e) => {
-                                            error!("failed to start qdrant server: {}", e);
-                                            tx.send(false).unwrap();
-                                        }
-                                    }
-                                } else if current.as_ref().unwrap().dir != params.dir {
-                                    // kill current one
-                                    if let Some(server) = current.take() {
-                                        server.tx.send(QdrantServerPayload::Kill).unwrap();
-                                    }
-
-                                    // start new one
-                                    match QdrantServer::new(
-                                        binary_file_path.clone(),
-                                        params.dir,
-                                        params.http_port,
-                                        params.grpc_port,
-                                    )
-                                    .await
-                                    {
-                                        Ok(server) => {
-                                            *current = Some(server);
-                                            tx.send(true).unwrap();
-                                        }
-                                        Err(e) => {
-                                            error!("failed to start qdrant server: {}", e);
-                                            tx.send(false).unwrap();
-                                        }
-                                    }
-                                } else {
-                                    tx.send(true).unwrap();
-                                }
-                            }
-                            QdrantChannelPayload::GetCurrent(tx) => {
-                                if let Some(server) = current_server.lock().await.as_ref() {
-                                    tx.send(Some(server.url.clone())).unwrap();
-                                } else {
-                                    tx.send(None).unwrap();
-                                }
-                            }
-                        },
-                        Err(e) => {
-                            error!("error receive qdrant channel payload: {}", e);
-                        }
-                    }
-                }
-            });
-
-            rt.block_on(local);
-        });
-
-        Self { tx }
-    }
-
-    pub async fn get_url(&self) -> String {
-        let (tx, rx) = tokio::sync::oneshot::channel();
-
-        self.tx.send(QdrantChannelPayload::GetCurrent(tx)).unwrap();
-        rx.await.unwrap().unwrap()
-    }
-
-    pub async fn update(&self, params: QdrantParams) -> anyhow::Result<()> {
-        let (tx, rx) = oneshot::channel();
-
-        if let Err(e) = self.tx.send(QdrantChannelPayload::Update((params, tx))) {
-            bail!("error send when update qdrant: {}", e);
-        }
-
-        match rx.await {
-            Ok(res) => {
-                if !res {
-                    bail!("failed to update qdrant");
-                }
-
-                Ok(())
-            }
-            Err(e) => {
-                bail!("error receive when update qdrant: {}", e);
-            }
-        }
-    }
-}
-
-impl QdrantServer {
-    pub async fn new(
-        binary_file_path: impl AsRef<Path>,
-        dir: impl AsRef<Path>,
-        http_port: Option<usize>,
-        grpc_port: Option<usize>,
-    ) -> anyhow::Result<Self> {
-        // create config path for qdrant in storage_path
-        let config_path = dir.as_ref().join("config");
-        std::fs::create_dir_all(&config_path)?;
-        let config_path = config_path.join("config.yaml");
-
-        debug!("qdrant config: {}", config_path.display());
-
-        let storage_path = dir.as_ref().join("storage");
-        let snapshots_path = dir.as_ref().join("snapshots");
-
-        std::fs::create_dir_all(&storage_path)?;
-        std::fs::create_dir_all(&snapshots_path)?;
-
-        // write config into it
-        let config = QdrantServerConfig {
-            storage: QdrantServerStorageConfig {
-                storage_path,
-                snapshots_path,
-            },
-            service: QdrantServerServiceConfig {
-                http_port: http_port.unwrap_or(6333),
-                grpc_port: grpc_port.unwrap_or(6334),
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-
-        let yaml = serde_yaml::to_string(&config)?;
-        std::fs::write(&config_path, yaml)?;
-
-        debug!("qdrant reading config from {}", config_path.display());
+        // set binary permission to executable
+        let mut perms = fs::metadata(&binary_file_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&binary_file_path, perms)?;
 
         let (tx, rx) = mpsc::channel::<QdrantServerPayload>();
 
-        match std::process::Command::new(binary_file_path.as_ref())
+        match std::process::Command::new(&binary_file_path)
             .args(["--config-path", config_path.to_str().expect("invalid path")])
             .spawn()
         {
@@ -275,7 +158,7 @@ impl QdrantServer {
             "http://{}:{}",
             config.service.host, config.service.grpc_port
         );
-        let test_url = format!(
+        let probe = format!(
             "http://{}:{}",
             config.service.host, config.service.http_port
         );
@@ -284,7 +167,7 @@ impl QdrantServer {
         let (tx1, rx1) = oneshot::channel();
         tokio::spawn(async move {
             loop {
-                let resp = reqwest::get(test_url.clone()).await;
+                let resp = reqwest::get(probe.clone()).await;
                 if let Ok(resp) = resp {
                     if resp.status() == reqwest::StatusCode::OK {
                         let _ = tx1.send(());
@@ -301,20 +184,27 @@ impl QdrantServer {
                 bail!("qdrant start timeout");
             }
             _ = rx1 => {
-                debug!("qdrant started");
+                info!("qdrant started");
             }
         }
 
+        let client = QdrantClient::from_url(&url).build()?;
+
         Ok(Self {
             tx,
-            url,
-            dir: dir.as_ref().to_path_buf(),
+            client: Arc::new(client),
         })
+    }
+
+    pub fn get_client(&self) -> Arc<QdrantClient> {
+        self.client.clone()
     }
 }
 
 impl Drop for QdrantServer {
     fn drop(&mut self) {
+        warn!("qdrant server dropped");
+
         match self.tx.send(QdrantServerPayload::Kill) {
             Ok(_) => {
                 info!("qdrant successfully killed");

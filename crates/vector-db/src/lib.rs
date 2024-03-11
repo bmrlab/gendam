@@ -8,7 +8,7 @@ pub use faiss::*;
 mod qdrant;
 
 #[cfg(feature = "qdrant")]
-pub use qdrant::{QdrantChannel, QdrantParams};
+pub use qdrant::{QdrantParams, QdrantServer};
 
 pub const VIDEO_FRAME_INDEX_NAME: &str = "frame-embedding";
 pub const VIDEO_FRAME_CAPTION_INDEX_NAME: &str = "frame-caption-embedding";

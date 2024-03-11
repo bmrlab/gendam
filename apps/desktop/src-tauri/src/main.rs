@@ -1,22 +1,21 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use dotenvy::dotenv;
-use tauri::Manager;
-use tracing::info;
 use api_server::{
     task_queue::{init_task_pool, TaskPayload},
     CtxWithLibrary,
 };
 use content_library::{load_library, upgrade_library_schemas, Library};
-use tokio::sync::broadcast;
+use dotenvy::dotenv;
 use std::{
-    path::PathBuf,
-    sync::{Arc, Mutex},
-    pin::Pin,
     boxed::Box,
+    path::PathBuf,
+    pin::Pin,
+    sync::{Arc, Mutex},
 };
+use tauri::Manager;
+use tokio::sync::broadcast;
+use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use vector_db::QdrantChannel;
 
 #[derive(Clone)]
 struct Ctx {
@@ -25,7 +24,6 @@ struct Ctx {
     store: Arc<Mutex<tauri_plugin_store::Store<tauri::Wry>>>,
     current_library: Arc<Mutex<Option<Library>>>,
     tx: Arc<broadcast::Sender<TaskPayload>>,
-    qdrant_channel: Arc<QdrantChannel>,
 }
 
 impl CtxWithLibrary for Ctx {
@@ -44,8 +42,10 @@ impl CtxWithLibrary for Ctx {
             )),
         }
     }
-    fn switch_current_library<'async_trait>(&'async_trait self, library_id: &'async_trait str)
-        -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
+    fn switch_current_library<'async_trait>(
+        &'async_trait self,
+        library_id: &'async_trait str,
+    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
     where
         Self: Sync + 'async_trait,
     {
@@ -71,9 +71,6 @@ impl CtxWithLibrary for Ctx {
     }
     fn get_task_tx(&self) -> Arc<broadcast::Sender<TaskPayload>> {
         Arc::clone(&self.tx)
-    }
-    fn get_qdrant_channel(&self) -> Arc<QdrantChannel> {
-        Arc::clone(&self.qdrant_channel)
     }
 }
 
@@ -140,9 +137,6 @@ async fn main() {
     let tx = init_task_pool();
     let router = api_server::router::get_router::<Ctx>();
 
-    let qdrant_channel = QdrantChannel::new(&resources_dir).await;
-    let qdrant_channel = Arc::new(qdrant_channel);
-
     window
         .app_handle()
         .plugin(rspc::integrations::tauri::plugin(router, move |_window| {
@@ -152,7 +146,6 @@ async fn main() {
                 store: store.clone(),
                 current_library: current_library.clone(),
                 tx: tx.clone(),
-                qdrant_channel: qdrant_channel.clone(),
             }
         }))
         .expect("failed to add rspc plugin");

@@ -914,9 +914,11 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "prisma-lib",
+ "qdrant-client",
  "sha256",
  "tokio",
  "tracing",
+ "vector-db",
 ]
 
 [[package]]
@@ -7293,6 +7295,7 @@ dependencies = [
  "faiss",
  "file-downloader",
  "ndarray",
+ "qdrant-client",
  "reqwest",
  "serde",
  "serde_yaml",
