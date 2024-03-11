@@ -1,7 +1,6 @@
 use prisma_lib::new_client_with_url;
 use prisma_lib::PrismaClient;
 use std::{path::PathBuf, sync::Arc};
-use tokio::sync::RwLock;
 use vector_db::{QdrantParams, QdrantServer};
 // use tracing::info;
 
@@ -12,8 +11,14 @@ pub struct Library {
     pub files_dir: PathBuf, // for content files
     pub artifacts_dir: PathBuf,
     // db_url: String,
-    pub prisma_client: Arc<RwLock<PrismaClient>>,
+    prisma_client: Arc<PrismaClient>,
     pub qdrant_server: Arc<QdrantServer>,
+}
+
+impl Library {
+    pub fn prisma_client(&self) -> Arc<PrismaClient> {
+        Arc::clone(&self.prisma_client)
+    }
 }
 
 pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Library {
@@ -31,7 +36,7 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Librar
         .await
         .expect("failed to create prisma client");
     client._db_push().await.expect("failed to push db"); // apply migrations
-    let prisma_client = Arc::new(RwLock::new(client));
+    let prisma_client = Arc::new(client);
 
     let qdrant_server = QdrantServer::new(
         local_data_root.join("resources"),

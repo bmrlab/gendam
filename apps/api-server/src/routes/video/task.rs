@@ -30,9 +30,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
             "list",
             Rspc::<TCtx>::new().query(move |ctx: TCtx, _input: ()| async move {
                 let library = ctx.library()?;
-                let client_r = library.prisma_client.read().await;
-
-                let res = client_r
+                let res = library.prisma_client()
                     .video_task()
                     .find_many(vec![])
                     .order_by(video_task::id::order(Direction::Desc))

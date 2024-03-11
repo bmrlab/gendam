@@ -14,7 +14,7 @@ use crate::search_payload::{FramePayload, SearchPayload};
 
 pub async fn get_frame_content_embedding(
     file_identifier: String,
-    client: Arc<RwLock<PrismaClient>>,
+    client: Arc<PrismaClient>,
     frames_dir: impl AsRef<std::path::Path>,
     clip_model: Arc<RwLock<CLIP>>,
     qdrant: Arc<QdrantClient>,
@@ -55,12 +55,10 @@ pub async fn get_frame_content_embedding(
                 .unwrap_or(0);
 
             let file_identifier = file_identifier.clone();
-            let client = client.clone();
 
             join_set.spawn(async move {
                 // write data using prisma
                 let x = {
-                    let client = client.write().await;
                     client.video_frame().upsert(
                         video_frame::file_identifier_timestamp(
                             file_identifier.clone(),

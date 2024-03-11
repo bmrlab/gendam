@@ -9,7 +9,7 @@ use tracing::error;
 
 pub async fn get_transcript_embedding(
     file_identifier: String,
-    client: Arc<RwLock<PrismaClient>>,
+    client: Arc<PrismaClient>,
     path: impl AsRef<Path>,
     clip_model: Arc<RwLock<CLIP>>,
     qdrant: Arc<QdrantClient>,
@@ -48,7 +48,6 @@ pub async fn get_transcript_embedding(
             // write data using prisma
             // here use write to make sure only one thread can using prisma client
             let x = {
-                let client = client.write().await;
                 client.video_transcript().upsert(
                     video_transcript::file_identifier_start_timestamp_end_timestamp(
                         file_identifier.clone(),

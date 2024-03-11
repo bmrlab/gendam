@@ -2,10 +2,7 @@ use std::sync::Arc;
 use crate::CtxWithLibrary;
 use file_handler::video::VideoHandler;
 use prisma_lib::{video_task, PrismaClient};
-use tokio::sync::{
-    broadcast::{self, Sender},
-    RwLock,
-};
+use tokio::sync::broadcast::{self, Sender};
 use tracing::{
     error,
     // debug,
@@ -38,7 +35,7 @@ impl ToString for VideoTaskType {
 
 #[derive(Clone)]
 pub struct TaskPayload {
-    pub prisma_client: Arc<RwLock<PrismaClient>>,
+    pub prisma_client: Arc<PrismaClient>,
     pub video_handler: VideoHandler,
     pub video_path: String,
     // pub video_file_hash: String,
@@ -65,8 +62,7 @@ pub fn init_task_pool() -> Arc<broadcast::Sender<TaskPayload>> {
     tx
 }
 
-async fn save_starts_at(task_type: &str, prisma_client: Arc<RwLock<PrismaClient>>, vh: &VideoHandler) {
-    let client = prisma_client.write().await;
+async fn save_starts_at(task_type: &str, client: Arc<PrismaClient>, vh: &VideoHandler) {
     client
         .video_task()
         .update(
@@ -81,8 +77,7 @@ async fn save_starts_at(task_type: &str, prisma_client: Arc<RwLock<PrismaClient>
         .expect(&format!("failed save_starts_at {:?}", task_type));
 }
 
-async fn save_ends_at(task_type: &str, prisma_client: Arc<RwLock<PrismaClient>>, vh: &VideoHandler) {
-    let client = prisma_client.write().await;
+async fn save_ends_at(task_type: &str, client: Arc<PrismaClient>, vh: &VideoHandler) {
     client
         .video_task()
         .update(
@@ -228,8 +223,8 @@ where
         VideoTaskType::Transcript,
         VideoTaskType::TranscriptEmbedding,
     ] {
-        let client_w = library.prisma_client.write().await;
-        let x = client_w.video_task().upsert(
+        let x = library.prisma_client()
+        .video_task().upsert(
             video_task::video_file_hash_task_type(
                 String::from(video_handler.file_identifier()),
                 task_type.to_string(),
@@ -244,9 +239,9 @@ where
                 video_task::starts_at::set(None),
                 video_task::ends_at::set(None),
             ],
-        );
+        ).exec().await;
 
-        match x.exec().await {
+        match x {
             Ok(res) => {
                 info!("Task created: {:?}", res);
             }
@@ -257,7 +252,7 @@ where
     }
 
     let task_payload = TaskPayload {
-        prisma_client: Arc::clone(&library.prisma_client),
+        prisma_client: library.prisma_client(),
         video_handler,
         video_path: String::from(video_path),
         // video_file_hash: String::from(video_handler.file_identifier()),

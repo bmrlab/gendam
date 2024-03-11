@@ -70,21 +70,17 @@ where
                 } else {
                     format!("{}/", input.path)
                 };
-                let res = {
-                    let client_w = library.prisma_client.write().await;
-                    client_w
-                        .file_path()
-                        .create(true, materialized_path, input.name, vec![])
-                        .exec()
-                        .await
-                        .map_err(|e| {
-                            rspc::Error::new(
-                                rspc::ErrorCode::InternalServerError,
-                                format!("failed to create file_path: {}", e),
-                            )
-                        })?
-                    // drop write lock
-                };
+                let res = library.prisma_client()
+                    .file_path()
+                    .create(true, materialized_path, input.name, vec![])
+                    .exec()
+                    .await
+                    .map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("failed to create file_path: {}", e),
+                        )
+                    })?;
                 Ok(json!(res).to_string())
             }),
         )
@@ -94,20 +90,17 @@ where
                 let library = ctx.library()?;
 
                 // create asset object record
-                let new_asset_object_record = {
-                    let client_w = library.prisma_client.write().await;
-                    client_w
-                        .asset_object()
-                        .create(vec![])
-                        .exec()
-                        .await
-                        .map_err(|e| {
-                            rspc::Error::new(
-                                rspc::ErrorCode::InternalServerError,
-                                format!("failed to create asset_object: {}", e),
-                            )
-                        })?
-                };
+                let new_asset_object_record = library.prisma_client()
+                    .asset_object()
+                    .create(vec![])
+                    .exec()
+                    .await
+                    .map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("failed to create asset_object: {}", e),
+                        )
+                    })?;
 
                 // copy file and rename to asset object id
                 let materialized_path = if input.path.ends_with("/") {
@@ -127,28 +120,25 @@ where
                 })?;
 
                 // create file_path
-                let res = {
-                    let client_w = library.prisma_client.write().await;
-                    client_w
-                        .file_path()
-                        .create(
-                            false,
-                            materialized_path,
-                            file_name,
-                            vec![
-                                // file_path::SetParam::SetId(new_asset_object_record.id)
-                                file_path::assset_object_id::set(Some(new_asset_object_record.id)),
-                            ],
+                let res = library.prisma_client()
+                    .file_path()
+                    .create(
+                        false,
+                        materialized_path,
+                        file_name,
+                        vec![
+                            // file_path::SetParam::SetId(new_asset_object_record.id)
+                            file_path::assset_object_id::set(Some(new_asset_object_record.id)),
+                        ],
+                    )
+                    .exec()
+                    .await
+                    .map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("failed to create file_path: {}", e),
                         )
-                        .exec()
-                        .await
-                        .map_err(|e| {
-                            rspc::Error::new(
-                                rspc::ErrorCode::InternalServerError,
-                                format!("failed to create file_path: {}", e),
-                            )
-                        })?
-                };
+                    })?;
 
                 // create video task
                 let local_full_path = format!(
@@ -173,12 +163,11 @@ where
             "list",
             Rspc::<TCtx>::new().query(|ctx, input: FilePathQueryPayload| async move {
                 let library = ctx.library()?;
-                let client_r = library.prisma_client.read().await;
                 let mut where_params = vec![file_path::materialized_path::equals(input.path)];
                 if input.dirs_only {
                     where_params.push(file_path::is_dir::equals(true));
                 }
-                let res = client_r
+                let res = library.prisma_client()
                     .file_path()
                     .find_many(where_params)
                     .with(file_path::asset_object::fetch())
@@ -190,6 +179,7 @@ where
                             format!("failed to list dirs: {}", e),
                         )
                     })?;
+                // TODO 这里写的有点挫
                 let names: Vec<FilePathQueryResult> = res
                     .iter()
                     .map(|r| FilePathQueryResult {
