@@ -8,7 +8,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:dev.db"
+  url      = "file:dev.db?connection_limit=1"
   // url      = env("LOCAL_DB_URL")
 }
 
