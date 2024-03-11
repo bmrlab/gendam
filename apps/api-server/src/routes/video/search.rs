@@ -28,7 +28,7 @@ where
                     skip: None,
                 },
                 ctx.get_resources_dir(),
-                Arc::clone(&library.prisma_client),
+                library.prisma_client(),
                 Arc::clone(&library.qdrant_server.get_client()),
             )
             .await;
@@ -62,8 +62,7 @@ where
 
             // println!("file_identifiers: {:?}", file_identifiers);
 
-            let client_r = library.prisma_client.read().await;
-            let tasks = client_r
+            let tasks = library.prisma_client()
                 .video_task()
                 .find_many(vec![
                     video_task::video_file_hash::in_vec(file_identifiers),

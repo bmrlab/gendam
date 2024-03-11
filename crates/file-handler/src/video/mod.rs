@@ -56,7 +56,7 @@ pub struct VideoHandler {
     audio_path: std::path::PathBuf,
     transcript_path: std::path::PathBuf,
     library: Library,
-    client: Arc<RwLock<PrismaClient>>,
+    client: Arc<PrismaClient>,
     qdrant: Arc<QdrantClient>,
 }
 
@@ -111,7 +111,7 @@ impl VideoHandler {
             transcript_path: artifacts_dir.join("transcript.txt"),
             library: library.clone(),
             qdrant: library.qdrant_server.get_client().clone(),
-            client: library.prisma_client.clone(),
+            client: library.prisma_client(),
         })
     }
 

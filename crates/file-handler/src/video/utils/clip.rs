@@ -16,7 +16,7 @@ pub async fn get_video_clips(
     file_identifier: String,
     transcript_path: Option<impl AsRef<std::path::Path>>,
     frames_dir: Option<impl AsRef<std::path::Path>>,
-    client: Arc<RwLock<PrismaClient>>,
+    client: Arc<PrismaClient>,
 ) -> anyhow::Result<()> {
     // if transcript exists, use its timestamp to split video into clip
     if let Some(transcript_path) = transcript_path {
@@ -46,8 +46,6 @@ pub async fn get_video_clips(
     let mut timestamps = vec![];
 
     let n_total_frames = client
-        .read()
-        .await
         .video_frame()
         .count(vec![video_frame::WhereParam::FileIdentifier(
             prisma_lib::read_filters::StringFilter::Contains(file_identifier.clone()),
@@ -63,8 +61,6 @@ pub async fn get_video_clips(
         let current_batch_count = (n_total_frames - current_frame_count).min(next_batch_size);
 
         let frames = client
-            .read()
-            .await
             .video_frame()
             .find_many(vec![video_frame::WhereParam::FileIdentifier(
                 prisma_lib::read_filters::StringFilter::Contains(file_identifier.clone()),
@@ -154,7 +150,7 @@ pub async fn get_video_clips(
 pub async fn get_video_clips_summarization(
     file_identifier: String,
     resources_dir: impl AsRef<std::path::Path>,
-    client: Arc<RwLock<PrismaClient>>,
+    client: Arc<PrismaClient>,
 ) -> anyhow::Result<()> {
     let llm = llm::LLM::new_llama_cpp_model(
         resources_dir.as_ref(),
@@ -166,8 +162,6 @@ pub async fn get_video_clips_summarization(
 
     let video_frame_args = video_frame::ManyArgs::new(vec![]).with(video_frame::caption::fetch());
     let clips = client
-        .read()
-        .await
         .video_clip()
         .find_many(vec![video_clip::WhereParam::FileIdentifier(
             prisma_lib::read_filters::StringFilter::Contains(file_identifier.clone()),
@@ -230,8 +224,6 @@ Here is the document:"#,
         };
 
         client
-            .write()
-            .await
             .video_clip()
             .update(
                 video_clip::UniqueWhereParam::IdEquals(clip.id),
@@ -246,14 +238,12 @@ Here is the document:"#,
 
 async fn create_video_clips(
     file_identifier: String,
-    client: Arc<RwLock<PrismaClient>>,
+    client: Arc<PrismaClient>,
     timestamps: Vec<(i32, i32)>,
 ) -> anyhow::Result<()> {
     for (index, item) in timestamps.iter().enumerate() {
         // find frames between [start, end)
         let frames = client
-            .read()
-            .await
             .video_frame()
             .find_many(vec![
                 video_frame::WhereParam::Timestamp(prisma_lib::read_filters::IntFilter::Gte(
@@ -280,8 +270,6 @@ async fn create_video_clips(
             .collect();
 
         if let Err(e) = client
-            .write()
-            .await
             .video_clip()
             .create(
                 file_identifier.clone(),
@@ -317,7 +305,7 @@ async fn test_video_clip() {
         file_identifier,
         None::<std::path::PathBuf>,
         Some(frames_dir),
-        Arc::clone(&library.prisma_client),
+        library.prisma_client(),
     )
     .await;
 

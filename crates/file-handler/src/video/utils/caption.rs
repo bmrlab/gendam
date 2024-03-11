@@ -58,7 +58,7 @@ async fn get_single_frame_caption(
 
 pub async fn get_frame_caption_embedding(
     file_identifier: String,
-    client: Arc<RwLock<PrismaClient>>,
+    client: Arc<PrismaClient>,
     frames_dir: impl AsRef<std::path::Path>,
     clip_model: Arc<RwLock<ai::clip::CLIP>>,
     qdrant: Arc<QdrantClient>,
@@ -112,7 +112,7 @@ pub async fn get_frame_caption_embedding(
 
 async fn get_single_frame_caption_embedding(
     file_identifier: String,
-    client: Arc<RwLock<PrismaClient>>,
+    client: Arc<PrismaClient>,
     path: impl AsRef<std::path::Path>,
     clip_model: Arc<RwLock<ai::clip::CLIP>>,
     qdrant: Arc<QdrantClient>,
@@ -133,7 +133,6 @@ async fn get_single_frame_caption_embedding(
         .unwrap_or(0);
 
     let x = {
-        let client = client.write().await;
         let video_frame = client.video_frame().upsert(
             video_frame::UniqueWhereParam::FileIdentifierTimestampEquals(
                 file_identifier.clone(),

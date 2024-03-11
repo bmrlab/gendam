@@ -3,7 +3,6 @@ use prisma_lib::{video_frame, video_frame_caption, video_transcript, PrismaClien
 use qdrant_client::{client::QdrantClient, qdrant::SearchPoints};
 use serde_json::json;
 use std::{collections::HashMap, sync::Arc};
-use tokio::sync::RwLock;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct SearchResult {
@@ -30,7 +29,7 @@ pub enum SearchType {
 pub async fn handle_search(
     payload: SearchRequest,
     resources_dir: impl AsRef<std::path::Path>,
-    client: Arc<RwLock<PrismaClient>>,
+    client: Arc<PrismaClient>,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<Vec<SearchResult>> {
     let clip_model =
@@ -84,8 +83,6 @@ pub async fn handle_search(
                 }
             })
             .collect();
-
-        let client = client.read().await;
 
         match record_type {
             SearchRecordType::Frame => {
