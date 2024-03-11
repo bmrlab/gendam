@@ -19,7 +19,11 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
         .procedure(
             "create",
             Rspc::<TCtx>::new().mutation(|ctx, title: String| async move {
-                let library = create_library(&ctx.get_local_data_root(), title).await;
+                let library = create_library(
+                    &ctx.get_local_data_root(),
+                    &ctx.get_resources_dir(),
+                    title
+                ).await;
                 json!({
                     "id": library.id,
                     "dir": library.dir,
@@ -74,7 +78,9 @@ fn list_libraries(local_data_root: &PathBuf) -> Vec<String> {
     }
 }
 
-async fn create_library(local_data_root: &PathBuf, title: String) -> Library {
-    let library = content_library::create_library_with_title(local_data_root, title.as_str()).await;
+async fn create_library(local_data_root: &PathBuf, resources_dir: &PathBuf, title: String) -> Library {
+    let library = content_library::create_library_with_title(
+        local_data_root, resources_dir, title.as_str()
+    ).await;
     return library;
 }

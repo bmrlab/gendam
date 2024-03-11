@@ -57,7 +57,8 @@ impl CtxWithLibrary for Ctx {
         if let Some(value) = store.get(String::from("current-library-id")) {
             let library_id = value.as_str().unwrap().to_owned();
             return Box::pin(async move {
-                let library = load_library(&self.local_data_root, &library_id).await;
+                let library = load_library(
+                    &self.local_data_root, &self.resources_dir, &library_id).await;
                 self.current_library.lock().unwrap().replace(library);
                 info!("Current library switched to {}", library_id);
             });
@@ -123,7 +124,8 @@ async fn main() {
         let _ = store_mut.load();
         if let Some(value) = store_mut.get("current-library-id") {
             let library_id = value.as_str().unwrap().to_owned();
-            let library = load_library(&local_data_root, &library_id).await;
+            let library = load_library(
+                &local_data_root, &resources_dir, &library_id).await;
             current_library.lock().unwrap().replace(library);
         }
     }

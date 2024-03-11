@@ -21,7 +21,11 @@ impl Library {
     }
 }
 
-pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Library {
+pub async fn load_library(
+    local_data_root: &PathBuf,
+    resources_dir: &PathBuf,
+    library_id: &str,
+) -> Library {
     let library_dir = local_data_root.join("libraries").join(library_id);
     let db_dir = library_dir.join("databases");
     let artifacts_dir = library_dir.join("artifacts");
@@ -39,7 +43,7 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Librar
     let prisma_client = Arc::new(client);
 
     let qdrant_server = QdrantServer::new(
-        local_data_root.join("resources"),
+        resources_dir,
         QdrantParams {
             dir: qdrant_dir,
             // TODO we should specify the port to avoid conflicts with other apps
@@ -61,7 +65,9 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Librar
     }
 }
 
-pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -> Library {
+pub async fn create_library_with_title(
+    local_data_root: &PathBuf, resources_dir: &PathBuf, title: &str
+) -> Library {
     let _ = title;
     // TODO: 使用时间戳作为 id，当用户导入别人分享的 library 的时候,可能会冲突
     let library_id = sha256::digest(format!("{}", chrono::Utc::now()));
@@ -76,7 +82,7 @@ pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -
     std::fs::create_dir_all(&index_dir).unwrap();
     std::fs::create_dir_all(&artifacts_dir).unwrap();
     std::fs::create_dir_all(&files_dir).unwrap();
-    load_library(local_data_root, &library_id).await
+    load_library(local_data_root, resources_dir, &library_id).await
 }
 
 pub async fn upgrade_library_schemas(local_data_root: &PathBuf) {
