@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { ReactNode } from 'react'
+import { PropsWithChildren, ReactNode } from 'react'
 
 export type DropdownMenuOptions =
   | {
@@ -23,14 +23,23 @@ export type MuseDropdownMenuProps = {
   contentClassName?: string
 }
 
-export default function MuseDropdownMenu({ options, triggerIcon, contentClassName }: MuseDropdownMenuProps) {
+export default function MuseDropdownMenu({
+  options,
+  triggerIcon,
+  contentClassName,
+  children,
+}: PropsWithChildren<MuseDropdownMenuProps>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="size-[25px] p-0 hover:bg-[#EBECEE]">
-          <span className="sr-only">Open menu</span>
-          {triggerIcon ? triggerIcon : <Icon.more />}
-        </Button>
+        {children ? (
+          children
+        ) : (
+          <Button variant="ghost" className="size-[25px] p-0 hover:bg-[#EBECEE]">
+            <span className="sr-only">Open menu</span>
+            {triggerIcon ? triggerIcon : <Icon.more />}
+          </Button>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className={cn('muse-border bg-[#F4F5F5] py-2 shadow-md', contentClassName)}>
         {options.map((o, index) => (

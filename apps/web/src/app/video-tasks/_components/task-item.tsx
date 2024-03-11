@@ -3,6 +3,7 @@
 import MuseBadge, { MuseStatus } from '@/components/Badge'
 import MuseDropdownMenu, { DropdownMenuOptions } from '@/components/DropdownMenu'
 import Icon from '@/components/Icon'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { getLocalFileUrl } from '@/utils/file'
 import { HTMLAttributes, useCallback, useMemo } from 'react'
@@ -172,11 +173,20 @@ export default function VideoTaskItem({
             <MuseBadge key={index} name={typeToName[task.taskType]} status={status(task)} />
             {index === showTask.length - 1 &&
               (status(task) !== MuseStatus.Processing ? (
+                // TODO: real data
                 <MuseDropdownMenu
                   triggerIcon={<Icon.moreVertical className="size-[25px] cursor-pointer text-[#676C77]" />}
                   options={moreActionOptions('1')}
                   contentClassName="w-[215px]"
-                />
+                >
+                  <Button
+                    variant="ghost"
+                    className="size-[25px] p-0 text-[#676C77] hover:bg-[#EBECEE] data-[state=open]:bg-[#EBECEE] data-[state=open]:text-[#262626]"
+                  >
+                    <span className="sr-only">Open menu</span>
+                    <Icon.moreVertical className="size-[25px] cursor-pointer" />
+                  </Button>
+                </MuseDropdownMenu>
               ) : (
                 <Icon.circleX className="size-[25px] cursor-pointer text-[#676C77]" />
               ))}
