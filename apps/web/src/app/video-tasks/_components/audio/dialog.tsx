@@ -1,3 +1,4 @@
+'use client'
 import BatchExport from './batch-export'
 import AudioExport from './export'
 import { AudioDialogEnum } from '@/app/video-tasks/store/audio-dialog'

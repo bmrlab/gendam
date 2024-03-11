@@ -1,22 +1,12 @@
 'use client'
-import AudioDialog from '@/app/video-tasks/_components/audio/dialog'
-
 import VideoTasksList from '@/app/video-tasks/_components/task-list'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 export default function VideoTasksPage() {
-
   return (
-    <main className="flex h-full flex-col">
-      <div className="flex h-12 justify-between border-b border-neutral-100 px-4">
-        <div className="flex select-none items-center">
-          <div className="px-2 py-1">&lt;</div>
-          <div className="px-2 py-1">&gt;</div>
-          <div className="ml-2 text-sm">任务列表</div>
-        </div>
-      </div>
+    <ScrollArea className="h-full rounded-[6px] border">
       <VideoTasksList />
-      <AudioDialog />
-    </main>
+    </ScrollArea>
   )
 }
 
