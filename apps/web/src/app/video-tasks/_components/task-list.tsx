@@ -1,4 +1,5 @@
 'use client'
+import { hasProcessing } from '@/app/video-tasks/_components/utils'
 import type { VideoTaskResult } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { useBoundStore } from '@/store'
@@ -57,7 +58,11 @@ export default function VideoTasksList() {
     <div className="h-full p-4">
       {videos.map((video: VideoItem) => {
         return (
-          <TaskContextMenu key={video.videoFileHash} fileHash={video.videoFileHash}>
+          <TaskContextMenu
+            key={video.videoFileHash}
+            fileHash={video.videoFileHash}
+            isProcessing={hasProcessing(video.tasks)}
+          >
             <WithSelectVideoItem
               {...video}
               items={videos}

@@ -1,4 +1,5 @@
 import { AudioDialogEnum } from '@/app/video-tasks/store/audio-dialog'
+import Icon from '@/components/Icon'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -7,13 +8,14 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { useBoundStore } from '@/store'
-import { PropsWithChildren, useCallback, useMemo } from 'react'
+import { PropsWithChildren, ReactNode, useCallback, useMemo } from 'react'
 
 export type TaskContextMenuProps = PropsWithChildren<{
   fileHash: string
+  isProcessing: boolean
 }>
 
-export default function TaskContextMenu({ fileHash, children }: TaskContextMenuProps) {
+export default function TaskContextMenu({ fileHash, isProcessing, children }: TaskContextMenuProps) {
   const taskSelected = useBoundStore.use.taskSelected()
   const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
   const setAudioDialogProps = useBoundStore.use.setAudioDialogProps()
@@ -49,18 +51,65 @@ export default function TaskContextMenu({ fileHash, children }: TaskContextMenuP
 
   const handleExport = isBatchSelected ? handleBatchExport : handleSingleExport
 
+  const options = useMemo<Array<'Separator' | { label: string; icon: ReactNode; handleClick: () => void }>>(() => {
+    const processingItem = isProcessing
+      ? [
+          {
+            label: '取消任务',
+            icon: <Icon.cancel />,
+            handleClick: () => {
+              console.log('取消任务')
+            },
+          },
+        ]
+      : []
+
+    return [
+      {
+        label: '重新触发任务',
+        icon: <Icon.regenerate />,
+        handleClick: () => {
+          console.log('重新触发任务')
+        },
+      },
+      ...processingItem,
+      {
+        label: '导出语音转译',
+        icon: <Icon.download />,
+        handleClick: handleExport,
+      },
+      'Separator',
+      {
+        label: '删除任务',
+        icon: <Icon.trash />,
+        handleClick: () => {
+          console.log('删除任务')
+        },
+      },
+    ]
+  }, [handleExport])
+
   return (
     <ContextMenu>
       <ContextMenuTrigger className="flex cursor-default items-center justify-center rounded-md text-sm">
         {children}
       </ContextMenuTrigger>
-      <ContextMenuContent className="w-[215px]">
-        <ContextMenuItem inset>重新触发任务</ContextMenuItem>
-        <ContextMenuItem inset onClick={handleExport}>
-          导出语音转译
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem inset>删除任务</ContextMenuItem>
+      <ContextMenuContent className="muse-border w-[215px] bg-[#F4F5F5] py-2 shadow-md">
+        {options.map((o, index) =>
+          o === 'Separator' ? (
+            <ContextMenuSeparator key={index} className="mx-2.5 bg-[#DDDDDE]" />
+          ) : (
+            <ContextMenuItem
+              key={index}
+              inset
+              className="flex gap-1.5 px-2.5 py-[3.5px] text-[13px] leading-[18.2px] transition focus:bg-[#017AFF] focus:text-white data-[disabled]:text-[#AAADB2] data-[disabled]:opacity-100"
+              onClick={o.handleClick}
+            >
+              {o.icon}
+              <span>{o.label}</span>
+            </ContextMenuItem>
+          ),
+        )}
       </ContextMenuContent>
     </ContextMenu>
   )

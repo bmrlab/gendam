@@ -1,6 +1,7 @@
 'use client'
 
-import MuseBadge, { MuseStatus } from '@/components/Badge'
+import { VIDEO_DIMENSION } from '@/app/video-tasks/_components/utils'
+import { MuseStatus, MuseTaskBadge } from '@/components/Badge'
 import MuseDropdownMenu, { DropdownMenuOptions } from '@/components/DropdownMenu'
 import Icon from '@/components/Icon'
 import { Button } from '@/components/ui/button'
@@ -70,22 +71,9 @@ export default function VideoTaskItem({
   handleClick,
   ...props
 }: VideoTaskItemProps) {
-  const typeToName: Record<string, string> = useMemo(
-    () => ({
-      // Audio: '语音转译',
-      // "Transcript": "语音转译",
-      TranscriptEmbedding: '语音转译',
-      // "FrameCaption": "图像描述",
-      FrameCaptionEmbedding: '图像描述',
-      // "Frame": "图像特征",
-      // FrameContentEmbedding: '图像特征',
-    }),
-    [],
-  )
-
   const showTask = useMemo(() => {
-    return tasks.filter((task) => typeToName[task.taskType])
-  }, [tasks, typeToName])
+    return tasks.filter((task) => VIDEO_DIMENSION[task.taskType])
+  }, [tasks])
 
   const status = useCallback((task: VideoItem['tasks'][number]) => {
     if (task.startsAt && !task.endsAt) {
@@ -97,18 +85,23 @@ export default function VideoTaskItem({
     return MuseStatus.Failed
   }, [])
 
-  const moreActionOptions = useCallback((id: string) => {
+  const moreActionOptions = useCallback((id: string, isProcessing = false) => {
+    const processItem = isProcessing
+      ? [
+          {
+            label: (
+              <div className="flex items-center gap-1.5">
+                <Icon.cancel />
+                <span>取消任务</span>
+              </div>
+            ),
+            handleClick: () => {},
+          },
+          'Separator',
+        ]
+      : []
     return [
-      {
-        label: (
-          <div className="flex items-center gap-1.5">
-            <Icon.cancel />
-            <span>取消任务</span>
-          </div>
-        ),
-        handleClick: () => {},
-      },
-      'Separator',
+      ...processItem,
       {
         label: (
           <div className="flex items-center gap-1.5">
@@ -170,13 +163,13 @@ export default function VideoTaskItem({
       <div className="ml-auto flex flex-wrap items-end gap-1.5">
         {showTask.map((task, index) => (
           <div key={index} className="flex gap-1.5">
-            <MuseBadge key={index} name={typeToName[task.taskType]} status={status(task)} />
+            <MuseTaskBadge key={index} name={VIDEO_DIMENSION[task.taskType]} status={status(task)} />
             {index === showTask.length - 1 &&
               (status(task) !== MuseStatus.Processing ? (
                 // TODO: real data
                 <MuseDropdownMenu
                   triggerIcon={<Icon.moreVertical className="size-[25px] cursor-pointer text-[#676C77]" />}
-                  options={moreActionOptions('1')}
+                  options={moreActionOptions('1', status(task) === MuseStatus.Processing)}
                   contentClassName="w-[215px]"
                 >
                   <Button
