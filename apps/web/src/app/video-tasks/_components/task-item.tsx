@@ -1,6 +1,8 @@
 'use client'
 
 import MuseBadge, { MuseStatus } from '@/components/Badge'
+import MuseDropdownMenu, { DropdownMenuOptions } from '@/components/DropdownMenu'
+import Icon from '@/components/Icon'
 import { cn } from '@/lib/utils'
 import { getLocalFileUrl } from '@/utils/file'
 import { HTMLAttributes, useCallback, useMemo } from 'react'
@@ -59,7 +61,14 @@ export const VideoTaskStatus: React.FC<{
   }
 }
 
-export default function VideoTaskItem({ videoPath, videoFileHash, tasks, isSelect, handleClick, ...props }: VideoTaskItemProps) {
+export default function VideoTaskItem({
+  videoPath,
+  videoFileHash,
+  tasks,
+  isSelect,
+  handleClick,
+  ...props
+}: VideoTaskItemProps) {
   const typeToName: Record<string, string> = useMemo(
     () => ({
       // Audio: '语音转译',
@@ -85,6 +94,30 @@ export default function VideoTaskItem({ videoPath, videoFileHash, tasks, isSelec
       return MuseStatus.Done
     }
     return MuseStatus.Failed
+  }, [])
+
+  const moreActionOptions = useCallback((id: string) => {
+    return [
+      {
+        label: (
+          <div className="flex items-center gap-1.5">
+            <Icon.cancel />
+            <span>取消任务</span>
+          </div>
+        ),
+        handleClick: () => {},
+      },
+      'Separator',
+      {
+        label: (
+          <div className="flex items-center gap-1.5">
+            <Icon.trash />
+            <span>删除任务</span>
+          </div>
+        ),
+        handleClick: () => {},
+      },
+    ] as DropdownMenuOptions[]
   }, [])
 
   return (
@@ -135,7 +168,19 @@ export default function VideoTaskItem({ videoPath, videoFileHash, tasks, isSelec
       </div>
       <div className="ml-auto flex flex-wrap items-end gap-1.5">
         {showTask.map((task, index) => (
-          <MuseBadge key={index} name={typeToName[task.taskType]} status={status(task)}></MuseBadge>
+          <div key={index} className="flex gap-1.5">
+            <MuseBadge key={index} name={typeToName[task.taskType]} status={status(task)} />
+            {index === showTask.length - 1 &&
+              (status(task) !== MuseStatus.Processing ? (
+                <MuseDropdownMenu
+                  triggerIcon={<Icon.moreVertical className="size-[25px] cursor-pointer text-[#676C77]" />}
+                  options={moreActionOptions('1')}
+                  contentClassName="w-[215px]"
+                />
+              ) : (
+                <Icon.circleX className="size-[25px] cursor-pointer text-[#676C77]" />
+              ))}
+          </div>
         ))}
       </div>
     </div>
