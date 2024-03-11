@@ -2,15 +2,16 @@
 import { hasProcessing } from '@/app/video-tasks/_components/utils'
 import type { VideoTaskResult } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
+import { cn } from '@/lib/utils'
 import { useBoundStore } from '@/store'
 import Image from 'next/image'
-import { useMemo } from 'react'
+import { HTMLAttributes, useMemo } from 'react'
 import TaskContextMenu from './task-context-menu'
 import type { VideoItem } from './task-item'
 import { WithSelectVideoItem } from './with-select'
 import EmptyList from '/public/svg/empty-list.svg'
 
-export default function VideoTasksList() {
+export default function VideoTasksList({ className }: HTMLAttributes<HTMLDivElement>) {
   const { data, isLoading, error } = rspc.useQuery(['video.tasks.list'])
 
   const revealMut = rspc.useMutation('files.reveal')
@@ -55,7 +56,7 @@ export default function VideoTasksList() {
   }
 
   return (
-    <div className="h-full p-4">
+    <div className={cn('h-full px-4', className)}>
       {videos.map((video: VideoItem) => {
         return (
           <TaskContextMenu
