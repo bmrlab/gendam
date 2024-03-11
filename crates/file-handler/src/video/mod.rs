@@ -73,8 +73,6 @@ impl VideoHandler {
         video_path: impl AsRef<std::path::Path>,
         resources_dir: impl AsRef<std::path::Path>,
         library: &Library,
-        client: Arc<RwLock<PrismaClient>>,
-        qdrant: Arc<QdrantClient>,
     ) -> anyhow::Result<Self> {
         let bytes = std::fs::read(&video_path)?;
         let file_sha256 = sha256::digest(&bytes);
@@ -112,8 +110,8 @@ impl VideoHandler {
             frames_dir,
             transcript_path: artifacts_dir.join("transcript.txt"),
             library: library.clone(),
-            qdrant,
-            client,
+            qdrant: library.qdrant_client.clone(),
+            client: library.prisma_client.clone(),
         })
     }
 
@@ -279,16 +277,10 @@ async fn test_handle_video() {
     let library = content_library::load_library(
         &local_data_dir,
         "98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797",
-    ).await;
+    )
+    .await;
 
-    let qdrant_client = QdrantClient::from_url("http://localhost:6333")
-        .build()
-        .expect("failed to build qdrant client");
-    let qdrant_client = Arc::new(qdrant_client);
-
-    let video_handler =
-        VideoHandler::new(video_path, resources_dir, &library,
-            Arc::clone(&library.prisma_client), qdrant_client).await;
+    let video_handler = VideoHandler::new(video_path, resources_dir, &library).await;
 
     if video_handler.is_err() {
         tracing::error!("failed to create video handler");

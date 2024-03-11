@@ -11,7 +11,6 @@ use std::{
 use tokio::sync::broadcast;
 use content_library::Library;
 use task_queue::TaskPayload;
-use vector_db::QdrantChannel;
 
 // #[derive(Clone)]
 // pub struct Ctx {
@@ -32,7 +31,6 @@ pub trait CtxWithLibrary {
     fn library(&self) -> Result<Library, rspc::Error>;
 
     fn get_task_tx(&self) -> Arc<broadcast::Sender<TaskPayload>>;
-    fn get_qdrant_channel(&self) -> Arc<QdrantChannel>;
 }
 
 // pub const R: Rspc<Ctx> = Rspc::new();

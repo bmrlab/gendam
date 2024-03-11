@@ -7,22 +7,21 @@ use axum::routing::get;
 use content_library::{load_library, upgrade_library_schemas, Library};
 use dotenvy::dotenv;
 use rspc::integrations::httpz::Request;
-use tokio::sync::broadcast;
 use std::{
+    boxed::Box,
     env,
     net::SocketAddr,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
     pin::Pin,
-    boxed::Box,
+    sync::{Arc, Mutex},
 };
+use tokio::sync::broadcast;
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
 };
 use tracing::{debug, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use vector_db::QdrantChannel;
 
 struct Store {
     path: PathBuf,
@@ -62,7 +61,6 @@ struct Ctx {
     store: Arc<Mutex<Store>>,
     current_library: Arc<Mutex<Option<Library>>>,
     tx: Arc<broadcast::Sender<TaskPayload>>,
-    qdrant_channel: Arc<QdrantChannel>,
 }
 
 impl CtxWithLibrary for Ctx {
@@ -81,8 +79,10 @@ impl CtxWithLibrary for Ctx {
             )),
         }
     }
-    fn switch_current_library<'async_trait>(&'async_trait self, library_id: &'async_trait str)
-        -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
+    fn switch_current_library<'async_trait>(
+        &'async_trait self,
+        library_id: &'async_trait str,
+    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
     where
         Self: Sync + 'async_trait,
     {
@@ -108,9 +108,6 @@ impl CtxWithLibrary for Ctx {
     }
     fn get_task_tx(&self) -> Arc<broadcast::Sender<TaskPayload>> {
         Arc::clone(&self.tx)
-    }
-    fn get_qdrant_channel(&self) -> Arc<QdrantChannel> {
-        Arc::clone(&self.qdrant_channel)
     }
 }
 
@@ -146,9 +143,9 @@ async fn main() {
     let tx = init_task_pool();
     let router = api_server::router::get_router::<Ctx>();
 
-    let store = Arc::new(Mutex::new(
-        Store::new(local_data_root.join("settings.json"))
-    ));
+    let store = Arc::new(Mutex::new(Store::new(
+        local_data_root.join("settings.json"),
+    )));
     let current_library = Arc::new(Mutex::<Option<Library>>::new(None));
     {
         let mut store_mut = store.lock().unwrap();
@@ -158,10 +155,6 @@ async fn main() {
             current_library.lock().unwrap().replace(library);
         }
     }
-
-    // TODO qdrant should be placed in sidecar
-    let qdrant_channel = QdrantChannel::new(&resources_dir).await;
-    let qdrant_channel = Arc::new(qdrant_channel);
 
     let cors = CorsLayer::new()
         .allow_methods(Any)
@@ -181,7 +174,6 @@ async fn main() {
                         store,
                         current_library,
                         tx,
-                        qdrant_channel,
                     }
                 })
                 .axum(),

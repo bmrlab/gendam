@@ -7,12 +7,9 @@ use file_handler::{
     SearchRecordType,
 };
 use prisma_lib::video_task;
-use qdrant_client::client::QdrantClient;
 use rspc::{Router, Rspc};
 use serde::Serialize;
 use specta::Type;
-use tracing::warn;
-use vector_db::QdrantParams;
 
 pub fn get_routes<TCtx>() -> Router<TCtx>
 where
@@ -23,25 +20,6 @@ where
         Rspc::<TCtx>::new().query(move |ctx: TCtx, input: String| async move {
             let library = ctx.library()?;
 
-            warn!("start updating qdrant");
-            let qdrant_channel = ctx.get_qdrant_channel();
-            qdrant_channel
-                .update(QdrantParams {
-                    dir: library.qdrant_dir.clone(),
-                    http_port: None,
-                    grpc_port: None,
-                })
-                .await
-                .expect("failed to update qdrant");
-            let qdrant_url = qdrant_channel.get_url().await;
-
-            let qdrant = Arc::new(
-                QdrantClient::from_url(&qdrant_url)
-                    .build()
-                    .expect("failed to build qdrant client"),
-            );
-            warn!("finish updating qdrant");
-
             let res = file_handler::search::handle_search(
                 SearchRequest {
                     text: input,
@@ -51,7 +29,7 @@ where
                 },
                 ctx.get_resources_dir(),
                 Arc::clone(&library.prisma_client),
-                qdrant,
+                Arc::clone(&library.qdrant_client),
             )
             .await;
             // .unwrap();
@@ -111,7 +89,8 @@ where
                 pub start_time: i32,
             }
 
-            let search_result = res.iter()
+            let search_result = res
+                .iter()
                 .map(
                     |SearchResult {
                          file_identifier,
