@@ -1,5 +1,5 @@
 use super::save_text_embedding;
-use crate::search_payload::{SearchPayload, TranscriptPayload};
+use crate::search_payload::SearchPayload;
 use ai::{clip::CLIP, whisper::WhisperItem};
 use prisma_lib::{video_transcript, PrismaClient};
 use qdrant_client::client::QdrantClient;
@@ -48,33 +48,36 @@ pub async fn get_transcript_embedding(
             // write data using prisma
             // here use write to make sure only one thread can using prisma client
             let x = {
-                client.video_transcript().upsert(
-                    video_transcript::file_identifier_start_timestamp_end_timestamp(
-                        file_identifier.clone(),
-                        item.start_timestamp as i32,
-                        item.end_timestamp as i32,
-                    ),
-                    (
-                        file_identifier.clone(),
-                        item.start_timestamp as i32,
-                        item.end_timestamp as i32,
-                        item.text.clone(),
+                client
+                    .video_transcript()
+                    .upsert(
+                        video_transcript::file_identifier_start_timestamp_end_timestamp(
+                            file_identifier.clone(),
+                            item.start_timestamp as i32,
+                            item.end_timestamp as i32,
+                        ),
+                        (
+                            file_identifier.clone(),
+                            item.start_timestamp as i32,
+                            item.end_timestamp as i32,
+                            item.text.clone(),
+                            vec![],
+                        ),
                         vec![],
-                    ),
-                    vec![],
-                ).exec().await
+                    )
+                    .exec()
+                    .await
                 // drop the rwlock
             };
 
             match x {
                 std::result::Result::Ok(res) => {
-                    let payload = SearchPayload::Transcript(TranscriptPayload {
-                        id: res.id,
+                    let payload = SearchPayload {
+                        id: res.id as u64,
                         file_identifier: file_identifier.clone(),
                         start_timestamp: item.start_timestamp,
                         end_timestamp: item.end_timestamp,
-                        transcript: item.text.clone(),
-                    });
+                    };
                     if let Err(e) = save_text_embedding(
                         &item.text,
                         payload,

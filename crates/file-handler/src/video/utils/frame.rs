@@ -1,16 +1,14 @@
 use ai::clip::CLIP;
 use anyhow::{anyhow, Ok};
 use prisma_lib::{video_frame, PrismaClient};
-use qdrant_client::{
-    client::QdrantClient, qdrant::PointStruct,
-};
+use qdrant_client::{client::QdrantClient, qdrant::PointStruct};
 use serde_json::json;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
 use tracing::{debug, error};
 
-use crate::search_payload::{FramePayload, SearchPayload};
+use crate::search_payload::SearchPayload;
 
 pub async fn get_frame_content_embedding(
     file_identifier: String,
@@ -28,7 +26,8 @@ pub async fn get_frame_content_embedding(
         qdrant.clone(),
         vector_db::VIDEO_FRAME_INDEX_NAME,
         clip_model.read().await.dim() as u64,
-    ).await?;
+    )
+    .await?;
 
     let mut join_set = tokio::task::JoinSet::new();
 
@@ -64,25 +63,29 @@ pub async fn get_frame_content_embedding(
             join_set.spawn(async move {
                 // write data using prisma
                 let x = {
-                    client.video_frame().upsert(
-                        video_frame::file_identifier_timestamp(
-                            file_identifier.clone(),
-                            frame_timestamp as i32,
-                        ),
-                        (file_identifier.clone(), frame_timestamp as i32, vec![]),
-                        vec![],
-                    ).exec().await
+                    client
+                        .video_frame()
+                        .upsert(
+                            video_frame::file_identifier_timestamp(
+                                file_identifier.clone(),
+                                frame_timestamp as i32,
+                            ),
+                            (file_identifier.clone(), frame_timestamp as i32, vec![]),
+                            vec![],
+                        )
+                        .exec()
+                        .await
                     // drop the rwlock
                 };
 
                 match x {
                     std::result::Result::Ok(res) => {
-                        let payload = SearchPayload::Frame(FramePayload {
-                            id: res.id,
+                        let payload = SearchPayload {
+                            id: res.id as u64,
                             file_identifier: file_identifier.clone(),
-                            frame_filename: file_name.to_string(),
-                            timestamp: frame_timestamp,
-                        });
+                            start_timestamp: frame_timestamp,
+                            end_timestamp: frame_timestamp,
+                        };
 
                         let _ =
                             get_single_frame_content_embedding(payload, &path, clip_model, qdrant)
@@ -117,7 +120,7 @@ async fn get_single_frame_content_embedding(
     let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
 
     let point = PointStruct::new(
-        payload.uuid(),
+        payload.id,
         embedding.clone(),
         json!(payload)
             .try_into()

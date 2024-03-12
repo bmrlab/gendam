@@ -23,7 +23,7 @@ pub async fn save_text_embedding(
     let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
 
     let point = PointStruct::new(
-        payload.uuid(),
+        payload.id,
         embedding,
         json!(payload)
             .try_into()

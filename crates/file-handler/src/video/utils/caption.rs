@@ -1,6 +1,5 @@
-use crate::search_payload::{FrameCaptionPayload, SearchPayload};
-
 use super::save_text_embedding;
+use crate::search_payload::SearchPayload;
 use anyhow::{anyhow, Ok};
 use prisma_lib::{video_frame, video_frame_caption, PrismaClient};
 use qdrant_client::client::QdrantClient;
@@ -133,35 +132,42 @@ async fn get_single_frame_caption_embedding(
         .unwrap_or(0);
 
     let x = {
-        let video_frame = client.video_frame().upsert(
-            video_frame::UniqueWhereParam::FileIdentifierTimestampEquals(
-                file_identifier.clone(),
-                frame_timestamp as i32,
-            ),
-            (file_identifier.clone(), frame_timestamp as i32, vec![]),
-            vec![],
-        ).exec().await?;
-        client.video_frame_caption().upsert(
-            video_frame_caption::UniqueWhereParam::VideoFrameIdEquals(video_frame.id),
-            (
-                caption.clone(),
-                video_frame::UniqueWhereParam::IdEquals(video_frame.id),
+        let video_frame = client
+            .video_frame()
+            .upsert(
+                video_frame::UniqueWhereParam::FileIdentifierTimestampEquals(
+                    file_identifier.clone(),
+                    frame_timestamp as i32,
+                ),
+                (file_identifier.clone(), frame_timestamp as i32, vec![]),
                 vec![],
-            ),
-            vec![],
-        ).exec().await
+            )
+            .exec()
+            .await?;
+        client
+            .video_frame_caption()
+            .upsert(
+                video_frame_caption::UniqueWhereParam::VideoFrameIdEquals(video_frame.id),
+                (
+                    caption.clone(),
+                    video_frame::UniqueWhereParam::IdEquals(video_frame.id),
+                    vec![],
+                ),
+                vec![],
+            )
+            .exec()
+            .await
         // drop the rwlock
     };
 
     match x {
         std::result::Result::Ok(res) => {
-            let payload = SearchPayload::FrameCaption(FrameCaptionPayload {
-                id: res.id,
+            let payload = SearchPayload {
+                id: res.id as u64,
                 file_identifier: file_identifier.clone(),
-                frame_filename: file_name.to_string(),
-                caption: caption.clone(),
-                timestamp: frame_timestamp,
-            });
+                start_timestamp: frame_timestamp,
+                end_timestamp: frame_timestamp,
+            };
             save_text_embedding(
                 &caption,
                 payload,

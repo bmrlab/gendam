@@ -73,11 +73,8 @@ pub async fn handle_search(
 
                 match payload {
                     Ok(payload) => {
-                        let id = payload.id();
-
-                        id_score_mapping.insert(id, v.score);
-
-                        Some(id)
+                        id_score_mapping.insert(payload.id as i32, v.score);
+                        Some(payload.id as i32)
                     }
                     _ => None,
                 }
