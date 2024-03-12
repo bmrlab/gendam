@@ -1,6 +1,5 @@
 'use client'
 import { hasProcessing } from '@/app/video-tasks/_components/utils'
-import type { VideoTaskResult } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
 import { useBoundStore } from '@/store'
@@ -11,45 +10,23 @@ import type { VideoItem } from './task-item'
 import { WithSelectVideoItem } from './with-select'
 import EmptyList from '/public/svg/empty-list.svg'
 
-export default function VideoTasksList({ className }: HTMLAttributes<HTMLDivElement>) {
-  const { data, isLoading, error } = rspc.useQuery(['video.tasks.list'])
+export type VideoTasksListProps = HTMLAttributes<HTMLDivElement> & {
+  data?: VideoItem[]
+  isLoading: boolean
+}
 
+export default function VideoTasksList({ data, isLoading, className }: VideoTasksListProps) {
   const revealMut = rspc.useMutation('files.reveal')
 
   const searchKey = useBoundStore.use.searchKey()
   const taskSelected = useBoundStore.use.taskSelected()
 
-  const videos = useMemo<VideoItem[]>(() => {
-    if (isLoading) {
-      return []
-    }
-    const groups: {
-      [videoFileHash: string]: VideoItem
-    } = {}
-    data?.forEach((task: VideoTaskResult, index) => {
-      if (!groups[task.videoFileHash]) {
-        groups[task.videoFileHash] = {
-          index,
-          videoPath: task.videoPath,
-          videoFileHash: task.videoFileHash,
-          tasks: [],
-        }
-      }
-      groups[task.videoFileHash].tasks.push({
-        taskType: task.taskType,
-        startsAt: task.startsAt,
-        endsAt: task.endsAt,
-      })
-    })
-    return Object.values(groups)
-  }, [data, isLoading])
-
   const filterVideos = useMemo(() => {
-    return videos.filter((video) => {
+    return data?.filter((video) => {
       // TODO: 等加入更多视频信息后，需要修改搜索条件
       return video.videoPath.includes(searchKey)
     })
-  }, [searchKey, videos])
+  }, [data, searchKey])
 
   if (isLoading) {
     return (
@@ -65,7 +42,7 @@ export default function VideoTasksList({ className }: HTMLAttributes<HTMLDivElem
 
   return (
     <div className={cn('h-full px-4', className)}>
-      {filterVideos.map((video: VideoItem) => {
+      {filterVideos?.map((video: VideoItem) => {
         return (
           <TaskContextMenu
             key={video.videoFileHash}
@@ -74,7 +51,7 @@ export default function VideoTasksList({ className }: HTMLAttributes<HTMLDivElem
           >
             <WithSelectVideoItem
               {...video}
-              items={videos}
+              items={data ?? []}
               isSelect={taskSelected.some((item) => item.videoFileHash === video.videoFileHash)}
               handleClick={() => {
                 revealMut.mutate(video.videoPath)
