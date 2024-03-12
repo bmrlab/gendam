@@ -10,8 +10,12 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 test-log = { version = "0.2.14", features = ["trace"] }
 anyhow = { workspace = true }
-llama-cpp-2 = { version = "0.1.36" }
+llama-cpp-2 = { version = "0.1.36", optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 async-trait = "0.1.77"
 reqwest = { workspace = true, features = ["json"] }
+
+[features]
+native = ["dep:llama-cpp-2"]
+local = []

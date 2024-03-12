@@ -1,16 +1,22 @@
 pub(crate) mod cloud;
+#[cfg(feature = "local")]
 pub(crate) mod local;
 pub mod model;
+#[cfg(feature = "native")]
 pub(crate) mod native;
 
 use anyhow::bail;
 use async_trait::async_trait;
-pub use llama_cpp_2::context::params::LlamaContextParams;
-use local::LocalModel;
-use native::NativeModel;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tokio::sync::oneshot;
+
+#[cfg(feature = "native")]
+pub use llama_cpp_2::context::params::LlamaContextParams;
+#[cfg(feature = "local")]
+use local::LocalModel;
+#[cfg(feature = "native")]
+use native::NativeModel;
 
 #[derive(Debug)]
 pub enum LLMMessage {
@@ -20,10 +26,12 @@ pub enum LLMMessage {
 }
 
 pub struct LLMParams {
+    #[allow(dead_code)]
     temperature: Option<f32>,
     seed: Option<u32>,
 }
 
+#[cfg(feature = "native")]
 impl Into<LlamaContextParams> for LLMParams {
     fn into(self) -> LlamaContextParams {
         let params = LlamaContextParams::default();
@@ -75,16 +83,19 @@ impl LLM {
     pub async fn new_llama_cpp_model(
         resources_dir: impl AsRef<Path>,
         model: self::model::LlamaCppModel,
-        with_server: Option<bool>,
     ) -> anyhow::Result<Self> {
-        if with_server.unwrap_or(false) {
+        #[cfg(feature = "native")]
+        {
+            let model = NativeModel::new(resources_dir.as_ref().to_path_buf(), model).await?;
+            return Ok(Self {
+                model: Box::new(model),
+            });
+        }
+
+        #[cfg(feature = "local")]
+        {
             let model = LocalModel::new(resources_dir.as_ref().to_path_buf(), model).await?;
 
-            Ok(Self {
-                model: Box::new(model),
-            })
-        } else {
-            let model = NativeModel::new(resources_dir.as_ref().to_path_buf(), model).await?;
             Ok(Self {
                 model: Box::new(model),
             })
@@ -106,54 +117,12 @@ impl LLM {
 }
 
 #[test_log::test(tokio::test)]
-async fn test_native_llm() {
+async fn test_llm() {
     let resources_dir =
         "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources";
-    let llm = LLM::new_llama_cpp_model(
-        resources_dir,
-        self::model::LlamaCppModel::QWen0_5B,
-        Some(false),
-    )
-    .await
-    .unwrap();
-
-    let prompt = r#"You will be provided a list of visual details observed at regular intervals, along with an audio description.
-These pieces of information originate from a single video.
-The visual details are extracted from the video at fixed time intervals and represent consecutive frames.
-Typically, the video consists of a brief sequence showing one or more subjects...
-
-Please note that the following list of image descriptions (visual details) was obtained by extracting individual frames from a continuous video featuring one or more subjects.
-Depending on the case, all depicted individuals may correspond to the same person(s), with minor variations due to changes in lighting, angle, and facial expressions over time.
-Regardless, assume temporal continuity among the frames unless otherwise specified.
-
-Here are the descriptions:
-
-a close up of a cell phone with pictures of people on it
-a close up of a cell phone with pictures of people on it
-a close up of a cell phone with pictures of people on it
-a close up of a cell phone with pictures of people on it
-a close up of a cell phone with pictures of people on it"#;
-
-    let response = llm
-        .get_completion(vec![LLMMessage::User(prompt.into())], None, None)
-        .await;
-
-    println!("{:?}", response);
-
-    assert!(response.is_ok());
-}
-
-#[test_log::test(tokio::test)]
-async fn test_local_llm() {
-    let resources_dir =
-        "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources";
-    let llm = LLM::new_llama_cpp_model(
-        resources_dir,
-        self::model::LlamaCppModel::QWen0_5B,
-        Some(true),
-    )
-    .await
-    .unwrap();
+    let llm = LLM::new_llama_cpp_model(resources_dir, self::model::LlamaCppModel::QWen0_5B)
+        .await
+        .unwrap();
 
     let temp_start = std::time::Instant::now();
 
