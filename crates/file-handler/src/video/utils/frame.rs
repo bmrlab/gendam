@@ -130,15 +130,5 @@ async fn get_single_frame_content_embedding(
         .upsert_points(vector_db::VIDEO_FRAME_INDEX_NAME, None, vec![point], None)
         .await?;
 
-    // save into file to persist
-    let embedding_path = path
-        .as_ref()
-        .to_str()
-        .ok_or(anyhow!("invalid path"))?
-        .replace(".png", ".embedding");
-    let mut file = tokio::fs::File::create(embedding_path).await?;
-    file.write_all(serde_json::to_string(&embedding)?.as_bytes())
-        .await?;
-
     Ok(())
 }

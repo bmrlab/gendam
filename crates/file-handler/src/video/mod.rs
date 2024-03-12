@@ -258,8 +258,8 @@ impl VideoHandler {
         utils::clip::get_video_clips(
             self.file_identifier.clone(),
             Some(&self.transcript_path),
-            Some(&self.frames_dir),
             self.client.clone(),
+            self.qdrant.clone(),
         )
         .await
     }

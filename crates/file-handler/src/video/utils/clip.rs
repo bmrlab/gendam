@@ -6,8 +6,9 @@ use prisma_lib::{
     video_frame::{self, OrderByParam},
     PrismaClient,
 };
+use qdrant_client::{client::QdrantClient, qdrant::vectors::VectorsOptions};
 use std::{fs::File, io::BufReader, sync::Arc};
-use tokio::{io::AsyncReadExt, sync::RwLock};
+use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 
 const BATCH_FRAME_COUNT: i64 = 1000;
@@ -15,8 +16,8 @@ const BATCH_FRAME_COUNT: i64 = 1000;
 pub async fn get_video_clips(
     file_identifier: String,
     transcript_path: Option<impl AsRef<std::path::Path>>,
-    frames_dir: Option<impl AsRef<std::path::Path>>,
     client: Arc<PrismaClient>,
+    qdrant_client: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
     // if transcript exists, use its timestamp to split video into clip
     if let Some(transcript_path) = transcript_path {
@@ -36,8 +37,6 @@ pub async fn get_video_clips(
             .await;
         }
     }
-
-    let frames_dir = frames_dir.ok_or(anyhow::anyhow!("no frames dir provided"))?;
 
     // otherwise, use KTS to split video
     // NOTICE when video is too long, we need to split it into multiple batch task
@@ -80,20 +79,45 @@ pub async fn get_video_clips(
 
         debug!("frame count: {}", n_frames);
 
-        // get embeddings for these frames from local file
+        // get embeddings for these frames from qdrant
         for frame in frames {
-            let mut file = tokio::fs::File::open(
-                frames_dir
-                    .as_ref()
-                    .join(format!("{}.embedding", frame.timestamp)),
-            )
-            .await?;
-            let mut buffer = String::new();
-            file.read_to_string(&mut buffer).await?;
-            let embedding: Vec<f64> = serde_json::from_str(&buffer)?;
-
-            video_features.extend(embedding);
-            idx_to_timestamp.push(frame.timestamp);
+            match qdrant_client
+                .get_points(
+                    vector_db::VIDEO_FRAME_INDEX_NAME,
+                    None,
+                    vec![].as_slice(),
+                    Some(true),
+                    Some(false),
+                    None,
+                )
+                .await
+            {
+                Ok(result) => match result.result.first() {
+                    Some(&ref data) => match &data.vectors {
+                        Some(vectors) => match &vectors.vectors_options {
+                            Some(VectorsOptions::Vector(embedding)) => {
+                                let embedding: Vec<f64> =
+                                    embedding.data.iter().map(|&v| v as f64).collect();
+                                video_features.extend(embedding);
+                                idx_to_timestamp.push(frame.timestamp);
+                            }
+                            _ => {}
+                        },
+                        None => {
+                            warn!("no embedding found for frame {}", frame.id);
+                            continue;
+                        }
+                    },
+                    None => {
+                        warn!("no embedding found for frame {}", frame.id);
+                        continue;
+                    }
+                },
+                Err(e) => {
+                    warn!("failed to get embedding for {}: {}", frame.id, e);
+                    continue;
+                }
+            }
         }
 
         let video_features = ndarray::Array2::from_shape_vec(
@@ -296,13 +320,12 @@ async fn test_video_clip() {
 
     let file_identifier =
         String::from("1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b");
-    let frames_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local/libraries/98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797/artifacts/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/frames";
 
     let result = get_video_clips(
         file_identifier,
         None::<std::path::PathBuf>,
-        Some(frames_dir),
         library.prisma_client(),
+        library.qdrant_server.get_client(),
     )
     .await;
 
