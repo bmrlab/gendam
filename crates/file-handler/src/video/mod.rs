@@ -228,7 +228,8 @@ impl VideoHandler {
     ///
     /// All caption will be saved in .caption file in the same place with frame file
     pub async fn get_frames_caption(&self) -> anyhow::Result<()> {
-        let blip_model = ai::blip::BLIP::new(&self.resources_dir).await?;
+        let blip_model =
+            ai::blip::BLIP::new(&self.resources_dir, ai::blip::BLIPModel::Base).await?;
         let blip_model = Arc::new(RwLock::new(blip_model));
 
         utils::caption::get_frames_caption(&self.frames_dir, blip_model).await

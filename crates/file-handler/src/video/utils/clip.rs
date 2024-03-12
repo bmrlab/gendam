@@ -182,21 +182,17 @@ pub async fn get_video_clips_summarization(
         captions.sort_by(|a, b| a.1.cmp(&b.1));
 
         let mut prompt = String::from(
-            r#"You are an AI assistant designed for summarizing a video.
-Following document records caption of frames in a video.
-Please summarize the video content in one sentence based on the document.
+            r#"You will be provided a list of visual details observed at regular intervals, along with an audio description.
+These pieces of information originate from a single video.
+The visual details are extracted from the video at fixed time intervals and represent consecutive frames.
+Typically, the video consists of a brief sequence showing one or more subjects...
 
-You should not consider captions as separate scenes, they have a temporal relationship.
-For example, if there are two captions with same content, this means video do not change during these two captions.
-So you can consider them as one scene when summarization.
+Please note that the following list of image descriptions (visual details) was obtained by extracting individual frames from a continuous video featuring one or more subjects.
+Depending on the case, all depicted individuals may correspond to the same person(s), with minor variations due to changes in lighting, angle, and facial expressions over time.
+Regardless, assume temporal continuity among the frames unless otherwise specified.
 
-The sentence should not exceed 30 words.
-If you cannot summarize, just response with empty message.
-Please start with "The video contains".
-Do not repeat the information in document.
-Do not response any other information.
-
-Here is the document:"#,
+Here are the descriptions:
+"#,
         );
 
         captions.iter().for_each(|v| {
@@ -295,7 +291,8 @@ async fn test_video_clip() {
         &local_data_dir.into(),
         &resources_dir.into(),
         "98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797",
-    ).await;
+    )
+    .await;
 
     let file_identifier =
         String::from("1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b");

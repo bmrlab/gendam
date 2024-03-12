@@ -21,7 +21,7 @@ pub struct LocalModel {
     is_multimodal: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct CompletionPayload {
     prompt: String,
     seed: Option<u32>,
@@ -66,11 +66,12 @@ impl Chat for LocalModel {
     ) -> anyhow::Result<String> {
         let prompt = self.model.with_chat_template(history);
         let payload = CompletionPayload::from(prompt, images, params);
+        let payload = serde_json::to_string(&payload)?;
 
         let client = reqwest::Client::new();
         let resp = client
             .post(self.api_endpoint.join("/completion")?)
-            .body(serde_json::to_string(&payload)?)
+            .body(payload)
             .send()
             .await?;
 

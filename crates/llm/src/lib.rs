@@ -35,9 +35,9 @@ impl Into<LlamaContextParams> for LLMParams {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct LLMImageContent {
-    #[serde(alias = "data")]
+    #[serde(rename = "data")]
     base64: String,
     id: usize,
 }
@@ -111,22 +111,22 @@ async fn test_native_llm() {
         "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources";
     let llm = LLM::new_llama_cpp_model(
         resources_dir,
-        self::model::LlamaCppModel::Gemma2B,
+        self::model::LlamaCppModel::QWen0_5B,
         Some(false),
     )
     .await
     .unwrap();
 
-    let prompt = r#"You are an AI assistant designed for summarizing a video.
-Following document records what people see and hear from a video.
-Please summarize the video content in one sentence based on the document.
-The sentence should not exceed 30 words.
-If you cannot summarize, just response with empty message.
-Please start with "The video contains".
-Do not repeat the information in document.
-Do not response any other information.
+    let prompt = r#"You will be provided a list of visual details observed at regular intervals, along with an audio description.
+These pieces of information originate from a single video.
+The visual details are extracted from the video at fixed time intervals and represent consecutive frames.
+Typically, the video consists of a brief sequence showing one or more subjects...
 
-Here is the document:
+Please note that the following list of image descriptions (visual details) was obtained by extracting individual frames from a continuous video featuring one or more subjects.
+Depending on the case, all depicted individuals may correspond to the same person(s), with minor variations due to changes in lighting, angle, and facial expressions over time.
+Regardless, assume temporal continuity among the frames unless otherwise specified.
+
+Here are the descriptions:
 
 a close up of a cell phone with pictures of people on it
 a close up of a cell phone with pictures of people on it
@@ -149,19 +149,39 @@ async fn test_local_llm() {
         "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources";
     let llm = LLM::new_llama_cpp_model(
         resources_dir,
-        self::model::LlamaCppModel::LLaVaMistral,
+        self::model::LlamaCppModel::QWen0_5B,
         Some(true),
     )
     .await
     .unwrap();
 
-    let prompt = r#"who are you"#;
+    let temp_start = std::time::Instant::now();
+
+    let prompt = r#"You will be provided a list of visual details observed at regular intervals, along with an audio description.
+These pieces of information originate from a single video.
+The visual details are extracted from the video at fixed time intervals and represent consecutive frames.
+Typically, the video consists of a brief sequence showing one or more subjects...
+
+Please note that the following list of image descriptions (visual details) was obtained by extracting individual frames from a continuous video featuring one or more subjects.
+Depending on the case, all depicted individuals may correspond to the same person(s), with minor variations due to changes in lighting, angle, and facial expressions over time.
+Regardless, assume temporal continuity among the frames unless otherwise specified.
+
+Here are the descriptions:
+
+a close up of a cell phone with pictures of people on it
+a close up of a cell phone with pictures of people on it
+a close up of a cell phone with pictures of people on it
+a close up of a cell phone with pictures of people on it
+a close up of a cell phone with pictures of people on it"#;
 
     let response = llm
         .get_completion(vec![LLMMessage::User(prompt.into())], None, None)
         .await;
 
-    println!("{:?}", response);
+    tracing::info!("{:?}", response);
+
+    let duration = temp_start.elapsed();
+    tracing::info!("Time elapsed in execution is: {:?}", duration);
 
     assert!(response.is_ok());
 }

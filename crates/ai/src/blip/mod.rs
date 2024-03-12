@@ -5,8 +5,9 @@ use candle_core::backend::BackendDevice;
 use candle_core::MetalDevice;
 use candle_core::{Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
-use candle_transformers::models::blip;
+use candle_transformers::models::blip::VisionConfig;
 use candle_transformers::models::quantized_blip;
+use candle_transformers::models::{blip, blip_text};
 use std::path::Path;
 use tokenizers::Tokenizer;
 use tracing::debug;
@@ -20,10 +21,59 @@ pub struct BLIP {
 
 const SEP_TOKEN_ID: u32 = 102;
 
+fn blip_base_config() -> blip::Config {
+    let text_config = blip_text::Config {
+        vocab_size: 30524,
+        hidden_size: 768,
+        encoder_hidden_size: 768,
+        intermediate_size: 3072,
+        projection_dim: 768,
+        num_hidden_layers: 12,
+        num_attention_heads: 12,
+        max_position_embeddings: 512,
+        hidden_act: candle_nn::Activation::Gelu,
+        layer_norm_eps: 1e-12,
+        is_decoder: true,
+    };
+    let vision_config = VisionConfig {
+        hidden_size: 768,
+        intermediate_size: 3072,
+        projection_dim: 512,
+        num_hidden_layers: 12,
+        num_attention_heads: 12,
+        image_size: 384,
+        patch_size: 16,
+        hidden_act: candle_nn::Activation::Gelu,
+        layer_norm_eps: 1e-5,
+    };
+
+    blip::Config {
+        text_config,
+        vision_config,
+        projection_dim: 512,
+        image_text_hidden_size: 256,
+    }
+}
+
+pub enum BLIPModel {
+    Base,
+    Large,
+}
+
 impl BLIP {
-    pub async fn new(resources_dir: impl AsRef<Path>) -> anyhow::Result<Self> {
-        let tokenizer_uri = "blip/tokenizer.json";
-        let model_uri = "blip/blip-image-captioning-large-q4k.gguf";
+    pub async fn new(
+        resources_dir: impl AsRef<Path>,
+        model_type: BLIPModel,
+    ) -> anyhow::Result<Self> {
+        let (tokenizer_uri, model_uri) = {
+            match model_type {
+                BLIPModel::Base => ("blip-base/tokenizer.json", "blip-base/blip-base-q4k.gguf"),
+                BLIPModel::Large => (
+                    "blip/tokenizer.json",
+                    "blip/blip-image-captioning-large-q4k.gguf",
+                ),
+            }
+        };
 
         let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
             resources_dir: resources_dir.as_ref().to_path_buf(),
@@ -39,7 +89,10 @@ impl BLIP {
         let logits_processor =
             candle_transformers::generation::LogitsProcessor::new(1337, None, None);
 
-        let config = blip::Config::image_captioning_large();
+        let config = match model_type {
+            BLIPModel::Base => blip_base_config(),
+            BLIPModel::Large => blip::Config::image_captioning_large(),
+        };
 
         let device = Device::Metal(MetalDevice::new(0)?);
 
@@ -109,16 +162,18 @@ pub fn load_image<P: AsRef<std::path::Path>>(p: P) -> candle_core::Result<Tensor
 
 #[test_log::test(tokio::test)]
 async fn test_caption() {
-    let blip =
-        BLIP::new("/Users/zhuo/Library/Application Support/cc.musedam.local/resources").await;
+    let blip = BLIP::new(
+        "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
+        BLIPModel::Base,
+    )
+    .await;
 
-    assert!(blip.is_ok());
-    let mut blip = blip.unwrap();
+    match blip {
+        Ok(mut blip) => {
+            tracing::info!("start execution");
+            let start = std::time::Instant::now();
 
-    tracing::info!("start execution");
-    let start = std::time::Instant::now();
-
-    let frame_paths: Vec<String> = std::fs::read_dir("/Users/zhuo/Library/Application Support/cc.musedam.local/libraries/1234567/artifacts/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/frames")
+            let frame_paths: Vec<String> = std::fs::read_dir("/Users/zhuo/Library/Application Support/cc.musedam.local/libraries/78a978d85b8ff26cc202aa6d244ed576ef5a187873c49255d3980df69deedb8a/artifacts/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/frames")
         .unwrap()
         .map(|res|   res.map(|e| e.path()))
         .collect::<Result<Vec<_>, std::io::Error>>()
@@ -127,17 +182,22 @@ async fn test_caption() {
             else {None}
         }).collect();
 
-    for path in frame_paths {
-        let temp_start = std::time::Instant::now();
+            for path in frame_paths {
+                let temp_start = std::time::Instant::now();
 
-        let caption = blip.get_caption(path).await;
-        debug!("caption: {:?}", caption);
-        assert!(caption.is_ok());
+                let caption = blip.get_caption(path).await;
+                debug!("caption: {:?}", caption);
+                assert!(caption.is_ok());
 
-        let duration = temp_start.elapsed();
-        tracing::info!("Time elapsed in execution is: {:?}", duration);
+                let duration = temp_start.elapsed();
+                tracing::info!("Time elapsed in execution is: {:?}", duration);
+            }
+
+            let duration = start.elapsed();
+            tracing::info!("Time elapsed in execution is: {:?}", duration);
+        }
+        Err(e) => {
+            tracing::error!("failed to load blip: {}", e);
+        }
     }
-
-    let duration = start.elapsed();
-    tracing::info!("Time elapsed in execution is: {:?}", duration);
 }

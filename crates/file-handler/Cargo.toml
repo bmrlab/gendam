@@ -19,7 +19,7 @@ ndarray = { version = "0.15.6", features = ["serde"] }
 ffmpeg-next = { version = "6.1.1", optional = true }
 sha256 = "1.5.0"
 anyhow = { workspace = true }
-image = "0.24.8"
+image = { workspace = true }
 futures = { workspace = true }
 prisma-lib = { path = "../../crates/prisma" }
 prisma-client-rust = { workspace = true }
