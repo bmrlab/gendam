@@ -1,3 +1,4 @@
+pub use self::decoder::VideoMetadata;
 use anyhow::{bail, Ok};
 use content_library::Library;
 use prisma_lib::PrismaClient;
@@ -24,18 +25,24 @@ mod utils;
 ///
 /// ```rust
 /// let video_path = "";
-/// let local_data_dir = "";
 /// let resources_dir = "";
-/// let db_url = "";
-/// let client = prisma_lib::new_client_with_url(&db_url).await.unwrap();
-/// let client = Arc::new(RwLock::new(client));
+/// let local_data_dir = ""
+/// let library_id = "";
+///
+/// let library = content_library::load_library(
+///     &local_data_dir.into(),
+///     &resources_dir.into(),
+///     library_id,
+/// ).await;
 ///
 /// let video_handler = VideoHandler::new(
 ///     video_path,
-///     local_data_dir,
 ///     resources_dir,
-///     client,
+///     &library,
 /// ).await.unwrap();
+///
+/// // get video metadata
+/// video_handler.get_video_metadata().await;
 ///
 /// // get frames and save their embedding into faiss
 /// video_handler.get_frames().await;
@@ -117,6 +124,13 @@ impl VideoHandler {
 
     pub fn file_identifier(&self) -> &str {
         &self.file_identifier
+    }
+
+    pub async fn get_video_metadata(&self) -> anyhow::Result<VideoMetadata> {
+        // TODO ffmpeg-dylib not implemented
+        let video_decoder =
+            decoder::VideoDecoder::new(&self.video_path, &self.resources_dir).await?;
+        video_decoder.get_video_metadata().await
     }
 
     /// Extract key frames from video
@@ -266,18 +280,14 @@ impl VideoHandler {
 #[test_log::test(tokio::test)]
 async fn test_handle_video() {
     let video_path = "/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4";
-    // let video_path = "/Users/zhuo/Desktop/屏幕录制2022-11-30 11.43.29.mov";
-    // let resources_dir = "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources";
     let resources_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local/resources";
     let local_data_dir =
         std::path::Path::new("/Users/zhuo/Library/Application Support/cc.musedam.local")
             .to_path_buf();
-    // let library =
-    //     content_library::create_library_with_title(&local_data_dir, "dev test library").await;
     let library = content_library::load_library(
         &local_data_dir,
         &resources_dir.into(),
-        "98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797",
+        "78a978d85b8ff26cc202aa6d244ed576ef5a187873c49255d3980df69deedb8a",
     )
     .await;
 
@@ -289,6 +299,9 @@ async fn test_handle_video() {
     let video_handler = video_handler.unwrap();
 
     tracing::info!("file handler initialized");
+
+    let metadata = video_handler.get_video_metadata().await;
+    tracing::info!("got video metadata: {:?}", metadata);
 
     // video_handler
     //     .get_frames()
@@ -357,10 +370,10 @@ async fn test_handle_video() {
     //     .await
     //     .expect("failed to get video clips");
 
-    video_handler
-        .get_video_clips_summarization()
-        .await
-        .expect("failed to get video clips summarization");
+    // video_handler
+    //     .get_video_clips_summarization()
+    //     .await
+    //     .expect("failed to get video clips summarization");
 
     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 }
