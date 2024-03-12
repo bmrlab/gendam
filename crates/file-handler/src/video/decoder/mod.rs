@@ -167,12 +167,14 @@ impl VideoDecoder {
                     .to_str()
                     .expect("invalid video file path"),
                 "-vf",
-                &format!("fps=1"),
+                "scale='if(gte(iw,ih)*sar,768,-1)':'if(gte(iw,ih)*sar, -1, 768)', fps=1",
                 "-vsync",
                 "vfr",
+                "-compression_level",
+                "9",
                 frames_dir
                     .as_ref()
-                    .join("%d000.png")
+                    .join("%d000.jpg")
                     .to_str()
                     .expect("invalid frames dir path"),
             ])
@@ -243,7 +245,9 @@ impl VideoDecoder {
 async fn test_video_decoder() {
     #[cfg(feature = "ffmpeg-dylib")]
     {
-        let video_decoder = VideoDecoder::new("/Users/zhuo/Desktop/20240218-143801.mp4");
+        let video_decoder = VideoDecoder::new(
+            "/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4",
+        );
 
         let frames_fut = video_decoder.save_video_frames("/Users/zhuo/Desktop/frames");
         let audio_fut = video_decoder.save_video_audio("/Users/zhuo/Desktop/audio.wav");
@@ -253,11 +257,15 @@ async fn test_video_decoder() {
 
     #[cfg(feature = "ffmpeg-binary")]
     {
-        let video_decoder = VideoDecoder::new("/Users/zhuo/Desktop/20240218-143801.mp4", "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources/ffmpeg").await.expect("failed to find ffmpeg binary file");
+        let video_decoder = VideoDecoder::new("/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4", "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources").await.expect("failed to find ffmpeg binary file");
 
-        let frames_fut = video_decoder.save_video_frames("/Users/zhuo/Desktop/frames");
-        let audio_fut = video_decoder.save_video_audio("/Users/zhuo/Desktop/audio.wav");
+        // let frames_fut = video_decoder.save_video_frames("/Users/zhuo/Desktop/frames");
+        // let audio_fut = video_decoder.save_video_audio("/Users/zhuo/Desktop/audio.wav");
 
-        let (_res1, _res2) = tokio::join!(frames_fut, audio_fut);
+        // let (_res1, _res2) = tokio::join!(frames_fut, audio_fut);
+
+        let _ = video_decoder
+            .save_video_frames("/Users/zhuo/Desktop/frames")
+            .await;
     }
 }

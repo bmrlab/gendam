@@ -1,14 +1,12 @@
+use crate::search_payload::SearchPayload;
 use ai::clip::CLIP;
 use anyhow::{anyhow, Ok};
 use prisma_lib::{video_frame, PrismaClient};
 use qdrant_client::{client::QdrantClient, qdrant::PointStruct};
 use serde_json::json;
 use std::sync::Arc;
-use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
 use tracing::{debug, error};
-
-use crate::search_payload::SearchPayload;
 
 pub async fn get_frame_content_embedding(
     file_identifier: String,
