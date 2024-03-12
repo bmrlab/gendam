@@ -16,6 +16,7 @@ export default function VideoTasksList({ className }: HTMLAttributes<HTMLDivElem
 
   const revealMut = rspc.useMutation('files.reveal')
 
+  const searchKey = useBoundStore.use.searchKey()
   const taskSelected = useBoundStore.use.taskSelected()
 
   const videos = useMemo<VideoItem[]>(() => {
@@ -43,6 +44,13 @@ export default function VideoTasksList({ className }: HTMLAttributes<HTMLDivElem
     return Object.values(groups)
   }, [data, isLoading])
 
+  const filterVideos = useMemo(() => {
+    return videos.filter((video) => {
+      // TODO: 等加入更多视频信息后，需要修改搜索条件
+      return video.videoPath.includes(searchKey)
+    })
+  }, [searchKey, videos])
+
   if (isLoading) {
     return (
       <div className="relative h-full">
@@ -57,7 +65,7 @@ export default function VideoTasksList({ className }: HTMLAttributes<HTMLDivElem
 
   return (
     <div className={cn('h-full px-4', className)}>
-      {videos.map((video: VideoItem) => {
+      {filterVideos.map((video: VideoItem) => {
         return (
           <TaskContextMenu
             key={video.videoFileHash}

@@ -80,32 +80,22 @@ export default function VideoTaskItem({
     <div
       {...props}
       className={cn(
-        'flex w-full justify-start gap-2 border-b border-[#EBECEE] px-4 py-3 ',
+        'flex w-full items-center justify-start gap-2 border-b border-[#EBECEE] px-4 py-3 ',
         isSelect ? 'bg-blue-100' : 'hover:bg-neutral-100',
       )}
     >
       <div
-        className="flex size-9 cursor-pointer items-center justify-center bg-neutral-200"
+        className="flex size-9 cursor-pointer bg-[#F6F7F9]"
         onClick={(e) => {
           handleClick()
           e.stopPropagation()
         }}
       >
-        <video
-          controls={false}
-          autoPlay
-          muted
-          loop
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-          }}
-        >
+        <video controls={false} autoPlay muted loop className="size-full object-contain">
           <source src={getLocalFileUrl(videoPath)} type="video/mp4" />
         </video>
       </div>
-      <div className="grid w-full">
+      <div className="grid flex-1">
         <div className="flex items-center gap-2">
           <span className="text-[13px] font-medium leading-[18px] text-[#323438]">MUSE 的视频</span>
           <span className="truncate text-[12px] font-normal leading-4 text-[#95989F]">{videoPath}</span>
