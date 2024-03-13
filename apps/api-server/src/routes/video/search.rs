@@ -1,4 +1,4 @@
-use crate::task_queue::VideoTaskType;
+// use crate::task_queue::VideoTaskType;
 use std::sync::Arc;
 // use crate::{Ctx, R};
 use crate::CtxWithLibrary;
@@ -6,7 +6,7 @@ use file_handler::{
     search::{SearchRequest, SearchResult},
     SearchRecordType,
 };
-use prisma_lib::video_task;
+use prisma_lib::asset_object;
 use rspc::{Router, Rspc};
 use serde::Serialize;
 use specta::Type;
@@ -61,27 +61,31 @@ where
                 });
 
             // println!("file_identifiers: {:?}", file_identifiers);
-
-            let tasks = library.prisma_client()
-                .video_task()
+            let asset_objects = library.prisma_client()
+                .asset_object()
                 .find_many(vec![
-                    video_task::video_file_hash::in_vec(file_identifiers),
-                    video_task::task_type::equals(VideoTaskType::Frame.to_string()),
+                    asset_object::hash::in_vec(file_identifiers)
                 ])
+                .with(asset_object::file_paths::fetch(vec![]))
                 .exec()
                 .await
-                .expect("failed to list video frames");
+                .expect("failed to list asset objects");
+
             // println!("tasks: {:?}", tasks);
             let mut tasks_hash_map: std::collections::HashMap<String, String> =
                 std::collections::HashMap::new();
-            tasks.iter().for_each(|task| {
-                tasks_hash_map.insert(task.video_file_hash.clone(), task.video_path.clone());
+            asset_objects.iter().for_each(|asset_object_data| {
+                let local_video_file_full_path = format!(
+                    "{}/{}",
+                    library.files_dir.to_str().unwrap(),
+                    asset_object_data.id
+                );
+                let hash = asset_object_data.hash.clone().unwrap_or(String::from(""));
+                tasks_hash_map.insert(hash, local_video_file_full_path);
             });
 
             #[derive(Serialize, Type)]
             pub struct SearchResultPayload {
-                #[serde(rename = "imagePath")]
-                pub image_path: String,
                 #[serde(rename = "videoPath")]
                 pub video_path: String,
                 #[serde(rename = "startTime")]
@@ -90,28 +94,20 @@ where
 
             let search_result = res
                 .iter()
-                .map(
-                    |SearchResult {
-                         file_identifier,
-                         start_timestamp,
-                         ..
-                     }| {
-                        // TODO current version only support frame type
-                        let image_path =
-                            format!("{}/frames/{}.png", &file_identifier, &start_timestamp);
-                        let image_path =
-                            library.artifacts_dir.join(image_path).display().to_string();
-                        let video_path = tasks_hash_map
-                            .get(file_identifier)
-                            .unwrap_or(&"".to_string())
-                            .clone();
-                        SearchResultPayload {
-                            image_path,
-                            video_path,
-                            start_time: (*start_timestamp).clone(),
-                        }
-                    },
-                )
+                .map(|SearchResult {
+                    file_identifier,
+                    start_timestamp,
+                    ..
+                }| {
+                    let video_path = tasks_hash_map
+                        .get(file_identifier)
+                        .unwrap_or(&"".to_string())
+                        .clone();
+                    SearchResultPayload {
+                        video_path,
+                        start_time: (*start_timestamp).clone(),
+                    }
+                })
                 .collect::<Vec<SearchResultPayload>>();
             Ok(search_result)
         }),

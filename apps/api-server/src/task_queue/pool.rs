@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use crate::CtxWithLibrary;
 use file_handler::video::VideoHandler;
-use prisma_lib::{video_task, PrismaClient};
+use prisma_lib::{asset_object, file_handler_task, PrismaClient};
 use tokio::sync::broadcast::{self, Sender};
 use tracing::{
     error,
@@ -36,10 +36,9 @@ impl ToString for VideoTaskType {
 #[derive(Clone)]
 pub struct TaskPayload {
     pub prisma_client: Arc<PrismaClient>,
+    pub asset_object_id: i32,
     pub video_handler: VideoHandler,
-    pub video_path: String,
-    // pub video_file_hash: String,
-    // pub task_type: VideoTaskType,
+    pub file_path: String,
 }
 
 pub fn init_task_pool() -> Arc<broadcast::Sender<TaskPayload>> {
@@ -50,7 +49,7 @@ pub fn init_task_pool() -> Arc<broadcast::Sender<TaskPayload>> {
         loop {
             match rx.recv().await {
                 Ok(task_payload) => {
-                    tracing::info!("Task received: {:?}", task_payload.video_path);
+                    tracing::info!("Task received: {:?}", task_payload.file_path);
                     process_task(&task_payload).await;
                 }
                 Err(e) => {
@@ -62,30 +61,30 @@ pub fn init_task_pool() -> Arc<broadcast::Sender<TaskPayload>> {
     tx
 }
 
-async fn save_starts_at(task_type: &str, client: Arc<PrismaClient>, vh: &VideoHandler) {
+async fn save_starts_at(asset_object_id: i32, task_type: &str, client: Arc<PrismaClient>) {
     client
-        .video_task()
+        .file_handler_task()
         .update(
-            video_task::video_file_hash_task_type(
-                String::from(vh.file_identifier()),
+            file_handler_task::assset_object_id_task_type(
+                asset_object_id,
                 task_type.to_string(),
             ),
-            vec![video_task::starts_at::set(Some(chrono::Utc::now().into()))],
+            vec![file_handler_task::starts_at::set(Some(chrono::Utc::now().into()))],
         )
         .exec()
         .await
         .expect(&format!("failed save_starts_at {:?}", task_type));
 }
 
-async fn save_ends_at(task_type: &str, client: Arc<PrismaClient>, vh: &VideoHandler) {
+async fn save_ends_at(asset_object_id: i32, task_type: &str, client: Arc<PrismaClient>) {
     client
-        .video_task()
+        .file_handler_task()
         .update(
-            video_task::video_file_hash_task_type(
-                String::from(vh.file_identifier()),
+            file_handler_task::assset_object_id_task_type(
+                asset_object_id,
                 task_type.to_string(),
             ),
-            vec![video_task::ends_at::set(Some(chrono::Utc::now().into()))],
+            vec![file_handler_task::ends_at::set(Some(chrono::Utc::now().into()))],
         )
         .exec()
         .await
@@ -99,98 +98,46 @@ async fn process_task(task_payload: &TaskPayload) {
     // info!("Task finished {}", &task_payload.video_path);
     let vh: &VideoHandler = &task_payload.video_handler;
 
-    save_starts_at(&VideoTaskType::Frame.to_string(), Arc::clone(&task_payload.prisma_client), vh).await;
-    if let Err(e) = vh.get_frames().await {
-        error!("failed to get frames: {}", e);
-        // return;
+    for task_type in [
+        VideoTaskType::Frame,
+        VideoTaskType::FrameContentEmbedding,
+        VideoTaskType::FrameCaption,
+        VideoTaskType::FrameCaptionEmbedding,
+        VideoTaskType::Audio,
+        VideoTaskType::Transcript,
+        VideoTaskType::TranscriptEmbedding,
+    ] {
+        save_starts_at(
+            task_payload.asset_object_id,
+            &task_type.to_string(),
+            Arc::clone(&task_payload.prisma_client)
+        ).await;
+        let result = match task_type {
+            VideoTaskType::Frame => vh.get_frames().await,
+            VideoTaskType::FrameContentEmbedding => vh.get_frame_content_embedding().await,
+            VideoTaskType::FrameCaption => vh.get_frames_caption().await,
+            VideoTaskType::FrameCaptionEmbedding => vh.get_frame_caption_embedding().await,
+            VideoTaskType::Audio => vh.get_audio().await,
+            VideoTaskType::Transcript => vh.get_transcript().await,
+            VideoTaskType::TranscriptEmbedding => vh.get_transcript_embedding().await,
+        };
+        if let Err(e) = result {
+            error!("Task failed: {}, {}, {}", &task_type.to_string(), &task_payload.file_path, e);
+        } else {
+            info!("Task success: {}, {}", &task_type.to_string(), &task_payload.file_path);
+        }
+        save_ends_at(
+            task_payload.asset_object_id,
+            &VideoTaskType::Frame.to_string(),
+            Arc::clone(&task_payload.prisma_client)
+        ).await;
     }
-    info!("successfully got frames, {}", &task_payload.video_path);
-    save_ends_at(&VideoTaskType::Frame.to_string(), Arc::clone(&task_payload.prisma_client), vh).await;
-
-    save_starts_at(
-        &VideoTaskType::FrameContentEmbedding.to_string(),
-        Arc::clone(&task_payload.prisma_client),
-        vh,
-    )
-    .await;
-    if let Err(e) = vh.get_frame_content_embedding().await {
-        error!("failed to get frame content embedding: {}", e);
-        // return;
-    }
-    info!(
-        "successfully got frame content embedding, {}",
-        &task_payload.video_path
-    );
-    save_ends_at(
-        &VideoTaskType::FrameContentEmbedding.to_string(),
-        Arc::clone(&task_payload.prisma_client),
-        vh,
-    )
-    .await;
-
-    save_starts_at(&VideoTaskType::FrameCaption.to_string(), Arc::clone(&task_payload.prisma_client), vh).await;
-    if let Err(e) = vh.get_frames_caption().await {
-        error!("failed to get frames caption: {}", e);
-        // return;
-    }
-    info!(
-        "successfully got frames caption, {}",
-        &task_payload.video_path
-    );
-    save_ends_at(&VideoTaskType::FrameCaption.to_string(), Arc::clone(&task_payload.prisma_client), vh).await;
-
-    save_starts_at(
-        &VideoTaskType::FrameCaptionEmbedding.to_string(),
-        Arc::clone(&task_payload.prisma_client),
-        vh,
-    )
-    .await;
-    if let Err(e) = vh.get_frame_caption_embedding().await {
-        error!("failed to get frames caption embedding: {}", e);
-        // return;
-    }
-    info!(
-        "successfully got frames caption embedding, {}",
-        &task_payload.video_path
-    );
-    save_ends_at(
-        &VideoTaskType::FrameCaptionEmbedding.to_string(),
-        Arc::clone(&task_payload.prisma_client),
-        vh,
-    )
-    .await;
-
-    save_starts_at(&VideoTaskType::Audio.to_string(), Arc::clone(&task_payload.prisma_client), vh).await;
-    if let Err(e) = vh.get_audio().await {
-        error!("failed to get audio: {}", e);
-        // return;
-    }
-    info!("successfully got audio, {}", &task_payload.video_path);
-    save_ends_at(&VideoTaskType::Audio.to_string(), Arc::clone(&task_payload.prisma_client), vh).await;
-
-    save_starts_at(&VideoTaskType::Transcript.to_string(), Arc::clone(&task_payload.prisma_client), vh).await;
-    if let Err(e) = vh.get_transcript().await {
-        error!("failed to get transcript: {}", e);
-        // return;
-    }
-    info!("successfully got transcript, {}", &task_payload.video_path);
-    save_ends_at(&VideoTaskType::Transcript.to_string(), Arc::clone(&task_payload.prisma_client), vh).await;
-
-    save_starts_at(&VideoTaskType::TranscriptEmbedding.to_string(), Arc::clone(&task_payload.prisma_client), vh).await;
-    if let Err(e) = vh.get_transcript_embedding().await {
-        error!("failed to get transcript embedding: {}", e);
-        // return;
-    }
-    info!(
-        "successfully got transcript embedding, {}",
-        &task_payload.video_path
-    );
-    save_ends_at(&VideoTaskType::TranscriptEmbedding.to_string(), Arc::clone(&task_payload.prisma_client), vh).await;
 }
 
 pub async fn create_video_task<TCtx>(
+    file_materialized_path: &str,
+    asset_object_data: &asset_object::Data,
     ctx: &TCtx,
-    video_path: &str,
     tx: Arc<Sender<TaskPayload>>,
 ) -> Result<(), ()>
 where
@@ -200,8 +147,14 @@ where
         error!("library must be set before triggering create_video_task: {}", e);
     })?;
 
+    let local_video_file_full_path = format!(
+        "{}/{}",
+        library.files_dir.to_str().unwrap(),
+        asset_object_data.id
+    );
+
     let video_handler = match VideoHandler::new(
-        video_path,
+        local_video_file_full_path,
         &ctx.get_resources_dir(),
         &library,
     )
@@ -214,6 +167,20 @@ where
         }
     };
 
+    let hash = video_handler.file_identifier().to_string();
+    if let Err(e) = library.prisma_client()
+        .asset_object()
+        .update(
+            asset_object::id::equals(asset_object_data.id),
+            vec![asset_object::hash::set(Some(hash))],
+        )
+        .exec()
+        .await
+    {
+        error!("failed to update asset_object hash: {}", e);
+        return Err(());
+    }
+
     for task_type in vec![
         VideoTaskType::Frame,
         VideoTaskType::FrameContentEmbedding,
@@ -224,20 +191,19 @@ where
         VideoTaskType::TranscriptEmbedding,
     ] {
         let x = library.prisma_client()
-        .video_task().upsert(
-            video_task::video_file_hash_task_type(
-                String::from(video_handler.file_identifier()),
+        .file_handler_task().upsert(
+            file_handler_task::assset_object_id_task_type(
+                asset_object_data.id,
                 task_type.to_string(),
             ),
-            video_task::create(
-                video_path.to_owned(),
-                String::from(video_handler.file_identifier()),
+            file_handler_task::create(
+                asset_object_data.id,
                 task_type.to_string(),
                 vec![],
             ),
             vec![
-                video_task::starts_at::set(None),
-                video_task::ends_at::set(None),
+                file_handler_task::starts_at::set(None),
+                file_handler_task::ends_at::set(None),
             ],
         ).exec().await;
 
@@ -252,19 +218,18 @@ where
     }
 
     let task_payload = TaskPayload {
+        file_path: file_materialized_path.to_string(),
+        asset_object_id: asset_object_data.id,
         prisma_client: library.prisma_client(),
         video_handler,
-        video_path: String::from(video_path),
-        // video_file_hash: String::from(video_handler.file_identifier()),
-        // task_type: VideoTaskType::Frames,
     };
 
     match tx.send(task_payload) {
         Ok(rem) => {
-            info!("Task queued {}, remaining receivers {}", video_path, rem);
+            info!("Task queued {}, remaining receivers {}", file_materialized_path, rem);
         }
         Err(e) => {
-            error!("Failed to queue task {}: {}", video_path, e);
+            error!("Failed to queue task {}: {}", file_materialized_path, e);
         }
     };
 

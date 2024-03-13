@@ -21,7 +21,7 @@ export type Procedures = {
         { key: "files.reveal", input: string, result: null } | 
         { key: "libraries.create", input: string, result: any } | 
         { key: "libraries.set_current_library", input: string, result: any } | 
-        { key: "video.tasks.create", input: string, result: any },
+        { key: "video.tasks.create", input: string, result: null },
     subscriptions: never
 };
 
@@ -41,6 +41,6 @@ export type FilePathQueryPayload = { path: string; dirsOnly: boolean }
 
 export type FilePathQueryResult = { id: number; name: string; isDir: boolean; assetObject: AssetObjectQueryResult | null }
 
-export type SearchResultPayload = { imagePath: string; videoPath: string; startTime: number }
+export type SearchResultPayload = { videoPath: string; startTime: number }
 
 export type VideoTaskResult = { id: number; videoPath: string; videoFileHash: string; taskType: string; startsAt: string | null; endsAt: string | null }
