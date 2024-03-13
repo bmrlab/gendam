@@ -14,7 +14,7 @@ use std::{
 };
 use tauri::Manager;
 use tokio::sync::broadcast;
-use tracing::info;
+use tracing::{info, error};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone)]
@@ -58,7 +58,8 @@ impl CtxWithLibrary for Ctx {
             let library_id = value.as_str().unwrap().to_owned();
             return Box::pin(async move {
                 let library = load_library(
-                    &self.local_data_root, &self.resources_dir, &library_id).await;
+                    &self.local_data_root, &self.resources_dir, &library_id
+                ).await.unwrap();
                 self.current_library.lock().unwrap().replace(library);
                 info!("Current library switched to {}", library_id);
             });
@@ -124,8 +125,13 @@ async fn main() {
         let _ = store_mut.load();
         if let Some(value) = store_mut.get("current-library-id") {
             let library_id = value.as_str().unwrap().to_owned();
-            let library = load_library(
-                &local_data_root, &resources_dir, &library_id).await;
+            let library = match load_library(&local_data_root, &resources_dir, &library_id).await {
+                Ok(library) => library,
+                Err(e) => {
+                    error!("Failed to load library: {:?}", e);
+                    return;
+                }
+            };
             current_library.lock().unwrap().replace(library);
         }
     }

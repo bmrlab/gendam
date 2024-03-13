@@ -2,7 +2,7 @@ use prisma_lib::new_client_with_url;
 use prisma_lib::PrismaClient;
 use std::{path::PathBuf, sync::Arc};
 use vector_db::{QdrantParams, QdrantServer};
-// use tracing::info;
+use tracing::error;
 
 #[derive(Clone, Debug)]
 pub struct Library {
@@ -25,7 +25,7 @@ pub async fn load_library(
     local_data_root: &PathBuf,
     resources_dir: &PathBuf,
     library_id: &str,
-) -> Library {
+) -> Result<Library, ()> {
     let library_dir = local_data_root.join("libraries").join(library_id);
     let db_dir = library_dir.join("databases");
     let artifacts_dir = library_dir.join("artifacts");
@@ -40,7 +40,10 @@ pub async fn load_library(
     let client = new_client_with_url(db_url.as_str())
         .await
         .expect("failed to create prisma client");
-    client._db_push().await.expect("failed to push db"); // apply migrations
+    client._db_push().await  // apply migrations
+        .map_err(|e| {
+            error!("failed to push db: {}", e);
+        })?;
     let prisma_client = Arc::new(client);
 
     let qdrant_server = QdrantServer::new(
@@ -55,7 +58,7 @@ pub async fn load_library(
     .await
     .expect("failed to start qdrant server");
 
-    Library {
+    let library = Library {
         id: library_id.to_string(),
         dir: library_dir,
         files_dir,
@@ -63,7 +66,9 @@ pub async fn load_library(
         // db_url,
         prisma_client,
         qdrant_server: Arc::new(qdrant_server),
-    }
+    };
+
+    Ok(library)
 }
 
 pub async fn create_library_with_title(
@@ -83,7 +88,7 @@ pub async fn create_library_with_title(
     std::fs::create_dir_all(&index_dir).unwrap();
     std::fs::create_dir_all(&artifacts_dir).unwrap();
     std::fs::create_dir_all(&files_dir).unwrap();
-    load_library(local_data_root, resources_dir, &library_id).await
+    load_library(local_data_root, resources_dir, &library_id).await.unwrap()
 }
 
 pub async fn upgrade_library_schemas(local_data_root: &PathBuf) {
