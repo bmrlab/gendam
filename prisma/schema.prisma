@@ -32,24 +32,49 @@ model FilePath {
 
 model AssetObject {
   id            Int       @id @default(autoincrement())
+
   note          String?
+  hash          String?
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  file_paths    FilePath[]
+  mediaData     MediaData?
+
+  filePaths     FilePath[]
+  tasks         FileHandlerTask[]
 }
 
-model VideoTask {
+model MediaData {
+  id            Int @id @default(autoincrement())
+
+  width         Int?
+  height        Int?
+  duration      Int?
+  bitRate       Int?
+
+  description   String?
+
+  asssetObjectId  Int @unique
+  assetObject     AssetObject? @relation(fields: [asssetObjectId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model FileHandlerTask {
   id            Int       @id @default(autoincrement())
-  videoPath     String
-  videoFileHash String
+
+  asssetObjectId  Int
+  assetObject     AssetObject? @relation(fields: [asssetObjectId], references: [id], onDelete: Cascade)
+
   taskType      String
   startsAt      DateTime?
   endsAt        DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  @@unique([videoFileHash, taskType])
+  @@unique([asssetObjectId, taskType])
 }
 
 model VideoFrame {
