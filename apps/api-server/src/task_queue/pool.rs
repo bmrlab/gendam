@@ -65,7 +65,7 @@ async fn save_starts_at(asset_object_id: i32, task_type: &str, client: Arc<Prism
     client
         .file_handler_task()
         .update(
-            file_handler_task::assset_object_id_task_type(
+            file_handler_task::asset_object_id_task_type(
                 asset_object_id,
                 task_type.to_string(),
             ),
@@ -80,7 +80,7 @@ async fn save_ends_at(asset_object_id: i32, task_type: &str, client: Arc<PrismaC
     client
         .file_handler_task()
         .update(
-            file_handler_task::assset_object_id_task_type(
+            file_handler_task::asset_object_id_task_type(
                 asset_object_id,
                 task_type.to_string(),
             ),
@@ -192,7 +192,7 @@ where
     ] {
         let x = library.prisma_client()
         .file_handler_task().upsert(
-            file_handler_task::assset_object_id_task_type(
+            file_handler_task::asset_object_id_task_type(
                 asset_object_data.id,
                 task_type.to_string(),
             ),

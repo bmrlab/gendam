@@ -41,6 +41,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
                 let res = library.prisma_client()
                     .file_handler_task()
                     .find_many(vec![])
+                    .with(file_handler_task::asset_object::fetch())
                     .order_by(file_handler_task::id::order(Direction::Desc))
                     .exec()
                     .await
@@ -63,23 +64,32 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
                 }
 
                 let videos_with_tasks = res.iter()
-                    .map(|item| VideoTaskResult {
-                        id: item.id,
-                        video_path: String::from(""),
-                        video_file_hash: String::from(""),
-                        // video_path: item.video_path.clone(),
-                        // video_file_hash: item.video_file_hash.clone(),
-                        task_type: item.task_type.to_string(),
-                        starts_at: if let Some(t) = item.starts_at {
-                            Some(t.to_string())
-                        } else {
-                            None
-                        },
-                        ends_at: if let Some(t) = item.ends_at {
-                            Some(t.to_string())
-                        } else {
-                            None
-                        },
+                    .map(|item| {
+                        // TODO: change legacy fields video_path and video_file_hash
+                        let local_video_file_full_path = format!(
+                            "{}/{}",
+                            library.files_dir.to_str().unwrap(),
+                            item.asset_object_id,
+                        );
+                        let video_file_hash = item.asset_object
+                            .clone().unwrap().unwrap()
+                            .hash.unwrap();
+                        VideoTaskResult {
+                            id: item.id,
+                            video_path: local_video_file_full_path,
+                            video_file_hash: video_file_hash,
+                            task_type: item.task_type.to_string(),
+                            starts_at: if let Some(t) = item.starts_at {
+                                Some(t.to_string())
+                            } else {
+                                None
+                            },
+                            ends_at: if let Some(t) = item.ends_at {
+                                Some(t.to_string())
+                            } else {
+                                None
+                            },
+                        }
                     })
                     .collect::<Vec<_>>();
                 Ok(videos_with_tasks)

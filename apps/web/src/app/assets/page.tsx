@@ -68,10 +68,10 @@ export default function Files() {
   let handleDoubleClick = useCallback((asset: FilePathQueryResult/*(typeof assets)[number]*/) => {
     if (asset.isDir) {
       goToDir(asset.name);
-    } else if (asset.assetObject) {
+    } else {
       // this will always be true if asset.isDir is false
       // revealMut.mutate("/" + asset.assetObject.id.toString());
-      processVideoMut.mutate(asset.assetObject.id);
+      processVideoMut.mutate(asset.id);
       router.push("/video-tasks");
     }
   }, [goToDir, processVideoMut, router]);

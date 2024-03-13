@@ -247,7 +247,7 @@ async fn create_asset_object(
             file_name,
             vec![
                 // file_path::SetParam::SetId(asset_object_data.id)
-                file_path::assset_object_id::set(Some(asset_object_data.id)),
+                file_path::asset_object_id::set(Some(asset_object_data.id)),
             ],
         )
         .exec()
