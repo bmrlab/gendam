@@ -23,7 +23,8 @@ where
             let res = file_handler::search::handle_search(
                 SearchRequest {
                     text: input,
-                    record_type: Some(vec![SearchRecordType::FrameCaption]),
+                    record_type: Some(vec![SearchRecordType::Transcript]),
+                    // record_type: Some(vec![SearchRecordType::FrameCaption]),
                     limit: None,
                     skip: None,
                 },

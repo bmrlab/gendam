@@ -26,5 +26,5 @@ export const VIDEO_DIMENSION: Record<string, string> = {
   // "FrameCaption": "图像描述",
   FrameCaptionEmbedding: '图像描述',
   // "Frame": "图像特征",
-  // FrameContentEmbedding: '图像特征',
+  FrameContentEmbedding: '图像特征',
 }

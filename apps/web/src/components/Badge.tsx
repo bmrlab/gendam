@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { HTMLAttributes, useMemo } from 'react'
 
 export enum MuseStatus {
+  None,
   Processing,
   Done,
   Failed,
@@ -32,11 +33,17 @@ export function MuseTaskBadge({ status, name, className }: MuseBadgeProps) {
           bgColor: 'bg-[#FCEBEC]',
           icon: Icon.error,
         }
-      default:
+      case MuseStatus.Processing:
         return {
           fgColor: 'text-[#F27F0D]',
           bgColor: 'bg-[#FEF1EA]',
           icon: Icon.loading,
+        }
+      default:
+        return {
+          fgColor: 'text-[#000000]',
+          bgColor: 'bg-[#F5F5F5]',
+          icon: Icon.regenerate,
         }
     }
   }, [status])

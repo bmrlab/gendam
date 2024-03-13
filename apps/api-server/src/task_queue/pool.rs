@@ -128,7 +128,7 @@ async fn process_task(task_payload: &TaskPayload) {
         }
         save_ends_at(
             task_payload.asset_object_id,
-            &VideoTaskType::Frame.to_string(),
+            &task_type.to_string(),
             Arc::clone(&task_payload.prisma_client)
         ).await;
     }

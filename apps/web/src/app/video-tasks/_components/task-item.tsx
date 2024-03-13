@@ -44,7 +44,8 @@ export default function VideoTaskItem({
     if (task.startsAt && task.endsAt) {
       return MuseStatus.Done
     }
-    return MuseStatus.Failed
+    return MuseStatus.None
+    // return MuseStatus.Failed
   }, [])
 
   const moreActionOptions = useCallback((id: string, isProcessing = false) => {
