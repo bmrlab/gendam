@@ -82,7 +82,6 @@ async fn main() {
         Ok(path) => println!(".env read successfully from {}", path.display()),
         Err(e) => println!("Could not load .env file: {e}"),
     };
-    init_tracing();
 
     let app = tauri::Builder::default()
         .setup(|app| {
@@ -97,6 +96,8 @@ async fn main() {
         .invoke_handler(tauri::generate_handler![greet,])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
+
+    init_tracing(app.path_resolver().app_log_dir().unwrap());
 
     let window = app.get_window("main").unwrap();
     let local_data_root = window
@@ -167,41 +168,48 @@ fn greet(name: &str) -> String {
     format!("Hello, {}, in Client!", name)
 }
 
-fn init_tracing() {
-    tracing_subscriber::registry()
-        .with(
-            // load filters from the `RUST_LOG` environment variable.
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "muse_desktop=debug".into())
-        )
-        .with(tracing_subscriber::fmt::layer().with_ansi(true))
-        .with(tracing_oslog::OsLogger::new("cc.musedam.local", "default"))
-        .init();
+fn init_tracing(log_dir: PathBuf) {
+    #[cfg(debug_assertions)]
+    {
+        let _ = log_dir;
+        tracing_subscriber::registry()
+            .with(
+                // load filters from the `RUST_LOG` environment variable.
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| "muse_desktop=debug".into())
+            )
+            .with(tracing_subscriber::fmt::layer().with_ansi(true))
+            .init();
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        /*
+         * see logs with cmd:
+         * log stream --debug --predicate 'subsystem=="cc.musedam.local" and category=="default"'
+         */
+        let os_logger =
+            tracing_oslog::OsLogger::new("cc.musedam.local", "default");
+        /*
+         * macos log dir
+         * ~/Library/Logs/cc.musedam.local/app.log
+         */
+        if let Err(e) = std::fs::create_dir_all(&log_dir) {
+            eprintln!("Failed to create log dir: {}", e);
+            return;
+        }
+        let file = match std::fs::File::create(log_dir.join("app.log")) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("Failed to create log file: {}", e);
+                return;
+            }
+        };
+        let os_file_logger =
+            tracing_subscriber::fmt::layer().with_writer(Mutex::new(file)).with_ansi(false);
+        tracing_subscriber::registry()
+            .with(tracing_subscriber::EnvFilter::new("info"))
+            .with(os_logger)
+            .with(os_file_logger)
+            .init();
+    }
 }
-
-// fn init_tracing() {
-//     use std::fs::File;
-//     use tracing_subscriber::Layer;
-//     // create debug.log in current directory
-//     let file = File::create("debug.log");
-//     let file = match file {
-//         Ok(file) => file,
-//         Err(error) => panic!("Error: {:?}",error)
-//     };
-//     tracing_subscriber::registry()
-//         .with(
-//             tracing_subscriber::EnvFilter::try_from_default_env()
-//                 .unwrap_or_else(|_| "debug".into())
-//                 // .unwrap_or_else(|_| "muse_desktop=info".into()),
-//         )
-//         .with(
-//             tracing_subscriber::fmt::layer()
-//             .with_ansi(true)
-//             .and_then(
-//                 tracing_subscriber::fmt::layer()
-//                 .with_writer(Arc::new(file))
-//                 .with_ansi(false)
-//             )
-//         )
-//         .init();
-// }

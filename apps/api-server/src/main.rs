@@ -206,6 +206,5 @@ fn init_tracing() {
                 .unwrap_or_else(|_| "api_server=debug".into())
         )
         .with(tracing_subscriber::fmt::layer().with_ansi(true))
-        .with(tracing_oslog::OsLogger::new("cc.musedam.local", "default"))
         .init();
 }

@@ -33,7 +33,6 @@ qdrant-client = { workspace = true }
 anyhow = "1"
 docx-rs = "0.4"
 csv = "1.3.0"
-tracing-oslog = "0.1.2"
 
 # 处理 enum
 strum = "0.26"

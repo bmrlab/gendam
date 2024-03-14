@@ -211,7 +211,6 @@ dependencies = [
  "tokio",
  "tower-http",
  "tracing",
- "tracing-oslog",
  "tracing-subscriber",
  "vector-db",
 ]
