@@ -1,5 +1,6 @@
 use prisma_lib::new_client_with_url;
 use prisma_lib::PrismaClient;
+use tracing::info;
 use std::{path::PathBuf, sync::Arc};
 use vector_db::{QdrantParams, QdrantServer};
 use tracing::error;
@@ -57,6 +58,22 @@ pub async fn load_library(
     ).await.map_err(|e| {
         error!("failed to start qdrant server: {}", e);
     })?;
+
+    let qdrant = qdrant_server.get_client().clone();
+    for collection_name in vec![
+        vector_db::VIDEO_FRAME_INDEX_NAME,
+        vector_db::VIDEO_FRAME_CAPTION_INDEX_NAME,
+        vector_db::VIDEO_TRANSCRIPT_INDEX_NAME,
+    ] {
+        make_sure_collection_created(
+            qdrant.clone(),
+            collection_name,
+            512 as u64,
+        )
+        .await.map_err(|e| {
+            error!("failed to make sure collection created: {}, {}", collection_name, e);
+        })?;
+    }
 
     let library = Library {
         id: library_id.to_string(),
@@ -116,4 +133,50 @@ pub async fn upgrade_library_schemas(local_data_root: &PathBuf) {
     //     client._db_push().await.expect("failed to push db"); // apply migrations
     //     info!("Upgraded library '{}'", library_id);
     // }
+}
+
+
+use qdrant_client::qdrant::{
+    vectors_config::Config, CreateCollection, Distance, VectorParams, VectorsConfig,
+};
+use qdrant_client::client::QdrantClient;
+pub async fn make_sure_collection_created(
+    qdrant: Arc<QdrantClient>,
+    collection_name: &str,
+    dim: u64,
+) -> anyhow::Result<()> {
+    async fn create(qdrant: Arc<QdrantClient>, collection_name: &str, dim: u64,) -> anyhow::Result<()> {
+        let res = qdrant
+            .create_collection(&CreateCollection {
+                collection_name: collection_name.to_string(),
+                vectors_config: Some(VectorsConfig {
+                    config: Some(Config::Params(VectorParams {
+                        size: dim,
+                        distance: Distance::Cosine.into(),
+                        ..Default::default()
+                    })),
+                }),
+                ..Default::default()
+            }).await;
+        match res {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                error!("failed to create collection: {}, {:?}", collection_name, e);
+                Err(e.into())
+            }
+        }
+    }
+    match qdrant.collection_info(collection_name).await {
+        core::result::Result::Ok(info) => {
+            if let None = info.result {
+                create(qdrant, collection_name, dim).await
+            } else {
+                Ok(())
+            }
+        },
+        Err(e) => {
+            info!("collection info not found: {}, {:?}", collection_name, e);
+            create(qdrant, collection_name, dim).await
+        }
+    }
 }

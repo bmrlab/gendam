@@ -10,3 +10,5 @@ tracing = { workspace = true }
 chrono = "0.4.34"
 sha256 = "1.5.0"
 vector-db = { path = "../vector-db", features = ["qdrant"] }
+qdrant-client = { workspace = true }
+anyhow = { workspace = true }
