@@ -54,9 +54,9 @@ pub async fn load_library(
             http_port: None,
             grpc_port: None,
         },
-    )
-    .await
-    .expect("failed to start qdrant server");
+    ).await.map_err(|e| {
+        error!("failed to start qdrant server: {}", e);
+    })?;
 
     let library = Library {
         id: library_id.to_string(),
