@@ -19,7 +19,7 @@ pub async fn get_frames_caption(
     let mut join_set = tokio::task::JoinSet::new();
 
     for path in frame_paths {
-        if path.extension() == Some(std::ffi::OsStr::new("png")) {
+        if path.extension() == Some(std::ffi::OsStr::new("jpg")) {
             debug!("get_frames_caption: {:?}", path);
             let blip_model = Arc::clone(&blip_model);
 
@@ -48,7 +48,7 @@ async fn get_single_frame_caption(
         .as_ref()
         .to_str()
         .ok_or(anyhow!("invalid path"))?
-        .replace(".png", ".caption");
+        .replace(".jpg", ".caption");
     let mut file = tokio::fs::File::create(caption_path).await?;
     file.write_all(caption.as_bytes()).await?;
 
