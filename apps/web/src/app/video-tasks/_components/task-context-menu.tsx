@@ -42,8 +42,8 @@ export default function TaskContextMenu({ fileHash, isProcessing, children }: Ta
       title: '批量导出语音转译',
       params: orderVideoSelected.map((item) => ({
         id: item.assetObjectHash,  // TODO: 这里回头要改成 assetObjectId, 但是对 audio export 功能改动较大
-        label: item.assetObjectHash,
-        video: item.materializedPath,
+        label: item.name,
+        assetObjectId: item.assetObjectId,
       })),
     })
     setAudioDialogOpen(true)

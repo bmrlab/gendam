@@ -41,7 +41,7 @@ export type FilePathQueryPayload = { path: string; dirsOnly: boolean }
 
 export type FilePathQueryResult = { id: number; name: string; isDir: boolean; assetObject: AssetObjectQueryResult | null }
 
-export type SearchResultPayload = { videoPath: string; startTime: number }
+export type SearchResultPayload = { name: string; materializedPath: string; assetObjectId: number; assetObjectHash: string; startTime: number }
 
 export type VideoTaskResult = { taskType: string; startsAt: string | null; endsAt: string | null }
 

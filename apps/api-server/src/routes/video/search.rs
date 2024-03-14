@@ -10,6 +10,7 @@ use prisma_lib::asset_object;
 use rspc::{Router, Rspc};
 use serde::Serialize;
 use specta::Type;
+use tracing::error;
 
 pub fn get_routes<TCtx>() -> Router<TCtx>
 where
@@ -33,10 +34,8 @@ where
                 Arc::clone(&library.qdrant_server.get_client()),
             )
             .await;
-            // .unwrap();
-            // .map_err(|_| ())
-            // serde_json::to_value(res).unwrap()
-            let res = match res {
+
+            let search_results = match res {
                 Ok(res) => res,
                 Err(e) => {
                     println!("error: {:?}", e);
@@ -47,13 +46,11 @@ where
                 }
             };
 
-            let file_identifiers = res
+            let file_identifiers = search_results
                 .iter()
-                .map(
-                    |SearchResult {
-                         file_identifier, ..
-                     }| file_identifier.clone(),
-                )
+                .map(|SearchResult { file_identifier, .. }| {
+                    file_identifier.clone()
+                })
                 .fold(Vec::new(), |mut acc, x| {
                     if !acc.contains(&x) {
                         acc.push(x);
@@ -73,39 +70,58 @@ where
                 .expect("failed to list asset objects");
 
             // println!("tasks: {:?}", tasks);
-            let mut tasks_hash_map: std::collections::HashMap<String, String> =
-                std::collections::HashMap::new();
+            let mut tasks_hash_map =
+                std::collections::HashMap::<String, &asset_object::Data>::new();
             asset_objects.iter().for_each(|asset_object_data| {
-                let local_video_file_full_path = format!(
-                    "{}/{}",
-                    library.files_dir.to_str().unwrap(),
-                    asset_object_data.id
-                );
                 let hash = asset_object_data.hash.clone().unwrap_or(String::from(""));
-                tasks_hash_map.insert(hash, local_video_file_full_path);
+                tasks_hash_map.insert(hash, asset_object_data);
             });
 
             #[derive(Serialize, Type)]
+            #[serde(rename_all = "camelCase")]
             pub struct SearchResultPayload {
-                #[serde(rename = "videoPath")]
-                pub video_path: String,
-                #[serde(rename = "startTime")]
+                pub name: String,
+                pub materialized_path: String,
+                pub asset_object_id: i32,
+                pub asset_object_hash: String,
+                // #[serde(rename = "startTime")]
                 pub start_time: i32,
             }
 
-            let search_result = res
+            let search_result = search_results
                 .iter()
-                .map(|SearchResult {
-                    file_identifier,
-                    start_timestamp,
-                    ..
-                }| {
-                    let video_path = tasks_hash_map
-                        .get(file_identifier)
-                        .unwrap_or(&"".to_string())
-                        .clone();
+                .map(|SearchResult { file_identifier, start_timestamp, .. }| {
+                    let asset_object_data = match tasks_hash_map.get(file_identifier) {
+                        Some(asset_object_data) => asset_object_data.to_owned(),
+                        None => {
+                            error!("failed to find asset object data for file_identifier: {}", file_identifier);
+                            return SearchResultPayload {
+                                name: "".to_string(),
+                                materialized_path: "".to_string(),
+                                asset_object_id: 0,
+                                asset_object_hash: "".to_string(),
+                                start_time: 0,
+                            };
+                        }
+                    };
+                    let (materialized_path, name) = match asset_object_data.file_paths {
+                        Some(ref file_paths) => {
+                            if file_paths.len() > 0 {
+                                let file_path = file_paths[0].clone();
+                                (file_path.materialized_path.clone(), file_path.name.clone())
+                            } else {
+                                ("".to_string(), "".to_string())
+                            }
+                        },
+                        None => ("".to_string(), "".to_string()),
+                    };
+                    let asset_object_hash = asset_object_data.hash.clone().unwrap_or("".to_string());
+                    let asset_object_id = asset_object_data.id;
                     SearchResultPayload {
-                        video_path,
+                        name,
+                        materialized_path,
+                        asset_object_id,
+                        asset_object_hash,
                         start_time: (*start_timestamp).clone(),
                     }
                 })

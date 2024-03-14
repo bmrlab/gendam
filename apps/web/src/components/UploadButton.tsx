@@ -7,7 +7,6 @@ type Props = {
 };
 
 const TauriUploadButton: React.FC<Props> = ({ onSelectFile }) => {
-  // TODO: remove `selectFile` in utils/file.ts
   let handleClick = useCallback(async () => {
     const result = await open({
       directory: false,

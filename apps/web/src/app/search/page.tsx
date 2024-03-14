@@ -1,11 +1,13 @@
 "use client";
 import Image from "next/image";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef, useContext } from "react";
 import { rspc, client } from "@/lib/rspc";
-import { getLocalFileUrl } from "@/utils/file";
+import { CurrentLibrary } from "@/lib/library";
 import type { SearchResultPayload } from "@/lib/bindings";
 
 const VideoPreview: React.FC<{ item: SearchResultPayload }> = ({ item }) => {
+  const currentLibrary = useContext(CurrentLibrary);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   let startTime = Math.max(0, (item.startTime / 1e3) - 0.5);
   let endTime = startTime + 2;
@@ -23,12 +25,9 @@ const VideoPreview: React.FC<{ item: SearchResultPayload }> = ({ item }) => {
   }, [startTime, endTime]);
 
   return (
-    <video ref={videoRef} controls autoPlay style={{
-      width: "100%",
-      height: "100%",
-      objectFit: "contain",
-    }}>
-      <source src={getLocalFileUrl(item.videoPath)} type="video/mp4" />
+    <video ref={videoRef} controls autoPlay
+      style={{ width: "100%", height: "100%", objectFit: "contain" }}>
+      <source src={currentLibrary.getFileSrc(item.assetObjectId)} type="video/mp4" />
     </video>
   );
 }
@@ -37,6 +36,7 @@ const VideoItem: React.FC<{
   item: SearchResultPayload,
   handleVideoClick: (item: SearchResultPayload) => void;
 }> = ({ item, handleVideoClick }) => {
+  const currentLibrary = useContext(CurrentLibrary);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -55,22 +55,19 @@ const VideoItem: React.FC<{
   }, [item]);
 
   return (
-    <div className="m-4">
-      <div className="relative w-64 h-36 rounded-md overflow-hidden shadow-md cursor-pointer"
+    <div className="m-4 w-64">
+      <div className="relative w-full h-36 rounded-md overflow-hidden shadow-md cursor-pointer"
         onClick={() => handleVideoClick(item)}
       >
-        {/* <Image
-          fill={true} style={{ objectFit: "cover" }}
-          src={getLocalFileUrl(item.imagePath)}
-          alt={item.imagePath}
-        ></Image> */}
-        <video ref={videoRef} controls={false} autoPlay muted loop style={{
-          width: "100%", height: "100%", objectFit: "cover",
-        }}>
-          <source src={getLocalFileUrl(item.videoPath)} type="video/mp4" />
+        <video ref={videoRef} controls={false} autoPlay muted loop
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}>
+          <source src={currentLibrary.getFileSrc(item.assetObjectId)} type="video/mp4" />
         </video>
       </div>
-      <div className="text-sm text-center py-1 px-2 mt-2">Video.mp4</div>
+      <div className="text-sm text-center px-2 mt-2
+        overflow-hidden overflow-ellipsis whitespace-nowrap">{item.name}</div>
+      <div className="text-xs text-center px-2 mb-2 text-neutral-400
+        overflow-hidden overflow-ellipsis whitespace-nowrap">{item.materializedPath}</div>
     </div>
   )
 }

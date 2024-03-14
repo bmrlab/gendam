@@ -1,12 +1,12 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useContext } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Folder_Light, Document_Light } from "@muse/assets/icons";
 import { rspc } from "@/lib/rspc";
 import type { FilePathQueryResult } from "@/lib/bindings";
 import UploadButton from "@/components/UploadButton";
-import { getLocalFileUrl } from "@/utils/file";
+import { CurrentLibrary } from "@/lib/library";
 import styles from "./styles.module.css";
 
 const TitleDialog: React.FC<{
@@ -42,6 +42,7 @@ const TitleDialog: React.FC<{
 }
 
 export default function Files() {
+  const currentLibrary = useContext(CurrentLibrary);
   const router = useRouter();
   // currentPath 必须以 / 结尾, 调用 setCurrentPath 的地方自行确保格式正确
   const [currentPath, setCurrentPath] = useState<string>("/");
@@ -150,14 +151,13 @@ export default function Files() {
               {asset.isDir ? (
                 <Image src={ Folder_Light } alt="folder"></Image>
               ) : (
-                // <Image src={ Document_Light } alt="folder"></Image>
-                <video controls={false} autoPlay muted loop style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                }}>
-                  <source src={getLocalFileUrl(asset.assetObject?.localFullPath ?? "")} type="video/mp4" />
-                </video>
+                asset.assetObject ? (
+                  <video controls={false} autoPlay muted loop style={{ width: "100%", height: "100%", objectFit: "cover" }}>
+                    <source src={currentLibrary.getFileSrc(asset.assetObject.id)} type="video/mp4" />
+                  </video>
+                ) : (
+                  <Image src={ Document_Light } alt="folder"></Image>
+                )
               )}
             </div>
             <div className={`${styles["title"]} w-32 p-1 mt-1 mb-2 rounded-lg`}>

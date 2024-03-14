@@ -9,18 +9,19 @@ import { AudioType, ExportInput } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
 import { useBoundStore } from '@/store'
-import { getLocalFileUrl } from '@/utils/file'
+import { CurrentLibrary } from "@/lib/library";
 import { produce } from 'immer'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, useContext } from 'react'
 import { FileTypeEnum } from './export'
 
 export type BatchExportProps = {
   id: string
   label: string
-  video: string
+  assetObjectId: number
 }[]
 
 export default function BatchExport() {
+  const currentLibrary = useContext(CurrentLibrary);
   const { toast } = useToast()
 
   const audioDialogProps = useBoundStore.use.audioDialogProps()
@@ -104,7 +105,7 @@ export default function BatchExport() {
         <div className="col-span-1"></div>
       </div>
       <ScrollArea className="h-[576px]">
-        {data.map(({ id, label, video }, index) => (
+        {data.map(({ id, label, assetObjectId }, index) => (
           <div
             key={id}
             className={cn(
@@ -127,7 +128,7 @@ export default function BatchExport() {
                   }}
                   className="h-9 w-9"
                 >
-                  <source src={getLocalFileUrl(video)} type="video/mp4" />
+                  <source src={currentLibrary.getFileSrc(assetObjectId)} type="video/mp4" />
                 </video>
               </div>
               <p className="truncate text-[13px] font-medium leading-[18px] text-[#323438]">{label}</p>
