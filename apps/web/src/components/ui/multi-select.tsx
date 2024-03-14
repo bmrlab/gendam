@@ -107,7 +107,7 @@ const MultiSelect: FC<MultiSelectProps> = ({
         onValueChangeProp(state, items)
       }
     },
-    [onValueChangeProp],
+    [onValueChangeProp, itemCache],
   )
 
   const [value, setValue] = useControllableState({
@@ -164,7 +164,7 @@ const MultiSelect: FC<MultiSelectProps> = ({
       onDeselect: handleDeselect,
       itemCache,
     }
-  }, [value, open, onSearch, filter, disabled, maxCount, handleSelect, handleDeselect])
+  }, [value, open, onSearch, filter, disabled, maxCount, handleSelect, handleDeselect, itemCache])
 
   return (
     <MultiSelectContext.Provider value={contextValue}>
@@ -409,7 +409,7 @@ const MultiSelectItem = forwardRef<ElementRef<typeof CommandItem>, MultiSelectIt
       if (value) {
         itemCache.set(value, item!)
       }
-    }, [selected, value, item])
+    }, [selected, value, item, itemCache])
 
     const disabled = Boolean(disabledProp || (!selected && maxCount && contextValue.length >= maxCount))
 

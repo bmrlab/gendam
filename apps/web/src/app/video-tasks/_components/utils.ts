@@ -1,7 +1,7 @@
-import type { VideoItem } from '@/app/video-tasks/_components/task-item'
+import type { VideoWithTasksResult } from '@/lib/bindings'
 import { MuseStatus } from '@/components/Badge'
 
-export const hasProcessing = (tasks: VideoItem['tasks']) => {
+export const hasProcessing = (tasks: VideoWithTasksResult['tasks']) => {
   const dimension = Object.keys(VIDEO_DIMENSION)
   return tasks
     .filter((t) => dimension.includes(t.taskType))
@@ -9,7 +9,7 @@ export const hasProcessing = (tasks: VideoItem['tasks']) => {
     .some((status) => status === MuseStatus.Processing)
 }
 
-export const getTaskStatus = (task: VideoItem['tasks'][number]) => {
+export const getTaskStatus = (task: VideoWithTasksResult['tasks'][number]) => {
   if (task.startsAt && !task.endsAt) {
     return MuseStatus.Processing
   }
