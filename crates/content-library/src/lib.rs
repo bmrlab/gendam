@@ -68,7 +68,7 @@ pub async fn load_library(
         make_sure_collection_created(
             qdrant.clone(),
             collection_name,
-            512 as u64,
+            512 as u64,  // FIXME: dim should be `clip_model.read().await.dim()`
         )
         .await.map_err(|e| {
             error!("failed to make sure collection created: {}, {}", collection_name, e);
@@ -137,7 +137,7 @@ pub async fn upgrade_library_schemas(local_data_root: &PathBuf) {
 
 
 use qdrant_client::qdrant::{
-    vectors_config::Config, CreateCollection, Distance, VectorParams, VectorsConfig,
+    vectors_config::Config, CreateCollection, OptimizersConfigDiff, Distance, VectorParams, VectorsConfig,
 };
 use qdrant_client::client::QdrantClient;
 pub async fn make_sure_collection_created(
@@ -155,6 +155,11 @@ pub async fn make_sure_collection_created(
                         distance: Distance::Cosine.into(),
                         ..Default::default()
                     })),
+                }),
+                shard_number: Some(1 as u32),
+                optimizers_config: Some(OptimizersConfigDiff {
+                    default_segment_number: Some(1 as u64),
+                    ..Default::default()
                 }),
                 ..Default::default()
             }).await;
