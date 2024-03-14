@@ -172,9 +172,10 @@ fn init_tracing() {
         .with(
             // load filters from the `RUST_LOG` environment variable.
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "muse_desktop=info".into()),
+                .unwrap_or_else(|_| "muse_desktop=debug".into())
         )
         .with(tracing_subscriber::fmt::layer().with_ansi(true))
+        .with(tracing_oslog::OsLogger::new("cc.musedam.local", "default"))
         .init();
 }
 

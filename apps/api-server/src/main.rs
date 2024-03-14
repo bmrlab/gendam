@@ -175,7 +175,7 @@ async fn main() {
             router
                 .clone()
                 .endpoint(|req: Request| {
-                    println!("Client requested operation '{}'", req.uri().path());
+                    info!("Client requested operation '{}'", req.uri().path());
                     Ctx {
                         local_data_root,
                         resources_dir,
@@ -203,8 +203,9 @@ fn init_tracing() {
         .with(
             // load filters from the `RUST_LOG` environment variable.
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "api_server=debug".into()),
+                .unwrap_or_else(|_| "api_server=debug".into())
         )
         .with(tracing_subscriber::fmt::layer().with_ansi(true))
+        .with(tracing_oslog::OsLogger::new("cc.musedam.local", "default"))
         .init();
 }
