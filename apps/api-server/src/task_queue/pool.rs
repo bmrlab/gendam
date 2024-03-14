@@ -120,6 +120,7 @@ async fn process_task(task_payload: &TaskPayload) {
             VideoTaskType::Audio => vh.get_audio().await,
             VideoTaskType::Transcript => vh.get_transcript().await,
             VideoTaskType::TranscriptEmbedding => vh.get_transcript_embedding().await,
+            // _ => Ok(()),
         };
         if let Err(e) = result {
             error!("Task failed: {}, {}, {}", &task_type.to_string(), &task_payload.file_path, e);

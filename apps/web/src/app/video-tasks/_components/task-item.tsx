@@ -1,13 +1,12 @@
 'use client'
-
+import { HTMLAttributes, useCallback, useMemo, useContext } from 'react'
 import { VIDEO_DIMENSION } from '@/app/video-tasks/_components/utils'
 import { MuseStatus, MuseTaskBadge } from '@/components/Badge'
 import MuseDropdownMenu, { DropdownMenuOptions } from '@/components/DropdownMenu'
 import Icon from '@/components/Icon'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { getLocalFileUrl } from '@/utils/file'
-import { HTMLAttributes, useCallback, useMemo } from 'react'
+import { CurrentLibrary } from "@/lib/library";
 import type { VideoWithTasksResult } from '@/lib/bindings'
 
 export type VideoTaskItemProps = {
@@ -28,6 +27,8 @@ export default function VideoTaskItem({
   handleClick,
   ...props
 }: VideoTaskItemProps) {
+  const currentLibrary = useContext(CurrentLibrary);
+
   const showTask = useMemo(() => {
     return tasks.filter((task) => VIDEO_DIMENSION[task.taskType])
   }, [tasks])
@@ -88,7 +89,7 @@ export default function VideoTaskItem({
         }}
       >
         <video controls={false} autoPlay muted loop className="size-full object-contain">
-          <source src={getLocalFileUrl(materializedPath)} type="video/mp4" />
+          <source src={currentLibrary.getFileSrc(assetObjectId)} type="video/mp4" />
         </video>
       </div>
       <div className="grid flex-1">
@@ -105,8 +106,8 @@ export default function VideoTaskItem({
             <span>1440 x 1080</span>
             <div className="mx-2">·</div>
             <NoAudio />
-            <div className="mx-2">·</div>
-            <span>已取消</span>
+            {/* <div className="mx-2">·</div>
+            <span>已取消</span> */}
           </div>
           <div className="flex flex-wrap items-end gap-1.5">
             {showTask.map((task, index) => (

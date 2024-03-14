@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { client, queryClient, rspc } from "@/lib/rspc";
+import { convertFileSrc } from '@tauri-apps/api/tauri';
 import { CurrentLibrary } from "@/lib/library";
 import LibrariesSelect from "@/components/LibrariesSelect";
 
@@ -11,16 +12,22 @@ export default function ClientLayout({
 }>) {
   const [pending, setPending] = useState(true);
   const [libraryId, setLibraryId] = useState<string|null>(null);
+  const [homeDir, setHomeDir] = useState<string|null>(null);
 
   useEffect(() => {
-    client.query(["libraries.get_current_library"]).then((libraryIdInStorage) => {
+    const p1 = client.query(["libraries.get_current_library"]).then((libraryIdInStorage) => {
       setLibraryId(libraryIdInStorage);
-      setPending(false);
     }).catch(error => {
-      console.log('CurrentLibraryStorage.get() error:', error);
+      console.log('libraries.get_current_library error:', error);
       setLibraryId(null);
-      setPending(false);
-    })
+    });
+    const p2 = client.query(["files.home_dir"]).then((homeDir) => {
+      setHomeDir(homeDir);
+    }).catch(error => {
+      console.log('files.home_dir error:', error);
+      setHomeDir(null);
+    });
+    Promise.all([p1, p2]).then(() => setPending(false));
   }, [setLibraryId, setPending]);
 
   const setContext = useCallback(async (id: string) => {
@@ -37,10 +44,20 @@ export default function ClientLayout({
     }
   }, [setLibraryId]);
 
+  const getFileSrc = useCallback((assetObjectId: number) => {
+    const fileFullPath = homeDir + '/' + assetObjectId;
+    if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
+      return convertFileSrc(fileFullPath);
+    } else {
+      return `http://localhost:3001/file/localhost/${fileFullPath}`
+    }
+  }, [homeDir]);
+
   return pending ? (<></>) : (
     <CurrentLibrary.Provider value={{
       id: libraryId,
       setContext,
+      getFileSrc,
     }}>
       <rspc.Provider client={client} queryClient={queryClient}>
         {libraryId ? (
