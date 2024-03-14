@@ -31,7 +31,7 @@ file-handler = { path = "../../../crates/file-handler", features = [
 ] }
 content-library = { path = "../../../crates/content-library" }
 api-server = { path = "../../api-server" }
-vector-db = { path = "../../../crates/vector-db" }
+vector-db = { path = "../../../crates/vector-db", features = ["qdrant"] }
 rspc = { workspace = true, features = ["tauri"] }
 specta-macros = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

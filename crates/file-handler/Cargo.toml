@@ -7,8 +7,8 @@ edition = { workspace = true }
 ai = { path = "../ai" }
 file-downloader = { path = "../file-downloader" }
 content-library = { path = "../content-library" }
-llm = { path = "../llm", features = ["native"] }
-vector-db = { path = "../vector-db" }
+llm = { path = "../llm", features = ["local"] }
+vector-db = { path = "../vector-db", features = ["qdrant"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
