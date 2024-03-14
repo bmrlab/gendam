@@ -1,34 +1,34 @@
 import { ImmerStateCreator } from '@/store'
-import { VideoItem } from '@/app/video-tasks/_components/task-item'
+import type { VideoWithTasksResult } from '@/lib/bindings'
 
-type TaskSelectedState = VideoItem[]
+type VideoSelectedState = VideoWithTasksResult[]
 
 type State = {
-  taskSelected: TaskSelectedState
+  videoSelected: VideoSelectedState
 }
 
 type Action = {
-  setTaskSelected: (selected: State['taskSelected']) => void
-  addTaskSelected: (selected: TaskSelectedState[number] | TaskSelectedState) => void
-  removeTaskSelected: (fileHash: string) => void
-  clearTaskSelected: () => void
+  setVideoSelected: (selected: State['videoSelected']) => void
+  addVideoSelected: (selected: VideoSelectedState[number] | VideoSelectedState) => void
+  removeVideoSelected: (assetObjectId: number) => void
+  clearVideoSelected: () => void
 }
 
 export type TaskContextSlice = State & Action
 
 export const createTaskContextSlice: ImmerStateCreator<TaskContextSlice> = (set) => ({
-  taskSelected: [],
-  setTaskSelected: (taskSelected) => set({ taskSelected }),
-  addTaskSelected: (item) =>
+  videoSelected: [],
+  setVideoSelected: (videoSelected) => set({ videoSelected }),
+  addVideoSelected: (item) =>
     set((state) => {
       const items = Array.isArray(item) ? item : [item]
-      const alreadySelectedFileHash = state.taskSelected.map((item) => item.videoFileHash)
-      const needAdd = items.filter((item) => !alreadySelectedFileHash.includes(item.videoFileHash))
-      state.taskSelected.push(...needAdd)
+      const alreadySelectedId = state.videoSelected.map((item) => item.assetObjectId)
+      const needAdd = items.filter((item) => !alreadySelectedId.includes(item.assetObjectId))
+      state.videoSelected.push(...needAdd)
     }),
-  removeTaskSelected: (fileHash) =>
+  removeVideoSelected: (assetObjectId) =>
     set((state) => {
-      state.taskSelected = state.taskSelected.filter((item) => item.videoFileHash !== fileHash)
+      state.videoSelected = state.videoSelected.filter((item) => item.assetObjectId !== assetObjectId)
     }),
-  clearTaskSelected: () => set({ taskSelected: [] }),
+  clearVideoSelected: () => set({ videoSelected: [] }),
 })

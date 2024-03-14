@@ -3,44 +3,21 @@ import TaskFooter from '@/app/video-tasks/_components/footer'
 import VideoTasksList from '@/app/video-tasks/_components/task-list'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { rspc } from '@/lib/rspc'
-import { useMemo } from 'react'
-import type { VideoItem } from '@/app/video-tasks/_components/task-item'
-import type { VideoTaskResult } from '@/lib/bindings'
+// import { useMemo } from 'react'
+// import type { VideoItem } from '@/app/video-tasks/_components/task-item'
 
 export default function VideoTasksPage() {
-  const { data, isLoading, error } = rspc.useQuery(['video.tasks.list'])
-
-  const videos = useMemo<VideoItem[]>(() => {
-    if (isLoading) {
-      return []
-    }
-    const groups: {
-      [videoFileHash: string]: VideoItem
-    } = {}
-    data?.forEach((task: VideoTaskResult, index) => {
-      if (!groups[task.videoFileHash]) {
-        groups[task.videoFileHash] = {
-          index,
-          videoPath: task.videoPath,
-          videoFileHash: task.videoFileHash,
-          tasks: [],
-        }
-      }
-      groups[task.videoFileHash].tasks.push({
-        taskType: task.taskType,
-        startsAt: task.startsAt,
-        endsAt: task.endsAt,
-      })
-    })
-    return Object.values(groups)
-  }, [data, isLoading])
+  const {
+    data: videosWithTasks,
+    isLoading, error
+  } = rspc.useQuery(['video.tasks.list']);
 
   return (
     <div className="flex h-full flex-col">
       <ScrollArea className="flex-1 rounded-[6px]">
-        <VideoTasksList data={videos} isLoading={isLoading} />
+        <VideoTasksList data={videosWithTasks ?? []} isLoading={isLoading} />
       </ScrollArea>
-      <TaskFooter total={videos?.length ?? 0} />
+      <TaskFooter total={videosWithTasks?.length ?? 0} />
     </div>
   )
 }

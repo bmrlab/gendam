@@ -5,13 +5,13 @@ import { cn } from '@/lib/utils'
 import { useBoundStore } from '@/store'
 import Image from 'next/image'
 import { HTMLAttributes, useMemo } from 'react'
-import TaskContextMenu from './task-context-menu'
-import type { VideoItem } from './task-item'
-import { WithSelectVideoItem } from './with-select'
 import EmptyList from '/public/svg/empty-list.svg'
+import TaskContextMenu from './task-context-menu'
+import { WithSelectVideoItem } from './with-select'
+import type { VideoWithTasksResult } from '@/lib/bindings'
 
 export type VideoTasksListProps = HTMLAttributes<HTMLDivElement> & {
-  data?: VideoItem[]
+  data: VideoWithTasksResult[]
   isLoading: boolean
 }
 
@@ -19,12 +19,12 @@ export default function VideoTasksList({ data, isLoading, className }: VideoTask
   const revealMut = rspc.useMutation('files.reveal')
 
   const searchKey = useBoundStore.use.searchKey()
-  const taskSelected = useBoundStore.use.taskSelected()
+  const taskSelected = useBoundStore.use.videoSelected()
 
   const filterVideos = useMemo(() => {
-    return data?.filter((video) => {
+    return data.filter((videoFile) => {
       // TODO: 等加入更多视频信息后，需要修改搜索条件
-      return video.videoPath.includes(searchKey)
+      return videoFile.name.includes(searchKey)
     })
   }, [data, searchKey])
 
@@ -42,19 +42,20 @@ export default function VideoTasksList({ data, isLoading, className }: VideoTask
 
   return (
     <div className={cn('h-full px-4', className)}>
-      {filterVideos?.map((video: VideoItem) => {
+      {filterVideos?.map((videoFile) => {
         return (
           <TaskContextMenu
-            key={video.videoFileHash}
-            fileHash={video.videoFileHash}
-            isProcessing={hasProcessing(video.tasks)}
+            key={videoFile.assetObjectId}
+            fileHash={videoFile.assetObjectHash}
+            isProcessing={hasProcessing(videoFile.tasks)}
           >
             <WithSelectVideoItem
-              {...video}
-              items={data ?? []}
-              isSelect={taskSelected.some((item) => item.videoFileHash === video.videoFileHash)}
+              videoFile={videoFile}
+              items={data}
+              isSelect={taskSelected.some((item) => item.assetObjectHash === videoFile.assetObjectHash)}
               handleClick={() => {
-                revealMut.mutate(video.videoPath)
+                console.log(videoFile.assetObjectId, videoFile.assetObjectHash);
+                // revealMut.mutate(video.videoPath)
               }}
             />
           </TaskContextMenu>

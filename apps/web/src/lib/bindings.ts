@@ -11,7 +11,7 @@ export type Procedures = {
         { key: "users.list", input: never, result: any } | 
         { key: "version", input: never, result: string } | 
         { key: "video.search.all", input: string, result: SearchResultPayload[] } | 
-        { key: "video.tasks.list", input: never, result: VideoTaskResult[] },
+        { key: "video.tasks.list", input: never, result: VideoWithTasksResult[] },
     mutations: 
         { key: "assets.create_asset_object", input: AssetObjectCreatePayload, result: string } | 
         { key: "assets.create_file_path", input: FilePathCreatePayload, result: string } | 
@@ -43,4 +43,6 @@ export type FilePathQueryResult = { id: number; name: string; isDir: boolean; as
 
 export type SearchResultPayload = { videoPath: string; startTime: number }
 
-export type VideoTaskResult = { id: number; videoPath: string; videoFileHash: string; taskType: string; startsAt: string | null; endsAt: string | null }
+export type VideoTaskResult = { taskType: string; startsAt: string | null; endsAt: string | null }
+
+export type VideoWithTasksResult = { name: string; materializedPath: string; assetObjectId: number; assetObjectHash: string; tasks: VideoTaskResult[] }

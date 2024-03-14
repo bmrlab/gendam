@@ -135,7 +135,7 @@ async fn process_task(task_payload: &TaskPayload) {
 }
 
 pub async fn create_video_task<TCtx>(
-    file_materialized_path: &str,
+    materialized_path: &str,
     asset_object_data: &asset_object::Data,
     ctx: &TCtx,
     tx: Arc<Sender<TaskPayload>>,
@@ -218,7 +218,7 @@ where
     }
 
     let task_payload = TaskPayload {
-        file_path: file_materialized_path.to_string(),
+        file_path: materialized_path.to_string(),
         asset_object_id: asset_object_data.id,
         prisma_client: library.prisma_client(),
         video_handler,
@@ -226,10 +226,10 @@ where
 
     match tx.send(task_payload) {
         Ok(rem) => {
-            info!("Task queued {}, remaining receivers {}", file_materialized_path, rem);
+            info!("Task queued {}, remaining receivers {}", materialized_path, rem);
         }
         Err(e) => {
-            error!("Failed to queue task {}: {}", file_materialized_path, e);
+            error!("Failed to queue task {}: {}", materialized_path, e);
         }
     };
 

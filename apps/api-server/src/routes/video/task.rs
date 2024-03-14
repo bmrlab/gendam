@@ -1,7 +1,7 @@
 use crate::CtxWithLibrary;
 use rspc::{Rspc, Router};
 use prisma_client_rust::Direction;
-use prisma_lib::file_handler_task;
+use prisma_lib::{asset_object, file_handler_task};
 use serde::Serialize;
 // use serde_json::json;
 use specta::Type;
@@ -38,60 +38,85 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
             "list",
             Rspc::<TCtx>::new().query(move |ctx: TCtx, _input: ()| async move {
                 let library = ctx.library()?;
-                let res = library.prisma_client()
-                    .file_handler_task()
+                let asset_object_data_list = library.prisma_client()
+                    .asset_object()
                     .find_many(vec![])
-                    .with(file_handler_task::asset_object::fetch())
-                    .order_by(file_handler_task::id::order(Direction::Desc))
+                    .with(asset_object::tasks::fetch(vec![]))
+                    .with(asset_object::file_paths::fetch(vec![]))
+                    .order_by(asset_object::id::order(Direction::Desc))
                     .exec()
                     .await
                     .expect("failed to list video tasks");
 
                 #[derive(Serialize, Type)]
+                #[serde(rename_all = "camelCase")]
                 pub struct VideoTaskResult {
-                    #[serde(rename = "id")]
-                    pub id: i32,
-                    #[serde(rename = "videoPath")]
-                    pub video_path: String,
-                    #[serde(rename = "videoFileHash")]
-                    pub video_file_hash: String,
-                    #[serde(rename = "taskType")]
                     pub task_type: String,
-                    #[serde(rename = "startsAt")]
                     pub starts_at: Option<String>,
-                    #[serde(rename = "endsAt")]
                     pub ends_at: Option<String>,
                 }
 
-                let videos_with_tasks = res.iter()
-                    .map(|item| {
+                #[derive(Serialize, Type)]
+                #[serde(rename_all = "camelCase")]
+                pub struct VideoWithTasksResult {
+                    pub name: String,
+                    pub materialized_path: String,
+                    pub asset_object_id: i32,
+                    pub asset_object_hash: String,
+                    pub tasks: Vec<VideoTaskResult>,
+                }
+
+                let videos_with_tasks = asset_object_data_list.iter()
+                    .map(|asset_object_data| {
                         // TODO: change legacy fields video_path and video_file_hash
-                        let local_video_file_full_path = format!(
-                            "{}/{}",
-                            library.files_dir.to_str().unwrap(),
-                            item.asset_object_id,
-                        );
-                        let video_file_hash = item.asset_object
-                            .clone().unwrap().unwrap()
-                            .hash.unwrap();
-                        VideoTaskResult {
-                            id: item.id,
-                            video_path: local_video_file_full_path,
-                            video_file_hash: video_file_hash,
-                            task_type: item.task_type.to_string(),
-                            starts_at: if let Some(t) = item.starts_at {
-                                Some(t.to_string())
-                            } else {
-                                None
+                        // let local_video_file_full_path = format!(
+                        //     "{}/{}",
+                        //     library.files_dir.to_str().unwrap(),
+                        //     item.asset_object_id,
+                        // );
+                        // let video_file_hash = item.asset_object
+                        //     .clone().unwrap().unwrap()
+                        //     .hash.unwrap();
+                        let (materialized_path, name) = match asset_object_data.file_paths {
+                            Some(ref file_paths) => {
+                                if file_paths.len() > 0 {
+                                    let file_path = file_paths[0].clone();
+                                    (file_path.materialized_path.clone(), file_path.name.clone())
+                                } else {
+                                    ("".to_string(), "".to_string())
+                                }
                             },
-                            ends_at: if let Some(t) = item.ends_at {
-                                Some(t.to_string())
-                            } else {
-                                None
-                            },
+                            None => ("".to_string(), "".to_string()),
+                        };
+                        let asset_object_hash = asset_object_data.hash.clone().unwrap_or("".to_string());
+                        let asset_object_id = asset_object_data.id;
+                        let tasks =
+                            asset_object_data.tasks.as_ref()
+                            .unwrap_or(&vec![])
+                            .iter()
+                            .map(|file_handler_task::Data { task_type, starts_at, ends_at, .. }| {
+                                VideoTaskResult {
+                                    task_type: task_type.clone(),
+                                    starts_at: match starts_at {
+                                        Some(starts_at) => Some(starts_at.to_string()),
+                                        None => None,
+                                    },
+                                    ends_at: match ends_at {
+                                        Some(ends_at) => Some(ends_at.to_string()),
+                                        None => None,
+                                    },
+                                }
+                            })
+                            .collect::<Vec<VideoTaskResult>>();
+                        VideoWithTasksResult {
+                            name,
+                            materialized_path,
+                            asset_object_id,
+                            asset_object_hash,
+                            tasks,
                         }
                     })
-                    .collect::<Vec<_>>();
+                    .collect::<Vec<VideoWithTasksResult>>();
                 Ok(videos_with_tasks)
             }),
         )

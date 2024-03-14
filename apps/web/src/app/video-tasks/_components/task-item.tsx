@@ -8,27 +8,22 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { getLocalFileUrl } from '@/utils/file'
 import { HTMLAttributes, useCallback, useMemo } from 'react'
-
-export type VideoItem = {
-  videoPath: string
-  videoFileHash: string
-  tasks: {
-    taskType: string
-    startsAt: string | null
-    endsAt: string | null
-  }[]
-} & { index: number }
+import type { VideoWithTasksResult } from '@/lib/bindings'
 
 export type VideoTaskItemProps = {
+  videoFile: VideoWithTasksResult,
   isSelect?: boolean
   handleClick: () => void
-} & VideoItem &
-  HTMLAttributes<HTMLDivElement>
+} & HTMLAttributes<HTMLDivElement>
 
 export default function VideoTaskItem({
-  videoPath,
-  videoFileHash,
-  tasks,
+  videoFile: {
+    name,
+    assetObjectId,
+    materializedPath,
+    assetObjectHash,
+    tasks,
+  },
   isSelect,
   handleClick,
   ...props
@@ -37,7 +32,7 @@ export default function VideoTaskItem({
     return tasks.filter((task) => VIDEO_DIMENSION[task.taskType])
   }, [tasks])
 
-  const status = useCallback((task: VideoItem['tasks'][number]) => {
+  const status = useCallback((task: VideoWithTasksResult['tasks'][number]) => {
     if (task.startsAt && !task.endsAt) {
       return MuseStatus.Processing
     }
@@ -93,13 +88,13 @@ export default function VideoTaskItem({
         }}
       >
         <video controls={false} autoPlay muted loop className="size-full object-contain">
-          <source src={getLocalFileUrl(videoPath)} type="video/mp4" />
+          <source src={getLocalFileUrl(materializedPath)} type="video/mp4" />
         </video>
       </div>
       <div className="grid flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-[13px] font-medium leading-[18px] text-[#323438]">MUSE 的视频</span>
-          <span className="truncate text-[12px] font-normal leading-4 text-[#95989F]">{videoPath}</span>
+          <span className="text-[13px] font-medium leading-[18px] text-[#323438]">{name}</span>
+          <span className="truncate text-[12px] font-normal leading-4 text-[#95989F]">{materializedPath}</span>
         </div>
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center text-[12px] font-normal leading-4 text-[#95989F]">

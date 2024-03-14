@@ -2,7 +2,7 @@ import React from 'react'
 
 export type SvgIconProps = React.SVGProps<SVGSVGElement>
 
-export default {
+const icons = {
   copy: (props: SvgIconProps) => (
     <svg {...props} width="16" height="16" viewBox="0 0 16 16" fill="transparent" xmlns="http://www.w3.org/2000/svg">
       <path
@@ -302,3 +302,5 @@ export default {
     </svg>
   ),
 }
+
+export default icons;

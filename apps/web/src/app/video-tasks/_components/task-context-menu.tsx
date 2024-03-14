@@ -16,12 +16,12 @@ export type TaskContextMenuProps = PropsWithChildren<{
 }>
 
 export default function TaskContextMenu({ fileHash, isProcessing, children }: TaskContextMenuProps) {
-  const taskSelected = useBoundStore.use.taskSelected()
+  const videoSelected = useBoundStore.use.videoSelected()
   const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
   const setAudioDialogProps = useBoundStore.use.setAudioDialogProps()
   const setAudioDialogOpen = useBoundStore.use.setIsOpenAudioDialog()
 
-  const isBatchSelected = useMemo(() => taskSelected.length > 1, [taskSelected])
+  const isBatchSelected = useMemo(() => videoSelected.length > 1, [videoSelected])
 
   const handleSingleExport = useCallback(() => {
     setAudioDialogProps({
@@ -35,15 +35,15 @@ export default function TaskContextMenu({ fileHash, isProcessing, children }: Ta
   }, [fileHash, setAudioDialogProps, setIsOpenAudioDialog])
 
   const handleBatchExport = () => {
-    let orderTaskSelected = [...taskSelected]
-    orderTaskSelected.sort((a, b) => a.index - b.index)
+    let orderVideoSelected = [...videoSelected]
+    orderVideoSelected.sort((a, b) => a.assetObjectId - b.assetObjectId)
     setAudioDialogProps({
       type: AudioDialogEnum.batch,
       title: '批量导出语音转译',
-      params: orderTaskSelected.map((item) => ({
-        id: item.videoFileHash,
-        label: item.videoFileHash,
-        video: item.videoPath,
+      params: orderVideoSelected.map((item) => ({
+        id: item.assetObjectHash,  // TODO: 这里回头要改成 assetObjectId, 但是对 audio export 功能改动较大
+        label: item.assetObjectHash,
+        video: item.materializedPath,
       })),
     })
     setAudioDialogOpen(true)
@@ -87,7 +87,7 @@ export default function TaskContextMenu({ fileHash, isProcessing, children }: Ta
         },
       },
     ]
-  }, [handleExport])
+  }, [handleExport, isProcessing])
 
   return (
     <ContextMenu>
