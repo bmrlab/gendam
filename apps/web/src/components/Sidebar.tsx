@@ -6,6 +6,7 @@ import classNames from 'classnames'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import path from 'path'
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 
 export default function Sidebar() {
@@ -35,6 +36,13 @@ export default function Sidebar() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
+
+  const menuClassNames = (path: string) => {
+    return classNames(
+      'mb-1 block cursor-default rounded-md px-4 py-2 hover:bg-neutral-200',
+      pathname === path && 'bg-neutral-200',
+    )
+  }
 
   return (
     <div className="min-h-full w-60 bg-neutral-100 p-3">
@@ -71,50 +79,14 @@ export default function Sidebar() {
         )}
       </div>
       <div className="text-sm">
-        <Link
-          href="/library"
-          className={classNames(
-            'mb-1 block cursor-default rounded-md px-4 py-2 hover:bg-neutral-200',
-            pathname === '/library' && 'bg-neutral-200',
-          )}
-        >
-          本地文件(Test)
+        <Link href="/explorer" className={menuClassNames('/explorer')}>素材库</Link>
+        <Link href="/search" className={menuClassNames('/search')}>搜索</Link>
+        <Link href="/video-tasks" className={menuClassNames('/video-tasks')}>视频任务</Link>
+        <Link href="/debug/library" className={menuClassNames('/debug/library')}>
+          <span className="text-neutral-400 font-light">本地文件(Debug)</span>
         </Link>
-        <Link
-          href="/assets"
-          className={classNames(
-            'mb-1 block cursor-default rounded-md px-4 py-2 hover:bg-neutral-200',
-            pathname === '/assets' && 'bg-neutral-200',
-          )}
-        >
-          素材库
-        </Link>
-        <Link
-          href="/explorer"
-          className={classNames(
-            'mb-1 block cursor-default rounded-md px-4 py-2 hover:bg-neutral-200',
-            pathname === '/explorer' && 'bg-neutral-200',
-          )}
-        >
-          素材库（新）
-        </Link>
-        <Link
-          href="/search"
-          className={classNames(
-            'mb-1 block cursor-default rounded-md px-4 py-2 hover:bg-neutral-200',
-            pathname === '/search' && 'bg-neutral-200',
-          )}
-        >
-          搜索
-        </Link>
-        <Link
-          href="/video-tasks"
-          className={classNames(
-            'mb-1 block cursor-default rounded-md px-4 py-2 hover:bg-neutral-200',
-            pathname === '/video-tasks' && 'bg-neutral-200',
-          )}
-        >
-          视频任务
+        <Link href="/debug/files" className={menuClassNames('/debug/files')}>
+          <span className="text-neutral-400 font-light">素材文件(Debug)</span>
         </Link>
       </div>
     </div>

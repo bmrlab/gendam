@@ -54,7 +54,7 @@ export default function Files() {
   const revealMut = rspc.useMutation(["files.reveal"]);
   const createPathMut = rspc.useMutation(["assets.create_file_path"]);
   const createAssetMut = rspc.useMutation(["assets.create_asset_object"]);
-  const processVideoMut = rspc.useMutation(["assets.process_video_asset"]);
+  // const processVideoMut = rspc.useMutation(["assets.process_video_asset"]);
 
   const goToDir = useCallback((dirName: string) => {
     let newPath = currentPath;
@@ -70,12 +70,14 @@ export default function Files() {
     if (asset.isDir) {
       goToDir(asset.name);
     } else {
-      // this will always be true if asset.isDir is false
-      // revealMut.mutate("/" + asset.assetObject.id.toString());
-      processVideoMut.mutate(asset.id);
-      router.push("/video-tasks");
+      if (asset.assetObject) {
+        // this will always be true if asset.isDir is false
+        revealMut.mutate("/" + asset.assetObject.id.toString());
+      }
+      // processVideoMut.mutate(asset.id);
+      // router.push("/video-tasks");
     }
-  }, [goToDir, processVideoMut, router]);
+  }, [goToDir, revealMut]);
 
   let [selectedId, setSelectedId] = useState<number|null>(null);
 
