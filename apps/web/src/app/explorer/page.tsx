@@ -66,13 +66,15 @@ export default function ExplorerPage() {
   )
 
   return (
-    <div>
-      <AssetContextMenuProvider onDoubleClick={handleDoubleClick}>
-        <ExplorerContextProvider explorer={explorer}>
+    <AssetContextMenuProvider onDoubleClick={handleDoubleClick}>
+      <ExplorerContextProvider explorer={explorer}>
+        <div className="h-full flex flex-col" onClick={() => explorer.resetSelectedItems()}>
           <Header goToDir={goToDir} parentPath={parentPath}></Header>
-          <Explorer></Explorer>
-        </ExplorerContextProvider>
-      </AssetContextMenuProvider>
-    </div>
+          <div className='flex-1'>
+            <Explorer></Explorer>
+          </div>
+        </div>
+      </ExplorerContextProvider>
+    </AssetContextMenuProvider>
   )
 }

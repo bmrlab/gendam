@@ -3,32 +3,29 @@ import AssetContextMenu from '@/components/AssetContextMenu'
 import { CurrentLibrary } from '@/lib/library'
 import { Document_Light, Folder_Light } from '@muse/assets/icons'
 import Image from 'next/image'
-import { useCallback, useContext, useState } from 'react'
+import { useContext } from 'react'
+import { useExplorerContext } from '../Context'
 import { ExplorerItem } from '../types'
 import styles from './GridView.module.css'
 
 export default function GridView({ items }: { items: ExplorerItem[] }) {
   const currentLibrary = useContext(CurrentLibrary)
-
-  let [selectedId, setSelectedId] = useState<number | null>(null)
+  const explorer = useExplorerContext()
 
   return (
-    <div
-      className="flex flex-1 flex-wrap content-start items-start justify-start p-6"
-      onClick={() => setSelectedId(null)}
-    >
+    <div className="flex flex-wrap content-start items-start justify-start p-6">
       {items.map((item) => (
         <div
           key={item.id}
           className={`m-2 flex cursor-default select-none flex-col items-center justify-start
-            ${selectedId === item.id && styles['selected']}`}
+            ${explorer.isItemSelected(item) && styles['selected']}`}
           onClick={(e) => {
             e.stopPropagation()
-            setSelectedId(item.id)
+            explorer.resetSelectedItems([item])
           }}
           onDoubleClick={(e) => {
             // e.stopPropagation()
-            setSelectedId(null)
+            explorer.resetSelectedItems()
           }}
         >
           <AssetContextMenu item={item}>
@@ -36,7 +33,13 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
               {item.isDir ? (
                 <Image src={Folder_Light} alt="folder" priority></Image>
               ) : item.assetObject ? (
-                <video controls={false} autoPlay muted loop style={{ width: '100%', height: '100%', objectFit: 'cover' }}>
+                <video
+                  controls={false}
+                  autoPlay
+                  muted
+                  loop
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                >
                   <source src={currentLibrary.getFileSrc(item.assetObject.id)} type="video/mp4" />
                 </video>
               ) : (
