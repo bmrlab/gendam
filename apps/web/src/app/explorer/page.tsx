@@ -1,9 +1,9 @@
 'use client'
+import type { FilePathWithAssetObject } from '@/components/AssetContextMenu/Context'
+import { AssetContextMenuProvider } from '@/components/AssetContextMenu/Context'
 import Explorer from '@/components/Explorer'
 import { ExplorerContextProvider } from '@/components/Explorer/Context'
 import { useExplorer } from '@/components/Explorer/useExplorer'
-import AssetContextMenu from '@/components/AssetContextMenu'
-import type { FilePathWithAssetObject } from '@/components/AssetContextMenu/Context'
 import { CurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { useRouter } from 'next/navigation'
@@ -51,25 +51,28 @@ export default function ExplorerPage() {
     [setParentPath, parentPath],
   )
 
-  let handleDoubleClick = useCallback((asset: FilePathWithAssetObject) => {
-    if (asset.isDir) {
-      goToDir(asset.name);
-    } else {
-      // this will always be true if asset.isDir is false
-      // revealMut.mutate("/" + asset.assetObject.id.toString());
-      processVideoMut.mutate(asset.id);
-      router.push("/video-tasks");
-    }
-  }, [goToDir, processVideoMut, router]);
+  let handleDoubleClick = useCallback(
+    (asset: FilePathWithAssetObject) => {
+      if (asset.isDir) {
+        goToDir(asset.name)
+      } else {
+        // this will always be true if asset.isDir is false
+        // revealMut.mutate("/" + asset.assetObject.id.toString());
+        processVideoMut.mutate(asset.id)
+        router.push('/video-tasks')
+      }
+    },
+    [goToDir, processVideoMut, router],
+  )
 
   return (
     <div>
-      <AssetContextMenu onDoubleClick={handleDoubleClick}>
+      <AssetContextMenuProvider onDoubleClick={handleDoubleClick}>
         <ExplorerContextProvider explorer={explorer}>
           <Header goToDir={goToDir} parentPath={parentPath}></Header>
           <Explorer></Explorer>
         </ExplorerContextProvider>
-      </AssetContextMenu>
+      </AssetContextMenuProvider>
     </div>
   )
 }
