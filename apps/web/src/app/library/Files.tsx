@@ -58,9 +58,9 @@ export default function Files({ folderPath, goToFolder }: Props) {
           >
             <div className={`${styles["image"]} rounded-lg`}>
               {file.is_dir ? (
-                <Image src={ Folder_Light } alt="folder"></Image>
+                <Image src={ Folder_Light } alt="folder" priority></Image>
               ) : (
-                <Image src={ Document_Light } alt="folder"></Image>
+                <Image src={ Document_Light } alt="folder" priority></Image>
               )}
             </div>
             <div className={`${styles["title"]} p-1 mt-1 mb-2 rounded-lg`}>

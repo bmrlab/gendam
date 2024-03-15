@@ -149,14 +149,14 @@ export default function Files() {
           >
             <div className={`${styles["image"]} w-32 h-32 rounded-lg overflow-hidden`}>
               {asset.isDir ? (
-                <Image src={ Folder_Light } alt="folder"></Image>
+                <Image src={ Folder_Light } alt="folder" priority></Image>
               ) : (
                 asset.assetObject ? (
                   <video controls={false} autoPlay muted loop style={{ width: "100%", height: "100%", objectFit: "cover" }}>
                     <source src={currentLibrary.getFileSrc(asset.assetObject.id)} type="video/mp4" />
                   </video>
                 ) : (
-                  <Image src={ Document_Light } alt="folder"></Image>
+                  <Image src={ Document_Light } alt="folder" priority></Image>
                 )
               )}
             </div>

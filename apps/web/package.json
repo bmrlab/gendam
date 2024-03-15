@@ -31,7 +31,6 @@
     "@tauri-apps/api": "^1.5.3",
     "class-variance-authority": "^0.7.0",
     "classnames": "^2.5.1",
-    "clsx": "^2.1.0",
     "cmdk": "^0.2.1",
     "immer": "^10.0.3",
     "next": "14.1.0",

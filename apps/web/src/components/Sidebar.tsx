@@ -90,6 +90,15 @@ export default function Sidebar() {
           素材库
         </Link>
         <Link
+          href="/explorer"
+          className={classNames(
+            'mb-1 block cursor-default rounded-md px-4 py-2 hover:bg-neutral-200',
+            pathname === '/explorer' && 'bg-neutral-200',
+          )}
+        >
+          素材库（新）
+        </Link>
+        <Link
           href="/search"
           className={classNames(
             'mb-1 block cursor-default rounded-md px-4 py-2 hover:bg-neutral-200',

@@ -1,0 +1,7 @@
+.selected .image {
+  @apply bg-slate-200;
+}
+
+.selected .title {
+  @apply bg-blue-600 text-white;
+}
