@@ -9,6 +9,7 @@ import { rspc } from '@/lib/rspc'
 import { useRouter } from 'next/navigation'
 import { useCallback, useContext, useState } from 'react'
 import Header from './_components/Header'
+import Footer from './_components/Footer'
 
 export default function ExplorerPage() {
   const currentLibrary = useContext(CurrentLibrary)
@@ -73,6 +74,7 @@ export default function ExplorerPage() {
           <div className='flex-1'>
             <Explorer></Explorer>
           </div>
+          <Footer></Footer>
         </div>
       </ExplorerContextProvider>
     </AssetContextMenuProvider>
