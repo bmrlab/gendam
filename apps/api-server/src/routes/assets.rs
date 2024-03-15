@@ -51,6 +51,13 @@ struct FilePathQueryResult {
 //     ))
 // }
 
+fn contains_invalid_chars(name: &str) -> bool {
+    name.chars().any(|c| match c {
+        '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => true,
+        _ => false,
+    })
+}
+
 pub fn get_routes<TCtx>() -> Router<TCtx>
 where
     TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
@@ -70,9 +77,18 @@ where
                 } else {
                     format!("{}/", input.path)
                 };
+                let name = match contains_invalid_chars(input.name.as_str()) {
+                    true => {
+                        return Err(rspc::Error::new(
+                            rspc::ErrorCode::BadRequest,
+                            String::from("name contains invalid chars"),
+                        ));
+                    }
+                    false => input.name,
+                };
                 let res = library.prisma_client()
                     .file_path()
-                    .create(true, materialized_path, input.name, vec![])
+                    .create(true, materialized_path, name, vec![])
                     .exec()
                     .await
                     .map_err(|e| {
@@ -89,7 +105,6 @@ where
             Rspc::<TCtx>::new().mutation(|ctx, input: AssetObjectCreatePayload| async move {
                 let library = ctx.library()?;
                 let (file_path_data, asset_object_data) = create_asset_object(&library, &input.path, &input.local_full_path).await?;
-
                 let tx = ctx.get_task_tx();
                 create_video_task(
                     &file_path_data.materialized_path,
