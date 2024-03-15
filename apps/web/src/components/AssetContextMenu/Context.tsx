@@ -5,9 +5,11 @@ export type FilePathWithAssetObject = FilePathQueryResult;
 
 export type MenuProps = {
   onDoubleClick: (asset: FilePathWithAssetObject) => void;
+  onContextMenu: (asset: FilePathWithAssetObject) => void;
 }
 const Context = createContext<MenuProps>({
   onDoubleClick: () => console.error('AssetContextMenuProvider not found'),
+  onContextMenu: () => console.error('AssetContextMenuProvider not found'),
 })
 
 export const useAssetContextMenu = () => {

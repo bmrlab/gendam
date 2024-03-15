@@ -23,10 +23,6 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
             e.stopPropagation()
             explorer.resetSelectedItems([item])
           }}
-          onDoubleClick={(e) => {
-            // e.stopPropagation()
-            explorer.resetSelectedItems()
-          }}
         >
           <AssetContextMenu item={item}>
             <div className={`${styles['image']} h-32 w-32 overflow-hidden rounded-lg`}>

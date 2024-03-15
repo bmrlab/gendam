@@ -6,10 +6,11 @@ import { ExplorerContextProvider } from '@/components/Explorer/Context'
 import { useExplorer } from '@/components/Explorer/useExplorer'
 import { CurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
+import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useContext, useState } from 'react'
-import Header from './_components/Header'
 import Footer from './_components/Footer'
+import Header from './_components/Header'
 
 export default function ExplorerPage() {
   const currentLibrary = useContext(CurrentLibrary)
@@ -52,8 +53,29 @@ export default function ExplorerPage() {
     [setParentPath, parentPath],
   )
 
-  let handleDoubleClick = useCallback(
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const handleMouseMove = useCallback(
+    (event: React.MouseEvent) => {
+      setMousePosition({ x: event.clientX, y: event.clientY })
+    },
+    [setMousePosition],
+  )
+
+  const [panelOpen, setPanelOpen] = useState<{ x: number; y: number; asset: FilePathWithAssetObject } | null>(null)
+  const handleRightClick = useCallback(
     (asset: FilePathWithAssetObject) => {
+      setPanelOpen({
+        x: mousePosition.x,
+        y: mousePosition.y,
+        asset,
+      })
+    },
+    [mousePosition, setPanelOpen],
+  )
+
+  const handleDoubleClick = useCallback(
+    (asset: FilePathWithAssetObject) => {
+      setPanelOpen(null)
       if (asset.isDir) {
         goToDir(asset.name)
       } else {
@@ -66,15 +88,57 @@ export default function ExplorerPage() {
     [goToDir, processVideoMut, router],
   )
 
+  const Panel: React.FC = () => {
+    if (!panelOpen) return null
+    return (
+      <div
+        className="fixed w-60 rounded-md border border-neutral-100 bg-white p-1 shadow-lg"
+        style={{ left: panelOpen.x, top: panelOpen.y }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60"
+          onClick={() => handleDoubleClick(panelOpen.asset)}
+        >
+          <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">打开 ({panelOpen.asset.name})</div>
+        </div>
+        <div className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60">
+          <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">预览</div>
+        </div>
+        <div className="my-1 h-px bg-neutral-100"></div>
+        <div className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60">
+          <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">重命名</div>
+        </div>
+        <div className="my-1 h-px bg-neutral-100"></div>
+        <div
+          className={classNames(
+            'flex cursor-default items-center justify-start rounded-md px-2 py-2',
+            'text-red-600 hover:bg-red-500/90 hover:text-white',
+          )}
+        >
+          <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs ">删除</div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <AssetContextMenuProvider onDoubleClick={handleDoubleClick}>
+    <AssetContextMenuProvider onDoubleClick={handleDoubleClick} onContextMenu={handleRightClick}>
       <ExplorerContextProvider explorer={explorer}>
-        <div className="h-full flex flex-col" onClick={() => explorer.resetSelectedItems()}>
+        <div
+          className="flex h-full flex-col"
+          onClick={() => {
+            setPanelOpen(null)
+            explorer.resetSelectedItems()
+          }}
+          onMouseMove={handleMouseMove}
+        >
           <Header goToDir={goToDir} parentPath={parentPath}></Header>
-          <div className='flex-1'>
+          <div className="flex-1">
             <Explorer></Explorer>
           </div>
           <Footer></Footer>
+          <Panel />
         </div>
       </ExplorerContextProvider>
     </AssetContextMenuProvider>
