@@ -68,15 +68,6 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
 
                 let videos_with_tasks = asset_object_data_list.iter()
                     .map(|asset_object_data| {
-                        // TODO: change legacy fields video_path and video_file_hash
-                        // let local_video_file_full_path = format!(
-                        //     "{}/{}",
-                        //     library.files_dir.to_str().unwrap(),
-                        //     item.asset_object_id,
-                        // );
-                        // let video_file_hash = item.asset_object
-                        //     .clone().unwrap().unwrap()
-                        //     .hash.unwrap();
                         let (materialized_path, name) = match asset_object_data.file_paths {
                             Some(ref file_paths) => {
                                 if file_paths.len() > 0 {

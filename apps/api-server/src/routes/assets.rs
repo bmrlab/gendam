@@ -33,8 +33,6 @@ struct FilePathQueryPayload {
 #[serde(rename_all = "camelCase")]
 struct AssetObjectQueryResult {
     id: i32,
-    // note: String,
-    local_full_path: String,
 }
 
 #[derive(Serialize, Type, Debug)]
@@ -139,12 +137,7 @@ where
                             Some(asset_object) => match asset_object {
                                 None => None,
                                 Some(asset_object) => Some(AssetObjectQueryResult {
-                                    id: asset_object.id,
-                                    local_full_path: format!(
-                                        "{}/{}",
-                                        library.files_dir.to_str().unwrap(),
-                                        asset_object.id
-                                    ),
+                                    id: asset_object.id
                                 }),
                             },
                             None => None,
