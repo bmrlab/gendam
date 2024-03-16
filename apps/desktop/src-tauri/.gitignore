@@ -4,6 +4,7 @@
 .env
 
 sidecar/*
+!sidecar/.gitkeep
 resources/*
 !resources/.gitkeep
 
