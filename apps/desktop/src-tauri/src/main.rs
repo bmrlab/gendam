@@ -139,6 +139,16 @@ async fn main() {
         }
     }
 
+    window.on_window_event({
+        let current_library = current_library.clone();
+        move |e| {
+            if let tauri::WindowEvent::Destroyed = e {
+                let library = current_library.lock().unwrap().take().unwrap();
+                drop(library.qdrant_server);
+            }
+        }
+    });
+
     // app.app_handle()
     window
         .app_handle()
