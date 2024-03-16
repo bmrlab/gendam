@@ -135,14 +135,20 @@ async fn process_task(task_payload: &TaskPayload) {
     }
 }
 
-pub async fn create_video_task<TCtx>(
+// pub async fn create_video_task<TCtx>(
+//     materialized_path: &str,
+//     asset_object_data: &asset_object::Data,
+//     ctx: &TCtx,
+//     tx: Arc<Sender<TaskPayload>>,
+// ) -> Result<(), ()>
+// where
+//     TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
+pub async fn create_video_task(
     materialized_path: &str,
     asset_object_data: &asset_object::Data,
-    ctx: &TCtx,
+    ctx: &impl CtxWithLibrary,
     tx: Arc<Sender<TaskPayload>>,
 ) -> Result<(), ()>
-where
-    TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
     let library = &ctx.library().map_err(|e| {
         error!("library must be set before triggering create_video_task: {}", e);
