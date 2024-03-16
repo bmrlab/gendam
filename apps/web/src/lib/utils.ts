@@ -1,9 +1,9 @@
-import { clsx, type ClassValue } from 'clsx'
+import classNames from 'classnames'
 import { createTwc } from 'react-twc'
 import { twMerge } from 'tailwind-merge'
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+export function cn(...inputs: classNames.ArgumentArray) {
+  return twMerge(classNames(inputs))
 }
 
 export const twx = createTwc({ compose: cn })
