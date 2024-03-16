@@ -16,7 +16,7 @@ export default function Footer() {
   return (
     <div className="flex h-8 items-center justify-start border-t-2 border-neutral-100 px-4 text-xs">
       {folders.map((folder, index) => (
-        <div key={folder} className="flex items-center">
+        <div key={index} className="flex items-center">
           <Image src={Folder_Light} alt="folder" priority className="mr-1 h-4 w-4"></Image>
           <div className="text-neutral-500">{folder}</div>
           {index < folders.length - 1 && (

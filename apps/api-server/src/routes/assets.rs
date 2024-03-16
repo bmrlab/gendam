@@ -210,21 +210,20 @@ where
 
                     /*
                      * TODO: 要区分一下是文件夹重命名还是文件重命名，如果是文件，下面的不需要
-                     * FIXME: * REPLACE 方法不是替换前缀，这里有问题！
-                     *
-                     * 注意: 对于 /a/aa/a/aa/ 这种路径，如果是把 /a/aa/ 修改成 /a/ab/，
-                     * 下面的 SQL 只会把 /a/aa/a/aa/ 变成 /a/ab/a/aa/ 而不会变成 /a/ab/a/ab/，因为 REPLACE 只替换第一个找到的字符串
-                     * 另外，也不会把 /xxx/a/aa/ 替换成 /xxx/a/ab/，因为 LIKE 语句确保选择的 file_path 的前缀都是 /a/aa/
+                     * https://github.com/bmrlab/tauri-dam-test-playground/issues/15#issuecomment-2001923972
                      */
 
                     let old_materialized_path_like = format!("{}%", &old_materialized_path);
-                    library.prisma_client()
+                    let res = library.prisma_client()
                         ._execute_raw(raw!(
                             r#"
-                            UPDATE "FilePath" SET "materializedPath" = REPLACE("materializedPath", $1, $2) WHERE "materializedPath" LIKE $3
+                            UPDATE FilePath
+                            SET materializedPath = $1 || SUBSTR(materializedPath, LENGTH($2) + 1)
+                            WHERE materializedPath LIKE $3
                             "#,
-                            PrismaValue::String(old_materialized_path),
+                            // 注意，这里的顺序一定要 $1,$2,$3, 序号似乎没有被遵守
                             PrismaValue::String(new_materialized_path),
+                            PrismaValue::String(old_materialized_path),
                             PrismaValue::String(old_materialized_path_like)
                         ))
                         // .update_many(
@@ -239,6 +238,7 @@ where
                                 format!("failed to rename file_path for children: {}", e),
                             )
                         })?;
+                    println!("res: {:?}", res);
 
                     Ok(())
                 }
