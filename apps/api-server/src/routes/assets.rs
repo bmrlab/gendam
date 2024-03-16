@@ -1,5 +1,5 @@
 use prisma_lib::{asset_object, file_path};
-use prisma_client_rust::{PrismaValue, raw};
+use prisma_client_rust::{PrismaValue, raw, QueryError};
 use rspc::{Router, Rspc};
 use serde::{Deserialize, Serialize};
 // use serde_json::json;
@@ -16,13 +16,6 @@ use content_library::Library;
 //         String::from("path muse be start with /")
 //     ))
 // }
-
-fn contains_invalid_chars(name: &str) -> bool {
-    name.chars().any(|c| match c {
-        '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => true,
-        _ => false,
-    })
-}
 
 pub fn get_routes<TCtx>() -> Router<TCtx>
 where
@@ -101,6 +94,21 @@ where
             }),
         )
         .procedure(
+            "delete_file_path",
+            Rspc::<TCtx>::new().mutation({
+                #[derive(Deserialize, Type, Debug)]
+                struct FilePathDeletePayload {
+                    path: String,
+                    name: String,
+                }
+                |ctx, input: FilePathDeletePayload| async move {
+                    let library = ctx.library()?;
+                    delete_file_path(&library, &input.path, &input.name).await?;
+                    Ok(())
+                }
+            }),
+        )
+        .procedure(
             "process_video_asset",
             Rspc::<TCtx>::new().mutation(|ctx, input: i32| async move {
                 let library = ctx.library()?;
@@ -112,6 +120,20 @@ where
     router
 }
 
+fn contains_invalid_chars(name: &str) -> bool {
+    name.chars().any(|c| match c {
+        '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => true,
+        _ => false,
+    })
+}
+
+fn normalized_materialized_path(path: &str) -> String {
+    if path.ends_with("/") {
+        path.to_string()
+    } else {
+        format!("{}/", path)
+    }
+}
 
 async fn create_file_path(
     library: &Library,
@@ -122,11 +144,6 @@ async fn create_file_path(
     * TODO
     * 如果 path 是 /a/b/c/, 要确保存在一条数据 {path:"/a/b/",name:"c"}, 不然就是文件夹不存在
     */
-    let materialized_path = if path.ends_with("/") {
-        path.to_string()
-    } else {
-        format!("{}/", path)
-    };
     let name = match contains_invalid_chars(name) {
         true => {
             return Err(rspc::Error::new(
@@ -136,6 +153,7 @@ async fn create_file_path(
         }
         false => name.to_string(),
     };
+    let materialized_path = normalized_materialized_path(path);
     let res = library.prisma_client()
         .file_path()
         .create(true, materialized_path, name, vec![])
@@ -169,12 +187,8 @@ async fn create_asset_object(
             )
         })?;
 
+    let materialized_path = normalized_materialized_path(path);
     // copy file and rename to asset object id
-    let materialized_path = if path.ends_with("/") {
-        path.to_owned()
-    } else {
-        format!("{}/", path)
-    };
     let file_name = local_full_path.split("/").last().unwrap().to_owned();
     let destination_path = library
         .files_dir
@@ -217,11 +231,6 @@ async fn rename_file_path(
     old_name: &str,
     new_name: &str,
 ) -> Result<(), rspc::Error> {
-    let materialized_path = if path.ends_with("/") {
-        path.to_string()
-    } else {
-        format!("{}/", path)
-    };
     let old_name = old_name.to_string();
     let new_name = match contains_invalid_chars(new_name) {
         true => {
@@ -232,6 +241,7 @@ async fn rename_file_path(
         }
         false => new_name.to_string(),
     };
+    let materialized_path = normalized_materialized_path(path);
     let old_materialized_path = format!("{}{}/", &materialized_path, &old_name);
     let new_materialized_path = format!("{}{}/", &materialized_path, &new_name);
 
@@ -278,6 +288,55 @@ async fn rename_file_path(
             rspc::Error::new(
                 rspc::ErrorCode::InternalServerError,
                 format!("failed to rename file_path for children: {}", e),
+            )
+        })?;
+
+    Ok(())
+}
+
+
+/**
+ * TODO: 删除 file_path 以后要检查一下 assetobject 是否还有其他引用，如果没有的话，要删除 assetobject，进一步的，删除 filehandlertask
+ */
+async fn delete_file_path(
+    library: &Library,
+    path: &str,
+    name: &str,
+) -> Result<(), rspc::Error> {
+    let materialized_path = normalized_materialized_path(path);
+    let name = name.to_string();
+
+    library.prisma_client()
+        ._transaction()
+        .run(|client| async move {
+            client
+                .file_path()
+                .delete(file_path::materialized_path_name(materialized_path.clone(), name.clone()))
+                .exec()
+                .await
+                .map_err(|e| {
+                    tracing::error!("failed to delete file_path item: {}", e);
+                    e
+                })?;
+            let materialized_path_startswith = format!("{}{}/", &materialized_path, &name);
+            client
+                .file_path()
+                .delete_many(vec![
+                    file_path::materialized_path::starts_with(materialized_path_startswith)
+                ])
+                .exec()
+                .await
+                .map_err(|e| {
+                    tracing::error!("failed to delete file_path for children: {}", e);
+                    e
+                })?;
+            Ok(())
+        })
+        .await
+        .map_err(|e: QueryError| {
+            rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                format!("failed to delete file_path: {}", e),
             )
         })?;
 
@@ -355,7 +414,8 @@ async fn list_file_path(
     path: &str,
     dirs_only: bool,
 ) -> Result<Vec<FilePathQueryResult>, rspc::Error> {
-    let mut where_params = vec![file_path::materialized_path::equals(path.to_string())];
+    let materialized_path = normalized_materialized_path(path);
+    let mut where_params = vec![file_path::materialized_path::equals(materialized_path)];
     if dirs_only {
         where_params.push(file_path::is_dir::equals(true));
     }

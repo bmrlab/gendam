@@ -21,6 +21,7 @@ export default function ExplorerPage() {
 
   const processVideoMut = rspc.useMutation(['assets.process_video_asset'])
   const renameMut = rspc.useMutation(['assets.rename_file_path'])
+  const deleteMut = rspc.useMutation(['assets.delete_file_path'])
 
   const {
     data: assets,
@@ -112,6 +113,16 @@ export default function ExplorerPage() {
     setRenameDialog(null)
   }, [setRenameDialog])
 
+  const handleDelete = useCallback(
+    (asset: FilePathWithAssetObject) => {
+      deleteMut.mutate({
+        path: parentPath,
+        name: asset.name,
+      })
+    },
+    [deleteMut, parentPath],
+  );
+
   const Panel: React.FC = () => {
     if (!panelOpen) return null
     return (
@@ -147,6 +158,10 @@ export default function ExplorerPage() {
             'flex cursor-default items-center justify-start rounded-md px-2 py-2',
             'text-red-600 hover:bg-red-500/90 hover:text-white',
           )}
+          onClick={() => {
+            setPanelOpen(null)
+            handleDelete(panelOpen.asset)
+          }}
         >
           <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs ">删除</div>
         </div>
