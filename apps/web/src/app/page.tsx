@@ -8,7 +8,7 @@ import { useCallback, useEffect } from 'react'
 export default function HomePage() {
   const router = useRouter()
   useEffect(() => {
-    router.push('/assets')
+    router.push('/explorer')
   }, [router])
   return <></>
 }
@@ -39,6 +39,10 @@ function Home() {
      * client side, but iirc only the window and path modules need dynamic imports).
      * 不能在上面直接 import '@tauri-apps/api'
      * 不然 @tauri-apps/api/helpers/os-check.js 会报错 navigator is not defined
+     *
+     * 另一个不错的方案在这里
+     * https://github.com/kvnxiao/tauri-nextjs-template/blob/main/README.md#solution-2-wrap-tauri-api-behind-dynamic-import
+     * 重新实现一下 invoke
      */
     // const { invoke } = await import('@tauri-apps/api');
     invoke('greet', { name: 'World' }).then((response) => console.log(response))

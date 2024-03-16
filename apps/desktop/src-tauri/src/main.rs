@@ -93,7 +93,9 @@ async fn main() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet,])
+        .invoke_handler(tauri::generate_handler![greet,]);
+
+    let app = app
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 

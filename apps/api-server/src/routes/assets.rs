@@ -174,22 +174,49 @@ async fn create_asset_object(
     path: &str,
     local_full_path: &str,
 ) -> Result<(file_path::Data, asset_object::Data), rspc::Error> {
-    // create asset object record
-    let asset_object_data = library.prisma_client()
-        .asset_object()
-        .create(vec![])
-        .exec()
+    let materialized_path = normalized_materialized_path(path);
+    // copy file and rename to asset object id
+    let file_name = local_full_path.split("/").last().unwrap().to_owned();
+
+    let (asset_object_data, file_path_data) = library.prisma_client()
+        ._transaction()
+        .run(|client| async move {
+            let asset_object_data = client
+                .asset_object()
+                .create(vec![])
+                .exec()
+                .await
+                .map_err(|e| {
+                    tracing::error!("failed to create asset_object: {}", e);
+                    e
+                })?;
+            let file_path_data = client
+                .file_path()
+                .create(
+                    false,
+                    materialized_path,
+                    file_name,
+                    vec![
+                        // file_path::SetParam::SetId(asset_object_data.id)
+                        file_path::asset_object_id::set(Some(asset_object_data.id)),
+                    ],
+                )
+                .exec()
+                .await
+                .map_err(|e| {
+                    tracing::error!("failed to create file_path: {}", e);
+                    e
+                })?;
+            Ok((asset_object_data, file_path_data))
+        })
         .await
-        .map_err(|e| {
+        .map_err(|e: QueryError| {
             rspc::Error::new(
                 rspc::ErrorCode::InternalServerError,
                 format!("failed to create asset_object: {}", e),
             )
         })?;
 
-    let materialized_path = normalized_materialized_path(path);
-    // copy file and rename to asset object id
-    let file_name = local_full_path.split("/").last().unwrap().to_owned();
     let destination_path = library
         .files_dir
         .join(asset_object_data.id.to_string());
@@ -199,27 +226,7 @@ async fn create_asset_object(
             format!("failed to copy file: {}", e),
         )
     })?;
-
-    // create file_path
-    let file_path_data = library.prisma_client()
-        .file_path()
-        .create(
-            false,
-            materialized_path,
-            file_name,
-            vec![
-                // file_path::SetParam::SetId(asset_object_data.id)
-                file_path::asset_object_id::set(Some(asset_object_data.id)),
-            ],
-        )
-        .exec()
-        .await
-        .map_err(|e| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("failed to create file_path: {}", e),
-            )
-        })?;
+    // TODO: 如果文件复制失败了，还得回滚一下，删除新建的 asset_object 和 file_path
 
     Ok((file_path_data, asset_object_data))
 }
