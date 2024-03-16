@@ -157,7 +157,7 @@ pub async fn create_video_task(
     let local_video_file_full_path = format!(
         "{}/{}",
         library.files_dir.to_str().unwrap(),
-        asset_object_data.id
+        asset_object_data.hash
     );
 
     let video_handler = match VideoHandler::new(
@@ -173,20 +173,6 @@ pub async fn create_video_task(
             return Err(());
         }
     };
-
-    let hash = video_handler.file_identifier().to_string();
-    if let Err(e) = library.prisma_client()
-        .asset_object()
-        .update(
-            asset_object::id::equals(asset_object_data.id),
-            vec![asset_object::hash::set(Some(hash))],
-        )
-        .exec()
-        .await
-    {
-        error!("failed to update asset_object hash: {}", e);
-        return Err(());
-    }
 
     for task_type in vec![
         VideoTaskType::Frame,

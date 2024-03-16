@@ -79,7 +79,7 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
                             },
                             None => ("".to_string(), "".to_string()),
                         };
-                        let asset_object_hash = asset_object_data.hash.clone().unwrap_or("".to_string());
+                        let asset_object_hash = asset_object_data.hash.clone();
                         let asset_object_id = asset_object_data.id;
                         let tasks =
                             asset_object_data.tasks.as_ref()

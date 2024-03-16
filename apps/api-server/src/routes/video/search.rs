@@ -73,7 +73,7 @@ where
             let mut tasks_hash_map =
                 std::collections::HashMap::<String, &asset_object::Data>::new();
             asset_objects.iter().for_each(|asset_object_data| {
-                let hash = asset_object_data.hash.clone().unwrap_or(String::from(""));
+                let hash = asset_object_data.hash.clone();
                 tasks_hash_map.insert(hash, asset_object_data);
             });
 
@@ -115,7 +115,7 @@ where
                         },
                         None => ("".to_string(), "".to_string()),
                     };
-                    let asset_object_hash = asset_object_data.hash.clone().unwrap_or("".to_string());
+                    let asset_object_hash = asset_object_data.hash.clone();
                     let asset_object_id = asset_object_data.id;
                     SearchResultPayload {
                         name,

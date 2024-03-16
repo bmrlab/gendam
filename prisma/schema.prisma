@@ -20,7 +20,7 @@ model FilePath {
   materializedPath String
   name          String
 
-  assetObjectId  Int?
+  assetObjectId Int?
   assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: SetNull)
 
   createdAt     DateTime  @default(now())
@@ -34,7 +34,7 @@ model AssetObject {
   id            Int       @id @default(autoincrement())
 
   note          String?
-  hash          String?
+  hash          String    @unique
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -55,8 +55,8 @@ model MediaData {
 
   description   String?
 
-  assetObjectId  Int @unique
-  assetObject     AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: Cascade)
+  assetObjectId Int       @unique
+  assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: Cascade)
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -65,8 +65,8 @@ model MediaData {
 model FileHandlerTask {
   id            Int       @id @default(autoincrement())
 
-  assetObjectId  Int
-  assetObject     AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: Cascade)
+  assetObjectId Int
+  assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: Cascade)
 
   taskType      String
   startsAt      DateTime?

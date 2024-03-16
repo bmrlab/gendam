@@ -178,35 +178,64 @@ async fn create_asset_object(
     // copy file and rename to asset object id
     let file_name = local_full_path.split("/").last().unwrap().to_owned();
 
+    let start_time = std::time::Instant::now();
+    let bytes = std::fs::read(&local_full_path).unwrap();
+    let file_sha256 = sha256::digest(&bytes);
+    let duration = start_time.elapsed();
+    tracing::info!("{:?}, sha256: {:?}, duration: {:?}", local_full_path, file_sha256, duration);
+
+    let destination_path = library
+        .files_dir
+        .join(file_sha256.clone());
+    std::fs::copy(local_full_path, destination_path).map_err(|e| {
+        rspc::Error::new(
+            rspc::ErrorCode::InternalServerError,
+            format!("failed to copy file: {}", e),
+        )
+    })?;
+
     let (asset_object_data, file_path_data) = library.prisma_client()
         ._transaction()
         .run(|client| async move {
             let asset_object_data = client
                 .asset_object()
-                .create(vec![])
+                .upsert(
+                    asset_object::hash::equals(file_sha256.clone()),
+                    asset_object::create(file_sha256.clone(), vec![]),
+                    vec![],
+                )
                 .exec()
                 .await
                 .map_err(|e| {
                     tracing::error!("failed to create asset_object: {}", e);
                     e
                 })?;
-            let file_path_data = client
-                .file_path()
-                .create(
-                    false,
-                    materialized_path,
-                    file_name,
-                    vec![
-                        // file_path::SetParam::SetId(asset_object_data.id)
-                        file_path::asset_object_id::set(Some(asset_object_data.id)),
-                    ],
-                )
-                .exec()
-                .await
-                .map_err(|e| {
-                    tracing::error!("failed to create file_path: {}", e);
-                    e
-                })?;
+            let mut new_file_name = file_name.clone();
+            let file_path_data = loop {
+                let res = client
+                    .file_path()
+                    .create(
+                        false,
+                        materialized_path.clone(),
+                        new_file_name.clone(),
+                        vec![file_path::asset_object_id::set(Some(asset_object_data.id))],
+                    )
+                    .exec()
+                    .await;
+                if let Err(e) = res {
+                    if e.to_string().contains("Unique constraint failed") {
+                        tracing::info!("failed to create file_path: {}, retry with a new name", e);
+                        let suffix = uuid::Uuid::new_v4().to_string().split("-").next().unwrap().to_string();
+                        new_file_name = format!("{} ({})", file_name, suffix);
+                        continue;
+                    } else {
+                        tracing::error!("failed to create file_path: {}", e);
+                        return Err(e);
+                    }
+                } else {
+                    break res.unwrap();
+                }
+            };
             Ok((asset_object_data, file_path_data))
         })
         .await
@@ -216,17 +245,6 @@ async fn create_asset_object(
                 format!("failed to create asset_object: {}", e),
             )
         })?;
-
-    let destination_path = library
-        .files_dir
-        .join(asset_object_data.id.to_string());
-    std::fs::copy(local_full_path, destination_path).map_err(|e| {
-        rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("failed to copy file: {}", e),
-        )
-    })?;
-    // TODO: 如果文件复制失败了，还得回滚一下，删除新建的 asset_object 和 file_path
 
     Ok((file_path_data, asset_object_data))
 }
@@ -405,6 +423,7 @@ async fn process_video_asset(
 #[serde(rename_all = "camelCase")]
 struct AssetObjectQueryResult {
     id: i32,
+    hash: String,
 }
 
 #[derive(Serialize, Type, Debug)]
@@ -449,7 +468,8 @@ async fn list_file_path(
                 Some(asset_object) => match asset_object {
                     None => None,
                     Some(asset_object) => Some(AssetObjectQueryResult {
-                        id: asset_object.id
+                        id: asset_object.id,
+                        hash: asset_object.hash.clone(),
                     }),
                 },
                 None => None,
