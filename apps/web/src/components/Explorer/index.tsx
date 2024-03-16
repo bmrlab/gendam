@@ -7,8 +7,8 @@ export default function Explorer() {
 
   if (!explorer.items || explorer.items.length === 0) {
     return (
-      <div>
-        <h1>No items</h1>
+      <div className="flex h-full items-center justify-center">
+        <p className="text-neutral-400 text-sm">当前文件夹为空</p>
       </div>
     )
   }

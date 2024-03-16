@@ -1,4 +1,5 @@
 use prisma_lib::{asset_object, file_path};
+use prisma_client_rust::{PrismaValue, raw};
 use rspc::{Router, Rspc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -161,6 +162,86 @@ where
                     .collect::<Vec<_>>();
                 // Ok(json!(names).to_string())
                 Ok(names)
+            }),
+        )
+        .procedure(
+            "rename_file_path",
+            Rspc::<TCtx>::new().mutation({
+                #[derive(Deserialize, Type, Debug)]
+                struct FilePathRenamePayload {
+                    path: String,
+                    old_name: String,
+                    new_name: String,
+                }
+                |ctx, input: FilePathRenamePayload| async move {
+                    let library = ctx.library()?;
+                    let materialized_path = if input.path.ends_with("/") {
+                        input.path
+                    } else {
+                        format!("{}/", input.path)
+                    };
+                    let old_name = input.old_name;
+                    let new_name = match contains_invalid_chars(input.new_name.as_str()) {
+                        true => {
+                            return Err(rspc::Error::new(
+                                rspc::ErrorCode::BadRequest,
+                                String::from("name contains invalid chars"),
+                            ));
+                        }
+                        false => input.new_name,
+                    };
+                    let old_materialized_path = format!("{}{}/", &materialized_path, &old_name);
+                    let new_materialized_path = format!("{}{}/", &materialized_path, &new_name);
+
+                    library.prisma_client()
+                        .file_path()
+                        .update(
+                            file_path::materialized_path_name(materialized_path, old_name),
+                            vec![file_path::name::set(new_name)],
+                        )
+                        .exec()
+                        .await
+                        .map_err(|e| {
+                            rspc::Error::new(
+                                rspc::ErrorCode::InternalServerError,
+                                format!("failed to rename file_path item: {}", e),
+                            )
+                        })?;
+
+                    /*
+                     * TODO: 要区分一下是文件夹重命名还是文件重命名，如果是文件，下面的不需要
+                     * FIXME: * REPLACE 方法不是替换前缀，这里有问题！
+                     *
+                     * 注意: 对于 /a/aa/a/aa/ 这种路径，如果是把 /a/aa/ 修改成 /a/ab/，
+                     * 下面的 SQL 只会把 /a/aa/a/aa/ 变成 /a/ab/a/aa/ 而不会变成 /a/ab/a/ab/，因为 REPLACE 只替换第一个找到的字符串
+                     * 另外，也不会把 /xxx/a/aa/ 替换成 /xxx/a/ab/，因为 LIKE 语句确保选择的 file_path 的前缀都是 /a/aa/
+                     */
+
+                    let old_materialized_path_like = format!("{}%", &old_materialized_path);
+                    library.prisma_client()
+                        ._execute_raw(raw!(
+                            r#"
+                            UPDATE "FilePath" SET "materializedPath" = REPLACE("materializedPath", $1, $2) WHERE "materializedPath" LIKE $3
+                            "#,
+                            PrismaValue::String(old_materialized_path),
+                            PrismaValue::String(new_materialized_path),
+                            PrismaValue::String(old_materialized_path_like)
+                        ))
+                        // .update_many(
+                        //     vec![file_path::materialized_path::starts_with(old_materialized_path)],
+                        //     vec![file_path::materialized_path::set(new_materialized_path)],
+                        // )
+                        .exec()
+                        .await
+                        .map_err(|e| {
+                            rspc::Error::new(
+                                rspc::ErrorCode::InternalServerError,
+                                format!("failed to rename file_path for children: {}", e),
+                            )
+                        })?;
+
+                    Ok(())
+                }
             }),
         )
         .procedure(

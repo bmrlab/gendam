@@ -20,7 +20,7 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
           className={`m-2 flex cursor-default select-none flex-col items-center justify-start
             ${explorer.isItemSelected(item) && styles['selected']}`}
           onClick={(e) => {
-            e.stopPropagation()
+            e.stopPropagation()  // FIXME: 会导致点了文件夹以后右键菜单无法被关闭
             explorer.resetSelectedItems([item])
           }}
         >

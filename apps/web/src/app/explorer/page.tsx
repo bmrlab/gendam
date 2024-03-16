@@ -4,21 +4,23 @@ import { AssetContextMenuProvider } from '@/components/AssetContextMenu/Context'
 import Explorer from '@/components/Explorer'
 import { ExplorerContextProvider } from '@/components/Explorer/Context'
 import { useExplorer } from '@/components/Explorer/useExplorer'
-import { CurrentLibrary } from '@/lib/library'
+// import { CurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
-import { useCallback, useContext, useState } from 'react'
+import { useCallback, useState } from 'react'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
+import TitleDialog from './_components/TitleDialog'
 
 export default function ExplorerPage() {
-  const currentLibrary = useContext(CurrentLibrary)
+  // const currentLibrary = useContext(CurrentLibrary)
   const router = useRouter()
   // currentPath 必须以 / 结尾, 调用 setCurrentPath 的地方自行确保格式正确
   const [parentPath, setParentPath] = useState<string>('/')
 
   const processVideoMut = rspc.useMutation(['assets.process_video_asset'])
+  const renameMut = rspc.useMutation(['assets.rename_file_path'])
 
   const {
     data: assets,
@@ -88,6 +90,28 @@ export default function ExplorerPage() {
     [goToDir, processVideoMut, router],
   )
 
+  const [renameDialog, setRenameDialog] = useState<{ asset: FilePathWithAssetObject } | null>(null)
+
+  const onConfirmTitleInput = useCallback(
+    (new_name: string) => {
+      if (!new_name || !renameDialog) {
+        return
+      }
+      console.log(new_name, renameDialog.asset)
+      renameMut.mutate({
+        path: parentPath,
+        old_name: renameDialog.asset.name,
+        new_name: new_name,
+      })
+      setRenameDialog(null)
+    },
+    [renameDialog, setRenameDialog, renameMut, parentPath],
+  )
+
+  const onCancelTitleInput = useCallback(() => {
+    setRenameDialog(null)
+  }, [setRenameDialog])
+
   const Panel: React.FC = () => {
     if (!panelOpen) return null
     return (
@@ -100,13 +124,21 @@ export default function ExplorerPage() {
           className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60"
           onClick={() => handleDoubleClick(panelOpen.asset)}
         >
-          <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">打开 ({panelOpen.asset.name})</div>
+          <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">
+            打开 ({panelOpen.asset.name})
+          </div>
         </div>
         <div className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60">
           <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">预览</div>
         </div>
         <div className="my-1 h-px bg-neutral-100"></div>
-        <div className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60">
+        <div
+          className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60"
+          onClick={() => {
+            setPanelOpen(null)
+            setRenameDialog({ asset: panelOpen.asset })
+          }}
+        >
           <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">重命名</div>
         </div>
         <div className="my-1 h-px bg-neutral-100"></div>
@@ -139,6 +171,7 @@ export default function ExplorerPage() {
           </div>
           <Footer></Footer>
           <Panel />
+          {renameDialog && <TitleDialog onConfirm={onConfirmTitleInput} onCancel={onCancelTitleInput} />}
         </div>
       </ExplorerContextProvider>
     </AssetContextMenuProvider>
