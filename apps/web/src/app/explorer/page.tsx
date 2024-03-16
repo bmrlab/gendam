@@ -94,15 +94,17 @@ export default function ExplorerPage() {
   const [renameDialog, setRenameDialog] = useState<{ asset: FilePathWithAssetObject } | null>(null)
 
   const onConfirmTitleInput = useCallback(
-    (new_name: string) => {
-      if (!new_name || !renameDialog) {
+    (newName: string) => {
+      if (!newName || !renameDialog) {
         return
       }
-      console.log(new_name, renameDialog.asset)
+      console.log(newName, renameDialog.asset)
       renameMut.mutate({
+        id: renameDialog.asset.id,
         path: parentPath,
-        old_name: renameDialog.asset.name,
-        new_name: new_name,
+        isDir: renameDialog.asset.isDir,
+        oldName: renameDialog.asset.name,
+        newName: newName,
       })
       setRenameDialog(null)
     },

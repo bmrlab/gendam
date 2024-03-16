@@ -56,7 +56,7 @@ where
                     // Ok(json!(file_path_data).to_string())
                     Ok(())
                 }
-            }),
+            })
         )
         .procedure(
             "list",
@@ -74,29 +74,35 @@ where
                         .await?;
                     Ok(names)
                 }
-            }),
+            })
         )
         .procedure(
             "rename_file_path",
             Rspc::<TCtx>::new().mutation({
                 #[derive(Deserialize, Type, Debug)]
+                #[serde(rename_all = "camelCase")]
                 struct FilePathRenamePayload {
+                    id: i32,
+                    is_dir: bool,
                     path: String,
                     old_name: String,
                     new_name: String,
                 }
                 |ctx, input: FilePathRenamePayload| async move {
                     let library = ctx.library()?;
-                    rename_file_path(&library, &input.path, &input.old_name, &input.new_name)
-                        .await?;
+                    rename_file_path(
+                        &library, &input.path, input.id,
+                        input.is_dir, &input.old_name, &input.new_name
+                    ).await?;
                     Ok(())
                 }
-            }),
+            })
         )
         .procedure(
             "delete_file_path",
             Rspc::<TCtx>::new().mutation({
                 #[derive(Deserialize, Type, Debug)]
+                #[serde(rename_all = "camelCase")]
                 struct FilePathDeletePayload {
                     path: String,
                     name: String,
@@ -106,7 +112,7 @@ where
                     delete_file_path(&library, &input.path, &input.name).await?;
                     Ok(())
                 }
-            }),
+            })
         )
         .procedure(
             "process_video_asset",
@@ -115,7 +121,7 @@ where
                 let file_path_id = input;
                 process_video_asset(&library, &ctx, file_path_id).await?;
                 Ok(())
-            }),
+            })
         );
     router
 }
@@ -253,28 +259,43 @@ async fn create_asset_object(
 async fn rename_file_path(
     library: &Library,
     path: &str,
+    id: i32,
+    is_dir: bool,
     old_name: &str,
     new_name: &str,
 ) -> Result<(), rspc::Error> {
-    let old_name = old_name.to_string();
-    let new_name = match contains_invalid_chars(new_name) {
-        true => {
-            return Err(rspc::Error::new(
-                rspc::ErrorCode::BadRequest,
-                String::from("name contains invalid chars"),
-            ));
-        }
-        false => new_name.to_string(),
-    };
-    let materialized_path = normalized_materialized_path(path);
-    let old_materialized_path = format!("{}{}/", &materialized_path, &old_name);
-    let new_materialized_path = format!("{}{}/", &materialized_path, &new_name);
+    if contains_invalid_chars(new_name) {
+        return Err(rspc::Error::new(
+            rspc::ErrorCode::BadRequest,
+            String::from("name contains invalid chars"),
+        ));
+    }
+    let file_path_data = library.prisma_client()
+        .file_path()
+        .find_first(vec![
+            file_path::id::equals(id),
+            file_path::is_dir::equals(is_dir),
+            file_path::name::equals(old_name.to_string()),
+        ])
+        .exec().await.map_err(|e| {
+            rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                format!("failed to find file_path: {}", e),
+            )
+        })?;
+    if let None = file_path_data {
+        return Err(rspc::Error::new(
+            rspc::ErrorCode::NotFound,
+            String::from("file_path not found"),
+        ));
+    }
 
+    let materialized_path = normalized_materialized_path(path);
     library.prisma_client()
         .file_path()
         .update(
-            file_path::materialized_path_name(materialized_path, old_name),
-            vec![file_path::name::set(new_name)],
+            file_path::materialized_path_name(materialized_path.clone(), old_name.to_string()),
+            vec![file_path::name::set(new_name.to_string())],
         )
         .exec()
         .await
@@ -285,11 +306,16 @@ async fn rename_file_path(
             )
         })?;
 
+    if !is_dir {
+        return Ok(());
+    }
+
     /*
      * TODO: 要区分一下是文件夹重命名还是文件重命名，如果是文件，下面的不需要
      * https://github.com/bmrlab/tauri-dam-test-playground/issues/15#issuecomment-2001923972
      */
-
+    let old_materialized_path = format!("{}{}/", &materialized_path, &old_name);
+    let new_materialized_path = format!("{}{}/", &materialized_path, &new_name);
     let old_materialized_path_like = format!("{}%", &old_materialized_path);
     library.prisma_client()
         ._execute_raw(raw!(
