@@ -44,8 +44,8 @@ export default function ClientLayout({
     }
   }, [setLibraryId]);
 
-  const getFileSrc = useCallback((assetObjectId: number) => {
-    const fileFullPath = homeDir + '/' + assetObjectId;
+  const getFileSrc = useCallback((assetObjectHash: string) => {
+    const fileFullPath = homeDir + '/' + assetObjectHash;
     if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
       return convertFileSrc(fileFullPath);
     } else {

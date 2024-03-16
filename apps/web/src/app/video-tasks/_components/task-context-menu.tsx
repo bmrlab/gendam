@@ -44,6 +44,7 @@ export default function TaskContextMenu({ fileHash, isProcessing, children }: Ta
         id: item.assetObjectHash,  // TODO: 这里回头要改成 assetObjectId, 但是对 audio export 功能改动较大
         label: item.name,
         assetObjectId: item.assetObjectId,
+        assetObjectHash: item.assetObjectHash,
       })),
     })
     setAudioDialogOpen(true)

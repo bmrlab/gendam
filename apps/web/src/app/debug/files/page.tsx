@@ -155,7 +155,7 @@ export default function Files() {
               ) : (
                 asset.assetObject ? (
                   <video controls={false} autoPlay muted loop style={{ width: "100%", height: "100%", objectFit: "cover" }}>
-                    <source src={currentLibrary.getFileSrc(asset.assetObject.id)} type="video/mp4" />
+                    <source src={currentLibrary.getFileSrc(asset.assetObject.hash)} type="video/mp4" />
                   </video>
                 ) : (
                   <Image src={ Document_Light } alt="folder" priority></Image>

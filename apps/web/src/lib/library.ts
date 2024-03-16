@@ -3,11 +3,11 @@ import { createContext } from "react";
 type CurrentLibraryContext = {
   id: string | null;
   setContext: (id: string) => Promise<void>;
-  getFileSrc: (assetObjectId: number) => string;
+  getFileSrc: (assetObjectId: string) => string;
 };
 
 export const CurrentLibrary = createContext<CurrentLibraryContext>({
   id: null,
   setContext: async () => {},
-  getFileSrc: (assetObjectId: number) => `http://localhost/${assetObjectId}`,  // 无效的默认值
+  getFileSrc: (assetObjectHash: string) => `http://localhost/${assetObjectHash}`,  // 无效的默认值
 });

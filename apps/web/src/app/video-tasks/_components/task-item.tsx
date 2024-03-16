@@ -89,7 +89,7 @@ export default function VideoTaskItem({
         }}
       >
         <video controls={false} autoPlay muted loop className="size-full object-contain">
-          <source src={currentLibrary.getFileSrc(assetObjectId)} type="video/mp4" />
+          <source src={currentLibrary.getFileSrc(assetObjectHash)} type="video/mp4" />
         </video>
       </div>
       <div className="grid flex-1">

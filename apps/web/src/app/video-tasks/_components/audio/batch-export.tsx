@@ -15,9 +15,10 @@ import { useCallback, useMemo, useState, useContext } from 'react'
 import { FileTypeEnum } from './export'
 
 export type BatchExportProps = {
-  id: string
-  label: string
-  assetObjectId: number
+  id: string;
+  label: string;
+  assetObjectId: number;
+  assetObjectHash: string;
 }[]
 
 export default function BatchExport() {
@@ -105,7 +106,7 @@ export default function BatchExport() {
         <div className="col-span-1"></div>
       </div>
       <ScrollArea className="h-[576px]">
-        {data.map(({ id, label, assetObjectId }, index) => (
+        {data.map(({ id, label, assetObjectHash }, index) => (
           <div
             key={id}
             className={cn(
@@ -128,7 +129,7 @@ export default function BatchExport() {
                   }}
                   className="h-9 w-9"
                 >
-                  <source src={currentLibrary.getFileSrc(assetObjectId)} type="video/mp4" />
+                  <source src={currentLibrary.getFileSrc(assetObjectHash)} type="video/mp4" />
                 </video>
               </div>
               <p className="truncate text-[13px] font-medium leading-[18px] text-[#323438]">{label}</p>
