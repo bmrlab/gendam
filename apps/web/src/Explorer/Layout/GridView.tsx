@@ -4,7 +4,7 @@ import { CurrentLibrary } from '@/lib/library'
 import { Document_Light, Folder_Light } from '@muse/assets/images'
 import Image from 'next/image'
 import { useContext } from 'react'
-import { useExplorerContext } from '../Context'
+import { useExplorerContext } from '../hooks/useExplorerContext'
 import { ExplorerItem } from '../types'
 import styles from './GridView.module.css'
 

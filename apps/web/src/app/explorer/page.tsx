@@ -1,60 +1,58 @@
 'use client'
-import type { FilePathWithAssetObject } from '@/Explorer/AssetContextMenu/Context'
-import { AssetContextMenuProvider } from '@/Explorer/AssetContextMenu/Context'
 import Explorer from '@/Explorer'
-import { ExplorerContextProvider } from '@/Explorer/Context'
-import { useExplorer, ExplorerViewContext } from '@/Explorer/hooks'
+import { ExplorerContextProvider } from '@/Explorer/hooks'
+import { ExplorerViewContextProvider, useExplorer } from '@/Explorer/hooks'
 import { useExplorerStore } from '@/Explorer/store'
-import { ContextMenuContent, ContextMenuItem } from '@muse/ui/v1/context-menu'
+import { FilePathQueryResult } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
+import { ContextMenuContent, ContextMenuItem } from '@muse/ui/v1/context-menu'
 import classNames from 'classnames'
-import { useRouter } from 'next/navigation'
-import { useCallback, useState, useRef, type ReactNode, forwardRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { forwardRef, useCallback, useMemo, useState } from 'react'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
 import TitleDialog from './_components/TitleDialog'
 
-const ItemContextMenu = forwardRef<typeof ContextMenuContent>(
-  function ItemContextMenu({ ...prpos }, forwardedRef) {
-    return (
-      <ContextMenuContent
-        ref={forwardedRef as any}
-        className="w-60 rounded-md border border-neutral-100 bg-white p-1 shadow-lg"
-        {...prpos}
+const ItemContextMenu = forwardRef<typeof ContextMenuContent>(function ItemContextMenu({ ...prpos }, forwardedRef) {
+  return (
+    <ContextMenuContent
+      ref={forwardedRef as any}
+      className="w-60 rounded-md border border-neutral-100 bg-white p-1 shadow-lg"
+      {...prpos}
+    >
+      <ContextMenuItem className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60">
+        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">打开</div>
+      </ContextMenuItem>
+      <ContextMenuItem className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60">
+        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">预览</div>
+      </ContextMenuItem>
+      <ContextMenuItem className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60">
+        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">重命名</div>
+      </ContextMenuItem>
+      <ContextMenuItem
+        className={classNames(
+          'flex cursor-default items-center justify-start rounded-md px-2 py-2',
+          'text-red-600 hover:bg-red-500/90 hover:text-white',
+        )}
       >
-        <ContextMenuItem
-          className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60"
-        >
-          <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">打开</div>
-        </ContextMenuItem>
-        <ContextMenuItem
-          className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60"
-        >
-          <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">预览</div>
-        </ContextMenuItem>
-        <ContextMenuItem
-          className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60"
-        >
-          <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">重命名</div>
-        </ContextMenuItem>
-        <ContextMenuItem
-          className={classNames(
-            'flex cursor-default items-center justify-start rounded-md px-2 py-2',
-            'text-red-600 hover:bg-red-500/90 hover:text-white',
-          )}
-        >
-          <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">删除</div>
-        </ContextMenuItem>
-      </ContextMenuContent>
-    )
-  },
-)
+        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">删除</div>
+      </ContextMenuItem>
+    </ContextMenuContent>
+  )
+})
 
 export default function ExplorerPage() {
+  const searchParams = useSearchParams()
+  let dirInSearchParams = searchParams.get('dir') || '/'
+  if (!/^\/([^/\\:*?"<>|]+\/)+$/.test(dirInSearchParams)) {
+    dirInSearchParams = '/'
+  }
+
   const explorerStore = useExplorerStore()
   const router = useRouter()
   // currentPath 必须以 / 结尾, 调用 setCurrentPath 的地方自行确保格式正确
-  const [parentPath, setParentPath] = useState<string>('/')
+  // const [parentPath, setParentPath] = useState<string>(dirInSearchParams)
+  const parentPath = useMemo(() => dirInSearchParams, [dirInSearchParams])
 
   const processVideoMut = rspc.useMutation(['assets.process_video_asset'])
   const renameMut = rspc.useMutation(['assets.rename_file_path'])
@@ -80,19 +78,6 @@ export default function ExplorerPage() {
     },
   })
 
-  const goToDir = useCallback(
-    (dirName: string) => {
-      let newPath = parentPath
-      if (dirName === '-1') {
-        newPath = newPath.replace(/(.*\/)[^/]+\/$/, '$1')
-      } else {
-        newPath += dirName + '/'
-      }
-      setParentPath(newPath)
-    },
-    [setParentPath, parentPath],
-  )
-
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const handleMouseMove = useCallback(
     (event: React.MouseEvent) => {
@@ -101,9 +86,9 @@ export default function ExplorerPage() {
     [setMousePosition],
   )
 
-  const [panelOpen, setPanelOpen] = useState<{ x: number; y: number; asset: FilePathWithAssetObject } | null>(null)
+  const [panelOpen, setPanelOpen] = useState<{ x: number; y: number; asset: FilePathQueryResult } | null>(null)
   const handleRightClick = useCallback(
-    (asset: FilePathWithAssetObject) => {
+    (asset: FilePathQueryResult) => {
       setPanelOpen({
         x: mousePosition.x,
         y: mousePosition.y,
@@ -113,22 +98,7 @@ export default function ExplorerPage() {
     [mousePosition, setPanelOpen],
   )
 
-  const handleDoubleClick = useCallback(
-    (asset: FilePathWithAssetObject) => {
-      setPanelOpen(null)
-      if (asset.isDir) {
-        goToDir(asset.name)
-      } else {
-        // this will always be true if asset.isDir is false
-        // revealMut.mutate("/" + asset.assetObject.id.toString());
-        processVideoMut.mutate(asset.id)
-        router.push('/video-tasks')
-      }
-    },
-    [goToDir, processVideoMut, router],
-  )
-
-  const [renameDialog, setRenameDialog] = useState<{ asset: FilePathWithAssetObject } | null>(null)
+  const [renameDialog, setRenameDialog] = useState<{ asset: FilePathQueryResult } | null>(null)
 
   const onConfirmTitleInput = useCallback(
     (newName: string) => {
@@ -153,14 +123,14 @@ export default function ExplorerPage() {
   }, [setRenameDialog])
 
   const handleDelete = useCallback(
-    (asset: FilePathWithAssetObject) => {
+    (asset: FilePathQueryResult) => {
       deleteMut.mutate({
         path: parentPath,
         name: asset.name,
       })
     },
     [deleteMut, parentPath],
-  );
+  )
 
   const Panel: React.FC = () => {
     if (!panelOpen) return null
@@ -170,10 +140,7 @@ export default function ExplorerPage() {
         style={{ left: panelOpen.x, top: panelOpen.y }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div
-          className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60"
-          onClick={() => handleDoubleClick(panelOpen.asset)}
-        >
+        <div className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60">
           <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">
             打开 ({panelOpen.asset.name})
           </div>
@@ -209,29 +176,29 @@ export default function ExplorerPage() {
   }
 
   return (
-    <ExplorerViewContext.Provider value={{
-      contextMenu: <ItemContextMenu />
-    }}>
-      <AssetContextMenuProvider onDoubleClick={handleDoubleClick}>
-        <ExplorerContextProvider explorer={explorer}>
-          <div
-            className="flex h-full flex-col"
-            onClick={() => {
-              setPanelOpen(null)
-              explorer.resetSelectedItems()
-            }}
-            onMouseMove={handleMouseMove}
-          >
-            <Header goToDir={goToDir} parentPath={parentPath}></Header>
-            <div className="flex-1">
-              <Explorer></Explorer>
-            </div>
-            <Footer></Footer>
-            <Panel />
-            {renameDialog && <TitleDialog onConfirm={onConfirmTitleInput} onCancel={onCancelTitleInput} />}
+    <ExplorerViewContextProvider
+      value={{
+        contextMenu: <ItemContextMenu />,
+      }}
+    >
+      <ExplorerContextProvider explorer={explorer}>
+        <div
+          className="flex h-full flex-col"
+          onClick={() => {
+            setPanelOpen(null)
+            explorer.resetSelectedItems()
+          }}
+          onMouseMove={handleMouseMove}
+        >
+          <Header></Header>
+          <div className="flex-1">
+            <Explorer></Explorer>
           </div>
-        </ExplorerContextProvider>
-      </AssetContextMenuProvider>
-    </ExplorerViewContext.Provider>
+          <Footer></Footer>
+          <Panel />
+          {renameDialog && <TitleDialog onConfirm={onConfirmTitleInput} onCancel={onCancelTitleInput} />}
+        </div>
+      </ExplorerContextProvider>
+    </ExplorerViewContextProvider>
   )
 }

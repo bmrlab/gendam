@@ -1,2 +1,4 @@
 export { useExplorer } from './useExplorer'
-export { ExplorerViewContext, useExplorerViewContext, type ExplorerViewContextProps } from './useExplorerView'
+export { ExplorerContextProvider, useExplorerContext } from './useExplorerContext'
+
+export { ExplorerViewContextProvider, useExplorerViewContext, type ExplorerViewContextProps } from './useExplorerView'

@@ -1,5 +1,5 @@
 'use client'
-import { useExplorerContext } from './Context'
+import { useExplorerContext } from './hooks/useExplorerContext'
 import GridView from './Layout/GridView'
 
 export default function Explorer() {

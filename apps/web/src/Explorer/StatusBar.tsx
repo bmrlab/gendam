@@ -1,5 +1,5 @@
 'use client'
-import { useExplorerContext } from './Context'
+import { useExplorerContext } from './hooks/useExplorerContext'
 
 export default function Explorer() {
   const explorer = useExplorerContext()

@@ -1,24 +1,44 @@
 'use client'
+import { useExplorerContext } from '@/Explorer/hooks'
 import UploadButton from '@/components/UploadButton'
 import { rspc } from '@/lib/rspc'
-import { useCallback, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCallback, useState } from 'react'
 import TitleDialog from './TitleDialog'
-// import { useExplorerContext } from '@/components/Explorer/Context'
 
-export default function Header({ goToDir, parentPath }: { goToDir: (dirName: string) => void; parentPath: string }) {
-  // const explorer = useExplorerContext()
+export default function Header() {
+  const router = useRouter()
+  const explorer = useExplorerContext()
 
   const createPathMut = rspc.useMutation(['assets.create_file_path'])
   const createAssetMut = rspc.useMutation(['assets.create_asset_object'])
 
+  const goToDir = useCallback(
+    (dirName: string) => {
+      if (!explorer.parentPath) {
+        return
+      }
+      let newPath = explorer.parentPath
+      if (dirName === '-1') {
+        newPath = newPath.replace(/(.*\/)[^/]+\/$/, '$1')
+      } else {
+        newPath += dirName + '/'
+      }
+      router.push('/explorer?dir=' + newPath)
+    },
+    [explorer, router],
+  )
+
   let handleSelectFile = useCallback(
     (fileFullPath: string) => {
-      createAssetMut.mutate({
-        path: parentPath,
-        localFullPath: fileFullPath,
-      })
+      if (explorer.parentPath) {
+        createAssetMut.mutate({
+          path: explorer.parentPath,
+          localFullPath: fileFullPath,
+        })
+      }
     },
-    [createAssetMut, parentPath],
+    [createAssetMut, explorer],
   )
 
   const [titleInputDialogVisible, setTitleInputDialogVisible] = useState(false)
@@ -29,16 +49,16 @@ export default function Header({ goToDir, parentPath }: { goToDir: (dirName: str
 
   const onConfirmTitleInput = useCallback(
     (title: string) => {
-      if (!title) {
+      if (!title || !explorer.parentPath) {
         return
       }
       createPathMut.mutate({
-        path: parentPath,
+        path: explorer.parentPath,
         name: title,
       })
       setTitleInputDialogVisible(false)
     },
-    [createPathMut, parentPath],
+    [createPathMut, explorer],
   )
 
   const onCancelTitleInput = useCallback(() => {
@@ -51,12 +71,12 @@ export default function Header({ goToDir, parentPath }: { goToDir: (dirName: str
         <div className="flex select-none items-center">
           <div className="px-2 py-1">&lt;</div>
           <div className="px-2 py-1">&gt;</div>
-          {parentPath !== '/' && (
+          {explorer.parentPath !== '/' && (
             <div className="cursor-pointer px-2 py-1" onClick={() => goToDir('-1')}>
               ↑
             </div>
           )}
-          <div className="ml-2 text-sm">{parentPath === '/' ? '全部' : parentPath}</div>
+          <div className="ml-2 text-sm">{explorer.parentPath === '/' ? '全部' : explorer.parentPath}</div>
         </div>
         <div className="flex select-none items-center">
           <div className="cursor-pointer px-2 py-1 text-sm" onClick={() => handleCreateDir()}>
@@ -65,7 +85,7 @@ export default function Header({ goToDir, parentPath }: { goToDir: (dirName: str
           <UploadButton onSelectFile={handleSelectFile} />
         </div>
       </div>
-      {titleInputDialogVisible && <TitleDialog onConfirm={onConfirmTitleInput} onCancel={onCancelTitleInput}/>}
+      {titleInputDialogVisible && <TitleDialog onConfirm={onConfirmTitleInput} onCancel={onCancelTitleInput} />}
     </>
   )
 }

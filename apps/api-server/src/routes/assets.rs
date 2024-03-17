@@ -457,6 +457,7 @@ struct AssetObjectQueryResult {
 struct FilePathQueryResult {
     id: i32,
     name: String,
+    materialized_path: String,
     is_dir: bool,
     asset_object: Option<AssetObjectQueryResult>,
 }
@@ -489,6 +490,7 @@ async fn list_file_path(
         .map(|r| FilePathQueryResult {
             id: r.id,
             name: r.name.clone(),
+            materialized_path: r.materialized_path.clone(),
             is_dir: r.is_dir,
             asset_object: match r.asset_object.as_ref() {
                 Some(asset_object) => match asset_object {
