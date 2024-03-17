@@ -55,8 +55,10 @@ export default function ExplorerPage() {
   return (
     <ExplorerViewContextProvider value={{ contextMenu }}>
       <ExplorerContextProvider explorer={explorer}>
-        {/* <div className="flex h-full flex-col" onMouseMove={handleMouseMove}> */}
-        <div className="flex h-full flex-col">
+        <div className="flex h-full flex-col"
+          onClick={() => explorer.resetSelectedItems()}
+          // onMouseMove={handleMouseMove}
+        >
           <Header></Header>
           <div className="flex-1">
             <Explorer></Explorer>
