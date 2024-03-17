@@ -3,13 +3,71 @@ import ViewItem from '@/Explorer/components/ViewItem'
 import { useCurrentLibrary } from '@/lib/library'
 import { Document_Light, Folder_Light } from '@muse/assets/images'
 import Image from 'next/image'
-import { useExplorerContext } from '../hooks/useExplorerContext'
-import { ExplorerItem } from '../types'
+import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
+import { useExplorerStore } from '@/Explorer/store'
+import { ExplorerItem } from '@/Explorer/types'
 import styles from './GridView.module.css'
+import { useCallback, useEffect, useRef } from 'react'
+import { rspc } from '@/lib/rspc'
+
+const RenamableItemText = ({ data }: { data: ExplorerItem }) => {
+  const explorerStore = useExplorerStore()
+  const explorer = useExplorerContext()
+  const renameMut = rspc.useMutation(['assets.rename_file_path'])
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.value = data.name
+      inputRef.current.select()
+    }
+  }, [inputRef, data])
+
+  const handleInputSubmit = useCallback(
+    (e: React.FormEvent) => {
+      if (!inputRef.current?.value) {
+        return
+      }
+      if (!explorer.parentPath) {
+        // TODO: explorer.parentPath 到这一步不应该是空的，然后 data.id 如果存在，其实可以忽略 parentPath 参数
+        return
+      }
+      console.log('input complete')
+      e.preventDefault()
+      // explorerStore.setIsRenaming(false)
+      explorerStore.reset()
+      renameMut.mutate({
+        id: data.id,
+        path: explorer.parentPath,
+        isDir: data.isDir,
+        oldName: data.name,
+        newName: inputRef.current.value,
+      })
+    },
+    [explorer.parentPath, explorerStore, renameMut, data.id, data.isDir, data.name],
+  )
+
+  return (
+    <form className='w-32 pt-1' onSubmit={handleInputSubmit}>
+      <input
+        ref={inputRef}
+        className='block w-full border-2 border-blue-600 rounded-sm px-2 py-1 text-center text-xs'
+        type="text"
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+        onBlur={() => {
+          console.log("on blur, but do nothing, press enter to submit")
+        }}
+      />
+    </form>
+  )
+}
 
 export default function GridView({ items }: { items: ExplorerItem[] }) {
   const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
+  const explorerStore = useExplorerStore()
 
   return (
     <div className="flex flex-wrap content-start items-start justify-start p-6">
@@ -21,6 +79,7 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
           onClick={(e) => {
             e.stopPropagation() // FIXME: 会导致点了文件夹以后右键菜单无法被关闭
             explorer.resetSelectedItems([item])
+            explorerStore.reset()
           }}
         >
           <ViewItem data={item}>
@@ -41,9 +100,13 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
                 <Image src={Document_Light} alt="folder" priority></Image>
               )}
             </div>
-            <div className={`${styles['title']} mb-2 mt-1 w-32 rounded-lg p-1`}>
-              <div className="line-clamp-2 h-[2.8em] text-center text-xs leading-[1.4em]">{item.name}</div>
-            </div>
+            {explorer.isItemSelected(item) && explorerStore.isRenaming ? (
+              <RenamableItemText data={item} />
+            ) : (
+              <div className={`${styles['title']} mb-2 mt-1 w-32 rounded-lg p-1`}>
+                <div className="line-clamp-2 h-[2.8em] text-center text-xs leading-[1.4em]">{item.name}</div>
+              </div>
+            )}
           </ViewItem>
         </div>
       ))}

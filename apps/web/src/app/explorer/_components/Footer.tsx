@@ -1,5 +1,6 @@
 'use client'
 import { useExplorerContext } from '@/Explorer/hooks'
+import { ExplorerItem } from '@/Explorer/types'
 import Icon from '@/components/Icon'
 import { Folder_Light } from '@muse/assets/images'
 import Image from 'next/image'
@@ -12,6 +13,11 @@ export default function Footer() {
     list.unshift('home')
     return list
   }, [explorer.parentPath])
+
+  const theOnlySelectedItem = useMemo<ExplorerItem|null>(() => {
+    let arr = Array.from(explorer.selectedItems)
+    return arr[0] ?? null
+  }, [explorer])
 
   return (
     <div className="flex h-8 items-center justify-start border-t-2 border-neutral-100 px-4 text-xs">
@@ -26,6 +32,14 @@ export default function Footer() {
           )}
         </div>
       ))}
+      {theOnlySelectedItem && (
+        <>
+        <div className="mx-1 text-neutral-500">
+          <Icon.arrowRight className="h-4 w-4" />
+        </div>
+        <div className="text-neutral-500">{theOnlySelectedItem.name}</div>
+        </>
+      )}
     </div>
   )
 }
