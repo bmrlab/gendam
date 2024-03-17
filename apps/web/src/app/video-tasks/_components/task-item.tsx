@@ -4,7 +4,7 @@ import { VIDEO_DIMENSION } from './utils'
 import { MuseStatus, MuseTaskBadge } from '@/components/Badge'
 import MuseDropdownMenu, { DropdownMenuOptions } from '@/components/DropdownMenu'
 import Icon from '@/components/Icon'
-import { Button } from '@/components/ui/button'
+import { Button } from '@muse/ui/v1/button'
 import { cn } from '@/lib/utils'
 import { CurrentLibrary } from "@/lib/library";
 import type { VideoWithTasksResult } from '@/lib/bindings'

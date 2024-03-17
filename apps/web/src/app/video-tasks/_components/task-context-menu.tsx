@@ -6,7 +6,7 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from '@/components/ui/context-menu'
+} from '@muse/ui/v1/context-menu'
 import { useBoundStore } from '../_store'
 import { PropsWithChildren, ReactNode, useCallback, useMemo } from 'react'
 

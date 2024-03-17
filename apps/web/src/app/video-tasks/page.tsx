@@ -1,7 +1,7 @@
 'use client'
 import TaskFooter from './_components/footer'
 import VideoTasksList from './_components/task-list'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { ScrollArea } from '@muse/ui/v1/scroll-area'
 import { rspc } from '@/lib/rspc'
 // import { useMemo } from 'react'
 // import type { VideoItem } from './_components/task-item'

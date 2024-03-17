@@ -1,12 +1,12 @@
 import Icon from '@/components/Icon'
-import { Button } from '@/components/ui/button'
+import { Button } from '@muse/ui/v1/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+} from '@muse/ui/v1/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { PropsWithChildren, ReactNode } from 'react'
 

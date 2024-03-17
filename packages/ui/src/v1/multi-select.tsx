@@ -6,7 +6,7 @@ import { Primitive, type ComponentPropsWithoutRef } from '@radix-ui/react-primit
 import { useControllableState } from '@radix-ui/react-use-controllable-state'
 import { createPortal } from 'react-dom'
 
-import { Badge } from '@/components/ui/badge'
+import { Badge } from './badge'
 import {
   Command,
   CommandEmpty,
@@ -15,9 +15,9 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from '@/components/ui/command'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
+} from './command'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip'
+import { cn } from '../utils'
 import {
   ElementRef,
   FC,

@@ -2,7 +2,7 @@
 import BatchExport from './batch-export'
 import AudioExport from './export'
 import { AudioDialogEnum } from '../../_store/audio-dialog'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@muse/ui/v1/dialog'
 import { useBoundStore } from '../../_store'
 
 export default function AudioDialog() {

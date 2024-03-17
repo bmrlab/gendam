@@ -1,5 +1,5 @@
 import { SvgIconProps } from '@/components/Icon'
-import { Input, InputProps } from '@/components/ui/input'
+import { Input, InputProps } from '@muse/ui/v1/input'
 import { cn, twx } from '@/lib/utils'
 import { ComponentType } from 'react'
 
