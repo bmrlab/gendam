@@ -1,4 +1,4 @@
-import { ImmerStateCreator } from '@/store'
+import { ImmerStateCreator } from '.'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 
 type VideoSelectedState = VideoWithTasksResult[]

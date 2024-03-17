@@ -1,5 +1,5 @@
 'use client'
-import { useBoundStore } from '@/store'
+import { useBoundStore } from '../_store'
 
 export default function TaskFooter({ total }: { total: number }) {
   const selected = useBoundStore.use.videoSelected()

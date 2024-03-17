@@ -1,6 +1,6 @@
 'use client'
 import { HTMLAttributes, useCallback, useMemo, useContext } from 'react'
-import { VIDEO_DIMENSION } from '@/app/video-tasks/_components/utils'
+import { VIDEO_DIMENSION } from './utils'
 import { MuseStatus, MuseTaskBadge } from '@/components/Badge'
 import MuseDropdownMenu, { DropdownMenuOptions } from '@/components/DropdownMenu'
 import Icon from '@/components/Icon'

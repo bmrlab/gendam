@@ -1,9 +1,9 @@
 'use client'
 import BatchExport from './batch-export'
 import AudioExport from './export'
-import { AudioDialogEnum } from '@/app/video-tasks/store/audio-dialog'
+import { AudioDialogEnum } from '../../_store/audio-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useBoundStore } from '@/store'
+import { useBoundStore } from '../../_store'
 
 export default function AudioDialog() {
   const isOpenAudioDialog = useBoundStore.use.isOpenAudioDialog()

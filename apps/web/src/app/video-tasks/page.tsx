@@ -1,10 +1,10 @@
 'use client'
-import TaskFooter from '@/app/video-tasks/_components/footer'
-import VideoTasksList from '@/app/video-tasks/_components/task-list'
+import TaskFooter from './_components/footer'
+import VideoTasksList from './_components/task-list'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { rspc } from '@/lib/rspc'
 // import { useMemo } from 'react'
-// import type { VideoItem } from '@/app/video-tasks/_components/task-item'
+// import type { VideoItem } from './_components/task-item'
 
 export default function VideoTasksPage() {
   const {

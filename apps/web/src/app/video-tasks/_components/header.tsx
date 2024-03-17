@@ -1,9 +1,8 @@
 'use client'
-
 import Icon from '@/components/Icon'
 import MuseInput from '@/components/Input'
 import { cn, twx } from '@/lib/utils'
-import { useBoundStore } from '@/store'
+import { useBoundStore } from '../_store'
 import { HTMLAttributes } from 'react'
 
 export default function VideoTaskHeader({ className }: HTMLAttributes<HTMLDivElement>) {

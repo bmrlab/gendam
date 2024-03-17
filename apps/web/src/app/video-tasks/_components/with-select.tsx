@@ -4,7 +4,7 @@ import VideoTaskItem from './task-item'
 import type { VideoTaskItemProps } from './task-item'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 import useKeyPress, { KeyType } from '@/hooks/useKeyPress'
-import { useBoundStore } from '@/store'
+import { useBoundStore } from '../_store'
 import React from 'react'
 
 type WithSelectProps = {

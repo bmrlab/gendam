@@ -1,14 +1,14 @@
-import { SingleExportProps } from '@/app/video-tasks/store/audio-dialog'
+import { SingleExportProps } from '../../_store/audio-dialog'
 import { MuseBadge } from '@/components/Badge'
 import Icon from '@/components/Icon'
 import MuseRadio from '@/components/Radio'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/components/ui/use-toast'
-import { WithDownloadDialogButton } from '@/hoc/withDownloadDialog'
+import { WithDownloadDialogButton } from '../withDownloadDialog'
 import { AudioType } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
-import { useBoundStore } from '@/store'
+import { useBoundStore } from '../../_store'
 import { Fragment, useMemo, useState } from 'react'
 
 export enum FileTypeEnum {

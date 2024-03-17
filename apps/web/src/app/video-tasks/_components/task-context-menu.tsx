@@ -1,4 +1,4 @@
-import { AudioDialogEnum } from '@/app/video-tasks/store/audio-dialog'
+import { AudioDialogEnum } from '../_store/audio-dialog'
 import Icon from '@/components/Icon'
 import {
   ContextMenu,
@@ -7,7 +7,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
-import { useBoundStore } from '@/store'
+import { useBoundStore } from '../_store'
 import { PropsWithChildren, ReactNode, useCallback, useMemo } from 'react'
 
 export type TaskContextMenuProps = PropsWithChildren<{

@@ -1,5 +1,5 @@
-import AudioDialog from '@/app/video-tasks/_components/audio/dialog'
-import VideoTaskHeader from '@/app/video-tasks/_components/header'
+import AudioDialog from './_components/audio/dialog'
+import VideoTaskHeader from './_components/header'
 import { ReactNode } from 'react'
 
 export default function VideoTaskLayout({ children }: { children: ReactNode }) {
