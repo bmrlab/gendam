@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo, use } from "react";
 import { client, queryClient, rspc } from "@/lib/rspc";
 import { convertFileSrc } from '@tauri-apps/api/tauri';
 import { CurrentLibrary } from "@/lib/library";
@@ -14,7 +14,21 @@ export default function ClientLayout({
   const [libraryId, setLibraryId] = useState<string|null>(null);
   const [homeDir, setHomeDir] = useState<string|null>(null);
 
+  const blockCmdQ = useCallback(() => {
+    document.addEventListener('keydown', event => {
+      if (event.metaKey && (event.key === 'q' || event.key === 'w')) {
+        event.preventDefault()
+        console.log('Cmd + Q is pressed.')
+        alert('Cmd + Q 暂时禁用了，因为会导致 qdrant 不正常停止，TODO：实现 Cmd + Q 按了以后自行处理 app 退出')
+        /**
+         * https://github.com/bmrlab/tauri-dam-test-playground/issues/21#issuecomment-2002549684
+         */
+      }
+    })
+  }, [])
+
   useEffect(() => {
+    blockCmdQ()
     const p1 = client.query(["libraries.get_current_library"]).then((libraryIdInStorage) => {
       setLibraryId(libraryIdInStorage);
     }).catch(error => {
@@ -28,7 +42,7 @@ export default function ClientLayout({
       setHomeDir(null);
     });
     Promise.all([p1, p2]).then(() => setPending(false));
-  }, [setLibraryId, setPending]);
+  }, [setLibraryId, setPending, blockCmdQ]);
 
   const setContext = useCallback(async (id: string) => {
     setLibraryId(id);

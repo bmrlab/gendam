@@ -53,7 +53,8 @@
       },
       "dialog": {
         "ask": true,
-        "open": true
+        "open": true,
+        "message": true
       },
 
       "protocol": {
