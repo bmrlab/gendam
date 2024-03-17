@@ -10,7 +10,7 @@ import {
 
 import { cn } from "../utils"
 
-const ContextMenu = ContextMenuPrimitive.Root
+const ContextMenuRoot = ContextMenuPrimitive.Root
 
 const ContextMenuTrigger = ContextMenuPrimitive.Trigger
 
@@ -186,7 +186,7 @@ const ContextMenuShortcut = ({
 ContextMenuShortcut.displayName = "ContextMenuShortcut"
 
 export {
-  ContextMenu,
+  ContextMenuRoot,
   ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,

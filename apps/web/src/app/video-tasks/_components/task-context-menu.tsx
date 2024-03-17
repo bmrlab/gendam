@@ -1,7 +1,7 @@
 import { AudioDialogEnum } from '../_store/audio-dialog'
 import Icon from '@/components/Icon'
 import {
-  ContextMenu,
+  ContextMenuRoot,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
@@ -91,7 +91,7 @@ export default function TaskContextMenu({ fileHash, isProcessing, children }: Ta
   }, [handleExport, isProcessing])
 
   return (
-    <ContextMenu>
+    <ContextMenuRoot>
       <ContextMenuTrigger className="flex cursor-default items-center justify-center rounded-md text-sm">
         {children}
       </ContextMenuTrigger>
@@ -112,6 +112,6 @@ export default function TaskContextMenu({ fileHash, isProcessing, children }: Ta
           ),
         )}
       </ContextMenuContent>
-    </ContextMenu>
+    </ContextMenuRoot>
   )
 }

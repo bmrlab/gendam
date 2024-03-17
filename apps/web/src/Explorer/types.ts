@@ -1,4 +1,6 @@
-import { FilePathQueryResult } from '@/lib/bindings'
-
-type FilePathWithAssetObject = FilePathQueryResult;
-export type ExplorerItem = FilePathWithAssetObject; // FilePathWithAssetObject | Folder
+export type ExplorerItem = {
+  id: number
+  name: string
+  isDir: boolean
+  assetObject: { id: number; hash: string } | null
+}

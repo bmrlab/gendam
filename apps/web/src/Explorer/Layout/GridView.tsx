@@ -1,5 +1,5 @@
 'use client'
-import AssetContextMenu from '@/Explorer/AssetContextMenu'
+import ViewItem from '@/Explorer/components/ViewItem'
 import { CurrentLibrary } from '@/lib/library'
 import { Document_Light, Folder_Light } from '@muse/assets/images'
 import Image from 'next/image'
@@ -24,7 +24,7 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
             explorer.resetSelectedItems([item])
           }}
         >
-          <AssetContextMenu item={item}>
+          <ViewItem data={item}>
             <div className={`${styles['image']} h-32 w-32 overflow-hidden rounded-lg`}>
               {item.isDir ? (
                 <Image src={Folder_Light} alt="folder" priority></Image>
@@ -45,7 +45,7 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
             <div className={`${styles['title']} mb-2 mt-1 w-32 rounded-lg p-1`}>
               <div className="line-clamp-2 h-[2.8em] text-center text-xs leading-[1.4em]">{item.name}</div>
             </div>
-          </AssetContextMenu>
+          </ViewItem>
         </div>
       ))}
     </div>
