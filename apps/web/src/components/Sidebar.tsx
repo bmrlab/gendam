@@ -1,20 +1,19 @@
 'use client'
-import { CurrentLibrary } from '@/lib/library'
+import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { Chevron_Double, Muse_Logo } from '@muse/assets/svgs'
 import classNames from 'classnames'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import path from 'path'
-import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export default function Sidebar() {
   const panelRef = useRef<HTMLDivElement>(null)
   const [selectPanelOpen, setSelectPanelOpen] = useState(false)
   const { data: libraries } = rspc.useQuery(['libraries.list'])
   const pathname = usePathname()
-  const currentLibrary = useContext(CurrentLibrary)
+  const currentLibrary = useCurrentLibrary()
 
   const switchLibrary = useCallback(
     async (libraryId: string) => {
@@ -79,14 +78,20 @@ export default function Sidebar() {
         )}
       </div>
       <div className="text-sm">
-        <Link href="/explorer" className={menuClassNames('/explorer')}>素材库</Link>
-        <Link href="/search" className={menuClassNames('/search')}>搜索</Link>
-        <Link href="/video-tasks" className={menuClassNames('/video-tasks')}>视频任务</Link>
+        <Link href="/explorer" className={menuClassNames('/explorer')}>
+          素材库
+        </Link>
+        <Link href="/search" className={menuClassNames('/search')}>
+          搜索
+        </Link>
+        <Link href="/video-tasks" className={menuClassNames('/video-tasks')}>
+          视频任务
+        </Link>
         <Link href="/debug/library" className={menuClassNames('/debug/library')}>
-          <span className="text-neutral-400 font-light">本地文件(Debug)</span>
+          <span className="font-light text-neutral-400">本地文件(Debug)</span>
         </Link>
         <Link href="/debug/files" className={menuClassNames('/debug/files')}>
-          <span className="text-neutral-400 font-light">素材文件(Debug)</span>
+          <span className="font-light text-neutral-400">素材文件(Debug)</span>
         </Link>
       </div>
     </div>

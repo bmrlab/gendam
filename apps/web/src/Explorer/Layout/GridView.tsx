@@ -1,15 +1,14 @@
 'use client'
 import ViewItem from '@/Explorer/components/ViewItem'
-import { CurrentLibrary } from '@/lib/library'
+import { useCurrentLibrary } from '@/lib/library'
 import { Document_Light, Folder_Light } from '@muse/assets/images'
 import Image from 'next/image'
-import { useContext } from 'react'
 import { useExplorerContext } from '../hooks/useExplorerContext'
 import { ExplorerItem } from '../types'
 import styles from './GridView.module.css'
 
 export default function GridView({ items }: { items: ExplorerItem[] }) {
-  const currentLibrary = useContext(CurrentLibrary)
+  const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
 
   return (
@@ -20,7 +19,7 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
           className={`m-2 flex cursor-default select-none flex-col items-center justify-start
             ${explorer.isItemSelected(item) && styles['selected']}`}
           onClick={(e) => {
-            e.stopPropagation()  // FIXME: 会导致点了文件夹以后右键菜单无法被关闭
+            e.stopPropagation() // FIXME: 会导致点了文件夹以后右键菜单无法被关闭
             explorer.resetSelectedItems([item])
           }}
         >

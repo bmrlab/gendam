@@ -1,28 +1,28 @@
 import MuseDropdownMenu from '@/components/DropdownMenu'
 import Icon from '@/components/Icon'
 import MuseMultiSelect from '@/components/MultiSelect'
-import { Button } from '@muse/ui/v1/button'
-import { ScrollArea } from '@muse/ui/v1/scroll-area'
 import { useToast } from '@/components/Toast/use-toast'
-import { WithDownloadDialogButton } from '../withDownloadDialog'
 import { AudioType, ExportInput } from '@/lib/bindings'
+import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
-import { useBoundStore } from '../../_store'
-import { CurrentLibrary } from "@/lib/library";
+import { Button } from '@muse/ui/v1/button'
+import { ScrollArea } from '@muse/ui/v1/scroll-area'
 import { produce } from 'immer'
-import { useCallback, useMemo, useState, useContext } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useBoundStore } from '../../_store'
+import { WithDownloadDialogButton } from '../withDownloadDialog'
 import { FileTypeEnum } from './export'
 
 export type BatchExportProps = {
-  id: string;
-  label: string;
-  assetObjectId: number;
-  assetObjectHash: string;
+  id: string
+  label: string
+  assetObjectId: number
+  assetObjectHash: string
 }[]
 
 export default function BatchExport() {
-  const currentLibrary = useContext(CurrentLibrary);
+  const currentLibrary = useCurrentLibrary()
   const { toast } = useToast()
 
   const audioDialogProps = useBoundStore.use.audioDialogProps()

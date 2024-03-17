@@ -1,33 +1,27 @@
 'use client'
-import { HTMLAttributes, useCallback, useMemo, useContext } from 'react'
-import { VIDEO_DIMENSION } from './utils'
 import { MuseStatus, MuseTaskBadge } from '@/components/Badge'
 import MuseDropdownMenu, { DropdownMenuOptions } from '@/components/DropdownMenu'
 import Icon from '@/components/Icon'
-import { Button } from '@muse/ui/v1/button'
-import { cn } from '@/lib/utils'
-import { CurrentLibrary } from "@/lib/library";
 import type { VideoWithTasksResult } from '@/lib/bindings'
+import { useCurrentLibrary } from '@/lib/library'
+import { cn } from '@/lib/utils'
+import { Button } from '@muse/ui/v1/button'
+import { HTMLAttributes, useCallback, useMemo } from 'react'
+import { VIDEO_DIMENSION } from './utils'
 
 export type VideoTaskItemProps = {
-  videoFile: VideoWithTasksResult,
+  videoFile: VideoWithTasksResult
   isSelect?: boolean
   handleClick: () => void
 } & HTMLAttributes<HTMLDivElement>
 
 export default function VideoTaskItem({
-  videoFile: {
-    name,
-    assetObjectId,
-    materializedPath,
-    assetObjectHash,
-    tasks,
-  },
+  videoFile: { name, assetObjectId, materializedPath, assetObjectHash, tasks },
   isSelect,
   handleClick,
   ...props
 }: VideoTaskItemProps) {
-  const currentLibrary = useContext(CurrentLibrary);
+  const currentLibrary = useCurrentLibrary()
 
   const showTask = useMemo(() => {
     return tasks.filter((task) => VIDEO_DIMENSION[task.taskType])
