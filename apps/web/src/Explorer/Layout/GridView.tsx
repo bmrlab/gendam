@@ -1,5 +1,5 @@
 'use client'
-import AssetContextMenu from '@/components/AssetContextMenu'
+import AssetContextMenu from '@/Explorer/AssetContextMenu'
 import { CurrentLibrary } from '@/lib/library'
 import { Document_Light, Folder_Light } from '@muse/assets/images'
 import Image from 'next/image'

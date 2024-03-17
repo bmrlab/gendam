@@ -1,5 +1,5 @@
 import { ContextType, createContext, PropsWithChildren, useContext } from 'react'
-import type { UseExplorer } from './useExplorer'
+import type { UseExplorer } from './hooks/useExplorer'
 
 const ExplorerContext = createContext<UseExplorer | null>(null)
 type ExplorerContext = NonNullable<ContextType<typeof ExplorerContext>>

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import type { ExplorerItem } from './types'
+import type { ExplorerItem } from '../types'
 
 type UseExplorerSettings = {
   layout: 'grid' | 'list'

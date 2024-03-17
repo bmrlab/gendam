@@ -1,5 +1,5 @@
 'use client'
-import { useExplorerContext } from '@/components/Explorer/Context'
+import { useExplorerContext } from '@/Explorer/Context'
 import Icon from '@/components/Icon'
 import { Folder_Light } from '@muse/assets/images'
 import Image from 'next/image'

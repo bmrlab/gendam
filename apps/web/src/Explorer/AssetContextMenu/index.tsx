@@ -1,5 +1,5 @@
 'use client'
-import { useExplorerContext } from '@/components/Explorer/Context'
+import { useExplorerContext } from '@/Explorer/Context'
 import { FilePathWithAssetObject, useAssetContextMenu } from './Context'
 import { PropsWithChildren } from 'react'
 
