@@ -21,7 +21,8 @@ export default function ViewItem({ data, children, ...props }: ViewItemProps) {
 
   const processVideoMut = rspc.useMutation(['assets.process_video_asset'])
 
-  const doubleClick = useCallback(() => {
+  const doubleClick = useCallback((e: React.FormEvent<HTMLDivElement>) => {
+    // e.stopPropagation()
     explorer.resetSelectedItems()
     if (data.isDir) {
       let newPath = explorer.parentPath + data.name + '/'
@@ -33,19 +34,17 @@ export default function ViewItem({ data, children, ...props }: ViewItemProps) {
   }, [data, explorer, router])
 
   return (
-    <ContextMenuRoot onOpenChange={(open) => explorerStore.setIsContextMenuOpen(open)}>
+    <ContextMenuRoot
+      onOpenChange={(open) => explorerStore.setIsContextMenuOpen(open)}
+    >
       <ContextMenuTrigger>
-        <div
-          {...props}
-          onDoubleClick={(e) => {
-            // e.stopPropagation()
-            doubleClick()
-          }}
-        >
+        <div {...props} onDoubleClick={doubleClick}>
           {children}
         </div>
       </ContextMenuTrigger>
-      <ContextMenuPortal>{explorerViewContext.contextMenu}</ContextMenuPortal>
+      <ContextMenuPortal>
+        {explorerViewContext.contextMenu && explorerViewContext.contextMenu(data)}
+      </ContextMenuPortal>
     </ContextMenuRoot>
   )
 }

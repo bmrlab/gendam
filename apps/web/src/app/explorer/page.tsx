@@ -1,45 +1,17 @@
 'use client'
 import Explorer from '@/Explorer'
-import { ExplorerContextProvider } from '@/Explorer/hooks'
-import { ExplorerViewContextProvider, useExplorer } from '@/Explorer/hooks'
+import { ExplorerContextProvider, ExplorerViewContextProvider, useExplorer } from '@/Explorer/hooks'
 import { useExplorerStore } from '@/Explorer/store'
 import { FilePathQueryResult } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
-import { ContextMenuContent, ContextMenuItem } from '@muse/ui/v1/context-menu'
 import classNames from 'classnames'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { forwardRef, useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
+import ItemContextMenu from './_components/ItemContextMenu'
 import TitleDialog from './_components/TitleDialog'
-
-const ItemContextMenu = forwardRef<typeof ContextMenuContent>(function ItemContextMenu({ ...prpos }, forwardedRef) {
-  return (
-    <ContextMenuContent
-      ref={forwardedRef as any}
-      className="w-60 rounded-md border border-neutral-100 bg-white p-1 shadow-lg"
-      {...prpos}
-    >
-      <ContextMenuItem className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60">
-        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">打开</div>
-      </ContextMenuItem>
-      <ContextMenuItem className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60">
-        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">预览</div>
-      </ContextMenuItem>
-      <ContextMenuItem className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60">
-        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">重命名</div>
-      </ContextMenuItem>
-      <ContextMenuItem
-        className={classNames(
-          'flex cursor-default items-center justify-start rounded-md px-2 py-2',
-          'text-red-600 hover:bg-red-500/90 hover:text-white',
-        )}
-      >
-        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">删除</div>
-      </ContextMenuItem>
-    </ContextMenuContent>
-  )
-})
+import { ExplorerItem } from '@/Explorer/types'
 
 export default function ExplorerPage() {
   const searchParams = useSearchParams()
@@ -56,7 +28,6 @@ export default function ExplorerPage() {
 
   const processVideoMut = rspc.useMutation(['assets.process_video_asset'])
   const renameMut = rspc.useMutation(['assets.rename_file_path'])
-  const deleteMut = rspc.useMutation(['assets.delete_file_path'])
 
   const {
     data: assets,
@@ -122,16 +93,6 @@ export default function ExplorerPage() {
     setRenameDialog(null)
   }, [setRenameDialog])
 
-  const handleDelete = useCallback(
-    (asset: FilePathQueryResult) => {
-      deleteMut.mutate({
-        path: parentPath,
-        name: asset.name,
-      })
-    },
-    [deleteMut, parentPath],
-  )
-
   const Panel: React.FC = () => {
     if (!panelOpen) return null
     return (
@@ -166,7 +127,7 @@ export default function ExplorerPage() {
           )}
           onClick={() => {
             setPanelOpen(null)
-            handleDelete(panelOpen.asset)
+            // handleDelete(panelOpen.asset)
           }}
         >
           <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">删除</div>
@@ -178,7 +139,7 @@ export default function ExplorerPage() {
   return (
     <ExplorerViewContextProvider
       value={{
-        contextMenu: <ItemContextMenu />,
+        contextMenu: (data: ExplorerItem) => <ItemContextMenu data={data} />,
       }}
     >
       <ExplorerContextProvider explorer={explorer}>

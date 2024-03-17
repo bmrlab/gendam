@@ -1,9 +1,10 @@
 // see spacedrive's interface/app/$libraryId/Explorer/View/Context.ts
-import { createContext, useContext, type ReactNode, type RefObject } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
+import { ExplorerItem } from '../types'
 
 export interface ExplorerViewContextProps {
   // ref: RefObject<HTMLDivElement>
-  contextMenu?: ReactNode
+  contextMenu?: (data: ExplorerItem) => ReactNode
 }
 
 const ExplorerViewContext = createContext<ExplorerViewContextProps | null>(null)
