@@ -1,7 +1,7 @@
 'use client'
 import AssetContextMenu from '@/components/AssetContextMenu'
 import { CurrentLibrary } from '@/lib/library'
-import { Document_Light, Folder_Light } from '@muse/assets/icons'
+import { Document_Light, Folder_Light } from '@muse/assets/images'
 import Image from 'next/image'
 import { useContext } from 'react'
 import { useExplorerContext } from '../Context'

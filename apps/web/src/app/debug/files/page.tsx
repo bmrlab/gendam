@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useContext } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Folder_Light, Document_Light } from "@muse/assets/icons";
+import { Folder_Light, Document_Light } from "@muse/assets/images";
 import { rspc } from "@/lib/rspc";
 import type { FilePathQueryResult } from "@/lib/bindings";
 import UploadButton from "@/components/UploadButton";

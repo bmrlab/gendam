@@ -1,0 +1,3 @@
+{
+  "include": ["svgs/*", "images/*", "declarations.d.ts"]
+}

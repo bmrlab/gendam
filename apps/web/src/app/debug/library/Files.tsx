@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { File } from "./types";
 import Image from "next/image";
-import { Folder_Light, Document_Light } from "@muse/assets/icons";
+import { Folder_Light, Document_Light } from "@muse/assets/images";
 import { rspc } from "@/lib/rspc";
 import styles from "./styles.module.css";
 

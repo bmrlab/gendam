@@ -1,7 +1,7 @@
 'use client'
 import { useExplorerContext } from '@/components/Explorer/Context'
 import Icon from '@/components/Icon'
-import { Folder_Light } from '@muse/assets/icons'
+import { Folder_Light } from '@muse/assets/images'
 import Image from 'next/image'
 import { useMemo } from 'react'
 
