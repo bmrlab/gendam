@@ -1,5 +1,5 @@
 'use client'
-import Explorer from '@/Explorer'
+import ExplorerLayout from '@/Explorer/components/ExplorerLayout'
 import { ExplorerContextProvider, ExplorerViewContextProvider, useExplorer } from '@/Explorer/hooks'
 // import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
@@ -61,7 +61,7 @@ export default function ExplorerPage() {
         >
           <Header></Header>
           <div className="flex-1">
-            <Explorer></Explorer>
+            <ExplorerLayout></ExplorerLayout>
           </div>
           <Footer></Footer>
         </div>
