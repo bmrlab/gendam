@@ -4,7 +4,7 @@ import GridView from '@/Explorer/components/View/GridView'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { rspc } from '@/lib/rspc'
-import { DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core'
+import { DragEndEvent, DragOverlay, DragStartEvent, DragCancelEvent } from '@dnd-kit/core'
 import { Document_Light, Folder_Light } from '@muse/assets/images'
 import Image from 'next/image'
 import { useCallback } from 'react'
@@ -58,6 +58,14 @@ export default function Explorer() {
     [explorerStore, moveMut],
   )
 
+  const handleDragCancel = useCallback(
+    (e: DragCancelEvent) => {
+      // console.log('onDragCancel', e)
+      explorerStore.setDrag(null)
+    },
+    [explorerStore],
+  )
+
   if (!explorer.items || explorer.items.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -67,7 +75,11 @@ export default function Explorer() {
   }
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
       <GridView items={explorer.items}></GridView>
       {/* <ListView items={explorer.items}></ListView> */}
 
