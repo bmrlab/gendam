@@ -1,16 +1,11 @@
 import { ExplorerItem } from '@/Explorer/types'
+import { useExplorerStore } from '@/Explorer/store'
 import { useDroppable, UseDroppableArguments } from '@dnd-kit/core'
-import { HTMLAttributes } from 'react'
+import { HTMLAttributes, useMemo } from 'react'
 
 export interface UseExplorerDroppableProps extends Omit<UseDroppableArguments, 'id'> {
   data: ExplorerItem
 }
-
-/**
- * TODO: droppable 要增加一个属性
- * disabled: (!isFolder && !isLocation) || props.selected
- * 被选中的或者不是文件夹的不能被 drop
- */
 
 const ExplorerDroppable = ({
   droppable,
@@ -18,9 +13,20 @@ const ExplorerDroppable = ({
 }: HTMLAttributes<HTMLDivElement> & {
   droppable: UseExplorerDroppableProps
 }) => {
+  const explorerStore = useExplorerStore()
+
+  const itemIsBeingDragged = useMemo<boolean>(() => {
+    if (explorerStore.drag?.type === 'dragging') {
+      return explorerStore.drag?.items.some((item) => item.id === droppable.data.id) || false
+    } else {
+      return false
+    }
+  }, [droppable, explorerStore])
+
   const { isOver, setNodeRef } = useDroppable({
     id: droppable.data.id.toString(),
     data: droppable.data,
+    disabled: !droppable.data.isDir || itemIsBeingDragged,
   })
 
   return <div ref={setNodeRef}>{children}</div>

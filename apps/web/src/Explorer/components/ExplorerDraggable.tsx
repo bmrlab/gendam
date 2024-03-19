@@ -10,11 +10,12 @@ const ExplorerDraggable = ({
   draggable,
   children,
 }: Omit<HTMLAttributes<HTMLDivElement>, 'draggable'> & {
-	draggable: UseExplorerDraggableProps;
+  draggable: UseExplorerDraggableProps
 }) => {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: draggable.data.id.toString(),
     data: draggable.data,
+    // disabled: true,  // TODO: 有些时候是不能 drag 的，这里要小心判断
   })
 
   // attributes.role 默认是 button, 浏览器自带样式 cursor: pointer
@@ -22,11 +23,11 @@ const ExplorerDraggable = ({
     cursor: 'default'
   }
 
-  if (transform) {
-    // style.transform = `translate3d(${transform.x}px, ${transform.y}px, 0)`
-    // style.transform = 'translate3d(0, 0, 0)'
-    style.transform = 'None'
-  }
+  // if (transform) {
+  //   // style.transform = `translate3d(${transform.x}px, ${transform.y}px, 0)`
+  //   // style.transform = 'translate3d(0, 0, 0)'
+  //   style.transform = 'None'
+  // }
 
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes}>

@@ -72,7 +72,6 @@ const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
 
-  // onMouseDown 也需要被监听，因为 draggable 监听了 mouseDown，这似乎会覆盖 click 事件
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     explorer.resetSelectedItems([data])
@@ -85,12 +84,11 @@ const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
         'm-2 flex cursor-default select-none flex-col items-center justify-start',
         explorer.isItemSelected(data) && styles['selected']
       )}
-      onMouseDown={handleClick}
       onClick={handleClick}
     >
-      <ExplorerDraggable draggable={{ data: data }}>
+      <ViewItem data={data}>
         <ExplorerDroppable droppable={{ data: data }}>
-          <ViewItem data={data}>
+          <ExplorerDraggable draggable={{ data: data }}>
             <div className={`${styles['image']} h-32 w-32 overflow-hidden rounded-lg`}>
               {data.isDir ? (
                 <Image src={Folder_Light} alt="folder" priority></Image>
@@ -115,9 +113,9 @@ const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
                 <div className="line-clamp-2 h-[2.8em] text-center text-xs leading-[1.4em]">{data.name}</div>
               </div>
             )}
-          </ViewItem>
+          </ExplorerDraggable>
         </ExplorerDroppable>
-      </ExplorerDraggable>
+      </ViewItem>
     </div>
   )
 }
