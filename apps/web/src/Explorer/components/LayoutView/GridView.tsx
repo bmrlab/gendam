@@ -1,15 +1,14 @@
 'use client'
 import ExplorerDraggable from '@/Explorer/components/Draggable/ExplorerDraggable'
 import ExplorerDroppable, { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
+import FileThumb from '@/Explorer/components/View/FileThumb'
 import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
 import { useCurrentLibrary } from '@/lib/library'
-import { Document_Light, Folder_Light } from '@muse/assets/images'
 import classNames from 'classnames'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 // import styles from './GridView.module.css'
@@ -26,17 +25,7 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
 
   return (
     <>
-      <div className={classNames('h-32 w-32 mb-1 overflow-hidden rounded-lg', highlight ? 'bg-slate-200' : null)}>
-        {data.isDir ? (
-          <Image src={Folder_Light} alt="folder" priority></Image>
-        ) : data.assetObject ? (
-          <video controls={false} autoPlay muted loop style={{ width: '100%', height: '100%', objectFit: 'cover' }}>
-            <source src={currentLibrary.getFileSrc(data.assetObject.hash)} type="video/mp4" />
-          </video>
-        ) : (
-          <Image src={Document_Light} alt="document" priority></Image>
-        )}
-      </div>
+      <FileThumb data={data} className={classNames('mb-1 h-32 w-32 rounded-lg', highlight ? 'bg-slate-200' : null)} />
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
         <RenamableItemText data={data} />
       ) : (

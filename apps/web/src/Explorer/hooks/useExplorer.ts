@@ -5,6 +5,19 @@ type UseExplorerSettings = {
   layout: 'grid' | 'list'
 }
 
+function useSettings(defaultSettings: UseExplorerSettings) {
+  const [settings, setSettings] = useState<UseExplorerSettings>(defaultSettings)
+
+  const update = useCallback((partialSettings: Partial<UseExplorerSettings>) => {
+    setSettings({ ...settings, ...partialSettings })
+  }, [settings, setSettings])
+
+  return {
+    ...settings,
+    update: update,
+  }
+}
+
 function useSelectedItems(items: ExplorerItem[] | null) {
   const itemIdsWeakMap = useRef(new WeakMap<ExplorerItem, number>())
   const [selectedItemIds, setSelectedItemIds] = useState(() => ({
@@ -73,9 +86,9 @@ type UseExplorerProps = {
 export function useExplorer({ settings, ...props }: UseExplorerProps) {
   return {
     count: props.items?.length ?? 0,
-    settings,
     ...props,
     ...useSelectedItems(props.items),
+    settings: useSettings(settings),
   }
 }
 

@@ -1,17 +1,21 @@
 'use client'
 import ExplorerDraggable from '@/Explorer/components/Draggable/ExplorerDraggable'
 import ExplorerDroppable, { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
+import FileThumb from '@/Explorer/components/View/FileThumb'
 import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
 import { useCurrentLibrary } from '@/lib/library'
-import { Document_Light, Folder_Light } from '@muse/assets/images'
 import classNames from 'classnames'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
+
+const formatDate = (date: string) => {
+  const d = new Date(date)
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString()
+}
 
 const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index }) => {
   const currentLibrary = useCurrentLibrary()
@@ -31,17 +35,8 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
         highlight ? 'bg-blue-600' : null,
       )}
     >
-      <div className={classNames('mr-2 h-8 w-8 overflow-hidden rounded-lg')}>
-        {data.isDir ? (
-          <Image src={Folder_Light} alt="folder" priority></Image>
-        ) : data.assetObject ? (
-          <video controls={false} autoPlay muted loop style={{ width: '100%', height: '100%', objectFit: 'cover' }}>
-            <source src={currentLibrary.getFileSrc(data.assetObject.hash)} type="video/mp4" />
-          </video>
-        ) : (
-          <Image src={Document_Light} alt="document" priority></Image>
-        )}
-      </div>
+      <FileThumb data={data} className="mr-2 h-8 w-8 rounded-sm" />
+
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
         <RenamableItemText data={data} />
       ) : (
@@ -49,6 +44,9 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
           <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">{data.name}</div>
         </div>
       )}
+      <div className="ml-auto" />
+      <div className="text-xs text-neutral-500 w-48">{formatDate(data.createdAt)}</div>
+      <div className="text-xs text-neutral-500 w-24">{data.isDir ? '文件夹' : '视频'}</div>
     </div>
   )
 }
@@ -98,6 +96,12 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
 export default function ListView({ items }: { items: ExplorerItem[] }) {
   return (
     <div className="">
+      <div className='flex items-center justify-start px-6 py-2 border-b border-neutral-200'>
+        <div className="text-xs text-neutral-900 font-bold">名称</div>
+        <div className="ml-auto" />
+        <div className="text-xs text-neutral-900 font-bold w-48">创建时间</div>
+        <div className="text-xs text-neutral-900 font-bold w-24">文件类型</div>
+      </div>
       {items.map((item, index) => (
         <ListItem key={item.id} data={item} index={index} />
       ))}

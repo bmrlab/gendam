@@ -4,4 +4,6 @@ export type ExplorerItem = {
   materializedPath: string
   isDir: boolean
   assetObject: { id: number; hash: string } | null
+  createdAt: string
+  updatedAt: string
 }

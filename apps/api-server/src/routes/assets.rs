@@ -617,6 +617,8 @@ struct FilePathQueryResult {
     materialized_path: String,
     is_dir: bool,
     asset_object: Option<AssetObjectQueryResult>,
+    created_at: String,
+    updated_at: String,
 }
 
 async fn list_file_path(
@@ -659,6 +661,8 @@ async fn list_file_path(
                 },
                 None => None,
             },
+            created_at: r.created_at.to_string(),
+            updated_at: r.updated_at.to_string(),
         })
         .collect::<Vec<FilePathQueryResult>>();
 
