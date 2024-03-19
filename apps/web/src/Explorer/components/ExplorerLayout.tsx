@@ -1,5 +1,5 @@
 'use client'
-import { DndContext } from '@/Explorer/components/DndContext'
+import { DndContext } from '@/Explorer/components/Draggable/DndContext'
 import GridView from '@/Explorer/components/View/GridView'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
