@@ -1,14 +1,16 @@
 'use client'
 import ViewItem from '@/Explorer/components/ViewItem'
-import { useCurrentLibrary } from '@/lib/library'
-import { Document_Light, Folder_Light } from '@muse/assets/images'
-import Image from 'next/image'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
-import styles from './GridView.module.css'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
+import { Document_Light, Folder_Light } from '@muse/assets/images'
+import Image from 'next/image'
+import { useCallback, useEffect, useRef } from 'react'
+import ExplorerDraggable from '../ExplorerDraggable'
+import ExplorerDroppable from '../ExplorerDroppable'
+import styles from './GridView.module.css'
 
 const RenamableItemText = ({ data }: { data: ExplorerItem }) => {
   const explorerStore = useExplorerStore()
@@ -49,15 +51,15 @@ const RenamableItemText = ({ data }: { data: ExplorerItem }) => {
   )
 
   return (
-    <form className='w-32 pt-1' onSubmit={handleInputSubmit}>
+    <form className="w-32 pt-1" onSubmit={handleInputSubmit}>
       <input
         ref={inputRef}
-        className='block w-full border-2 border-blue-600 rounded-sm px-2 py-1 text-center text-xs'
+        className="block w-full rounded-sm border-2 border-blue-600 px-2 py-1 text-center text-xs"
         type="text"
         onClick={(e) => e.stopPropagation()}
         onDoubleClick={(e) => e.stopPropagation()}
         onBlur={() => {
-          console.log("on blur, but do nothing, press enter to submit")
+          console.log('on blur, but do nothing, press enter to submit')
         }}
       />
     </form>
@@ -82,32 +84,36 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
             explorerStore.reset()
           }}
         >
-          <ViewItem data={item}>
-            <div className={`${styles['image']} h-32 w-32 overflow-hidden rounded-lg`}>
-              {item.isDir ? (
-                <Image src={Folder_Light} alt="folder" priority></Image>
-              ) : item.assetObject ? (
-                <video
-                  controls={false}
-                  autoPlay
-                  muted
-                  loop
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                >
-                  <source src={currentLibrary.getFileSrc(item.assetObject.hash)} type="video/mp4" />
-                </video>
-              ) : (
-                <Image src={Document_Light} alt="folder" priority></Image>
-              )}
-            </div>
-            {explorer.isItemSelected(item) && explorerStore.isRenaming ? (
-              <RenamableItemText data={item} />
-            ) : (
-              <div className={`${styles['title']} mb-2 mt-1 w-32 rounded-lg p-1`}>
-                <div className="line-clamp-2 h-[2.8em] text-center text-xs leading-[1.4em]">{item.name}</div>
-              </div>
-            )}
-          </ViewItem>
+          <ExplorerDraggable draggable={{ data: item }}>
+            <ExplorerDroppable droppable={{ data: item }}>
+              <ViewItem data={item}>
+                <div className={`${styles['image']} h-32 w-32 overflow-hidden rounded-lg`}>
+                  {item.isDir ? (
+                    <Image src={Folder_Light} alt="folder" priority></Image>
+                  ) : item.assetObject ? (
+                    <video
+                      controls={false}
+                      autoPlay
+                      muted
+                      loop
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    >
+                      <source src={currentLibrary.getFileSrc(item.assetObject.hash)} type="video/mp4" />
+                    </video>
+                  ) : (
+                    <Image src={Document_Light} alt="folder" priority></Image>
+                  )}
+                </div>
+                {explorer.isItemSelected(item) && explorerStore.isRenaming ? (
+                  <RenamableItemText data={item} />
+                ) : (
+                  <div className={`${styles['title']} mb-2 mt-1 w-32 rounded-lg p-1`}>
+                    <div className="line-clamp-2 h-[2.8em] text-center text-xs leading-[1.4em]">{item.name}</div>
+                  </div>
+                )}
+              </ViewItem>
+            </ExplorerDroppable>
+          </ExplorerDraggable>
         </div>
       ))}
     </div>

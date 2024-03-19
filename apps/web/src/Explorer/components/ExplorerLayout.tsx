@@ -1,6 +1,7 @@
 'use client'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import GridView from '@/Explorer/components/View/GridView'
+import { DndContext } from '@dnd-kit/core'
 
 export default function Explorer() {
   const explorer = useExplorerContext()
@@ -14,8 +15,8 @@ export default function Explorer() {
   }
 
   return (
-    <>
+    <DndContext>
       <GridView items={explorer.items}></GridView>
-    </>
+    </DndContext>
   )
 }

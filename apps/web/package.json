@@ -10,6 +10,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.1.0",
     "@muse/assets": "workspace:*",
     "@muse/ui": "workspace:*",
     "@rspc/client": "^1.0.0-rc.3",
