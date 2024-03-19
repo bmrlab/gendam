@@ -30,11 +30,13 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
     {
         use std::path::PathBuf;
         use rspc::ExportConfig;
-        router
+        if let Err(e) = router
             .export_ts(ExportConfig::new(
                 PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../apps/web/src/lib/bindings.ts"),
             ))
-            .unwrap();
+        {
+            tracing::error!("Failed to export typescript bindings: {}", e);
+        }
     }
 
     router.arced()
