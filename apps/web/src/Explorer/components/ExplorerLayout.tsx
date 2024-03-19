@@ -1,6 +1,7 @@
 'use client'
 import { DndContext } from '@/Explorer/components/Draggable/DndContext'
 import GridView from '@/Explorer/components/LayoutView/GridView'
+import ListView from '@/Explorer/components/LayoutView/ListView'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { rspc } from '@/lib/rspc'
@@ -80,8 +81,19 @@ export default function Explorer() {
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <GridView items={explorer.items}></GridView>
+      {/* <GridView items={explorer.items}></GridView> */}
       {/* <ListView items={explorer.items}></ListView> */}
+
+      {function renderLayout() {
+        switch (explorer.settings.layout) {
+          case 'grid':
+            return <GridView items={explorer.items} />
+          case 'list':
+            return <ListView items={explorer.items} />
+          default:
+            return null
+        }
+      }()}
 
       {!explorerStore.drag ? null : (
         <DragOverlay>

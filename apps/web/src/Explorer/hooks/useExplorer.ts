@@ -73,9 +73,7 @@ type UseExplorerProps = {
 export function useExplorer({ settings, ...props }: UseExplorerProps) {
   return {
     count: props.items?.length ?? 0,
-    settings: {
-      layout: 'grid',
-    },
+    settings,
     ...props,
     ...useSelectedItems(props.items),
   }

@@ -38,7 +38,8 @@ export default function ExplorerPage() {
     items: assets ?? null,
     parentPath: parentPath,
     settings: {
-      layout: 'grid',
+      layout: 'list',
+      // layout: 'list',
     },
   })
 

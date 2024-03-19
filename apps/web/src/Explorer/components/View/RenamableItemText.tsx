@@ -44,10 +44,10 @@ export default function RenamableItemText({ data }: { data: ExplorerItem }) {
   )
 
   return (
-    <form className="w-32 pt-1" onSubmit={handleInputSubmit}>
+    <form className="w-32" onSubmit={handleInputSubmit}>
       <input
         ref={inputRef}
-        className="block w-full rounded-sm border-2 border-blue-600 px-2 py-1 text-center text-xs"
+        className="block w-full rounded-sm outline-none border-2 border-blue-600 px-2 py-1 text-center text-xs"
         type="text"
         onClick={(e) => e.stopPropagation()}
         onDoubleClick={(e) => e.stopPropagation()}

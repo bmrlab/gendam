@@ -12,9 +12,8 @@ import classNames from 'classnames'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
-// import styles from './GridView.module.css'
 
-const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
+const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index }) => {
   const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
@@ -25,8 +24,14 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
   }, [data, explorer, isDroppable])
 
   return (
-    <>
-      <div className={classNames('h-32 w-32 mb-1 overflow-hidden rounded-lg', highlight ? 'bg-slate-200' : null)}>
+    <div
+      className={classNames(
+        'flex items-center justify-start px-6 py-1',
+        index % 2 === 1 && !highlight ? 'bg-slate-100' : null,
+        highlight ? 'bg-blue-600' : null,
+      )}
+    >
+      <div className={classNames('mr-2 h-8 w-8 overflow-hidden rounded-lg')}>
         {data.isDir ? (
           <Image src={Folder_Light} alt="folder" priority></Image>
         ) : data.assetObject ? (
@@ -40,15 +45,15 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
         <RenamableItemText data={data} />
       ) : (
-        <div className={classNames('w-32 rounded-lg p-1', highlight ? 'bg-blue-600 text-white' : null)}>
-          <div className="line-clamp-2 h-[2.8em] text-center text-xs leading-[1.4em]">{data.name}</div>
+        <div className={classNames('w-32', highlight ? 'text-white' : null)}>
+          <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">{data.name}</div>
         </div>
       )}
-    </>
+    </div>
   )
 }
 
-const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
+const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index }) => {
   const router = useRouter()
   const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
@@ -78,15 +83,11 @@ const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
   )
 
   return (
-    <div
-      className="m-2 flex cursor-default select-none flex-col items-center justify-start"
-      onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
-    >
+    <div className="cursor-default select-none" onClick={handleClick} onDoubleClick={handleDoubleClick}>
       <ViewItem data={data}>
         <ExplorerDroppable droppable={{ data: data }}>
           <ExplorerDraggable draggable={{ data: data }}>
-            <DroppableInner data={data} />
+            <DroppableInner data={data} index={index} />
           </ExplorerDraggable>
         </ExplorerDroppable>
       </ViewItem>
@@ -94,11 +95,11 @@ const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
   )
 }
 
-export default function GridView({ items }: { items: ExplorerItem[] }) {
+export default function ListView({ items }: { items: ExplorerItem[] }) {
   return (
-    <div className="flex flex-wrap content-start items-start justify-start p-6">
-      {items.map((item) => (
-        <GridItem key={item.id} data={item} />
+    <div className="">
+      {items.map((item, index) => (
+        <ListItem key={item.id} data={item} index={index} />
       ))}
     </div>
   )
