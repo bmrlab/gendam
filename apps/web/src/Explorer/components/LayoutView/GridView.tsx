@@ -1,7 +1,8 @@
 'use client'
 import ExplorerDraggable from '@/Explorer/components/Draggable/ExplorerDraggable'
 import ExplorerDroppable, { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
-import ViewItem from '@/Explorer/components/ViewItem'
+import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
+import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
@@ -11,7 +12,6 @@ import classNames from 'classnames'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
-import RenamableItemText from '../View/RenamableItemText'
 // import styles from './GridView.module.css'
 
 const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
