@@ -1,6 +1,6 @@
 'use client'
 import { DndContext } from '@/Explorer/components/Draggable/DndContext'
-import GridView from '@/Explorer/components/View/GridView'
+import GridView from '@/Explorer/components/LayoutView/GridView'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { rspc } from '@/lib/rspc'

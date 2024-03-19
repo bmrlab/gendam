@@ -11,7 +11,7 @@ import classNames from 'classnames'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
-import RenamableItemText from './RenamableItemText'
+import RenamableItemText from '../View/RenamableItemText'
 // import styles from './GridView.module.css'
 
 const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
