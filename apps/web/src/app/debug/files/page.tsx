@@ -189,7 +189,7 @@ export default function Files() {
                     <source src={currentLibrary.getFileSrc(asset.assetObject.hash)} type="video/mp4" />
                   </video>
                 ) : (
-                  <Image src={Document_Light} alt="folder" priority></Image>
+                  <Image src={Document_Light} alt="document" priority></Image>
                 )}
               </div>
               <div className={`${styles['title']} mb-2 mt-1 w-32 rounded-lg p-1`}>

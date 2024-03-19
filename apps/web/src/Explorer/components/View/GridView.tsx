@@ -1,4 +1,5 @@
 'use client'
+import classNames from 'classnames'
 import ViewItem from '@/Explorer/components/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
@@ -66,56 +67,65 @@ const RenamableItemText = ({ data }: { data: ExplorerItem }) => {
   )
 }
 
-export default function GridView({ items }: { items: ExplorerItem[] }) {
+const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
   const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
 
+  // onMouseDown 也需要被监听，因为 draggable 监听了 mouseDown，这似乎会覆盖 click 事件
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    explorer.resetSelectedItems([data])
+    explorerStore.reset()
+  }
+
+  return (
+    <div
+      className={classNames(
+        'm-2 flex cursor-default select-none flex-col items-center justify-start',
+        explorer.isItemSelected(data) && styles['selected']
+      )}
+      onMouseDown={handleClick}
+      onClick={handleClick}
+    >
+      <ExplorerDraggable draggable={{ data: data }}>
+        <ExplorerDroppable droppable={{ data: data }}>
+          <ViewItem data={data}>
+            <div className={`${styles['image']} h-32 w-32 overflow-hidden rounded-lg`}>
+              {data.isDir ? (
+                <Image src={Folder_Light} alt="folder" priority></Image>
+              ) : data.assetObject ? (
+                <video
+                  controls={false}
+                  autoPlay
+                  muted
+                  loop
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                >
+                  <source src={currentLibrary.getFileSrc(data.assetObject.hash)} type="video/mp4" />
+                </video>
+              ) : (
+                <Image src={Document_Light} alt="document" priority></Image>
+              )}
+            </div>
+            {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
+              <RenamableItemText data={data} />
+            ) : (
+              <div className={`${styles['title']} mt-1 w-32 rounded-lg p-1`}>
+                <div className="line-clamp-2 h-[2.8em] text-center text-xs leading-[1.4em]">{data.name}</div>
+              </div>
+            )}
+          </ViewItem>
+        </ExplorerDroppable>
+      </ExplorerDraggable>
+    </div>
+  )
+}
+
+export default function GridView({ items }: { items: ExplorerItem[] }) {
   return (
     <div className="flex flex-wrap content-start items-start justify-start p-6">
-      {items.map((item) => (
-        <div
-          key={item.id}
-          className={`m-2 flex cursor-default select-none flex-col items-center justify-start
-            ${explorer.isItemSelected(item) && styles['selected']}`}
-          onClick={(e) => {
-            e.stopPropagation() // FIXME: 会导致点了文件夹以后右键菜单无法被关闭
-            explorer.resetSelectedItems([item])
-            explorerStore.reset()
-          }}
-        >
-          <ExplorerDraggable draggable={{ data: item }}>
-            <ExplorerDroppable droppable={{ data: item }}>
-              <ViewItem data={item}>
-                <div className={`${styles['image']} h-32 w-32 overflow-hidden rounded-lg`}>
-                  {item.isDir ? (
-                    <Image src={Folder_Light} alt="folder" priority></Image>
-                  ) : item.assetObject ? (
-                    <video
-                      controls={false}
-                      autoPlay
-                      muted
-                      loop
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    >
-                      <source src={currentLibrary.getFileSrc(item.assetObject.hash)} type="video/mp4" />
-                    </video>
-                  ) : (
-                    <Image src={Document_Light} alt="folder" priority></Image>
-                  )}
-                </div>
-                {explorer.isItemSelected(item) && explorerStore.isRenaming ? (
-                  <RenamableItemText data={item} />
-                ) : (
-                  <div className={`${styles['title']} mb-2 mt-1 w-32 rounded-lg p-1`}>
-                    <div className="line-clamp-2 h-[2.8em] text-center text-xs leading-[1.4em]">{item.name}</div>
-                  </div>
-                )}
-              </ViewItem>
-            </ExplorerDroppable>
-          </ExplorerDraggable>
-        </div>
-      ))}
+      {items.map((item) => <GridItem key={item.id} data={item} />)}
     </div>
   )
 }

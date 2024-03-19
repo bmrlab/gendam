@@ -14,13 +14,19 @@ const ExplorerDraggable = ({
 }) => {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: draggable.data.id.toString(),
+    data: draggable.data,
   })
 
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined
+  // attributes.role 默认是 button, 浏览器自带样式 cursor: pointer
+  const style: {[key:string]:string} = {
+    cursor: 'default'
+  }
+
+  if (transform) {
+    // style.transform = `translate3d(${transform.x}px, ${transform.y}px, 0)`
+    // style.transform = 'translate3d(0, 0, 0)'
+    style.transform = 'None'
+  }
 
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
