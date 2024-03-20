@@ -22,9 +22,10 @@ mod prisma_tests {
         // let client = new_client().await.unwrap();
         let res = client
             .asset_object()
-            .create(vec![
-                asset_object::note::set(Some(i.to_string())),
-            ])
+            .create(
+                i.to_string(),
+                vec![asset_object::note::set(Some(i.to_string()))]
+            )
             .exec()
             .await;
         let duration = start.elapsed();
