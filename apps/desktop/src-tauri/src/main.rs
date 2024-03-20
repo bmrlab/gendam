@@ -14,7 +14,8 @@ use std::{
 };
 use tauri::Manager;
 use tokio::sync::broadcast;
-use tracing::{info, error};
+use tokio_util::sync::CancellationToken;
+use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone)]
@@ -23,7 +24,8 @@ struct Ctx {
     resources_dir: PathBuf,
     store: Arc<Mutex<tauri_plugin_store::Store<tauri::Wry>>>,
     current_library: Arc<Mutex<Option<Library>>>,
-    tx: Arc<broadcast::Sender<TaskPayload>>,
+    tx: Arc<Mutex<broadcast::Sender<TaskPayload>>>,
+    cancel_token: Arc<Mutex<CancellationToken>>,
 }
 
 impl CtxWithLibrary for Ctx {
@@ -49,6 +51,14 @@ impl CtxWithLibrary for Ctx {
     where
         Self: Sync + 'async_trait,
     {
+        // cancel all tasks
+        self.cancel_token.lock().unwrap().cancel();
+        let (tx, cancel_token) = init_task_pool();
+        let mut old_tx = self.tx.lock().unwrap();
+        let mut old_cancel_token = self.cancel_token.lock().unwrap();
+        *old_tx = tx;
+        *old_cancel_token = cancel_token;
+
         let mut store = self.store.lock().unwrap();
         let _ = store.insert(String::from("current-library-id"), library_id.into());
         let _ = store.save();
@@ -57,9 +67,9 @@ impl CtxWithLibrary for Ctx {
         if let Some(value) = store.get(String::from("current-library-id")) {
             let library_id = value.as_str().unwrap().to_owned();
             return Box::pin(async move {
-                let library = load_library(
-                    &self.local_data_root, &self.resources_dir, &library_id
-                ).await.unwrap();
+                let library = load_library(&self.local_data_root, &self.resources_dir, &library_id)
+                    .await
+                    .unwrap();
                 self.current_library.lock().unwrap().replace(library);
                 info!("Current library switched to {}", library_id);
             });
@@ -71,8 +81,8 @@ impl CtxWithLibrary for Ctx {
             });
         }
     }
-    fn get_task_tx(&self) -> Arc<broadcast::Sender<TaskPayload>> {
-        Arc::clone(&self.tx)
+    fn get_task_tx(&self) -> Arc<Mutex<broadcast::Sender<TaskPayload>>> {
+        self.tx.clone()
     }
 }
 
@@ -155,7 +165,9 @@ async fn main() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .expect("failed to add store plugin");
 
-    let tx = init_task_pool();
+    let (tx, cancel_token) = init_task_pool();
+    let tx = Arc::new(Mutex::new(tx));
+    let cancel_token = Arc::new(Mutex::new(cancel_token));
     let router = api_server::router::get_router::<Ctx>();
 
     window
@@ -167,6 +179,7 @@ async fn main() {
                 store: store.clone(),
                 current_library: current_library.clone(),
                 tx: tx.clone(),
+                cancel_token: cancel_token.clone(),
             }
         }))
         .expect("failed to add rspc plugin");
@@ -188,7 +201,7 @@ fn init_tracing(log_dir: PathBuf) {
             .with(
                 // load filters from the `RUST_LOG` environment variable.
                 tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| "muse_desktop=debug".into())
+                    .unwrap_or_else(|_| "muse_desktop=debug".into()),
             )
             .with(tracing_subscriber::fmt::layer().with_ansi(true))
             .init();
@@ -199,8 +212,7 @@ fn init_tracing(log_dir: PathBuf) {
          * see logs with cmd:
          * log stream --debug --predicate 'subsystem=="cc.musedam.local" and category=="default"'
          */
-        let os_logger =
-            tracing_oslog::OsLogger::new("cc.musedam.local", "default");
+        let os_logger = tracing_oslog::OsLogger::new("cc.musedam.local", "default");
         /*
          * macos log dir
          * ~/Library/Logs/cc.musedam.local/app.log
@@ -216,8 +228,9 @@ fn init_tracing(log_dir: PathBuf) {
                 return;
             }
         };
-        let os_file_logger =
-            tracing_subscriber::fmt::layer().with_writer(Mutex::new(file)).with_ansi(false);
+        let os_file_logger = tracing_subscriber::fmt::layer()
+            .with_writer(Mutex::new(file))
+            .with_ansi(false);
         tracing_subscriber::registry()
             .with(tracing_subscriber::EnvFilter::new("info"))
             .with(os_logger)

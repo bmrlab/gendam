@@ -7,6 +7,7 @@ use axum::routing::get;
 use content_library::{load_library, upgrade_library_schemas, Library};
 use dotenvy::dotenv;
 use rspc::integrations::httpz::Request;
+use tokio_util::sync::CancellationToken;
 use std::{
     boxed::Box,
     env,
@@ -60,7 +61,8 @@ struct Ctx {
     resources_dir: PathBuf,
     store: Arc<Mutex<Store>>,
     current_library: Arc<Mutex<Option<Library>>>,
-    tx: Arc<broadcast::Sender<TaskPayload>>,
+    tx: Arc<Mutex<broadcast::Sender<TaskPayload>>>,
+    cancel_token: Arc<Mutex<CancellationToken>>,
 }
 
 impl CtxWithLibrary for Ctx {
@@ -86,6 +88,14 @@ impl CtxWithLibrary for Ctx {
     where
         Self: Sync + 'async_trait,
     {
+        // cancel all tasks
+        self.cancel_token.lock().unwrap().cancel();
+        let (tx, cancel_token) = init_task_pool();
+        let mut old_tx = self.tx.lock().unwrap();
+        let mut old_cancel_token = self.cancel_token.lock().unwrap();
+        *old_tx = tx;
+        *old_cancel_token = cancel_token;
+
         let mut store = self.store.lock().unwrap();
         let _ = store.insert("current-library-id", library_id);
         let _ = store.save();
@@ -108,8 +118,8 @@ impl CtxWithLibrary for Ctx {
             });
         }
     }
-    fn get_task_tx(&self) -> Arc<broadcast::Sender<TaskPayload>> {
-        Arc::clone(&self.tx)
+    fn get_task_tx(&self) -> Arc<Mutex<broadcast::Sender<TaskPayload>>> {
+        self.tx.clone()
     }
 }
 
@@ -142,7 +152,9 @@ async fn main() {
 
     upgrade_library_schemas(&local_data_root).await;
 
-    let tx = init_task_pool();
+    let (tx, cancel_token) = init_task_pool();
+    let tx = Arc::new(Mutex::new(tx));
+    let cancel_token = Arc::new(Mutex::new(cancel_token));
     let router = api_server::router::get_router::<Ctx>();
 
     let store = Arc::new(Mutex::new(Store::new(
@@ -182,6 +194,7 @@ async fn main() {
                         store,
                         current_library,
                         tx,
+                        cancel_token
                     }
                 })
                 .axum(),

@@ -3,10 +3,7 @@ pub mod routes;
 pub mod router;
 
 use std::{
-    path::PathBuf,
-    pin::Pin,
-    boxed::Box,
-    sync::Arc
+    boxed::Box, path::PathBuf, pin::Pin, sync::{Arc, Mutex}
 };
 use tokio::sync::broadcast;
 use content_library::Library;
@@ -30,7 +27,7 @@ pub trait CtxWithLibrary {
 
     fn library(&self) -> Result<Library, rspc::Error>;
 
-    fn get_task_tx(&self) -> Arc<broadcast::Sender<TaskPayload>>;
+    fn get_task_tx(&self) -> Arc<Mutex<broadcast::Sender<TaskPayload>>>;
 }
 
 // pub const R: Rspc<Ctx> = Rspc::new();
