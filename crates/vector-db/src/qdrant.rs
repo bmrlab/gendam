@@ -2,9 +2,7 @@ use anyhow::bail;
 pub use qdrant_client::client::QdrantClient;
 use serde::{Deserialize, Serialize};
 use std::{
-    fs,
-    os::unix::fs::PermissionsExt,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{
         mpsc::{self, Sender},
         Arc,
@@ -92,10 +90,7 @@ impl std::fmt::Debug for QdrantServer {
 }
 
 impl QdrantServer {
-    pub async fn new(
-        resources_dir: impl AsRef<Path>,
-        params: QdrantParams,
-    ) -> anyhow::Result<Self> {
+    pub async fn new(params: QdrantParams) -> anyhow::Result<Self> {
         // create config path for qdrant in storage_path
         let config_path = params.dir.join("config");
         std::fs::create_dir_all(&config_path)?;
@@ -124,24 +119,12 @@ impl QdrantServer {
 
         debug!("qdrant reading config from {}", config_path.display());
 
-        let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
-            resources_dir: resources_dir.as_ref().to_path_buf(),
-            ..Default::default()
-        });
-
-        let binary_file_path = download
-            .download_if_not_exists("qdrant")
-            .await
-            .expect("failed to download qdrant");
-
-        // set binary permission to executable
-        let mut perms = fs::metadata(&binary_file_path)?.permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(&binary_file_path, perms)?;
-
         let (tx, rx) = mpsc::channel::<QdrantServerPayload>();
 
-        match std::process::Command::new(&binary_file_path)
+        let current_exe_path = std::env::current_exe().expect("failed to get current executable");
+        let current_dir = current_exe_path.parent().expect("failed to get parent directory");
+        let sidecar_path = current_dir.join("qdrant");
+        match std::process::Command::new(sidecar_path)
             .args(["--config-path", config_path.to_str().expect("invalid path")])
             .spawn()
         {

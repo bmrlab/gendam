@@ -287,7 +287,6 @@ async fn test_handle_video() {
             .to_path_buf();
     let library = content_library::load_library(
         &local_data_dir,
-        &resources_dir.into(),
         "78a978d85b8ff26cc202aa6d244ed576ef5a187873c49255d3980df69deedb8a",
     ).await.unwrap();
 
