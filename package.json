@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "dev:prep": "bash scripts/download-sidecar.sh && cargo prisma generate",
     "prisma": "cargo prisma --",
     "web": "pnpm run --filter @muse/web --",
     "dev:web": "pnpm web dev",
