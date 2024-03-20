@@ -91,10 +91,7 @@ pub struct VideoDecoder {
 
 #[cfg(feature = "ffmpeg-binary")]
 impl VideoDecoder {
-    pub async fn new(
-        filename: impl AsRef<Path>,
-        resources_dir: impl AsRef<Path>,
-    ) -> anyhow::Result<Self> {
+    pub async fn new(filename: impl AsRef<Path>) -> anyhow::Result<Self> {
         let current_exe_path = std::env::current_exe().expect("failed to get current executable");
         let current_dir = current_exe_path.parent().expect("failed to get parent directory");
         let binary_file_path = current_dir.join("ffmpeg");
@@ -246,7 +243,7 @@ async fn test_video_decoder() {
 
     #[cfg(feature = "ffmpeg-binary")]
     {
-        let video_decoder = VideoDecoder::new("/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4", "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources").await.expect("failed to find ffmpeg binary file");
+        let video_decoder = VideoDecoder::new("/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4").await.expect("failed to find ffmpeg binary file");
 
         // let frames_fut = video_decoder.save_video_frames("/Users/zhuo/Desktop/frames");
         // let audio_fut = video_decoder.save_video_audio("/Users/zhuo/Desktop/audio.wav");

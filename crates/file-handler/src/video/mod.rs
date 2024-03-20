@@ -129,7 +129,7 @@ impl VideoHandler {
     pub async fn get_video_metadata(&self) -> anyhow::Result<VideoMetadata> {
         // TODO ffmpeg-dylib not implemented
         let video_decoder =
-            decoder::VideoDecoder::new(&self.video_path, &self.resources_dir).await?;
+            decoder::VideoDecoder::new(&self.video_path).await?;
         video_decoder.get_video_metadata().await
     }
 
@@ -140,7 +140,7 @@ impl VideoHandler {
 
         #[cfg(feature = "ffmpeg-binary")]
         {
-            let video_decoder = decoder::VideoDecoder::new(video_path, &self.resources_dir).await?;
+            let video_decoder = decoder::VideoDecoder::new(video_path).await?;
             video_decoder.save_video_frames(&self.frames_dir).await?;
         }
 
@@ -159,7 +159,7 @@ impl VideoHandler {
         #[cfg(feature = "ffmpeg-binary")]
         {
             let video_decoder =
-                decoder::VideoDecoder::new(&self.video_path, &self.resources_dir).await?;
+                decoder::VideoDecoder::new(&self.video_path).await?;
             video_decoder.save_video_audio(&self.audio_path).await?;
         }
 
