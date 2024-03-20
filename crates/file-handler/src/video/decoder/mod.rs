@@ -12,7 +12,7 @@ pub struct VideoDecoder {
 
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
-use std::{fs, os::unix::fs::PermissionsExt, path::Path};
+use std::path::Path;
 
 #[cfg(feature = "ffmpeg-dylib")]
 impl VideoDecoder {
@@ -95,21 +95,10 @@ impl VideoDecoder {
         filename: impl AsRef<Path>,
         resources_dir: impl AsRef<Path>,
     ) -> anyhow::Result<Self> {
-        let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
-            resources_dir: resources_dir.as_ref().to_path_buf(),
-            ..Default::default()
-        });
-
-        let binary_file_path = download.download_if_not_exists("ffmpeg").await?;
-        let ffprobe_file_path = download.download_if_not_exists("ffprobe").await?;
-
-        // set binary permission to executable
-        let mut perms = fs::metadata(&binary_file_path)?.permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(&binary_file_path, perms)?;
-        let mut perms = fs::metadata(&ffprobe_file_path)?.permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(&ffprobe_file_path, perms)?;
+        let current_exe_path = std::env::current_exe().expect("failed to get current executable");
+        let current_dir = current_exe_path.parent().expect("failed to get parent directory");
+        let binary_file_path = current_dir.join("ffmpeg");
+        let ffprobe_file_path = current_dir.join("ffprobe");
 
         Ok(Self {
             video_file_path: filename.as_ref().to_path_buf(),

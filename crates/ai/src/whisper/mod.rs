@@ -1,8 +1,6 @@
 use anyhow::{anyhow, bail};
 use serde::{Deserialize, Serialize};
-use std::{
-    fs, os::unix::fs::PermissionsExt, path::{Path, PathBuf}
-};
+use std::path::{Path,PathBuf};
 
 pub struct Whisper {
     binary_path: PathBuf,
@@ -70,16 +68,14 @@ impl Whisper {
             .ok_or(anyhow!("invalid path"))?
             .to_string();
 
-        let binary_path = download.download_if_not_exists("whisper/main").await?;
+        // 这个可能不需要的，然后 whisper 现在移动到了 sidecar，这个文件还没有移动过去
         download
             .download_if_not_exists("whisper/ggml-metal.metal")
             .await?;
 
-        // set binary permission to executable
-        let mut perms = fs::metadata(&binary_path)?.permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(&binary_path, perms)?;
-
+        let current_exe_path = std::env::current_exe().expect("failed to get current executable");
+        let current_dir = current_exe_path.parent().expect("failed to get parent directory");
+        let binary_path = current_dir.join("whisper");
         Ok(Self {
             binary_path,
             model_path,

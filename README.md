@@ -14,6 +14,17 @@ RUST_LOG="api_server=debug"
 RUST_LOG="api_server=debug,ai=debug,file_downloader=debug,file_handler=debug,muse_desktop=debug,content_library=debug"
 ```
 
+### 开发环境准备
+
+```bash
+pnpm dev:prep
+```
+
+会依次执行
+- `bash scripts/download-sidecar.sh` 下载 sidecars: qdrant, ffmpeg, ffprobe, whisper 等
+- `cargo prisma generate` 生成 prisma 的代码 crates/prisma/src/prisma.rs
+- `pnpm tauri build --debug` 仅用于复制 tauri 下的 sidecar 和 resources 到 target/debug，供单独运行 api_server 用
+
 ### 运行 tauri
 
 ```bash
