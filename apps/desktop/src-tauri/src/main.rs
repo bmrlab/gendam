@@ -13,6 +13,33 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod store;
 use store::Store;
 
+fn validate_app_version(app_handle: tauri::AppHandle, local_data_root: &PathBuf) {
+    const VERSION_SHOULD_GTE: usize = 1;
+    let mut tauri_store = tauri_plugin_store::StoreBuilder::new(
+        app_handle,
+        "settings.json".parse().unwrap(),
+    ).build();
+    tauri_store.load().unwrap();
+    let version: usize = match tauri_store.get("version") {
+        Some(value) => value.as_str().unwrap_or("").to_string(),
+        None => "".to_string()
+    }.parse().unwrap_or(0);
+    if version < VERSION_SHOULD_GTE {
+        // check if libraries exists, if true, move it to archived/libraries
+        let libraries_dir = local_data_root.join("libraries");
+        if libraries_dir.exists() {
+            let archived_dir = local_data_root.join("archived");
+            std::fs::create_dir_all(&archived_dir).unwrap();
+            std::fs::rename(&libraries_dir, archived_dir.join("libraries")).unwrap();
+        }
+        tauri_store.delete("current-library-id").unwrap();
+        tauri_store.insert(
+            "version".to_string(),
+            VERSION_SHOULD_GTE.to_string().into()
+        ).unwrap();
+        tauri_store.save().unwrap();
+    }
+}
 
 #[tokio::main]
 async fn main() {
@@ -51,6 +78,7 @@ async fn main() {
         .resolve_resource("resources")
         .expect("failed to find resources dir");
 
+    validate_app_version(window.app_handle(), &local_data_root);
     upgrade_library_schemas(&local_data_root).await;
 
     let current_library = Arc::new(Mutex::<Option<Library>>::new(None));

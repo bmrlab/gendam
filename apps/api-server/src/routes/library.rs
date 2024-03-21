@@ -46,7 +46,11 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
 }
 
 fn list_libraries(local_data_root: &PathBuf) -> Vec<String> {
-    match local_data_root.join("libraries").read_dir() {
+    let libraries_dir = local_data_root.join("libraries");
+    if !libraries_dir.exists() {
+        return vec![];
+    }
+    match libraries_dir.read_dir() {
         Ok(entries) => {
             let mut res = vec![];
             for entry in entries {
