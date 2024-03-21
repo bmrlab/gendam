@@ -10,7 +10,7 @@ use tokio_util::sync::CancellationToken;
 use content_library::{Library, load_library};
 use super::super::task_queue::{TaskPayload, init_task_pool};
 
-use crate::{CtxStore, CtxWithLibrary};
+use super::traits::{CtxStore, StoreError, CtxWithLibrary};
 
 /**
  * default impl of a store for rspc Ctx
@@ -29,24 +29,32 @@ impl Store {
 }
 
 impl CtxStore for Store {
-    fn load(&mut self) -> Result<(), std::io::Error> {
-        let file = std::fs::File::open(&self.path)?;
+    fn load(&mut self) -> Result<(), StoreError> {
+        let file = std::fs::File::open(&self.path)
+            .map_err(|e| StoreError(format!("Failed to open file: {}", e)))?;
         let reader = std::io::BufReader::new(file);
-        let values: std::collections::HashMap<String, String> = serde_json::from_reader(reader)?;
+        let values: std::collections::HashMap<String, String> = serde_json::from_reader(reader)
+            .map_err(|e| StoreError(format!("Failed to read file: {}", e)))?;
         self.values = values;
         Ok(())
     }
-    fn save(&self) -> Result<(), std::io::Error> {
-        let file = std::fs::File::create(&self.path)?;
-        serde_json::to_writer(file, &self.values)?;
+    fn save(&self) -> Result<(), StoreError> {
+        let file = std::fs::File::create(&self.path)
+            .map_err(|e| StoreError(format!("Failed to create file: {}", e)))?;
+        serde_json::to_writer(file, &self.values)
+        .map_err(|e| StoreError(format!("Failed to write file: {}", e)))?;
         Ok(())
     }
-    fn insert(&mut self, key: &str, value: &str) -> Result<(), ()> {
+    fn insert(&mut self, key: &str, value: &str) -> Result<(), StoreError> {
         self.values.insert(key.to_string(), value.to_string());
         Ok(())
     }
-    fn get(&self, key: &str) -> Option<&String> {
-        self.values.get(key)
+    fn get(&self, key: &str) -> Option<String> {
+        let value = self.values.get(key);
+        match value {
+            Some(value) => Some(value.to_owned()),
+            None => None,
+        }
     }
 }
 

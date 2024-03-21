@@ -5,11 +5,13 @@ use tokio::sync::broadcast;
 use content_library::Library;
 use super::super::task_queue::TaskPayload;
 
+pub struct StoreError(pub String);
+
 pub trait CtxStore {
-    fn load(&mut self) -> Result<(), std::io::Error>;
-    fn save(&self) -> Result<(), std::io::Error>;
-    fn insert(&mut self, key: &str, value: &str) -> Result<(), ()>;
-    fn get(&self, key: &str) -> Option<&String>;
+    fn load(&mut self) -> Result<(), StoreError>;
+    fn save(&self) -> Result<(), StoreError>;
+    fn insert(&mut self, key: &str, value: &str) -> Result<(), StoreError>;
+    fn get(&self, key: &str) -> Option<String>;
 }
 
 pub trait CtxWithLibrary {
