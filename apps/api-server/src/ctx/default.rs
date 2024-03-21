@@ -8,7 +8,7 @@ use std::{
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 use content_library::{Library, load_library};
-use super::super::task_queue::{TaskPayload, init_task_pool};
+use crate::task_queue::{TaskPayload, init_task_pool};
 
 use super::traits::{CtxStore, StoreError, CtxWithLibrary};
 

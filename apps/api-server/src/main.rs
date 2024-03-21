@@ -47,22 +47,23 @@ async fn main() {
 
     upgrade_library_schemas(&local_data_root).await;
 
-    let mut default_store = Store::new(local_data_root.join("settings.json"));
     let current_library = Arc::new(Mutex::<Option<Library>>::new(None));
-    {
-        // let mut store_mut = store.lock().unwrap();
-        // let store_mut: &mut Store = &mut default_store;
-        let _ = default_store.load();
-        if let Some(library_id) = default_store.get("current-library-id") {
-            let library = match load_library(&local_data_root, &library_id).await {
-                Ok(library) => library,
-                Err(e) => {
-                    error!("Failed to load library: {:?}", e);
-                    return;
-                }
-            };
-            current_library.lock().unwrap().replace(library);
-        }
+
+    let mut default_store = Store::new(local_data_root.join("settings.json"));
+    if let Err(e) = default_store.load() {
+        tracing::error!("Failed to load store: {:?}", e);
+        return;
+    }
+
+    if let Some(library_id) = default_store.get("current-library-id") {
+        let library = match load_library(&local_data_root, &library_id).await {
+            Ok(library) => library,
+            Err(e) => {
+                error!("Failed to load library: {:?}", e);
+                return;
+            }
+        };
+        current_library.lock().unwrap().replace(library);
     }
 
     let cors = CorsLayer::new()

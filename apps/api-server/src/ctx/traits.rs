@@ -3,8 +3,9 @@ use std::{
 };
 use tokio::sync::broadcast;
 use content_library::Library;
-use super::super::task_queue::TaskPayload;
+use crate::task_queue::TaskPayload;
 
+#[derive(Debug)]
 pub struct StoreError(pub String);
 
 pub trait CtxStore {

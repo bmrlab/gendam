@@ -53,25 +53,27 @@ async fn main() {
 
     upgrade_library_schemas(&local_data_root).await;
 
+    let current_library = Arc::new(Mutex::<Option<Library>>::new(None));
+
     let mut tauri_store = tauri_plugin_store::StoreBuilder::new(
         window.app_handle(),
         "settings.json".parse().unwrap(),
     ).build();
-    let current_library = Arc::new(Mutex::<Option<Library>>::new(None));
-    {
-        // let mut store_mut = store.lock().unwrap();
-        let _ = tauri_store.load();
-        if let Some(value) = tauri_store.get("current-library-id") {
-            let library_id = value.as_str().unwrap().to_owned();
-            let library = match load_library(&local_data_root, &library_id).await {
-                Ok(library) => library,
-                Err(e) => {
-                    tracing::error!("Failed to load library: {:?}", e);
-                    return;
-                }
-            };
-            current_library.lock().unwrap().replace(library);
-        }
+    if let Err(e) = tauri_store.load() {
+        tracing::error!("Failed to load store: {:?}", e);
+        return;
+    }
+
+    if let Some(value) = tauri_store.get("current-library-id") {
+        let library_id = value.as_str().unwrap().to_owned();
+        let library = match load_library(&local_data_root, &library_id).await {
+            Ok(library) => library,
+            Err(e) => {
+                tracing::error!("Failed to load library: {:?}", e);
+                return;
+            }
+        };
+        current_library.lock().unwrap().replace(library);
     }
 
     window.on_window_event({
