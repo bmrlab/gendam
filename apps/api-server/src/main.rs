@@ -80,9 +80,10 @@ async fn main() {
                 let store = store.clone();
                 let local_data_root = local_data_root.clone();
                 let resources_dir = resources_dir.clone();
+                let current_library = current_library.clone();
                 |req: Request| {
                     info!("Client requested operation '{}'", req.uri().path());
-                    Ctx::<Store>::new(local_data_root, resources_dir, store)
+                    Ctx::<Store>::new(local_data_root, resources_dir, store, current_library)
                 }
             }).axum()
         })

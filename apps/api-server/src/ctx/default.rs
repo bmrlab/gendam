@@ -89,9 +89,12 @@ impl<S: CtxStore> Clone for Ctx<S> {
 // pub const R: Rspc<Ctx> = Rspc::new();
 
 impl<S: CtxStore> Ctx<S> {
-    pub fn new(local_data_root: PathBuf, resources_dir: PathBuf, store: Arc<Mutex<S>>) -> Self {
-        let store = store;
-        let current_library = Arc::new(Mutex::new(None));
+    pub fn new(
+        local_data_root: PathBuf,
+        resources_dir: PathBuf,
+        store: Arc<Mutex<S>>,
+        current_library: Arc<Mutex<Option<Library>>>,
+    ) -> Self {
         let (tx, cancel_token) = init_task_pool();
         let tx = Arc::new(Mutex::new(tx));
         let cancel_token = Arc::new(Mutex::new(cancel_token));

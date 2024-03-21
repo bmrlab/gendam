@@ -100,7 +100,8 @@ async fn main() {
                 let local_data_root = local_data_root.clone();
                 let resources_dir = resources_dir.clone();
                 let store = store.clone();
-                Ctx::<Store>::new(local_data_root, resources_dir, store)
+                let current_library = current_library.clone();
+                Ctx::<Store>::new(local_data_root, resources_dir, store, current_library)
             })
         )
         .expect("failed to add rspc plugin");
