@@ -72,18 +72,16 @@ async fn main() {
 
     let store = Arc::new(Mutex::new(default_store));
     let router = api_server::router::get_router::<Ctx<Store>>();
+    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store, current_library);
 
     let app: axum::Router = axum::Router::new()
         .route("/", get(|| async { "Hello 'rspc'!" }))
         .nest( "/rspc", {
             router.clone().endpoint({
-                let store = store.clone();
-                let local_data_root = local_data_root.clone();
-                let resources_dir = resources_dir.clone();
-                let current_library = current_library.clone();
-                |req: Request| {
+                move |req: Request| {
                     info!("Client requested operation '{}'", req.uri().path());
-                    Ctx::<Store>::new(local_data_root, resources_dir, store, current_library)
+                    // 不能每次 new 而应该是 clone，这样会保证 ctx 里面的每个元素每次只是新建了引用
+                    ctx.clone()
                 }
             }).axum()
         })

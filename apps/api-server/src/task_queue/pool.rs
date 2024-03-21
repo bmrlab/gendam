@@ -43,12 +43,11 @@ pub struct TaskPayload {
 }
 
 pub fn init_task_pool() -> (broadcast::Sender<TaskPayload>, CancellationToken) {
-    let (tx, _rx) = broadcast::channel::<TaskPayload>(500);
-    let tx = tx;
-    let mut rx = tx.subscribe();
+    let (tx, mut rx) = broadcast::channel::<TaskPayload>(500);
+    // let tx = tx;
+    // let mut rx = tx.subscribe();
 
     let cancel_token = CancellationToken::new();
-
     let cloned_token = cancel_token.clone();
 
     tokio::spawn(async move {

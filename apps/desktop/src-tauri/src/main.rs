@@ -92,16 +92,14 @@ async fn main() {
 
     let store = Arc::new(Mutex::new(Store::new(tauri_store)));
     let router = api_server::router::get_router::<Ctx<Store>>();
+    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store, current_library);
 
     window
         .app_handle()
         .plugin(
             rspc::integrations::tauri::plugin(router, move |_window| {
-                let local_data_root = local_data_root.clone();
-                let resources_dir = resources_dir.clone();
-                let store = store.clone();
-                let current_library = current_library.clone();
-                Ctx::<Store>::new(local_data_root, resources_dir, store, current_library)
+                // 不能每次 new 而应该是 clone，这样会保证 ctx 里面的每个元素每次只是新建了引用
+                ctx.clone()
             })
         )
         .expect("failed to add rspc plugin");
