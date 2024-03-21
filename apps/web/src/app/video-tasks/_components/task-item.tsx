@@ -28,7 +28,7 @@ export default function VideoTaskItem({
   }, [tasks])
 
   const status = useCallback((task: VideoWithTasksResult['tasks'][number]) => {
-    if (task.startsAt && !task.endsAt) {
+    if (!task.startsAt && !task.endsAt) {
       return MuseStatus.Processing
     }
     if (task.startsAt && task.endsAt) {
