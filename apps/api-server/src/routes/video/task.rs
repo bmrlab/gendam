@@ -1,16 +1,20 @@
 use crate::CtxWithLibrary;
-use rspc::{Rspc, Router};
 use prisma_client_rust::Direction;
 use prisma_lib::{asset_object, file_handler_task};
-use serde::Serialize;
+use rspc::{Router, Rspc};
+use serde::{Deserialize, Serialize};
 // use serde_json::json;
+use crate::task_queue::create_video_task;
 use specta::Type;
+use tracing::error;
 // use crate::task_queue::create_video_task;
 
 pub fn get_routes<TCtx>() -> Router<TCtx>
-where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+    where
+        TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
-    Rspc::<TCtx>::new().router()
+    Rspc::<TCtx>::new()
+        .router()
         .procedure(
             "create",
             Rspc::<TCtx>::new().mutation(move |_ctx: TCtx, video_path: String| {
@@ -38,7 +42,8 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
             "list",
             Rspc::<TCtx>::new().query(move |ctx: TCtx, _input: ()| async move {
                 let library = ctx.library()?;
-                let asset_object_data_list = library.prisma_client()
+                let asset_object_data_list = library
+                    .prisma_client()
                     .asset_object()
                     .find_many(vec![])
                     .with(asset_object::tasks::fetch(vec![]))
@@ -66,7 +71,8 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
                     pub tasks: Vec<VideoTaskResult>,
                 }
 
-                let videos_with_tasks = asset_object_data_list.iter()
+                let videos_with_tasks = asset_object_data_list
+                    .iter()
                     .map(|asset_object_data| {
                         let (materialized_path, name) = match asset_object_data.file_paths {
                             Some(ref file_paths) => {
@@ -76,28 +82,36 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
                                 } else {
                                     ("".to_string(), "".to_string())
                                 }
-                            },
+                            }
                             None => ("".to_string(), "".to_string()),
                         };
                         let asset_object_hash = asset_object_data.hash.clone();
                         let asset_object_id = asset_object_data.id;
-                        let tasks =
-                            asset_object_data.tasks.as_ref()
+                        let tasks = asset_object_data
+                            .tasks
+                            .as_ref()
                             .unwrap_or(&vec![])
                             .iter()
-                            .map(|file_handler_task::Data { task_type, starts_at, ends_at, .. }| {
-                                VideoTaskResult {
-                                    task_type: task_type.clone(),
-                                    starts_at: match starts_at {
-                                        Some(starts_at) => Some(starts_at.to_string()),
-                                        None => None,
-                                    },
-                                    ends_at: match ends_at {
-                                        Some(ends_at) => Some(ends_at.to_string()),
-                                        None => None,
-                                    },
-                                }
-                            })
+                            .map(
+                                |file_handler_task::Data {
+                                     task_type,
+                                     starts_at,
+                                     ends_at,
+                                     ..
+                                 }| {
+                                    VideoTaskResult {
+                                        task_type: task_type.clone(),
+                                        starts_at: match starts_at {
+                                            Some(starts_at) => Some(starts_at.to_string()),
+                                            None => None,
+                                        },
+                                        ends_at: match ends_at {
+                                            Some(ends_at) => Some(ends_at.to_string()),
+                                            None => None,
+                                        },
+                                    }
+                                },
+                            )
                             .collect::<Vec<VideoTaskResult>>();
                         VideoWithTasksResult {
                             name,
@@ -109,6 +123,54 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
                     })
                     .collect::<Vec<VideoWithTasksResult>>();
                 Ok(videos_with_tasks)
+            }),
+        )
+        .procedure(
+            "regenerate",
+            Rspc::<TCtx>::new().mutation({
+                #[derive(Deserialize, Type, Debug)]
+                #[serde(rename_all = "camelCase")]
+                struct TaskRegeneratePayload {
+                    materialized_path: String,
+                    asset_object_id: i32,
+                }
+
+                |ctx: TCtx, input: TaskRegeneratePayload| async move {
+                    let library = ctx.library()?;
+                    Ok(
+                        match library
+                            .prisma_client()
+                            .asset_object()
+                            .find_first(vec![asset_object::id::equals(input.asset_object_id)])
+                            .exec()
+                            .await
+                        {
+                            Ok(asset_object_data) => match asset_object_data {
+                                Some(asset_object_data) => {
+                                    match create_video_task(
+                                        &input.materialized_path,
+                                        &asset_object_data,
+                                        &ctx,
+                                        ctx.get_task_tx(),
+                                    )
+                                        .await
+                                    {
+                                        Ok(_) => true,
+                                        Err(e) => {
+                                            error!("failed to create video task: {e:?}");
+                                            false
+                                        },
+                                    }
+                                }
+                                None => false,
+                            },
+                            Err(e) => {
+                                error!("failed to find asset object: {e:?}");
+                                false
+                            }
+                        },
+                    )
+                }
             }),
         )
 }

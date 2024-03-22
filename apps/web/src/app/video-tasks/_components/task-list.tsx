@@ -48,13 +48,14 @@ export default function VideoTasksList({ data, isLoading, className }: VideoTask
             key={videoFile.assetObjectId}
             fileHash={videoFile.assetObjectHash}
             isProcessing={hasProcessing(videoFile.tasks)}
+            video={videoFile}
           >
             <WithSelectVideoItem
               videoFile={videoFile}
               items={data}
               isSelect={taskSelected.some((item) => item.assetObjectHash === videoFile.assetObjectHash)}
               handleClick={() => {
-                console.log(videoFile.assetObjectId, videoFile.assetObjectHash);
+                console.log(videoFile.assetObjectId, videoFile.assetObjectHash)
                 // revealMut.mutate(video.videoPath)
               }}
             />

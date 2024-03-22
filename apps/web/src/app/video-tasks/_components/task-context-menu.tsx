@@ -1,25 +1,32 @@
-import { AudioDialogEnum } from '../_store/audio-dialog'
 import Icon from '@/components/Icon'
+import { useToast } from '@/components/Toast/use-toast'
+import type { VideoWithTasksResult } from '@/lib/bindings'
+import { rspc } from '@/lib/rspc'
 import {
-  ContextMenuRoot,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuRoot,
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@muse/ui/v1/context-menu'
-import { useBoundStore } from '../_store'
 import { PropsWithChildren, ReactNode, useCallback, useMemo } from 'react'
+import { useBoundStore } from '../_store'
+import { AudioDialogEnum } from '../_store/audio-dialog'
 
 export type TaskContextMenuProps = PropsWithChildren<{
   fileHash: string
   isProcessing: boolean
+  video: VideoWithTasksResult
 }>
 
-export default function TaskContextMenu({ fileHash, isProcessing, children }: TaskContextMenuProps) {
+export default function TaskContextMenu({ video, fileHash, isProcessing, children }: TaskContextMenuProps) {
+  const { toast } = useToast()
   const videoSelected = useBoundStore.use.videoSelected()
   const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
   const setAudioDialogProps = useBoundStore.use.setAudioDialogProps()
   const setAudioDialogOpen = useBoundStore.use.setIsOpenAudioDialog()
+
+  const { mutateAsync: regenerateTask } = rspc.useMutation(['video.tasks.regenerate'])
 
   const isBatchSelected = useMemo(() => videoSelected.length > 1, [videoSelected])
 
@@ -41,7 +48,7 @@ export default function TaskContextMenu({ fileHash, isProcessing, children }: Ta
       type: AudioDialogEnum.batch,
       title: '批量导出语音转译',
       params: orderVideoSelected.map((item) => ({
-        id: item.assetObjectHash,  // TODO: 这里回头要改成 assetObjectId, 但是对 audio export 功能改动较大
+        id: item.assetObjectHash, // TODO: 这里回头要改成 assetObjectId, 但是对 audio export 功能改动较大
         label: item.name,
         assetObjectId: item.assetObjectId,
         assetObjectHash: item.assetObjectHash,
@@ -69,8 +76,15 @@ export default function TaskContextMenu({ fileHash, isProcessing, children }: Ta
       {
         label: '重新触发任务',
         icon: <Icon.regenerate />,
-        handleClick: () => {
-          console.log('重新触发任务')
+        handleClick: async () => {
+          const res = await regenerateTask({
+            materializedPath: video.materializedPath,
+            assetObjectId: video.assetObjectId,
+          })
+          toast({
+            title: res ? '重新触发任务成功' : '重新触发任务失败',
+            variant: res ? 'default' : 'destructive',
+          })
         },
       },
       ...processingItem,
