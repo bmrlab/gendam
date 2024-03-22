@@ -66,14 +66,6 @@ pub async fn get_frame_caption_embedding(
         .map(|res| res.map(|e| e.path()))
         .collect::<Result<Vec<_>, std::io::Error>>()?;
 
-    // make sure collection have been crated
-    super::make_sure_collection_created(
-        qdrant.clone(),
-        vector_db::VIDEO_FRAME_CAPTION_INDEX_NAME,
-        clip_model.read().await.dim() as u64,
-    )
-    .await?;
-
     let mut join_set = tokio::task::JoinSet::new();
 
     for path in frame_paths {
@@ -162,18 +154,17 @@ async fn get_single_frame_caption_embedding(
 
     match x {
         std::result::Result::Ok(res) => {
-            let payload = SearchPayload {
+            let payload = SearchPayload::FrameCaption {
                 id: res.id as u64,
                 file_identifier: file_identifier.clone(),
-                start_timestamp: frame_timestamp,
-                end_timestamp: frame_timestamp,
+                timestamp: frame_timestamp,
             };
             save_text_embedding(
                 &caption,
                 payload,
                 clip_model,
                 qdrant,
-                vector_db::VIDEO_FRAME_CAPTION_INDEX_NAME,
+                vector_db::DEFAULT_COLLECTION_NAME,
             )
             .await?;
         }

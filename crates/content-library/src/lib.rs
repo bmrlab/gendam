@@ -1,9 +1,9 @@
 use prisma_lib::new_client_with_url;
 use prisma_lib::PrismaClient;
-use tracing::info;
+use qdrant_client::qdrant::OptimizersConfigDiff;
 use std::{path::PathBuf, sync::Arc};
+use tracing::{error, info};
 use vector_db::{QdrantParams, QdrantServer};
-use tracing::error;
 
 #[derive(Clone, Debug)]
 pub struct Library {
@@ -22,10 +22,7 @@ impl Library {
     }
 }
 
-pub async fn load_library(
-    local_data_root: &PathBuf,
-    library_id: &str,
-) -> Result<Library, ()> {
+pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Result<Library, ()> {
     let library_dir = local_data_root.join("libraries").join(library_id);
     let db_dir = library_dir.join("databases");
     let artifacts_dir = library_dir.join("artifacts");
@@ -40,45 +37,45 @@ pub async fn load_library(
     let client = new_client_with_url(db_url.as_str())
         .await
         .expect("failed to create prisma client");
-    client._db_push().await  // apply migrations
+    client
+        ._db_push()
+        .await // apply migrations
         .map_err(|e| {
             error!("failed to push db: {}", e);
         })?;
     let prisma_client = Arc::new(client);
 
-    let qdrant_server = QdrantServer::new(
-        QdrantParams {
-            dir: qdrant_dir,
-            // TODO we should specify the port to avoid conflicts with other apps
-            http_port: None,
-            grpc_port: None,
-        },
-    ).await.map_err(|e| {
+    let qdrant_server = QdrantServer::new(QdrantParams {
+        dir: qdrant_dir,
+        // TODO we should specify the port to avoid conflicts with other apps
+        http_port: None,
+        grpc_port: None,
+    })
+    .await
+    .map_err(|e| {
         error!("failed to start qdrant server: {}", e);
     })?;
 
     let qdrant = qdrant_server.get_client().clone();
-    for collection_name in vec![
-        vector_db::VIDEO_FRAME_INDEX_NAME,
-        vector_db::VIDEO_FRAME_CAPTION_INDEX_NAME,
-        vector_db::VIDEO_TRANSCRIPT_INDEX_NAME,
-    ] {
-        make_sure_collection_created(
-            qdrant.clone(),
-            collection_name,
-            512 as u64,  // FIXME: dim should be `clip_model.read().await.dim()`
-        )
-        .await.map_err(|e| {
-            error!("failed to make sure collection created: {}, {}", collection_name, e);
-        })?;
-    }
+    make_sure_collection_created(
+        qdrant.clone(),
+        vector_db::DEFAULT_COLLECTION_NAME,
+        vector_db::DEFAULT_COLLECTION_DIM,
+    )
+    .await
+    .map_err(|e| {
+        error!(
+            "failed to make sure collection created: {}, {}",
+            vector_db::DEFAULT_COLLECTION_NAME,
+            e
+        );
+    })?;
 
     let library = Library {
         id: library_id.to_string(),
         dir: library_dir,
         files_dir,
         artifacts_dir,
-        // db_url,
         prisma_client,
         qdrant_server: Arc::new(qdrant_server),
     };
@@ -86,21 +83,17 @@ pub async fn load_library(
     Ok(library)
 }
 
-pub async fn create_library_with_title(
-    local_data_root: &PathBuf, title: &str
-) -> Library {
+pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -> Library {
     let _ = title;
     // TODO: 使用时间戳作为 id，当用户导入别人分享的 library 的时候,可能会冲突
     let library_id = sha256::digest(format!("{}", chrono::Utc::now()));
     let library_dir = local_data_root.join("libraries").join(&library_id);
     let db_dir = library_dir.join("databases");
     let qdrant_dir = library_dir.join("qdrant");
-    let index_dir = library_dir.join("index");
     let artifacts_dir = library_dir.join("artifacts");
     let files_dir = library_dir.join("files");
     std::fs::create_dir_all(&db_dir).unwrap();
     std::fs::create_dir_all(&qdrant_dir).unwrap();
-    std::fs::create_dir_all(&index_dir).unwrap();
     std::fs::create_dir_all(&artifacts_dir).unwrap();
     std::fs::create_dir_all(&files_dir).unwrap();
     load_library(local_data_root, &library_id).await.unwrap()
@@ -133,17 +126,20 @@ pub async fn upgrade_library_schemas(local_data_root: &PathBuf) {
     // }
 }
 
-
-use qdrant_client::qdrant::{
-    vectors_config::Config, CreateCollection, OptimizersConfigDiff, Distance, VectorParams, VectorsConfig,
-};
 use qdrant_client::client::QdrantClient;
+use qdrant_client::qdrant::{
+    vectors_config::Config, CreateCollection, Distance, VectorParams, VectorsConfig,
+};
 pub async fn make_sure_collection_created(
     qdrant: Arc<QdrantClient>,
     collection_name: &str,
     dim: u64,
 ) -> anyhow::Result<()> {
-    async fn create(qdrant: Arc<QdrantClient>, collection_name: &str, dim: u64,) -> anyhow::Result<()> {
+    async fn create(
+        qdrant: Arc<QdrantClient>,
+        collection_name: &str,
+        dim: u64,
+    ) -> anyhow::Result<()> {
         let res = qdrant
             .create_collection(&CreateCollection {
                 collection_name: collection_name.to_string(),
@@ -154,13 +150,14 @@ pub async fn make_sure_collection_created(
                         ..Default::default()
                     })),
                 }),
-                shard_number: Some(1 as u32),
+                shard_number: Some(1),
                 optimizers_config: Some(OptimizersConfigDiff {
-                    default_segment_number: Some(1 as u64),
+                    default_segment_number: Some(1),
                     ..Default::default()
                 }),
                 ..Default::default()
-            }).await;
+            })
+            .await;
         match res {
             Ok(_) => Ok(()),
             Err(e) => {
@@ -176,7 +173,7 @@ pub async fn make_sure_collection_created(
             } else {
                 Ok(())
             }
-        },
+        }
         Err(e) => {
             info!("collection info not found: {}, {:?}", collection_name, e);
             create(qdrant, collection_name, dim).await

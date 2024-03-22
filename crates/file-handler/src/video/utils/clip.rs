@@ -83,7 +83,7 @@ pub async fn get_video_clips(
         for frame in frames {
             match qdrant_client
                 .get_points(
-                    vector_db::VIDEO_FRAME_INDEX_NAME,
+                    vector_db::DEFAULT_COLLECTION_NAME,
                     None,
                     vec![].as_slice(),
                     Some(true),

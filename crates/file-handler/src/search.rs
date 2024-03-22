@@ -1,6 +1,9 @@
 use crate::search_payload::{SearchPayload, SearchRecordType};
 use prisma_lib::{video_frame, video_frame_caption, video_transcript, PrismaClient};
-use qdrant_client::{client::QdrantClient, qdrant::SearchPoints};
+use qdrant_client::{
+    client::QdrantClient,
+    qdrant::{Condition, Filter, SearchPoints},
+};
 use serde_json::json;
 use std::{collections::HashMap, sync::Arc};
 
@@ -46,19 +49,17 @@ pub async fn handle_search(
     let mut search_results = vec![];
 
     for record_type in record_types {
-        let collection_name = match record_type {
-            SearchRecordType::Frame => vector_db::VIDEO_FRAME_INDEX_NAME,
-            SearchRecordType::FrameCaption => vector_db::VIDEO_FRAME_CAPTION_INDEX_NAME,
-            SearchRecordType::Transcript => vector_db::VIDEO_TRANSCRIPT_INDEX_NAME,
-        };
-
         let search_result = qdrant
             .search_points(&SearchPoints {
-                collection_name: collection_name.into(),
+                collection_name: vector_db::DEFAULT_COLLECTION_NAME.into(),
                 vector: embedding.clone(),
                 limit: payload.limit.unwrap_or(10),
                 offset: payload.skip,
                 with_payload: Some(true.into()),
+                filter: Some(Filter::all(vec![Condition::matches(
+                    "record_type", // TODO maybe this can be better
+                    record_type.to_string(),
+                )])),
                 ..Default::default()
             })
             .await?;
@@ -73,8 +74,8 @@ pub async fn handle_search(
 
                 match payload {
                     Ok(payload) => {
-                        id_score_mapping.insert(payload.id as i32, v.score);
-                        Some(payload.id as i32)
+                        id_score_mapping.insert(payload.get_id() as i32, v.score);
+                        Some(payload.get_id() as i32)
                     }
                     _ => None,
                 }

@@ -36,14 +36,6 @@ pub async fn get_transcript_embedding(
         let client = client.clone();
         let qdrant = qdrant.clone();
 
-        // make sure collection have been crated
-        super::make_sure_collection_created(
-            qdrant.clone(),
-            vector_db::VIDEO_TRANSCRIPT_INDEX_NAME,
-            clip_model.read().await.dim() as u64,
-        )
-        .await?;
-
         join_set.spawn(async move {
             // write data using prisma
             // here use write to make sure only one thread can using prisma client
@@ -72,7 +64,7 @@ pub async fn get_transcript_embedding(
 
             match x {
                 std::result::Result::Ok(res) => {
-                    let payload = SearchPayload {
+                    let payload = SearchPayload::Transcript {
                         id: res.id as u64,
                         file_identifier: file_identifier.clone(),
                         start_timestamp: item.start_timestamp,
@@ -83,7 +75,7 @@ pub async fn get_transcript_embedding(
                         payload,
                         clip_model,
                         qdrant,
-                        vector_db::VIDEO_TRANSCRIPT_INDEX_NAME,
+                        vector_db::DEFAULT_COLLECTION_NAME,
                     )
                     .await
                     {

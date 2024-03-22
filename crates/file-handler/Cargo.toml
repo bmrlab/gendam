@@ -24,7 +24,9 @@ futures = { workspace = true }
 prisma-lib = { path = "../../crates/prisma" }
 prisma-client-rust = { workspace = true }
 qdrant-client = { workspace = true }
-uuid = { version = "1.7.0", features = ["v5"] }
+uuid = { version = "1.8.0", features = ["v5"] }
+strum = "0.26"
+strum_macros = "0.26"
 
 [features]
 default = ["ffmpeg-binary"]

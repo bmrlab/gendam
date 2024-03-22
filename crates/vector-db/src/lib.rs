@@ -10,6 +10,5 @@ mod qdrant;
 #[cfg(feature = "qdrant")]
 pub use qdrant::{QdrantParams, QdrantServer};
 
-pub const VIDEO_FRAME_INDEX_NAME: &str = "frame-embedding";
-pub const VIDEO_FRAME_CAPTION_INDEX_NAME: &str = "frame-caption-embedding";
-pub const VIDEO_TRANSCRIPT_INDEX_NAME: &str = "transcript-embedding";
+pub const DEFAULT_COLLECTION_NAME: &str = "muse-v2-512";
+pub const DEFAULT_COLLECTION_DIM: u64 = 512;

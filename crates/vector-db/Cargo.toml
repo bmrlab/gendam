@@ -12,17 +12,9 @@ test-log = { workspace = true }
 ndarray = { version = "0.15.6", features = ["serde"] }
 anyhow = { workspace = true }
 faiss = { git = "https://github.com/jondot/faiss-rs", optional = true }
-serde = { workspace = true, optional = true }
-serde_yaml = { version = "0.9.32", optional = true }
 reqwest = { workspace = true, optional = true }
 qdrant-client = { workspace = true, optional = true }
 
 [features]
 faiss = ["faiss/static"]
-qdrant = [
-  "serde/derive",
-  "dep:serde_yaml",
-  "dep:reqwest",
-  "dep:file-downloader",
-  "dep:qdrant-client",
-]
+qdrant = ["dep:reqwest", "dep:file-downloader", "dep:qdrant-client"]

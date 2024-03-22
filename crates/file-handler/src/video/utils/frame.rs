@@ -19,18 +19,10 @@ pub async fn get_frame_content_embedding(
         .map(|res| res.map(|e| e.path()))
         .collect::<Result<Vec<_>, std::io::Error>>()?;
 
-    // make sure collection have been crated
-    super::make_sure_collection_created(
-        qdrant.clone(),
-        vector_db::VIDEO_FRAME_INDEX_NAME,
-        clip_model.read().await.dim() as u64,
-    )
-    .await?;
-
     let mut join_set = tokio::task::JoinSet::new();
 
     for path in frame_paths {
-        if path.extension() == Some(std::ffi::OsStr::new("png")) {
+        if path.extension() == Some(std::ffi::OsStr::new("jpg")) {
             debug!("handle file: {:?}", path);
 
             let clip_model = clip_model.clone();
@@ -78,11 +70,10 @@ pub async fn get_frame_content_embedding(
 
                 match x {
                     std::result::Result::Ok(res) => {
-                        let payload = SearchPayload {
+                        let payload = SearchPayload::Frame {
                             id: res.id as u64,
                             file_identifier: file_identifier.clone(),
-                            start_timestamp: frame_timestamp,
-                            end_timestamp: frame_timestamp,
+                            timestamp: frame_timestamp,
                         };
 
                         let _ =
@@ -118,14 +109,14 @@ async fn get_single_frame_content_embedding(
     let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
 
     let point = PointStruct::new(
-        payload.id,
+        payload.get_uuid().to_string(),
         embedding.clone(),
         json!(payload)
             .try_into()
             .map_err(|_| anyhow::anyhow!("invalid payload"))?,
     );
     qdrant
-        .upsert_points(vector_db::VIDEO_FRAME_INDEX_NAME, None, vec![point], None)
+        .upsert_points(vector_db::DEFAULT_COLLECTION_NAME, None, vec![point], None)
         .await?;
 
     Ok(())
