@@ -6,10 +6,13 @@ import { ContextMenuContent, ContextMenuItem } from '@muse/ui/v1/context-menu'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback } from 'react'
+import { twx } from '@/lib/utils'
 
 type ItemContextMenuProps = {
   data: ExplorerItem
 }
+
+const _MenuItemDefault = twx(ContextMenuItem)`flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60`
 
 const ItemContextMenu = forwardRef<typeof ContextMenuContent, ItemContextMenuProps>(function ItemContextMenuComponent(
   { data, ...prpos },
@@ -71,21 +74,18 @@ const ItemContextMenu = forwardRef<typeof ContextMenuContent, ItemContextMenuPro
       className="w-60 rounded-md border border-neutral-100 bg-white p-1 shadow-lg"
       {...prpos}
     >
-      <ContextMenuItem
-        className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60"
-        onClick={handleOpen}
-      >
+      <_MenuItemDefault onClick={handleOpen}>
         <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">打开</div>
-      </ContextMenuItem>
-      <ContextMenuItem className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60">
+      </_MenuItemDefault>
+      <_MenuItemDefault onClick={() => explorerStore.setIsFoldersDialogOpen(true)}>
+        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">移动</div>
+      </_MenuItemDefault>
+      <_MenuItemDefault onClick={() => {}}>
         <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">预览</div>
-      </ContextMenuItem>
-      <ContextMenuItem
-        className="flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60"
-        onClick={handleRename}
-      >
+      </_MenuItemDefault>
+      <_MenuItemDefault onClick={handleRename}>
         <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">重命名</div>
-      </ContextMenuItem>
+      </_MenuItemDefault>
       <ContextMenuItem
         className={classNames(
           'flex cursor-default items-center justify-start rounded-md px-2 py-2',

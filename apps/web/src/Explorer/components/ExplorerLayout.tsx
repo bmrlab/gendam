@@ -8,13 +8,31 @@ import { rspc } from '@/lib/rspc'
 import { DragEndEvent, DragOverlay, DragStartEvent, DragCancelEvent } from '@dnd-kit/core'
 import { Document_Light, Folder_Light } from '@muse/assets/images'
 import Image from 'next/image'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { ExplorerItem } from '../types'
+import { FoldersDialog } from './FoldersDialog'
 
 export default function Explorer() {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const moveMut = rspc.useMutation(['assets.move_file_path'])
+
+  const handleMove = useCallback((active: ExplorerItem, over: ExplorerItem|null) => {
+    moveMut.mutate({
+      active: {
+        id: active.id,
+        path: active.materializedPath,
+        isDir: active.isDir,
+        name: active.name,
+      },
+      target: over ? {
+        id: over.id,
+        path: over.materializedPath,
+        isDir: over.isDir,
+        name: over.name,
+      } : null,
+    })
+  }, [moveMut])
 
   const handleDragStart = useCallback(
     (e: DragStartEvent) => {
@@ -39,24 +57,11 @@ export default function Explorer() {
           return
         }
         console.log('move item', active, 'to', over)
-        moveMut.mutate({
-          active: {
-            id: active.id,
-            path: active.materializedPath,
-            isDir: active.isDir,
-            name: active.name,
-          },
-          target: {
-            id: over.id,
-            path: over.materializedPath,
-            isDir: over.isDir,
-            name: over.name,
-          },
-        })
+        handleMove(active, over)
       }
       explorerStore.setDrag(null)
     },
-    [explorerStore, moveMut],
+    [explorerStore, handleMove],
   )
 
   const handleDragCancel = useCallback(
@@ -66,6 +71,17 @@ export default function Explorer() {
     },
     [explorerStore],
   )
+
+  const handleMovePathSelected = useCallback((target: ExplorerItem|null) => {
+    const active = Array.from(explorer.selectedItems)[0]
+    if (!active) {
+      return  // 没有选中的文件
+    }
+    if (target && target.id === active.id) {
+      return  // 不能移动到自己的目录内
+    }
+    handleMove(active, target)
+  }, [explorer, handleMove])
 
   if (!explorer.items || explorer.items.length === 0) {
     return (
@@ -115,6 +131,9 @@ export default function Explorer() {
           )}
         </DragOverlay>
       )}
+
+      <FoldersDialog onConfirm={handleMovePathSelected} />
+
     </DndContext>
   )
 }

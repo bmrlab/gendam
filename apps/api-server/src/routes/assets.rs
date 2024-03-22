@@ -86,6 +86,22 @@ where
             })
         )
         .procedure(
+            "get",
+            Rspc::<TCtx>::new().query({
+                #[derive(Deserialize, Type, Debug)]
+                #[serde(rename_all = "camelCase")]
+                struct FilePathGetPayload {
+                    path: String,
+                    name: String,
+                }
+                |ctx, input: FilePathGetPayload| async move {
+                    let library = ctx.library()?;
+                    let item = get_file_path(&library, &input.path, &input.name).await?;
+                    Ok(item)
+                }
+            })
+        )
+        .procedure(
             "rename_file_path",
             Rspc::<TCtx>::new().mutation({
                 #[derive(Deserialize, Type, Debug)]
@@ -114,7 +130,7 @@ where
                 #[serde(rename_all = "camelCase")]
                 struct FilePathMovePayload {
                     active: FilePathRequestPayload,
-                    target: FilePathRequestPayload,
+                    target: Option<FilePathRequestPayload>,
                 }
                 |ctx, input: FilePathMovePayload| async move {
                     let library = ctx.library()?;
@@ -379,13 +395,23 @@ async fn rename_file_path(
 async fn move_file_path(
     library: &Library,
     mut active: FilePathRequestPayload,
-    mut target: FilePathRequestPayload,
+    mut target: Option<FilePathRequestPayload>,
 ) -> Result<(), rspc::Error> {
     // TODO: 所有 SQL 要放进一个 transaction 里面
 
     // 其实不应该对 path 做 normalize，调用接口的时候要确保格式正确
     active.path = normalized_materialized_path(&active.path);
-    target.path = normalized_materialized_path(&target.path);
+
+    if let Some(target) = target.as_mut() {
+        target.path = normalized_materialized_path(&target.path);
+
+        if active.id == target.id {
+            return Err(rspc::Error::new(
+                rspc::ErrorCode::BadRequest,
+                String::from("active and target are the same"),
+            ));
+        }
+    }
 
     let sql_error = |e: QueryError| {
         rspc::Error::new(
@@ -413,32 +439,38 @@ async fn move_file_path(
         }
     };
 
-    // TODO: 首先，确保 target.is_dir == true
-    let target_file_path_data = library.prisma_client()
-        .file_path()
-        .find_first(vec![
-            file_path::id::equals(target.id),
-            file_path::materialized_path::equals(target.path.clone()),
-            file_path::is_dir::equals(true),
-            file_path::name::equals(target.name.clone()),
-        ])
-        .exec().await.map_err(sql_error)?;
-    let _target_file_path_data = match target_file_path_data {
-        Some(t) => t,
-        None => {
-            return Err(rspc::Error::new(
-                rspc::ErrorCode::NotFound,
-                String::from("target file_path not found"),
-            ));
-        }
-    };
+    if let Some(target) = target.as_ref() {
+        // TODO: 首先，确保 target.is_dir == true
+        let target_file_path_data = library.prisma_client()
+            .file_path()
+            .find_first(vec![
+                file_path::id::equals(target.id),
+                file_path::materialized_path::equals(target.path.clone()),
+                file_path::is_dir::equals(true),
+                file_path::name::equals(target.name.clone()),
+            ])
+            .exec().await.map_err(sql_error)?;
+        let _target_file_path_data = match target_file_path_data {
+            Some(t) => t,
+            None => {
+                return Err(rspc::Error::new(
+                    rspc::ErrorCode::NotFound,
+                    String::from("target file_path not found"),
+                ));
+            }
+        };
+    }
 
+    let new_materialized_path = match target.as_ref() {
+        Some(target) =>
+            format!("{}{}/", target.path.as_str(), target.name.as_str()),
+        None => "/".to_string(),
+    };
     // 确保 target 下不存在相同名字的文件，不然移动失败
     let duplicated_file_path_data = library.prisma_client()
         .file_path()
         .find_first(vec![
-            file_path::id::equals(target.id),
-            file_path::materialized_path::equals(target.path.clone()),
+            file_path::materialized_path::equals(new_materialized_path.clone()),
             file_path::name::equals(active.name.clone()),
         ])
         .exec().await.map_err(sql_error)?;
@@ -448,14 +480,12 @@ async fn move_file_path(
             format!("file_path already exists: {:?}", data),
         ));
     }
-
     // rename file_path
-    let new_materialized_path = format!("{}{}/", target.path.as_str(), target.name.as_str());
     library.prisma_client()
         .file_path()
         .update(
             file_path::id::equals(active_file_path_data.id),
-            vec![file_path::materialized_path::set(new_materialized_path)],
+            vec![file_path::materialized_path::set(new_materialized_path.clone())],
         )
         .exec().await.map_err(sql_error)?;
 
@@ -475,7 +505,11 @@ async fn move_file_path(
      *
      * Same as rename
      */
-    let new_materialized_path = format!("{}{}/{}/", target.path.as_str(), target.name.as_str(), active.name.as_str());
+    let new_materialized_path = match target.as_ref() {
+        Some(target) =>
+            format!("{}{}/{}/", target.path.as_str(), target.name.as_str(), active.name.as_str()),
+        None => format!("/{}/", active.name.as_str()),
+    };
     let old_materialized_path = format!("{}{}/", active.path.as_str(), active.name.as_str());
     let old_materialized_path_like = format!("{}%", &old_materialized_path);
     library.prisma_client()
@@ -667,4 +701,48 @@ async fn list_file_path(
         .collect::<Vec<FilePathQueryResult>>();
 
     Ok(res)
+}
+
+async fn get_file_path(
+    library: &Library,
+    path: &str,
+    name: &str,
+) -> Result<FilePathQueryResult, rspc::Error> {
+    let materialized_path = normalized_materialized_path(path);
+    let res = library.prisma_client()
+        .file_path()
+        .find_unique(file_path::materialized_path_name(materialized_path, name.to_string()))
+        .with(file_path::asset_object::fetch())
+        .exec()
+        .await
+        .map_err(|e| {
+            rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                format!("sql query failed: {}", e),
+            )
+        })?;
+    match res {
+        Some(r) => Ok(FilePathQueryResult {
+            id: r.id,
+            name: r.name.clone(),
+            materialized_path: r.materialized_path.clone(),
+            is_dir: r.is_dir,
+            asset_object: match r.asset_object.as_ref() {
+                Some(asset_object) => match asset_object {
+                    None => None,
+                    Some(asset_object) => Some(AssetObjectQueryResult {
+                        id: asset_object.id,
+                        hash: asset_object.hash.clone(),
+                    }),
+                },
+                None => None,
+            },
+            created_at: r.created_at.to_string(),
+            updated_at: r.updated_at.to_string(),
+        }),
+        None => Err(rspc::Error::new(
+            rspc::ErrorCode::NotFound,
+            String::from("file_path not found"),
+        )),
+    }
 }
