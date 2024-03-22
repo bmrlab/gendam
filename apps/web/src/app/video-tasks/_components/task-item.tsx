@@ -28,13 +28,13 @@ export default function VideoTaskItem({
   }, [tasks])
 
   const status = useCallback((task: VideoWithTasksResult['tasks'][number]) => {
-    if (!task.startsAt && !task.endsAt) {
-      return MuseStatus.Processing
+    if (task.startsAt && !task.endsAt) {
+      return MuseStatus.Processing  // 已经开始但还没结束
     }
     if (task.startsAt && task.endsAt) {
-      return MuseStatus.Done
+      return MuseStatus.Done  // 已经结束
     }
-    return MuseStatus.None
+    return MuseStatus.None  // 还未开始
     // return MuseStatus.Failed
   }, [])
 
