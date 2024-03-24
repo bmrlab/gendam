@@ -27,6 +27,18 @@ function formatSize(mediaData: VideoWithTasksResult['assetObject']['mediaData'])
   return `${width} x ${height}`
 }
 
+function formatBytes(mediaData: VideoWithTasksResult['assetObject']['mediaData']) {
+  let bytes = mediaData?.size ?? 0
+  let decimals = 2
+  if (bytes === 0) {
+    return '0 Bytes'
+  }
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i]
+}
+
 export type VideoTaskItemProps = {
   videoFile: VideoWithTasksResult
   isSelect?: boolean
@@ -43,6 +55,10 @@ export default function VideoTaskItem({
 
   const showTask = useMemo(() => {
     return tasks.filter((task) => VIDEO_DIMENSION[task.taskType])
+  }, [tasks])
+
+  const hasAudio = useMemo(() => {
+    return tasks.some((task) => task.taskType === 'Audio' && !!task.endsAt)
   }, [tasks])
 
   const status = useCallback((task: VideoWithTasksResult['tasks'][number]) => {
@@ -113,11 +129,15 @@ export default function VideoTaskItem({
           <div className="flex items-center text-[12px] font-normal leading-4 text-[#95989F]">
             <span>{formatDuration(assetObject.mediaData)}</span>
             <div className="mx-2">·</div>
-            <span>10.87 MB</span>
+            <span>{formatBytes(assetObject.mediaData)}</span>
             <div className="mx-2">·</div>
             <span>{formatSize(assetObject.mediaData)}</span>
-            <div className="mx-2">·</div>
-            <NoAudio />
+            {hasAudio ? null : (
+              <>
+                <div className="mx-2">·</div>
+                <NoAudio />
+              </>
+            )}
             {/* <div className="mx-2">·</div>
             <span>已取消</span> */}
           </div>

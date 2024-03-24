@@ -52,6 +52,8 @@ model MediaData {
   height        Int?
   duration      Int?
   bitRate       Int?
+  size          Int?
+  mimeType      String?
 
   description   String?
 

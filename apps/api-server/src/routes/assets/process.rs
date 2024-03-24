@@ -84,6 +84,13 @@ pub async fn process_video_metadata(
         library.files_dir.to_str().unwrap(),
         asset_object_data.hash
     );
+    let fs_metadata = match std::fs::metadata(&local_video_file_full_path) {
+        Ok(metadata) => metadata,
+        Err(e) => return Err(rspc::Error::new(
+            rspc::ErrorCode::InternalServerError,
+            format!("failed to get video metadata: {}", e),
+        )),
+    };
     let video_handler = VideoHandler::new(
         local_video_file_full_path,
         &ctx.get_resources_dir(),
@@ -105,6 +112,7 @@ pub async fn process_video_metadata(
         media_data::height::set(Some(metadata.height as i32)),
         media_data::duration::set(Some(metadata.duration as i32)),
         media_data::bit_rate::set(Some(metadata.bit_rate as i32)),
+        media_data::size::set(Some(fs_metadata.len() as i32)),
     ];
     library
         .prisma_client()

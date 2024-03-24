@@ -70,6 +70,7 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
                     pub height: i32,
                     pub duration: i32,
                     pub bit_rate: i32,
+                    pub size: i32,
                 }
 
                 #[derive(Serialize, Type)]
@@ -146,6 +147,7 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
                                                 height: media_data.height.unwrap_or_default(),
                                                 duration: media_data.duration.unwrap_or_default(),
                                                 bit_rate: media_data.bit_rate.unwrap_or_default(),
+                                                size: media_data.size.unwrap_or_default(),
                                             }),
                                             None => None,
                                         }
