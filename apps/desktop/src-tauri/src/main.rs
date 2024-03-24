@@ -127,7 +127,7 @@ async fn main() {
     window
         .app_handle()
         .plugin(
-            rspc::integrations::tauri::plugin(router, move |_window| {
+            rspc_tauri::plugin(router.arced(), move |_window| {
                 // 不能每次 new 而应该是 clone，这样会保证 ctx 里面的每个元素每次只是新建了引用
                 ctx.clone()
             })

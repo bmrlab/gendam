@@ -5,28 +5,22 @@ edition = { workspace = true }
 
 [dependencies]
 prisma-lib = { path = "../../crates/prisma" }
-file-handler = { path = "../../crates/file-handler", features = [
-  "ffmpeg-binary",
-] }
+file-handler = { path = "../../crates/file-handler", features = ["ffmpeg-binary"] }
 content-library = { path = "../../crates/content-library" }
 vector-db = { path = "../../crates/vector-db", features = ["qdrant"] }
-rspc = { workspace = true, features = ["axum"] }
+rspc = { workspace = true }
+rspc-axum = { workspace = true}
 specta = { workspace = true }
-specta-macros = { version = "=2.0.0-rc.1" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-prisma-client-rust = { workspace = true, features = ["specta"] }
-# prisma-client-rust-cli = { workspace = true }
+prisma-client-rust = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tokio-util = { workspace = true, features = ["full"] }
 dotenvy = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
-tower-http = { version = "0.4.1", default-features = false, features = [
-  "cors",
-  "fs",
-] }
-axum = "0.6.9" # 为了和 rspc 的 axum feature 保持兼容, 这里只能用 0.6.x, 不能用 0.7.x
+axum = { version = "0.7.4", features = ["ws"] }
+tower-http = { version = "0.5.2", default-features = false, features = ["cors", "fs"] }
 rand = "0.8.5"
 chrono = "0.4.34"
 dirs = "5.0.1"

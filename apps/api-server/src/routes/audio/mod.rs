@@ -1,12 +1,11 @@
-use crate::routes::audio::constant::TRANSCRIPT_FILE_NAME;
-use crate::routes::audio::downloader::DownloadHelper;
-use crate::routes::audio::reader::AudioReader;
+use crate::routes::audio::{
+    constant::TRANSCRIPT_FILE_NAME, downloader::DownloadHelper, reader::AudioReader,
+};
 use crate::CtxWithLibrary;
-use rspc::{Router, Rspc};
+use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
-use specta_macros::Type;
-use std::fmt;
-use std::path::PathBuf;
+use specta::Type;
+use std::{fmt, path::PathBuf};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 use tracing::log::debug;
@@ -28,24 +27,21 @@ struct ExportInput {
     file_name: Option<String>,
 }
 
-pub fn get_routes<TCtx>() -> Router<TCtx>
-    where
-        TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
+pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
+where
+    TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
-    let router = Rspc::<TCtx>::new()
-        .router()
-        .procedure(
-            "find_by_hash",
-            Rspc::<TCtx>::new().query(|ctx, hash: String| async move {
+    Router::<TCtx>::new()
+        .query("find_by_hash", |t| {
+            t(|ctx, hash: String| async move {
                 let library = ctx.library()?;
                 let artifacts_dir = library.artifacts_dir.clone();
                 let path = artifacts_dir.join(hash).join(TRANSCRIPT_FILE_NAME);
                 Ok(get_all_audio_format(path))
-            }),
-        )
-        .procedure(
-            "export",
-            Rspc::<TCtx>::new().mutation(|ctx, input: ExportInput| async move {
+            })
+        })
+        .mutation("export", |t| {
+            t(|ctx, input: ExportInput| async move {
                 let library = ctx.library()?;
                 let export_result = audio_export(library.artifacts_dir.clone(), input)
                     .unwrap_or_else(|err| {
@@ -53,26 +49,23 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
                         vec![]
                     });
                 Ok(export_result)
-            }),
-        )
-        .procedure(
-            "batch_export",
-            Rspc::<TCtx>::new().mutation(|ctx, input: Vec<ExportInput>| async move {
+            })
+        })
+        .mutation("batch_export", |t| {
+            t(|ctx, input: Vec<ExportInput>| async move {
                 let library = ctx.library()?;
                 let mut error_list = vec![];
                 for item in input {
-                    let res = audio_export(library.artifacts_dir.clone(), item)
-                        .unwrap_or_else(|err| {
+                    let res =
+                        audio_export(library.artifacts_dir.clone(), item).unwrap_or_else(|err| {
                             error!("Failed to export audio: {err}",);
                             vec![]
                         });
                     error_list.extend(res);
                 }
                 Ok(error_list)
-            }),
-        );
-
-    router
+            })
+        })
 }
 
 #[derive(EnumIter, Debug, Deserialize, Serialize, Clone, Type, Eq, PartialEq)]

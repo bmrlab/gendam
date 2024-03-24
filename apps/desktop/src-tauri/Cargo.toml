@@ -32,8 +32,8 @@ file-handler = { path = "../../../crates/file-handler", features = [
 content-library = { path = "../../../crates/content-library" }
 api-server = { path = "../../api-server" }
 vector-db = { path = "../../../crates/vector-db", features = ["qdrant"] }
-rspc = { workspace = true, features = ["tauri"] }
-specta-macros = { workspace = true }
+rspc = { workspace = true }
+rspc-tauri = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 prisma-client-rust = { workspace = true }

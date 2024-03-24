@@ -1,91 +1,71 @@
-use std::{
-    path::PathBuf,
-    process::Command,
-};
-use serde::Serialize;
-use rspc::{Rspc, Router};
-use rspc::internal::middleware::MiddlewareContext;
-// use crate::{Ctx, R};
 use crate::CtxWithLibrary;
+use rspc::{Router, RouterBuilder};
+use serde::Serialize;
+use std::{path::PathBuf, process::Command};
 
-pub fn get_routes<TCtx>() -> Router<TCtx>
-where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
+where
+    TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
-    let router = Rspc::<TCtx>::new().router()
-    // .procedure(
-    //     "files",
-    //     R.query(|_ctx, subpath: Option<String>| async move {
-    //         // println!("subpath: {:?}", subpath);
-    //         let res = list_files(subpath);
-    //         serde_json::to_value(res).unwrap()
-    //     })
-    // )
-    // .procedure(
-    //     "folders",
-    //     R.query(|_ctx, _input: ()| async move {
-    //         let res = get_folders_tree();
-    //         serde_json::to_value(res).unwrap()
-    //     })
-    // )
-    .procedure(
-        "home_dir",
-        Rspc::<TCtx>::new()
-        .with(|mw: MiddlewareContext, ctx| {
-            // let local_data_root = ctx.local_data_root;
-            async move {
-                // let res = dirs::home_dir().unwrap();
-                Ok(mw.next(ctx))
-            }
+    Router::<TCtx>::new()
+        // .procedure(
+        //     "files",
+        //     R.query(|_ctx, subpath: Option<String>| async move {
+        //         // println!("subpath: {:?}", subpath);
+        //         let res = list_files(subpath);
+        //         serde_json::to_value(res).unwrap()
+        //     })
+        // )
+        // .procedure(
+        //     "folders",
+        //     R.query(|_ctx, _input: ()| async move {
+        //         let res = get_folders_tree();
+        //         serde_json::to_value(res).unwrap()
+        //     })
+        // )
+        .query("home_dir", |t| {
+            t(|ctx, _input: ()| async move {
+                let library = ctx.library()?;
+                Ok(library.files_dir.to_str().unwrap().to_string())
+                // dirs::home_dir().unwrap()
+            })
         })
-        .query(|ctx, _input: ()| async move {
-            let library = ctx.library()?;
-            Ok(library.files_dir.to_str().unwrap().to_string())
-            // dirs::home_dir().unwrap()
+        .query("ls", |t| {
+            t(|ctx, path: String| async move {
+                let library = ctx.library()?;
+                if !path.starts_with("/") {
+                    return Err(rspc::Error::new(
+                        rspc::ErrorCode::BadRequest,
+                        String::from("path muse be start with /"),
+                    ));
+                }
+                let relative_path = format!(".{}", path);
+                let files_dir = library.files_dir;
+                let ls_dir = files_dir.join(relative_path);
+                let res = get_files_in_path(&ls_dir);
+                Ok(serde_json::to_value(res).unwrap())
+            })
         })
-    )
-    .procedure(
-        "ls",
-        Rspc::<TCtx>::new().query(|ctx, path: String| async move {
-            let library = ctx.library()?;
-            if !path.starts_with("/") {
-                // let res = serde_json::to_value::<Vec<File>>(vec![]);
-                // return res.map_err(|e| {
-                //     rspc::Error::new(
-                //         rspc::ErrorCode::BadRequest,
-                //         String::from("path muse be start with /")
-                //     )
-                // });
-                return Err(rspc::Error::new(
-                    rspc::ErrorCode::BadRequest,
-                    String::from("path muse be start with /")
-                ));
-            }
-            let relative_path = format!(".{}", path);
-            let files_dir = library.files_dir;
-            let ls_dir = files_dir.join(relative_path);
-            let res = get_files_in_path(&ls_dir);
-            Ok(serde_json::to_value(res).unwrap())
+        .mutation("reveal", |t| {
+            t(|ctx, path: String| async move {
+                let library = ctx.library()?;
+                let relative_path = format!(".{}", path);
+                let files_dir = library.files_dir;
+                let reveal_path = files_dir
+                    .join(relative_path)
+                    .into_os_string()
+                    .into_string()
+                    .unwrap();
+                match reveal_in_finder(&reveal_path) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("failed reveal file in finder: {}", e),
+                    )),
+                }
+            })
         })
-    )
-    .procedure(
-        "reveal",
-        Rspc::<TCtx>::new().mutation(|ctx, path: String| async move {
-            let library = ctx.library()?;
-            let relative_path = format!(".{}", path);
-            let files_dir = library.files_dir;
-            let reveal_path = files_dir.join(relative_path).into_os_string().into_string().unwrap();
-            match reveal_in_finder(&reveal_path) {
-                Ok(_) => Ok(()),
-                Err(e) => Err(rspc::Error::new(
-                    rspc::ErrorCode::InternalServerError,
-                    format!("failed reveal file in finder: {}", e)
-                ))
-            }
-        })
-    );
-    return router;
 }
-
 
 #[derive(Serialize)]
 struct File {
@@ -143,9 +123,6 @@ fn get_files_in_path(ls_dir: &PathBuf) -> Vec<File> {
 // }
 
 fn reveal_in_finder(path: &str) -> std::io::Result<()> {
-    Command::new("open")
-        .arg("-R")
-        .arg(path)
-        .output()?;
+    Command::new("open").arg("-R").arg(path).output()?;
     Ok(())
 }

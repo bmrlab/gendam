@@ -3,13 +3,11 @@ use api_server::{
     ctx::default::{Ctx, Store},
     CtxStore,
 };
-use axum::routing::get;
+use axum::{http::request::Parts, routing::get};
 use content_library::{load_library, upgrade_library_schemas, Library};
 use dotenvy::dotenv;
-use rspc::integrations::httpz::Request;
 use std::{
     env,
-    net::SocketAddr,
     path::Path,
     sync::{Arc, Mutex},
 };
@@ -17,7 +15,7 @@ use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
 };
-use tracing::{debug, info, error};
+use tracing::{debug, error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -72,28 +70,28 @@ async fn main() {
         .allow_origin(Any);
 
     let store = Arc::new(Mutex::new(default_store));
-    let router = api_server::router::get_router::<Ctx<Store>>();
+    let router = api_server::router::get_router::<Ctx<Store>>()
+        .arced();
     let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store, current_library);
 
     let app: axum::Router = axum::Router::new()
         .route("/", get(|| async { "Hello 'rspc'!" }))
-        .nest( "/rspc", {
-            router.clone().endpoint({
-                move |req: Request| {
-                    info!("Client requested operation '{}'", req.uri().path());
+        .nest("/rspc", {
+            rspc_axum::endpoint(router.clone(), {
+                move |parts: Parts| {
+                    info!("Client requested operation '{}'", parts.uri.path());
                     // 不能每次 new 而应该是 clone，这样会保证 ctx 里面的每个元素每次只是新建了引用
                     ctx.clone()
                 }
-            }).axum()
+            })
         })
         // .nest_service("/artifacts", ServeDir::new(local_data_dir.clone()))
         .nest_service("/file/localhost", ServeDir::new("/"))
         .layer(cors);
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
-    debug!("Listening on {}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let addr = "[::]:3001".parse::<std::net::SocketAddr>().unwrap(); // This listens on IPv6 and IPv4
+    debug!("Listening on http://{}/rspc/version", addr);
+    axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app)
         .await
         .unwrap();
 }
@@ -103,7 +101,7 @@ fn init_tracing() {
         .with(
             // load filters from the `RUST_LOG` environment variable.
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "api_server=debug".into())
+                .unwrap_or_else(|_| "api_server=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer().with_ansi(true))
         .init();

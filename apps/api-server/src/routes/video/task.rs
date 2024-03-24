@@ -1,23 +1,19 @@
+use crate::task_queue::create_video_task;
 use crate::CtxWithLibrary;
 use prisma_client_rust::Direction;
 use prisma_lib::{asset_object, file_handler_task};
-use rspc::{Router, Rspc};
+use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
-// use serde_json::json;
-use crate::task_queue::create_video_task;
 use specta::Type;
 use tracing::error;
-// use crate::task_queue::create_video_task;
 
-pub fn get_routes<TCtx>() -> Router<TCtx>
-    where
-        TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
+pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
+where
+    TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
-    Rspc::<TCtx>::new()
-        .router()
-        .procedure(
-            "create",
-            Rspc::<TCtx>::new().mutation(move |_ctx: TCtx, video_path: String| {
+    Router::<TCtx>::new()
+        .mutation("create", |t| {
+            t(|_ctx: TCtx, video_path: String| {
                 // let tx = ctx.get_task_tx();
                 // async move {
                 //     if let Ok(res) = create_video_task(&ctx, &video_path, tx).await {
@@ -36,11 +32,48 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
                 } else {
                     return Ok(());
                 }
-            }),
-        )
-        .procedure(
-            "list",
-            Rspc::<TCtx>::new().query(move |ctx: TCtx, _input: ()| async move {
+            })
+        })
+        .query("list", |t| {
+            #[derive(Serialize, Type)]
+            #[serde(rename_all = "camelCase")]
+            pub struct VideoTaskResult {
+                pub task_type: String,
+                pub starts_at: Option<String>,
+                pub ends_at: Option<String>,
+            }
+
+            #[derive(Serialize, Type)]
+            #[serde(rename_all = "camelCase")]
+            pub struct MediaDataResult {
+                pub id: i32,
+                pub width: i32,
+                pub height: i32,
+                pub duration: i32,
+                pub bit_rate: i32,
+                pub size: i32,
+            }
+
+            #[derive(Serialize, Type)]
+            #[serde(rename_all = "camelCase")]
+            pub struct AssetObjectResult {
+                pub id: i32,
+                pub hash: String,
+                pub media_data: Option<MediaDataResult>,
+            }
+
+            #[derive(Serialize, Type)]
+            #[serde(rename_all = "camelCase")]
+            pub struct VideoWithTasksResult {
+                pub name: String,
+                pub materialized_path: String,
+                // pub asset_object_id: i32,
+                // pub asset_object_hash: String,
+                pub asset_object: AssetObjectResult,
+                pub tasks: Vec<VideoTaskResult>,
+            }
+
+            t(|ctx: TCtx, _input: ()| async move {
                 let library = ctx.library()?;
                 let asset_object_data_list = library
                     .prisma_client()
@@ -53,44 +86,6 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
                     .exec()
                     .await
                     .expect("failed to list video tasks");
-
-                #[derive(Serialize, Type)]
-                #[serde(rename_all = "camelCase")]
-                pub struct VideoTaskResult {
-                    pub task_type: String,
-                    pub starts_at: Option<String>,
-                    pub ends_at: Option<String>,
-                }
-
-                #[derive(Serialize, Type)]
-                #[serde(rename_all = "camelCase")]
-                pub struct MediaDataResult {
-                    pub id: i32,
-                    pub width: i32,
-                    pub height: i32,
-                    pub duration: i32,
-                    pub bit_rate: i32,
-                    pub size: i32,
-                }
-
-                #[derive(Serialize, Type)]
-                #[serde(rename_all = "camelCase")]
-                pub struct AssetObjectResult {
-                    pub id: i32,
-                    pub hash: String,
-                    pub media_data: Option<MediaDataResult>,
-                }
-
-                #[derive(Serialize, Type)]
-                #[serde(rename_all = "camelCase")]
-                pub struct VideoWithTasksResult {
-                    pub name: String,
-                    pub materialized_path: String,
-                    // pub asset_object_id: i32,
-                    // pub asset_object_hash: String,
-                    pub asset_object: AssetObjectResult,
-                    pub tasks: Vec<VideoTaskResult>,
-                }
 
                 let videos_with_tasks = asset_object_data_list
                     .iter()
@@ -139,18 +134,16 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
                                 id: asset_object_data.id,
                                 hash: asset_object_data.hash.clone(),
                                 media_data: match asset_object_data.media_data {
-                                    Some(ref media_data) => {
-                                        match media_data {
-                                            Some(ref media_data) => Some(MediaDataResult {
-                                                id: media_data.id,
-                                                width: media_data.width.unwrap_or_default(),
-                                                height: media_data.height.unwrap_or_default(),
-                                                duration: media_data.duration.unwrap_or_default(),
-                                                bit_rate: media_data.bit_rate.unwrap_or_default(),
-                                                size: media_data.size.unwrap_or_default(),
-                                            }),
-                                            None => None,
-                                        }
+                                    Some(ref media_data) => match media_data {
+                                        Some(ref media_data) => Some(MediaDataResult {
+                                            id: media_data.id,
+                                            width: media_data.width.unwrap_or_default(),
+                                            height: media_data.height.unwrap_or_default(),
+                                            duration: media_data.duration.unwrap_or_default(),
+                                            bit_rate: media_data.bit_rate.unwrap_or_default(),
+                                            size: media_data.size.unwrap_or_default(),
+                                        }),
+                                        None => None,
                                     },
                                     None => None,
                                 },
@@ -160,56 +153,52 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
                     })
                     .collect::<Vec<VideoWithTasksResult>>();
                 Ok(videos_with_tasks)
-            }),
-        )
-        .procedure(
-            "regenerate",
-            Rspc::<TCtx>::new().mutation({
-                #[derive(Deserialize, Type, Debug)]
-                #[serde(rename_all = "camelCase")]
-                struct TaskRegeneratePayload {
-                    materialized_path: String,
-                    asset_object_id: i32,
-                }
-
-                |ctx: TCtx, input: TaskRegeneratePayload| async move {
-                    let library = ctx.library()?;
-                    Ok(
-                        match library
-                            .prisma_client()
-                            .asset_object()
-                            .find_first(vec![asset_object::id::equals(input.asset_object_id)])
-                            .exec()
-                            .await
-                        {
-                            Ok(asset_object_data) => match asset_object_data {
-                                Some(asset_object_data) => {
-                                    match create_video_task(
-                                        &input.materialized_path,
-                                        &asset_object_data,
-                                        &ctx,
-                                        ctx.get_task_tx(),
-                                    )
-                                        .await
-                                    {
-                                        Ok(_) => true,
-                                        Err(e) => {
-                                            error!("failed to create video task: {e:?}");
-                                            false
-                                        },
+            })
+        })
+        .mutation("regenerate", |t| {
+            #[derive(Deserialize, Type, Debug)]
+            #[serde(rename_all = "camelCase")]
+            struct TaskRegeneratePayload {
+                materialized_path: String,
+                asset_object_id: i32,
+            }
+            t(|ctx: TCtx, input: TaskRegeneratePayload| async move {
+                let library = ctx.library()?;
+                Ok(
+                    match library
+                        .prisma_client()
+                        .asset_object()
+                        .find_first(vec![asset_object::id::equals(input.asset_object_id)])
+                        .exec()
+                        .await
+                    {
+                        Ok(asset_object_data) => match asset_object_data {
+                            Some(asset_object_data) => {
+                                match create_video_task(
+                                    &input.materialized_path,
+                                    &asset_object_data,
+                                    &ctx,
+                                    ctx.get_task_tx(),
+                                )
+                                .await
+                                {
+                                    Ok(_) => true,
+                                    Err(e) => {
+                                        error!("failed to create video task: {e:?}");
+                                        false
                                     }
                                 }
-                                None => false,
-                            },
-                            Err(e) => {
-                                error!("failed to find asset object: {e:?}");
-                                false
                             }
+                            None => false,
                         },
-                    )
-                }
-            }),
-        )
+                        Err(e) => {
+                            error!("failed to find asset object: {e:?}");
+                            false
+                        }
+                    },
+                )
+            })
+        })
 }
 
 /*

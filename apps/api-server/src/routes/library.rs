@@ -1,24 +1,23 @@
-use std::path::PathBuf;
-use content_library::Library;
-use rspc::{Rspc, Router};
-use serde_json::json;
-use tracing::error;
 use crate::CtxWithLibrary;
+use content_library::Library;
+use rspc::{Router, RouterBuilder};
+use serde_json::json;
+use std::path::PathBuf;
+use tracing::error;
 
-pub fn get_routes<TCtx>() -> Router<TCtx>
-where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
+pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
+where
+    TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
-    Rspc::<TCtx>::new().router()
-        .procedure(
-            "list",
-            Rspc::<TCtx>::new().query(|ctx, _input: ()| async move {
+    Router::<TCtx>::new()
+        .query("list", |t| {
+            t(|ctx, _input: ()| async move {
                 let res = list_libraries(&ctx.get_local_data_root());
                 serde_json::to_value::<Vec<String>>(res).unwrap()
             })
-        )
-        .procedure(
-            "create",
-            Rspc::<TCtx>::new().mutation(|ctx, title: String| async move {
+        })
+        .mutation("create", |t| {
+            t(|ctx, title: String| async move {
                 let library = create_library(&ctx.get_local_data_root(), title).await;
                 json!({
                     "id": library.id,
@@ -28,21 +27,19 @@ where TCtx: CtxWithLibrary + Clone + Send + Sync + 'static
                     // "db_url": library.db_url,
                 })
             })
-        )
-        .procedure(
-            "set_current_library",
-            Rspc::<TCtx>::new().mutation(|ctx, library_id: String| async move {
+        })
+        .mutation("set_current_library", |t| {
+            t(|ctx, library_id: String| async move {
                 ctx.switch_current_library(&library_id).await;
                 json!({ "status": "ok" })
             })
-        )
-        .procedure(
-            "get_current_library",
-            Rspc::<TCtx>::new().query(|ctx, _input: ()| async move {
+        })
+        .query("get_current_library", |t| {
+            t(|ctx, _input: ()| async move {
                 let library = ctx.library()?;
                 Ok(library.id)
             })
-        )
+        })
 }
 
 fn list_libraries(local_data_root: &PathBuf) -> Vec<String> {
@@ -79,8 +76,6 @@ fn list_libraries(local_data_root: &PathBuf) -> Vec<String> {
 }
 
 async fn create_library(local_data_root: &PathBuf, title: String) -> Library {
-    let library = content_library::create_library_with_title(
-        local_data_root, title.as_str()
-    ).await;
+    let library = content_library::create_library_with_title(local_data_root, title.as_str()).await;
     return library;
 }

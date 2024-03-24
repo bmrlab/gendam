@@ -1,29 +1,35 @@
-"use client";
-import { httpLink, initRspc } from "@rspc/client";
-// import { tauriLink } from "@rspc/tauri";
-import { tauriLink } from "./rspc-tauri";
-import { createReactQueryHooks, QueryClient } from "@rspc/react";
-import type { Procedures } from "@/lib/bindings";
+'use client'
+import { FetchTransport, createClient } from '@rspc/client'
+import { createReactQueryHooks } from '@rspc/react'
+import { QueryClient } from '@tanstack/react-query'
+import { TauriTransport } from './rspc-tauri'
+// import { TauriTransport } from '@rspc/tauri'
 
-export const client = initRspc<Procedures>({
-  links: [
-    typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined' ?
-      tauriLink():
-      httpLink({
-        url: "http://localhost:3001/rspc",
-      })
-  ]
-});
+import type { Procedures } from '@/lib/bindings'
 
-export const rspc = createReactQueryHooks<Procedures>(client);
+export const client = createClient<Procedures>({
+  transport:
+    typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined'
+      ? new TauriTransport()
+      : new FetchTransport('http://localhost:3001/rspc'),
+})
 
 export const queryClient: QueryClient = new QueryClient({
-	defaultOptions: {
-		queries: {
-			suspense: false,
-		},
-		mutations: {
-			onSuccess: () => queryClient.invalidateQueries()
-		}
-	}
-});
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+    mutations: {
+      onSuccess: () => queryClient.invalidateQueries(),
+    },
+  },
+})
+
+export const rspc = createReactQueryHooks<Procedures>()
+// export const {
+//   useContext,
+//   useMutation,
+//   useQuery,
+//   useSubscription,
+//   Provider: RSPCProvider,
+// } = createReactQueryHooks<Procedures>();
