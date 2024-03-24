@@ -45,17 +45,17 @@ export default function VideoTasksList({ data, isLoading, className }: VideoTask
       {filterVideos?.map((videoFile) => {
         return (
           <TaskContextMenu
-            key={videoFile.assetObjectId}
-            fileHash={videoFile.assetObjectHash}
+            key={videoFile.assetObject.id}
+            fileHash={videoFile.assetObject.hash}
             isProcessing={hasProcessing(videoFile.tasks)}
             video={videoFile}
           >
             <WithSelectVideoItem
               videoFile={videoFile}
               items={data}
-              isSelect={taskSelected.some((item) => item.assetObjectHash === videoFile.assetObjectHash)}
+              isSelect={taskSelected.some((item) => item.assetObject.hash === videoFile.assetObject.hash)}
               handleClick={() => {
-                console.log(videoFile.assetObjectId, videoFile.assetObjectHash)
+                // console.log(videoFile.assetObject.id, videoFile.assetObject.hash)
                 // revealMut.mutate(video.videoPath)
               }}
             />

@@ -48,6 +48,7 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
                     .find_many(vec![])
                     .with(asset_object::tasks::fetch(vec![]))
                     .with(asset_object::file_paths::fetch(vec![]))
+                    .with(asset_object::media_data::fetch())
                     .order_by(asset_object::id::order(Direction::Desc))
                     .exec()
                     .await
@@ -63,11 +64,30 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
 
                 #[derive(Serialize, Type)]
                 #[serde(rename_all = "camelCase")]
+                pub struct MediaDataResult {
+                    pub id: i32,
+                    pub width: i32,
+                    pub height: i32,
+                    pub duration: i32,
+                    pub bit_rate: i32,
+                }
+
+                #[derive(Serialize, Type)]
+                #[serde(rename_all = "camelCase")]
+                pub struct AssetObjectResult {
+                    pub id: i32,
+                    pub hash: String,
+                    pub media_data: Option<MediaDataResult>,
+                }
+
+                #[derive(Serialize, Type)]
+                #[serde(rename_all = "camelCase")]
                 pub struct VideoWithTasksResult {
                     pub name: String,
                     pub materialized_path: String,
-                    pub asset_object_id: i32,
-                    pub asset_object_hash: String,
+                    // pub asset_object_id: i32,
+                    // pub asset_object_hash: String,
+                    pub asset_object: AssetObjectResult,
                     pub tasks: Vec<VideoTaskResult>,
                 }
 
@@ -85,8 +105,6 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
                             }
                             None => ("".to_string(), "".to_string()),
                         };
-                        let asset_object_hash = asset_object_data.hash.clone();
-                        let asset_object_id = asset_object_data.id;
                         let tasks = asset_object_data
                             .tasks
                             .as_ref()
@@ -116,8 +134,25 @@ pub fn get_routes<TCtx>() -> Router<TCtx>
                         VideoWithTasksResult {
                             name,
                             materialized_path,
-                            asset_object_id,
-                            asset_object_hash,
+                            asset_object: AssetObjectResult {
+                                id: asset_object_data.id,
+                                hash: asset_object_data.hash.clone(),
+                                media_data: match asset_object_data.media_data {
+                                    Some(ref media_data) => {
+                                        match media_data {
+                                            Some(ref media_data) => Some(MediaDataResult {
+                                                id: media_data.id,
+                                                width: media_data.width.unwrap_or_default(),
+                                                height: media_data.height.unwrap_or_default(),
+                                                duration: media_data.duration.unwrap_or_default(),
+                                                bit_rate: media_data.bit_rate.unwrap_or_default(),
+                                            }),
+                                            None => None,
+                                        }
+                                    },
+                                    None => None,
+                                },
+                            },
                             tasks,
                         }
                     })
