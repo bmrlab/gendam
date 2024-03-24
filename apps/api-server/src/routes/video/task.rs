@@ -36,40 +36,11 @@ where
         .query("list", |t| {
             #[derive(Serialize, Type)]
             #[serde(rename_all = "camelCase")]
-            pub struct VideoTaskResult {
-                pub task_type: String,
-                pub starts_at: Option<String>,
-                pub ends_at: Option<String>,
-            }
-
-            #[derive(Serialize, Type)]
-            #[serde(rename_all = "camelCase")]
-            pub struct MediaDataResult {
-                pub id: i32,
-                pub width: i32,
-                pub height: i32,
-                pub duration: i32,
-                pub bit_rate: i32,
-                pub size: i32,
-            }
-
-            #[derive(Serialize, Type)]
-            #[serde(rename_all = "camelCase")]
-            pub struct AssetObjectResult {
-                pub id: i32,
-                pub hash: String,
-                pub media_data: Option<MediaDataResult>,
-            }
-
-            #[derive(Serialize, Type)]
-            #[serde(rename_all = "camelCase")]
             pub struct VideoWithTasksResult {
                 pub name: String,
                 pub materialized_path: String,
-                // pub asset_object_id: i32,
-                // pub asset_object_hash: String,
-                pub asset_object: AssetObjectResult,
-                pub tasks: Vec<VideoTaskResult>,
+                pub asset_object: asset_object::Data,
+                pub tasks: Vec<file_handler_task::Data>,
             }
 
             t(|ctx: TCtx, _input: ()| async move {
@@ -100,53 +71,13 @@ where
                             }
                             None => ("".to_string(), "".to_string()),
                         };
-                        let tasks = asset_object_data
-                            .tasks
-                            .as_ref()
-                            .unwrap_or(&vec![])
-                            .iter()
-                            .map(
-                                |file_handler_task::Data {
-                                     task_type,
-                                     starts_at,
-                                     ends_at,
-                                     ..
-                                 }| {
-                                    VideoTaskResult {
-                                        task_type: task_type.clone(),
-                                        starts_at: match starts_at {
-                                            Some(starts_at) => Some(starts_at.to_string()),
-                                            None => None,
-                                        },
-                                        ends_at: match ends_at {
-                                            Some(ends_at) => Some(ends_at.to_string()),
-                                            None => None,
-                                        },
-                                    }
-                                },
-                            )
-                            .collect::<Vec<VideoTaskResult>>();
+                        let mut asset_object_data = asset_object_data.to_owned();
+                        let tasks = asset_object_data.tasks.unwrap_or(vec![]);
+                        asset_object_data.tasks = None;
                         VideoWithTasksResult {
                             name,
                             materialized_path,
-                            asset_object: AssetObjectResult {
-                                id: asset_object_data.id,
-                                hash: asset_object_data.hash.clone(),
-                                media_data: match asset_object_data.media_data {
-                                    Some(ref media_data) => match media_data {
-                                        Some(ref media_data) => Some(MediaDataResult {
-                                            id: media_data.id,
-                                            width: media_data.width.unwrap_or_default(),
-                                            height: media_data.height.unwrap_or_default(),
-                                            duration: media_data.duration.unwrap_or_default(),
-                                            bit_rate: media_data.bit_rate.unwrap_or_default(),
-                                            size: media_data.size.unwrap_or_default(),
-                                        }),
-                                        None => None,
-                                    },
-                                    None => None,
-                                },
-                            },
+                            asset_object: asset_object_data,
                             tasks,
                         }
                     })
