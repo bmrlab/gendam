@@ -23,6 +23,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenuContent, ItemContextMenuPro
   const explorerStore = useExplorerStore()
 
   const deleteMut = rspc.useMutation(['assets.delete_file_path'])
+  const metadataMut = rspc.useMutation(['assets.process_video_metadata'])
 
   const handleOpen = useCallback(
     (e: React.FormEvent<HTMLDivElement>) => {
@@ -68,6 +69,17 @@ const ItemContextMenu = forwardRef<typeof ContextMenuContent, ItemContextMenuPro
     [explorer, explorerStore],
   )
 
+  const handleProcessMetadata = useCallback(
+    (e: React.FormEvent<HTMLDivElement>) => {
+      e.stopPropagation()
+      if (!data.assetObject) {
+        return
+      }
+      metadataMut.mutate(data.assetObject.id)
+    },
+    [metadataMut, data],
+  )
+
   return (
     <ContextMenuContent
       ref={forwardedRef as any}
@@ -79,6 +91,9 @@ const ItemContextMenu = forwardRef<typeof ContextMenuContent, ItemContextMenuPro
       </_MenuItemDefault>
       <_MenuItemDefault onClick={() => explorerStore.setIsFoldersDialogOpen(true)}>
         <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">移动</div>
+      </_MenuItemDefault>
+      <_MenuItemDefault onClick={handleProcessMetadata}>
+        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">刷新视频信息</div>
       </_MenuItemDefault>
       <_MenuItemDefault onClick={() => {}}>
         <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">预览</div>

@@ -12,7 +12,7 @@ use specta::Type;
 use crate::CtxWithLibrary;
 
 use create::{create_file_path, create_asset_object};
-use process::process_video_asset;
+use process::{process_video_asset, process_video_metadata};
 use read::{get_file_path, list_file_path};
 use update::{move_file_path, rename_file_path};
 use delete::delete_file_path;
@@ -51,11 +51,11 @@ where
                 }
                 |ctx: TCtx, input: AssetObjectCreatePayload| async move {
                     let library = ctx.library()?;
-                    let (file_path_data, _asset_object_data) =
+                    let (file_path_data, asset_object_data) =
                         create_asset_object(&library, &input.path, &input.local_full_path)
                         .await?;
                     process_video_asset(&library, &ctx, file_path_data.id).await?;
-                    // Ok(json!(file_path_data).to_string())
+                    process_video_metadata(&library, &ctx, asset_object_data.id).await?;
                     Ok(())
                 }
             })
@@ -156,6 +156,15 @@ where
                 let library = ctx.library()?;
                 let file_path_id = input;
                 process_video_asset(&library, &ctx, file_path_id).await?;
+                Ok(())
+            })
+        )
+        .procedure(
+            "process_video_metadata",
+            Rspc::<TCtx>::new().mutation(|ctx, input: i32| async move {
+                let library = ctx.library()?;
+                let file_path_id = input;
+                process_video_metadata(&library, &ctx, file_path_id).await?;
                 Ok(())
             })
         );
