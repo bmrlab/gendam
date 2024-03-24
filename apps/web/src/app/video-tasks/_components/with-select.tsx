@@ -23,7 +23,7 @@ function withSelect<T extends WithSelectProps>(Component: React.ComponentType<T>
     const isCommandPressed = useKeyPress(KeyType.Meta)
 
     const { videoFile } = props as WithSelectProps
-    const { assetObjectId, assetObjectHash, materializedPath } = videoFile
+    const { assetObject, materializedPath } = videoFile
 
     const handleClick = async () => {
       // 按住 shift 键，多选视频
@@ -31,24 +31,23 @@ function withSelect<T extends WithSelectProps>(Component: React.ComponentType<T>
         let newVideoSelected = [
           ...videoSelected,
           {
-            assetObjectId,
-            assetObjectHash,
+            assetObject,
             materializedPath,
           },
         ]
 
-        // FIXME: 这里现在用 assetObjectId 来排序以及圈定上届和下届可能会有问题，因为 id 不连续
-        newVideoSelected.sort((a, b) => a.assetObjectId - b.assetObjectId)
-        let maxIndex = newVideoSelected[newVideoSelected.length - 1].assetObjectId
-        let minIndex = newVideoSelected[0].assetObjectId
-        const needAdd = props.items.filter((item) => item.assetObjectId >= minIndex && item.assetObjectId <= maxIndex)
+        // FIXME: 这里现在用 assetObject.id 来排序以及圈定上届和下届可能会有问题，因为 id 不连续
+        newVideoSelected.sort((a, b) => a.assetObject.id - b.assetObject.id)
+        let maxIndex = newVideoSelected[newVideoSelected.length - 1].assetObject.id
+        let minIndex = newVideoSelected[0].assetObject.id
+        const needAdd = props.items.filter((item) => item.assetObject.id >= minIndex && item.assetObject.id <= maxIndex)
         addVideoSelected(needAdd)
         return
       }
 
       // 如果按住 command 键，点击已选中的视频，取消选中
-      if (videoSelected.some((item) => item.assetObjectId === assetObjectId) && isCommandPressed) {
-        removeVideoSelected(assetObjectId)
+      if (videoSelected.some((item) => item.assetObject.id === assetObject.id) && isCommandPressed) {
+        removeVideoSelected(assetObject.id)
         return
       }
 
@@ -58,7 +57,7 @@ function withSelect<T extends WithSelectProps>(Component: React.ComponentType<T>
     }
 
     const handleRightClick = () => {
-      const notSelect = videoSelected.every((item) => item.assetObjectHash !== assetObjectHash)
+      const notSelect = videoSelected.every((item) => item.assetObject.hash !== assetObject.hash)
       if (notSelect) {
         clearVideoSelected()
         addVideoSelected(videoFile)

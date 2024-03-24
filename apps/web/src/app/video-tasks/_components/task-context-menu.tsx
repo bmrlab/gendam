@@ -43,15 +43,15 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
 
   const handleBatchExport = () => {
     let orderVideoSelected = [...videoSelected]
-    orderVideoSelected.sort((a, b) => a.assetObjectId - b.assetObjectId)
+    orderVideoSelected.sort((a, b) => a.assetObject.id - b.assetObject.id)
     setAudioDialogProps({
       type: AudioDialogEnum.batch,
       title: '批量导出语音转译',
       params: orderVideoSelected.map((item) => ({
-        id: item.assetObjectHash, // TODO: 这里回头要改成 assetObjectId, 但是对 audio export 功能改动较大
+        id: item.assetObject.hash, // TODO: 这里回头要改成 assetObjectId, 但是对 audio export 功能改动较大
         label: item.name,
-        assetObjectId: item.assetObjectId,
-        assetObjectHash: item.assetObjectHash,
+        assetObjectId: item.assetObject.id,
+        assetObjectHash: item.assetObject.hash,
       })),
     })
     setAudioDialogOpen(true)
@@ -79,7 +79,7 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
         handleClick: async () => {
           const res = await regenerateTask({
             materializedPath: video.materializedPath,
-            assetObjectId: video.assetObjectId,
+            assetObjectId: video.assetObject.id,
           })
           toast({
             title: res ? '重新触发任务成功' : '重新触发任务失败',
@@ -102,7 +102,7 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
         },
       },
     ]
-  }, [handleExport, isProcessing])
+  }, [handleExport, isProcessing, regenerateTask, toast, video])
 
   return (
     <ContextMenuRoot>

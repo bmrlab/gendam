@@ -22,13 +22,13 @@ export const createTaskContextSlice: ImmerStateCreator<TaskContextSlice> = (set)
   addVideoSelected: (item) =>
     set((state) => {
       const items = Array.isArray(item) ? item : [item]
-      const alreadySelectedId = state.videoSelected.map((item) => item.assetObjectId)
-      const needAdd = items.filter((item) => !alreadySelectedId.includes(item.assetObjectId))
+      const alreadySelectedId = state.videoSelected.map((item) => item.assetObject.id)
+      const needAdd = items.filter((item) => !alreadySelectedId.includes(item.assetObject.id))
       state.videoSelected.push(...needAdd)
     }),
   removeVideoSelected: (assetObjectId) =>
     set((state) => {
-      state.videoSelected = state.videoSelected.filter((item) => item.assetObjectId !== assetObjectId)
+      state.videoSelected = state.videoSelected.filter((item) => item.assetObject.id !== assetObjectId)
     }),
   clearVideoSelected: () => set({ videoSelected: [] }),
 })

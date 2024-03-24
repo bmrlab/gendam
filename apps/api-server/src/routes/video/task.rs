@@ -5,7 +5,6 @@ use prisma_lib::{asset_object, file_handler_task};
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use tracing::error;
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -164,39 +163,40 @@ where
             }
             t(|ctx: TCtx, input: TaskRegeneratePayload| async move {
                 let library = ctx.library()?;
-                Ok(
-                    match library
-                        .prisma_client()
-                        .asset_object()
-                        .find_first(vec![asset_object::id::equals(input.asset_object_id)])
-                        .exec()
-                        .await
-                    {
-                        Ok(asset_object_data) => match asset_object_data {
-                            Some(asset_object_data) => {
-                                match create_video_task(
-                                    &input.materialized_path,
-                                    &asset_object_data,
-                                    &ctx,
-                                    ctx.get_task_tx(),
-                                )
-                                .await
-                                {
-                                    Ok(_) => true,
-                                    Err(e) => {
-                                        error!("failed to create video task: {e:?}");
-                                        false
-                                    }
-                                }
-                            }
-                            None => false,
-                        },
-                        Err(e) => {
-                            error!("failed to find asset object: {e:?}");
-                            false
-                        }
-                    },
-                )
+                let asset_object_data  = library
+                    .prisma_client()
+                    .asset_object()
+                    .find_unique(asset_object::id::equals(input.asset_object_id))
+                    .exec()
+                    .await
+                    .map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("sql query failed: {}", e),
+                        )
+                    })?;
+                if let Some(asset_object_data) = asset_object_data {
+                    create_video_task(
+                        &input.materialized_path,
+                        &asset_object_data,
+                        &ctx,
+                        ctx.get_task_tx(),
+                    )
+                    .await
+                    .map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::NotFound,
+                            format!("failed to create video task: {e:?}"),
+                        )
+                    })?;
+                } else {
+                    return Err(rspc::Error::new(
+                        rspc::ErrorCode::NotFound,
+                        format!("asset object not found"),
+                    ));
+                };
+
+                Ok(())
             })
         })
 }

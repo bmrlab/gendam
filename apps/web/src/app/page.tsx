@@ -18,13 +18,7 @@ function Home() {
   useEffect(() => {
     // console.log("versionQuery data", versionQuery.data);
     client
-      .query(['version'], {
-        // context: {
-        //   headers: {
-        //     "X-ABC": "1234567"
-        //   }
-        // }
-      })
+      .query(['version'])
       .then((res: any) => {
         console.log('client query res', res)
       })
