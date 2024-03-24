@@ -11,13 +11,17 @@ if [ ! -f "${sidecar_dir}/qdrant-${triple}" ]; then
 fi
 chmod +x "${sidecar_dir}/qdrant-${triple}"
 
+ffmpeg_version=6.1.1
 if [ ! -f "${sidecar_dir}/ffmpeg-${triple}" ]; then
-  curl -L "https://tezign-ai-models.oss-cn-beijing.aliyuncs.com/ffmpeg" -o "${sidecar_dir}/ffmpeg-${triple}"
+  curl -L "https://evermeet.cx/ffmpeg/ffmpeg-${ffmpeg_version}.zip" | tar xz -C "${sidecar_dir}/"
+  mv "${sidecar_dir}/ffmpeg" "${sidecar_dir}/ffmpeg-${triple}"
 fi
 chmod +x "${sidecar_dir}/ffmpeg-${triple}"
 
+ffprobe_version=6.1.1
 if [ ! -f "${sidecar_dir}/ffprobe-${triple}" ]; then
-  curl -L "https://tezign-ai-models.oss-cn-beijing.aliyuncs.com/ffprobe" -o "${sidecar_dir}/ffprobe-${triple}"
+  curl -L "https://evermeet.cx/ffmpeg/ffprobe-${ffprobe_version}.zip" | tar xz -C "${sidecar_dir}/"
+  mv "${sidecar_dir}/ffprobe" "${sidecar_dir}/ffprobe-${triple}"
 fi
 chmod +x "${sidecar_dir}/ffprobe-${triple}"
 
