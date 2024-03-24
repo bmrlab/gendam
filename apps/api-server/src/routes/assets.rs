@@ -405,10 +405,12 @@ async fn move_file_path(
     if let Some(target) = target.as_mut() {
         target.path = normalized_materialized_path(&target.path);
 
-        if active.id == target.id {
+        let target_full_path = format!("{}{}/", target.path.as_str(), target.name.as_str());
+        let active_full_path = format!("{}{}/", active.path.as_str(), active.name.as_str());
+        if target_full_path.starts_with(&active_full_path) {
             return Err(rspc::Error::new(
                 rspc::ErrorCode::BadRequest,
-                String::from("active and target are the same"),
+                String::from("target is a subfolder of active"),
             ));
         }
     }
