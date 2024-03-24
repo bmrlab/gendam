@@ -11,6 +11,7 @@ import { useCurrentLibrary } from '@/lib/library'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
+import { formatBytes } from '@/lib/utils'
 
 const formatDate = (date: string) => {
   const d = new Date(date)
@@ -46,6 +47,9 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
       )}
       <div className="ml-auto" />
       <div className="text-xs text-neutral-500 w-48">{formatDate(data.createdAt)}</div>
+      <div className="text-xs text-neutral-500 w-24">
+        {data.assetObject ? formatBytes(data.assetObject.mediaData?.size ?? 0) : null}
+      </div>
       <div className="text-xs text-neutral-500 w-24">{data.isDir ? '文件夹' : '视频'}</div>
     </div>
   )
@@ -100,6 +104,7 @@ export default function ListView({ items }: { items: ExplorerItem[] }) {
         <div className="text-xs text-neutral-900 font-bold">名称</div>
         <div className="ml-auto" />
         <div className="text-xs text-neutral-900 font-bold w-48">创建时间</div>
+        <div className="text-xs text-neutral-900 font-bold w-24">大小</div>
         <div className="text-xs text-neutral-900 font-bold w-24">文件类型</div>
       </div>
       {items.map((item, index) => (

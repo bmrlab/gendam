@@ -1,7 +1,7 @@
-use prisma_lib::file_path;
+use prisma_lib::{asset_object, file_path};
 use content_library::Library;
 use super::utils::normalized_materialized_path;
-use super::types::{AssetObjectQueryResult, FilePathQueryResult};
+use super::types::{MediaDataQueryResult, AssetObjectQueryResult, FilePathQueryResult};
 
 pub async fn list_file_path(
     library: &Library,
@@ -16,7 +16,10 @@ pub async fn list_file_path(
     let res = library.prisma_client()
         .file_path()
         .find_many(where_params)
-        .with(file_path::asset_object::fetch())
+        .with(
+            file_path::asset_object::fetch()
+            .with(asset_object::media_data::fetch())
+        )
         .exec()
         .await
         .map_err(|e| {
@@ -34,12 +37,28 @@ pub async fn list_file_path(
             materialized_path: r.materialized_path.clone(),
             is_dir: r.is_dir,
             asset_object: match r.asset_object.as_ref() {
-                Some(asset_object) => match asset_object {
-                    None => None,
-                    Some(asset_object) => Some(AssetObjectQueryResult {
-                        id: asset_object.id,
-                        hash: asset_object.hash.clone(),
+                Some(asset_object_data) => match asset_object_data {
+                    Some(asset_object_data) => Some(AssetObjectQueryResult {
+                        id: asset_object_data.id,
+                        hash: asset_object_data.hash.clone(),
+                        media_data: match asset_object_data.media_data {
+                            Some(ref media_data) => {
+                                match media_data {
+                                    Some(ref media_data) => Some(MediaDataQueryResult {
+                                        id: media_data.id,
+                                        width: media_data.width.unwrap_or_default(),
+                                        height: media_data.height.unwrap_or_default(),
+                                        duration: media_data.duration.unwrap_or_default(),
+                                        bit_rate: media_data.bit_rate.unwrap_or_default(),
+                                        size: media_data.size.unwrap_or_default(),
+                                    }),
+                                    None => None,
+                                }
+                            },
+                            None => None,
+                        },
                     }),
+                    None => None,
                 },
                 None => None,
             },
@@ -60,7 +79,10 @@ pub async fn get_file_path(
     let res = library.prisma_client()
         .file_path()
         .find_unique(file_path::materialized_path_name(materialized_path, name.to_string()))
-        .with(file_path::asset_object::fetch())
+        .with(
+            file_path::asset_object::fetch()
+            .with(asset_object::media_data::fetch())
+        )
         .exec()
         .await
         .map_err(|e| {
@@ -76,12 +98,28 @@ pub async fn get_file_path(
             materialized_path: r.materialized_path.clone(),
             is_dir: r.is_dir,
             asset_object: match r.asset_object.as_ref() {
-                Some(asset_object) => match asset_object {
-                    None => None,
-                    Some(asset_object) => Some(AssetObjectQueryResult {
-                        id: asset_object.id,
-                        hash: asset_object.hash.clone(),
+                Some(asset_object_data) => match asset_object_data {
+                    Some(asset_object_data) => Some(AssetObjectQueryResult {
+                        id: asset_object_data.id,
+                        hash: asset_object_data.hash.clone(),
+                        media_data: match asset_object_data.media_data {
+                            Some(ref media_data) => {
+                                match media_data {
+                                    Some(ref media_data) => Some(MediaDataQueryResult {
+                                        id: media_data.id,
+                                        width: media_data.width.unwrap_or_default(),
+                                        height: media_data.height.unwrap_or_default(),
+                                        duration: media_data.duration.unwrap_or_default(),
+                                        bit_rate: media_data.bit_rate.unwrap_or_default(),
+                                        size: media_data.size.unwrap_or_default(),
+                                    }),
+                                    None => None,
+                                }
+                            },
+                            None => None,
+                        },
                     }),
+                    None => None,
                 },
                 None => None,
             },

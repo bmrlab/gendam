@@ -12,9 +12,21 @@ pub(crate) struct FilePathRequestPayload {
 
 #[derive(Serialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct MediaDataQueryResult {
+    pub id: i32,
+    pub width: i32,
+    pub height: i32,
+    pub duration: i32,
+    pub bit_rate: i32,
+    pub size: i32,
+}
+
+#[derive(Serialize, Type, Debug)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct AssetObjectQueryResult {
     pub id: i32,
     pub hash: String,
+    pub media_data: Option<MediaDataQueryResult>,
 }
 
 #[derive(Serialize, Type, Debug)]

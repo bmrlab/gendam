@@ -8,36 +8,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@muse/ui/v1/button'
 import { HTMLAttributes, useCallback, useMemo } from 'react'
 import { VIDEO_DIMENSION } from './utils'
-
-function formatDuration(mediaData: VideoWithTasksResult['assetObject']['mediaData']) {
-  let duration = mediaData?.duration ?? 0
-  let d = Number(duration)
-  var h = Math.floor(d / 3600)
-  var m = Math.floor((d % 3600) / 60)
-  var s = Math.floor((d % 3600) % 60)
-  var hDisplay = h > 0 ? (h < 10 ? '0' + h : h) + ':' : '00:'
-  var mDisplay = m > 0 ? (m < 10 ? '0' + m : m) + ':' : '00:'
-  var sDisplay = s > 0 ? (s < 10 ? '0' + s : s) : '00'
-  return hDisplay + mDisplay + sDisplay
-}
-
-function formatSize(mediaData: VideoWithTasksResult['assetObject']['mediaData']) {
-  let width = mediaData?.width ?? 0
-  let height = mediaData?.height ?? 0
-  return `${width} x ${height}`
-}
-
-function formatBytes(mediaData: VideoWithTasksResult['assetObject']['mediaData']) {
-  let bytes = mediaData?.size ?? 0
-  let decimals = 2
-  if (bytes === 0) {
-    return '0 Bytes'
-  }
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i]
-}
+import { formatDuration, formatBytes } from '@/lib/utils'
 
 export type VideoTaskItemProps = {
   videoFile: VideoWithTasksResult
@@ -127,11 +98,11 @@ export default function VideoTaskItem({
         </div>
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center text-[12px] font-normal leading-4 text-[#95989F]">
-            <span>{formatDuration(assetObject.mediaData)}</span>
+            <span>{formatDuration(assetObject.mediaData?.duration ?? 0)}</span>
             <div className="mx-2">·</div>
-            <span>{formatBytes(assetObject.mediaData)}</span>
+            <span>{formatBytes(assetObject.mediaData?.size ?? 0)}</span>
             <div className="mx-2">·</div>
-            <span>{formatSize(assetObject.mediaData)}</span>
+            <span>{`${assetObject.mediaData?.width ?? 0} x ${assetObject.mediaData?.height ?? 0}`}</span>
             {hasAudio ? null : (
               <>
                 <div className="mx-2">·</div>
