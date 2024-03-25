@@ -6,6 +6,7 @@ import { rspc } from '@/lib/rspc'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SearchRequestPayload } from '@/lib/bindings'
 import classNames from 'classnames'
+import { formatDuration } from '@/lib/utils'
 
 const VideoPreview: React.FC<{ item: SearchResultPayload }> = ({ item }) => {
   const currentLibrary = useCurrentLibrary()
@@ -56,11 +57,11 @@ const VideoItem: React.FC<{
   }, [item])
 
   return (
-    <div className="w-64">
-      <div
-        className="relative h-36 w-full cursor-pointer overflow-hidden rounded-md shadow-md"
-        onClick={() => handleVideoClick(item)}
-      >
+    <div
+      className="w-64 relative overflow-hidden rounded-md shadow-md invisible hover:visible"
+      onClick={() => handleVideoClick(item)}
+    >
+      <div className="relative h-36 w-full cursor-pointer visible">
         <video
           ref={videoRef}
           controls={false}
@@ -72,17 +73,13 @@ const VideoItem: React.FC<{
           <source src={currentLibrary.getFileSrc(item.assetObjectHash)} type="video/mp4" />
         </video>
       </div>
-      <div
-        className="mt-2 overflow-hidden overflow-ellipsis whitespace-nowrap
-        px-2 text-center text-sm"
-      >
-        {item.name}
-      </div>
-      <div
-        className="mb-2 overflow-hidden overflow-ellipsis whitespace-nowrap px-2
-        text-center text-xs text-neutral-400"
-      >
-        {item.materializedPath}
+      <div className="absolute top-0 left-0 w-full h-full px-4 py-2 bg-black/60 text-neutral-300 flex flex-col justify-between">
+        <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">
+          {item.materializedPath}{item.name}
+        </div>
+        <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">
+          {formatDuration(item.startTime/1000)}
+        </div>
       </div>
     </div>
   )
@@ -137,8 +134,7 @@ export default function Search() {
             <input
               ref={searchInputRef}
               type="text"
-              className="block w-full rounded-md bg-neutral-100 px-4
-                py-2 text-sm outline-none text-black"
+              className="block w-full rounded-md bg-neutral-100 px-4 py-2 text-sm outline-none text-black"
               placeholder="搜索"
               onInput={(e) => setKeywordTyping(e.currentTarget.value)}
               onFocus={(e) => setFocused(true)}
