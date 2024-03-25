@@ -71,6 +71,10 @@ model FileHandlerTask {
   assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: Cascade)
 
   taskType      String
+
+  exitCode    Int?
+  exitMessage String?
+
   startsAt      DateTime?
   endsAt        DateTime?
   createdAt     DateTime  @default(now())
