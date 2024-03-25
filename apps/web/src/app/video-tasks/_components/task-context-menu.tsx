@@ -77,14 +77,21 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
         label: '重新触发任务',
         icon: <Icon.regenerate />,
         handleClick: async () => {
-          const res = await regenerateTask({
-            materializedPath: video.materializedPath,
-            assetObjectId: video.assetObject.id,
-          })
-          toast({
-            title: res ? '重新触发任务成功' : '重新触发任务失败',
-            variant: res ? 'default' : 'destructive',
-          })
+          try {
+            await regenerateTask({
+              materializedPath: video.materializedPath,
+              assetObjectId: video.assetObject.id,
+            })
+            toast({
+              title: '重新触发任务成功',
+            })
+          } catch (e) {
+            console.error(e)
+            toast({
+              title: '重新触发任务失败',
+              variant: 'destructive',
+            })
+          }
         },
       },
       ...processingItem,

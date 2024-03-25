@@ -1,4 +1,6 @@
 // Ctx 和 Store 的默认实现，主要给 api_server/main 用，不过目前 CtxWithLibrary 的实现也是可以给 tauri 用的，就先用着
+use crate::task_queue::{TaskPayload, TaskProcessor};
+use content_library::{load_library, Library};
 use std::{
     boxed::Box,
     path::PathBuf,
@@ -7,10 +9,8 @@ use std::{
 };
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
-use content_library::{Library, load_library};
-use crate::task_queue::{TaskPayload, init_task_pool};
 
-use super::traits::{CtxStore, StoreError, CtxWithLibrary};
+use super::traits::{CtxStore, CtxWithLibrary, StoreError};
 
 /**
  * default impl of a store for rspc Ctx
@@ -42,7 +42,7 @@ impl CtxStore for Store {
         let file = std::fs::File::create(&self.path)
             .map_err(|e| StoreError(format!("Failed to create file: {}", e)))?;
         serde_json::to_writer(file, &self.values)
-        .map_err(|e| StoreError(format!("Failed to write file: {}", e)))?;
+            .map_err(|e| StoreError(format!("Failed to write file: {}", e)))?;
         Ok(())
     }
     fn insert(&mut self, key: &str, value: &str) -> Result<(), StoreError> {
@@ -57,7 +57,6 @@ impl CtxStore for Store {
         }
     }
 }
-
 
 /**
  * default impl of a rspc Ctx
@@ -95,7 +94,7 @@ impl<S: CtxStore> Ctx<S> {
         store: Arc<Mutex<S>>,
         current_library: Arc<Mutex<Option<Library>>>,
     ) -> Self {
-        let (tx, cancel_token) = init_task_pool();
+        let (tx, cancel_token) = TaskProcessor::init_task_pool();
         let tx = Arc::new(Mutex::new(tx));
         let cancel_token = Arc::new(Mutex::new(cancel_token));
         Self {
@@ -137,7 +136,7 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
     {
         // cancel all tasks
         self.cancel_token.lock().unwrap().cancel();
-        let (tx, cancel_token) = init_task_pool();
+        let (tx, cancel_token) = TaskProcessor::init_task_pool();
         let mut old_tx = self.tx.lock().unwrap();
         let mut old_cancel_token = self.cancel_token.lock().unwrap();
         *old_tx = tx;
@@ -151,7 +150,9 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
         if let Some(library_id) = store.get("current-library-id") {
             let library_id = library_id.clone();
             return Box::pin(async move {
-                let library = load_library(&self.local_data_root, &library_id).await.unwrap();
+                let library = load_library(&self.local_data_root, &library_id)
+                    .await
+                    .unwrap();
                 self.current_library.lock().unwrap().replace(library);
                 tracing::info!("Current library switched to {}", library_id);
             });

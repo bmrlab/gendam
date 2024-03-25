@@ -1,14 +1,11 @@
 use crate::CtxWithLibrary;
 use file_handler::video::VideoHandler;
 use prisma_lib::{asset_object, file_handler_task, PrismaClient};
+use std::fmt::Display;
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast::{self, Sender};
 use tokio_util::sync::CancellationToken;
-use tracing::{
-    error,
-    // debug,
-    info,
-};
+use tracing::{error, info};
 
 pub enum VideoTaskType {
     Frame,
@@ -20,9 +17,9 @@ pub enum VideoTaskType {
     TranscriptEmbedding,
 }
 
-impl ToString for VideoTaskType {
-    fn to_string(&self) -> String {
-        match self {
+impl Display for VideoTaskType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
             VideoTaskType::Frame => "Frame".to_string(),
             VideoTaskType::FrameCaption => "FrameCaption".to_string(),
             VideoTaskType::FrameContentEmbedding => "FrameContentEmbedding".to_string(),
@@ -30,7 +27,8 @@ impl ToString for VideoTaskType {
             VideoTaskType::Audio => "Audio".to_string(),
             VideoTaskType::Transcript => "Transcript".to_string(),
             VideoTaskType::TranscriptEmbedding => "TranscriptEmbedding".to_string(),
-        }
+        };
+        write!(f, "{}", str)
     }
 }
 
@@ -42,121 +40,130 @@ pub struct TaskPayload {
     pub file_path: String,
 }
 
-pub fn init_task_pool() -> (broadcast::Sender<TaskPayload>, CancellationToken) {
-    let (tx, mut rx) = broadcast::channel::<TaskPayload>(500);
-    // let tx = tx;
-    // let mut rx = tx.subscribe();
+#[derive(Clone)]
+pub struct TaskProcessor {
+    payload: TaskPayload,
+}
 
-    let cancel_token = CancellationToken::new();
-    let cloned_token = cancel_token.clone();
+impl TaskProcessor {
+    pub fn new(payload: TaskPayload) -> Self {
+        Self { payload }
+    }
+    pub fn init_task_pool() -> (Sender<TaskPayload>, CancellationToken) {
+        let (tx, mut rx) = broadcast::channel::<TaskPayload>(500);
+        // let tx = tx;
+        // let mut rx = tx.subscribe();
 
-    tokio::spawn(async move {
-        loop {
-            match rx.recv().await {
-                Ok(task_payload) => {
-                    tracing::info!("Task received: {:?}", task_payload.file_path);
+        let cancel_token = CancellationToken::new();
+        let cloned_token = cancel_token.clone();
 
-                    tokio::select! {
-                        _ = cloned_token.cancelled() => {
-                            tracing::info!("task has been cancelled by task pool!");
-                        }
-                        _ = process_task(&task_payload) => {
-                            // ? add some log
+        tokio::spawn(async move {
+            loop {
+                match rx.recv().await {
+                    Ok(task_payload) => {
+                        info!("Task received: {:?}", task_payload.file_path);
+
+                        tokio::select! {
+                            _ = cloned_token.cancelled() => {
+                                tracing::info!("task has been cancelled by task pool!");
+                            }
+                            _ = TaskProcessor::process_task(&task_payload) => {
+                                // ? add some log
+                            }
                         }
                     }
-                }
-                Err(e) => {
-                    tracing::error!("No Task Error: {:?}", e);
-                    // task_pool will be dropped when library changed
-                    // so just break here
-                    break;
+                    Err(e) => {
+                        error!("No Task Error: {:?}", e);
+                        // task_pool will be dropped when library changed
+                        // so just break here
+                        break;
+                    }
                 }
             }
+        });
+        (tx, cancel_token)
+    }
+
+    async fn save_starts_at(&self, task_type: &str) {
+        self.payload
+            .prisma_client
+            .file_handler_task()
+            .update(
+                file_handler_task::asset_object_id_task_type(
+                    self.payload.asset_object_id,
+                    task_type.to_string(),
+                ),
+                vec![file_handler_task::starts_at::set(Some(
+                    chrono::Utc::now().into(),
+                ))],
+            )
+            .exec()
+            .await
+            .expect(&format!("failed save_starts_at {:?}", task_type));
+    }
+
+    async fn save_ends_at(&self, task_type: &str) {
+        self.payload
+            .prisma_client
+            .file_handler_task()
+            .update(
+                file_handler_task::asset_object_id_task_type(
+                    self.payload.asset_object_id,
+                    task_type.to_string(),
+                ),
+                vec![file_handler_task::ends_at::set(Some(
+                    chrono::Utc::now().into(),
+                ))],
+            )
+            .exec()
+            .await
+            .expect(&format!("failed save_ends_at {:?}", task_type));
+    }
+
+    pub async fn process_task(task_payload: &TaskPayload) {
+        // sleep for random time
+        // let sleep_time = rand::random::<u64>() % 10;
+        // tokio::time::sleep(tokio::time::Duration::from_secs(sleep_time)).await;
+        // info!("Task finished {}", &task_payload.video_path);
+        let processor = TaskProcessor::new(task_payload.clone());
+        let vh: &VideoHandler = &processor.payload.video_handler;
+
+        for task_type in [
+            VideoTaskType::Frame,
+            VideoTaskType::FrameContentEmbedding,
+            VideoTaskType::FrameCaption,
+            VideoTaskType::FrameCaptionEmbedding,
+            VideoTaskType::Audio,
+            VideoTaskType::Transcript,
+            VideoTaskType::TranscriptEmbedding,
+        ] {
+            processor.save_starts_at(&task_type.to_string()).await;
+            let result = match task_type {
+                VideoTaskType::Frame => vh.get_frames().await,
+                VideoTaskType::FrameContentEmbedding => vh.get_frame_content_embedding().await,
+                VideoTaskType::FrameCaption => vh.get_frames_caption().await,
+                VideoTaskType::FrameCaptionEmbedding => vh.get_frame_caption_embedding().await,
+                VideoTaskType::Audio => vh.get_audio().await,
+                VideoTaskType::Transcript => vh.get_transcript().await,
+                VideoTaskType::TranscriptEmbedding => vh.get_transcript_embedding().await,
+                // _ => Ok(()),
+            };
+            if let Err(e) = result {
+                error!(
+                    "Task failed: {}, {}, {}",
+                    &task_type.to_string(),
+                    &task_payload.file_path,
+                    e
+                );
+            } else {
+                info!(
+                    "Task success: {}, {}",
+                    &task_type.to_string(),
+                    &task_payload.file_path
+                );
+            }
+            processor.save_ends_at(&task_type.to_string()).await;
         }
-    });
-    (tx, cancel_token)
-}
-
-async fn save_starts_at(asset_object_id: i32, task_type: &str, client: Arc<PrismaClient>) {
-    client
-        .file_handler_task()
-        .update(
-            file_handler_task::asset_object_id_task_type(asset_object_id, task_type.to_string()),
-            vec![file_handler_task::starts_at::set(Some(
-                chrono::Utc::now().into(),
-            ))],
-        )
-        .exec()
-        .await
-        .expect(&format!("failed save_starts_at {:?}", task_type));
-}
-
-async fn save_ends_at(asset_object_id: i32, task_type: &str, client: Arc<PrismaClient>) {
-    client
-        .file_handler_task()
-        .update(
-            file_handler_task::asset_object_id_task_type(asset_object_id, task_type.to_string()),
-            vec![file_handler_task::ends_at::set(Some(
-                chrono::Utc::now().into(),
-            ))],
-        )
-        .exec()
-        .await
-        .expect(&format!("failed save_ends_at {:?}", task_type));
-}
-
-async fn process_task(task_payload: &TaskPayload) {
-    // sleep for random time
-    // let sleep_time = rand::random::<u64>() % 10;
-    // tokio::time::sleep(tokio::time::Duration::from_secs(sleep_time)).await;
-    // info!("Task finished {}", &task_payload.video_path);
-    let vh: &VideoHandler = &task_payload.video_handler;
-
-    for task_type in [
-        VideoTaskType::Frame,
-        VideoTaskType::FrameContentEmbedding,
-        VideoTaskType::FrameCaption,
-        VideoTaskType::FrameCaptionEmbedding,
-        VideoTaskType::Audio,
-        VideoTaskType::Transcript,
-        VideoTaskType::TranscriptEmbedding,
-    ] {
-        save_starts_at(
-            task_payload.asset_object_id,
-            &task_type.to_string(),
-            Arc::clone(&task_payload.prisma_client),
-        )
-        .await;
-        let result = match task_type {
-            VideoTaskType::Frame => vh.get_frames().await,
-            VideoTaskType::FrameContentEmbedding => vh.get_frame_content_embedding().await,
-            VideoTaskType::FrameCaption => vh.get_frames_caption().await,
-            VideoTaskType::FrameCaptionEmbedding => vh.get_frame_caption_embedding().await,
-            VideoTaskType::Audio => vh.get_audio().await,
-            VideoTaskType::Transcript => vh.get_transcript().await,
-            VideoTaskType::TranscriptEmbedding => vh.get_transcript_embedding().await,
-            // _ => Ok(()),
-        };
-        if let Err(e) = result {
-            error!(
-                "Task failed: {}, {}, {}",
-                &task_type.to_string(),
-                &task_payload.file_path,
-                e
-            );
-        } else {
-            info!(
-                "Task success: {}, {}",
-                &task_type.to_string(),
-                &task_payload.file_path
-            );
-        }
-        save_ends_at(
-            task_payload.asset_object_id,
-            &task_type.to_string(),
-            Arc::clone(&task_payload.prisma_client),
-        )
-        .await;
     }
 }
 
@@ -283,16 +290,16 @@ async fn test_cancel_tasks() {
                 Ok(t) => {
                     tokio::select! {
                         _ = cloned_token.cancelled() => {
-                            tracing::info!("Task shutdown")
+                            info!("Task shutdown")
                         }
                         _ = tokio::time::sleep(std::time::Duration::from_secs(t)) => {
                             // Long work has completed
-                            tracing::info!("Task finished {}", t);
+                            info!("Task finished {}", t);
                         }
                     }
                 }
                 Err(e) => {
-                    tracing::error!("No Task Error: {:?}", e);
+                    error!("No Task Error: {:?}", e);
                 }
             }
         }
