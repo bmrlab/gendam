@@ -5,7 +5,7 @@ use file_handler::{
 };
 use prisma_lib::asset_object;
 use rspc::{Router, RouterBuilder};
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use specta::Type;
 use std::sync::Arc;
 use tracing::error;
@@ -15,14 +15,39 @@ where
     TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
     Router::<TCtx>::new().query("all", |t| {
-        t(move |ctx: TCtx, input: String| async move {
+        #[derive(Deserialize, Type)]
+        #[serde(rename_all = "camelCase")]
+        pub struct SearchRequestPayload {
+            pub text: String,
+            pub record_type: String,
+        }
+        #[derive(Serialize, Type)]
+        #[serde(rename_all = "camelCase")]
+        pub struct SearchResultPayload {
+            pub name: String,
+            pub materialized_path: String,
+            pub asset_object_id: i32,
+            pub asset_object_hash: String,
+            // #[serde(rename = "startTime")]
+            pub start_time: i32,
+        }
+        t(move |ctx: TCtx, input: SearchRequestPayload| async move {
             let library = ctx.library()?;
 
+            let text = input.text.clone();
+            let record_type = match input.record_type {
+                s if s == "Transcript" => SearchRecordType::Transcript,
+                s if s == "FrameCaption" => SearchRecordType::FrameCaption,
+                s if s == "Frame" => SearchRecordType::Frame,
+                _ => return Err(rspc::Error::new(
+                    rspc::ErrorCode::BadRequest,
+                    "invalid record_type".to_string(),
+                )),
+            };
             let res = file_handler::search::handle_search(
                 SearchRequest {
-                    text: input,
-                    // record_type: Some(vec![SearchRecordType::Transcript]),
-                    record_type: Some(vec![SearchRecordType::FrameCaption]),
+                    text: text,
+                    record_type: Some(vec![record_type]),
                     limit: None,
                     skip: None,
                 },
@@ -74,17 +99,6 @@ where
                 let hash = asset_object_data.hash.clone();
                 tasks_hash_map.insert(hash, asset_object_data);
             });
-
-            #[derive(Serialize, Type)]
-            #[serde(rename_all = "camelCase")]
-            pub struct SearchResultPayload {
-                pub name: String,
-                pub materialized_path: String,
-                pub asset_object_id: i32,
-                pub asset_object_hash: String,
-                // #[serde(rename = "startTime")]
-                pub start_time: i32,
-            }
 
             let search_result = search_results
                 .iter()
