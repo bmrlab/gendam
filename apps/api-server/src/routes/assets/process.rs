@@ -1,4 +1,5 @@
 use prisma_client_rust::QueryError;
+use tracing::{error, info};
 use prisma_lib::{media_data, asset_object, file_path};
 use file_handler::video::VideoHandler;
 use crate::task_queue::create_video_task;
@@ -10,6 +11,7 @@ pub async fn process_video_asset(
     ctx: &impl CtxWithLibrary,
     file_path_id: i32,
 ) -> Result<(), rspc::Error> {
+    info!("process video asset for file_path_id: {file_path_id}");
     let tx = ctx.get_task_tx();
     let file_path_data = library.prisma_client()
         .file_path()
@@ -59,7 +61,9 @@ pub async fn process_video_metadata(
     ctx: &impl CtxWithLibrary,
     asset_object_id: i32,
 ) -> Result<(), rspc::Error> {
+    info!("process video metadata for asset_object_id: {asset_object_id}");
     let sql_error = |e: QueryError| {
+        error!("sql query failed: {e}", );
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
             format!("sql query failed: {}", e),
@@ -74,10 +78,13 @@ pub async fn process_video_metadata(
         .map_err(sql_error)?
     {
         Some(asset_object_data) => asset_object_data,
-        None => return Err(rspc::Error::new(
+        None => {
+            error!("failed to find file_path or asset_object");
+            return Err(rspc::Error::new(
             rspc::ErrorCode::NotFound,
             String::from("failed to find file_path or asset_object"),
         ))
+        }
     };
     let local_video_file_full_path = format!(
         "{}/{}",
@@ -86,22 +93,27 @@ pub async fn process_video_metadata(
     );
     let fs_metadata = match std::fs::metadata(&local_video_file_full_path) {
         Ok(metadata) => metadata,
-        Err(e) => return Err(rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("failed to get video metadata: {}", e),
-        )),
+        Err(e) => {
+            error!("Failed to get fs metadata: {e}");
+            return Err(rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                format!("failed to get video metadata: {}", e),
+            ))
+        }
     };
     let video_handler = VideoHandler::new(
         local_video_file_full_path,
         &ctx.get_resources_dir(),
         &library,
     ).await.map_err(|e| {
+        error!("Failed to create video handler: {e}");
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
             format!("failed to get video metadata: {}", e),
         )
     })?;
     let metadata = video_handler.get_video_metadata().await.map_err(|e| {
+        error!("failed to get video metadata from video handler: {e}");
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
             format!("failed to get video metadata: {}", e),

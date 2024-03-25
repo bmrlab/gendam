@@ -10,6 +10,7 @@ use crate::CtxWithLibrary;
 use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
 use specta::Type;
+use tracing::info;
 
 use create::{create_asset_object, create_file_path};
 use delete::delete_file_path;
@@ -46,11 +47,14 @@ where
                     local_full_path: String,
                 }
                 |ctx: TCtx, input: AssetObjectCreatePayload| async move {
+                    info!("received create_asset_object: {input:?}");
                     let library = ctx.library()?;
                     let (file_path_data, asset_object_data) =
                         create_asset_object(&library, &input.path, &input.local_full_path).await?;
                     process_video_asset(&library, &ctx, file_path_data.id).await?;
+                    info!("process video asset finished");
                     process_video_metadata(&library, &ctx, asset_object_data.id).await?;
+                    info!("process video metadata finished");
                     Ok(())
                 }
             })
