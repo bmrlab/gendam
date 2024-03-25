@@ -7,7 +7,7 @@ import { useCurrentLibrary } from '@/lib/library'
 import { cn, formatBytes, formatDuration } from '@/lib/utils'
 import { Button } from '@muse/ui/v1/button'
 import { HTMLAttributes, useCallback, useMemo } from 'react'
-import { VIDEO_DIMENSION } from './utils'
+import { VIDEO_DIMENSION, getTaskStatus } from './utils'
 
 export type VideoTaskItemProps = {
   videoFile: VideoWithTasksResult
@@ -30,17 +30,6 @@ export default function VideoTaskItem({
   const hasAudio = useMemo(() => {
     return tasks.some((task) => task.taskType === 'Audio' && !!task.endsAt)
   }, [tasks])
-
-  const status = useCallback((task: VideoWithTasksResult['tasks'][number]) => {
-    if (task.startsAt && !task.endsAt) {
-      return MuseStatus.Processing // 已经开始但还没结束
-    }
-    if (task.startsAt && task.endsAt) {
-      return MuseStatus.Done // 已经结束
-    }
-    return MuseStatus.None // 还未开始
-    // return MuseStatus.Failed
-  }, [])
 
   const moreActionOptions = useCallback((id: string, isProcessing = false) => {
     const processItem = isProcessing
@@ -108,19 +97,19 @@ export default function VideoTaskItem({
                 <NoAudio />
               </>
             )}
-            {/* <div className="mx-2">·</div>
-            <span>已取消</span> */}
+            {/*<div className="mx-2">·</div>*/}
+            {/*<span>已取消</span>*/}
           </div>
           <div className="flex flex-wrap items-end gap-1.5">
             {showTask.map((task, index) => (
               <div key={index} className="flex gap-1.5">
-                <MuseTaskBadge key={index} name={VIDEO_DIMENSION[task.taskType]} status={status(task)} />
+                <MuseTaskBadge key={index} name={VIDEO_DIMENSION[task.taskType]} status={getTaskStatus(task)} />
                 {index === showTask.length - 1 &&
-                  (status(task) !== MuseStatus.Processing ? (
+                  (getTaskStatus(task) !== MuseStatus.Processing ? (
                     // TODO: real data
                     <MuseDropdownMenu
                       triggerIcon={<Icon.moreVertical className="size-[25px] cursor-pointer text-[#676C77]" />}
-                      options={moreActionOptions('1', status(task) === MuseStatus.Processing)}
+                      options={moreActionOptions('1', getTaskStatus(task) === MuseStatus.Processing)}
                       contentClassName="w-[215px]"
                     >
                       <Button

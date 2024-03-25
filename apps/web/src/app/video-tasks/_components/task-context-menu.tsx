@@ -9,7 +9,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@muse/ui/v1/context-menu'
-import { PropsWithChildren, ReactNode, useCallback, useMemo } from 'react'
+import { PropsWithChildren, ReactNode, useCallback, useEffect, useMemo } from 'react'
 import { useBoundStore } from '../_store'
 import { AudioDialogEnum } from '../_store/audio-dialog'
 
@@ -25,11 +25,25 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
   const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
   const setAudioDialogProps = useBoundStore.use.setAudioDialogProps()
   const setAudioDialogOpen = useBoundStore.use.setIsOpenAudioDialog()
+  const taskListRefetch = useBoundStore.use.taskListRefetch()
 
   const { mutateAsync: regenerateTask } = rspc.useMutation(['video.tasks.regenerate'])
   const { mutateAsync: cancelTask } = rspc.useMutation(['video.tasks.cancel'])
 
   const isBatchSelected = useMemo(() => videoSelected.length > 1, [videoSelected])
+
+  // 有进行中的任务，定时刷新
+  useEffect(() => {
+    if (isProcessing) {
+      const timer = setInterval(() => {
+        taskListRefetch()
+      }, 2000)
+
+      return () => {
+        clearInterval(timer)
+      }
+    }
+  }, [isProcessing, taskListRefetch])
 
   const handleSingleExport = useCallback(() => {
     setAudioDialogProps({
@@ -71,6 +85,7 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
                 await cancelTask({
                   assetObjectId: video.assetObject.id,
                 })
+                await taskListRefetch()
                 toast({
                   title: '取消任务成功',
                 })
@@ -97,6 +112,7 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
               materializedPath: video.materializedPath,
               assetObjectId: video.assetObject.id,
             })
+            await taskListRefetch()
             toast({
               title: '重新触发任务成功',
             })
@@ -124,7 +140,7 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
         },
       },
     ]
-  }, [handleExport, isProcessing, regenerateTask, toast, video])
+  }, [cancelTask, handleExport, isProcessing, regenerateTask, toast, video.assetObject.id, video.materializedPath])
 
   return (
     <ContextMenuRoot>

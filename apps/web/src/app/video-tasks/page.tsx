@@ -1,16 +1,21 @@
 'use client'
+import { useBoundStore } from '@/app/video-tasks/_store'
+import { rspc } from '@/lib/rspc'
+import { ScrollArea } from '@muse/ui/v1/scroll-area'
+import { useEffect } from 'react'
 import TaskFooter from './_components/footer'
 import VideoTasksList from './_components/task-list'
-import { ScrollArea } from '@muse/ui/v1/scroll-area'
-import { rspc } from '@/lib/rspc'
 // import { useMemo } from 'react'
 // import type { VideoItem } from './_components/task-item'
 
 export default function VideoTasksPage() {
-  const {
-    data: videosWithTasks,
-    isLoading, error
-  } = rspc.useQuery(['video.tasks.list']);
+  const { data: videosWithTasks, isLoading, error, refetch } = rspc.useQuery(['video.tasks.list'])
+
+  const setTaskListRefetch = useBoundStore.use.setTaskListRefetch()
+
+  useEffect(() => {
+    setTaskListRefetch(refetch)
+  }, [refetch, setTaskListRefetch])
 
   return (
     <div className="flex h-full flex-col">

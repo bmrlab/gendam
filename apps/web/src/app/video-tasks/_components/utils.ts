@@ -9,14 +9,21 @@ export const hasProcessing = (tasks: VideoWithTasksResult['tasks']) => {
     .some((status) => status === MuseStatus.Processing)
 }
 
+
 export const getTaskStatus = (task: VideoWithTasksResult['tasks'][number]) => {
   if (task.startsAt && !task.endsAt) {
-    return MuseStatus.Processing
+    return MuseStatus.Processing // 已经开始但还没结束
   }
   if (task.startsAt && task.endsAt) {
-    return MuseStatus.Done
+    return MuseStatus.Done // 已经结束
   }
-  return MuseStatus.Failed
+
+  if (task.exitCode === 1) {
+    return MuseStatus.Failed // 已经取消
+  }
+
+  return MuseStatus.None
+  // return MuseStatus.Failed
 }
 
 export const VIDEO_DIMENSION: Record<string, string> = {

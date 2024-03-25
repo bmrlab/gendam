@@ -264,6 +264,8 @@ pub async fn create_video_task(
                 vec![
                     file_handler_task::starts_at::set(None),
                     file_handler_task::ends_at::set(None),
+                    file_handler_task::exit_code::set(None),
+                    file_handler_task::exit_message::set(None),
                 ],
             )
             .exec()
