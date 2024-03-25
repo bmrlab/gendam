@@ -1,7 +1,7 @@
 use crate::task_queue::create_video_task;
 use crate::CtxWithLibrary;
 use prisma_client_rust::Direction;
-use prisma_lib::{asset_object, file_handler_task};
+use prisma_lib::{asset_object, file_handler_task, media_data};
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -41,6 +41,7 @@ where
                 pub materialized_path: String,
                 pub asset_object: asset_object::Data,
                 pub tasks: Vec<file_handler_task::Data>,
+                pub media_data: Option<media_data::Data>,
             }
 
             t(|ctx: TCtx, _input: ()| async move {
@@ -51,6 +52,7 @@ where
                     .find_many(vec![])
                     .with(asset_object::tasks::fetch(vec![]))
                     .with(asset_object::file_paths::fetch(vec![]))
+                    // bindings 中不会自动生成 media_data 类型
                     .with(asset_object::media_data::fetch())
                     .order_by(asset_object::id::order(Direction::Desc))
                     .exec()
@@ -74,10 +76,12 @@ where
                         let mut asset_object_data = asset_object_data.to_owned();
                         let tasks = asset_object_data.tasks.unwrap_or(vec![]);
                         asset_object_data.tasks = None;
+                        let media_data = asset_object_data.media_data.take().map(|data| data.map(|d| *d));
                         VideoWithTasksResult {
                             name,
                             materialized_path,
                             asset_object: asset_object_data,
+                            media_data: media_data.unwrap_or(None),
                             tasks,
                         }
                     })

@@ -4,11 +4,10 @@ import MuseDropdownMenu, { DropdownMenuOptions } from '@/components/DropdownMenu
 import Icon from '@/components/Icon'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
-import { cn } from '@/lib/utils'
+import { cn, formatBytes, formatDuration } from '@/lib/utils'
 import { Button } from '@muse/ui/v1/button'
 import { HTMLAttributes, useCallback, useMemo } from 'react'
 import { VIDEO_DIMENSION } from './utils'
-import { formatDuration, formatBytes } from '@/lib/utils'
 
 export type VideoTaskItemProps = {
   videoFile: VideoWithTasksResult
@@ -17,7 +16,7 @@ export type VideoTaskItemProps = {
 } & HTMLAttributes<HTMLDivElement>
 
 export default function VideoTaskItem({
-  videoFile: { name, assetObject, materializedPath, tasks },
+  videoFile: { name, assetObject, materializedPath, tasks, mediaData },
   isSelect,
   handleClick,
   ...props
@@ -98,11 +97,11 @@ export default function VideoTaskItem({
         </div>
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center text-[12px] font-normal leading-4 text-[#95989F]">
-            <span>{formatDuration(assetObject.mediaData?.duration ?? 0)}</span>
+            <span>{formatDuration(mediaData?.duration ?? 0)}</span>
             <div className="mx-2">·</div>
-            <span>{formatBytes(assetObject.mediaData?.size ?? 0)}</span>
+            <span>{formatBytes(mediaData?.size ?? 0)}</span>
             <div className="mx-2">·</div>
-            <span>{`${assetObject.mediaData?.width ?? 0} x ${assetObject.mediaData?.height ?? 0}`}</span>
+            <span>{`${mediaData?.width ?? 0} x ${mediaData?.height ?? 0}`}</span>
             {hasAudio ? null : (
               <>
                 <div className="mx-2">·</div>
