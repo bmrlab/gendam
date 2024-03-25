@@ -19,7 +19,9 @@ fn validate_app_version(app_handle: tauri::AppHandle, local_data_root: &PathBuf)
         app_handle,
         "settings.json".parse().unwrap(),
     ).build();
-    tauri_store.load().unwrap();
+    tauri_store.load().unwrap_or_else(|e| {
+        tracing::warn!("Failed to load tauri store: {:?}", e);
+    });
     let version: usize = match tauri_store.get("version") {
         Some(value) => value.as_str().unwrap_or("").to_string(),
         None => "".to_string()
