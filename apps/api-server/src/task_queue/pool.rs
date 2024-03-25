@@ -65,7 +65,7 @@ impl TaskProcessor {
 
                         tokio::select! {
                             _ = cloned_token.cancelled() => {
-                                tracing::info!("task has been cancelled by task pool!");
+                                info!("task has been cancelled by task pool!");
                             }
                             _ = TaskProcessor::process_task(&task_payload) => {
                                 // ? add some log
@@ -120,6 +120,31 @@ impl TaskProcessor {
             .expect(&format!("failed save_ends_at {:?}", task_type));
     }
 
+    async fn is_exit(&self) -> bool {
+        let asset_object_id = self.payload.asset_object_id;
+        match self
+            .payload
+            .prisma_client
+            .file_handler_task()
+            .find_first(vec![file_handler_task::asset_object_id::equals(
+                asset_object_id,
+            )])
+            .exec()
+            .await
+        {
+            Ok(res) => {
+                if let Some(res) = res {
+                    return res.exit_code.map(|x| x == 1).unwrap_or(false);
+                }
+                false
+            }
+            Err(e) => {
+                error!("Failed to find first in file handler task with asset_object_id: {asset_object_id}, error: {e:?}");
+                false
+            }
+        }
+    }
+
     pub async fn process_task(task_payload: &TaskPayload) {
         // sleep for random time
         // let sleep_time = rand::random::<u64>() % 10;
@@ -137,6 +162,16 @@ impl TaskProcessor {
             VideoTaskType::Transcript,
             VideoTaskType::TranscriptEmbedding,
         ] {
+            // 检查任务是否已退出
+            if processor.is_exit().await {
+                info!(
+                    "Task exit: {}, {}",
+                    &task_type.to_string(),
+                    &task_payload.file_path
+                );
+                break;
+            }
+
             processor.save_starts_at(&task_type.to_string()).await;
             let result = match task_type {
                 VideoTaskType::Frame => vh.get_frames().await,

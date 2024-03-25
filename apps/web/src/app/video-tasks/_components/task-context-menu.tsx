@@ -27,6 +27,7 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
   const setAudioDialogOpen = useBoundStore.use.setIsOpenAudioDialog()
 
   const { mutateAsync: regenerateTask } = rspc.useMutation(['video.tasks.regenerate'])
+  const { mutateAsync: cancelTask } = rspc.useMutation(['video.tasks.cancel'])
 
   const isBatchSelected = useMemo(() => videoSelected.length > 1, [videoSelected])
 
@@ -65,8 +66,21 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
           {
             label: '取消任务',
             icon: <Icon.cancel />,
-            handleClick: () => {
-              console.log('取消任务')
+            handleClick: async () => {
+              try {
+                await cancelTask({
+                  assetObjectId: video.assetObject.id,
+                })
+                toast({
+                  title: '取消任务成功',
+                })
+              } catch (e) {
+                console.error(e)
+                toast({
+                  title: '取消任务失败',
+                  variant: 'destructive',
+                })
+              }
             },
           },
         ]
@@ -77,6 +91,7 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
         label: '重新触发任务',
         icon: <Icon.regenerate />,
         handleClick: async () => {
+          // TODO 要不要支持批量？
           try {
             await regenerateTask({
               materializedPath: video.materializedPath,

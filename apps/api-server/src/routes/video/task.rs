@@ -76,7 +76,10 @@ where
                         let mut asset_object_data = asset_object_data.to_owned();
                         let tasks = asset_object_data.tasks.unwrap_or(vec![]);
                         asset_object_data.tasks = None;
-                        let media_data = asset_object_data.media_data.take().map(|data| data.map(|d| *d));
+                        let media_data = asset_object_data
+                            .media_data
+                            .take()
+                            .map(|data| data.map(|d| *d));
                         VideoWithTasksResult {
                             name,
                             materialized_path,
@@ -98,7 +101,7 @@ where
             }
             t(|ctx: TCtx, input: TaskRegeneratePayload| async move {
                 let library = ctx.library()?;
-                let asset_object_data  = library
+                let asset_object_data = library
                     .prisma_client()
                     .asset_object()
                     .find_unique(asset_object::id::equals(input.asset_object_id))
@@ -131,6 +134,33 @@ where
                     ));
                 };
 
+                Ok(())
+            })
+        })
+        .mutation("cancel", |t| {
+            #[derive(Deserialize, Type, Debug)]
+            #[serde(rename_all = "camelCase")]
+            struct CancelPayload {
+                asset_object_id: i32,
+            }
+            t(|ctx: TCtx, input: CancelPayload| async move {
+                let library = ctx.library()?;
+                let asset_object_id = input.asset_object_id;
+                library
+                    .prisma_client()
+                    .file_handler_task()
+                    .update_many(
+                        vec![file_handler_task::asset_object_id::equals(asset_object_id)],
+                        vec![file_handler_task::exit_code::set(Some(1))],
+                    )
+                    .exec()
+                    .await
+                    .map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("sql query failed: {}", e),
+                        )
+                    })?;
                 Ok(())
             })
         })
