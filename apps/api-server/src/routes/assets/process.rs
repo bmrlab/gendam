@@ -13,7 +13,8 @@ pub async fn process_video_asset(
 ) -> Result<(), rspc::Error> {
     info!("process video asset for file_path_id: {file_path_id}");
     let tx = ctx.get_task_tx();
-    let file_path_data = library.prisma_client()
+    let file_path_data = library
+        .prisma_client()
         .file_path()
         .find_unique(file_path::id::equals(file_path_id))
         .with(file_path::asset_object::fetch())
@@ -32,22 +33,22 @@ pub async fn process_video_asset(
             )
         })?;
 
-    let asset_object_data = file_path_data.asset_object
-        .unwrap()
-        .ok_or_else(|| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                String::from("file_path.asset_object is None"),
-            )
-        })?;
+    let asset_object_data = file_path_data.asset_object.unwrap().ok_or_else(|| {
+        rspc::Error::new(
+            rspc::ErrorCode::InternalServerError,
+            String::from("file_path.asset_object is None"),
+        )
+    })?;
     // let asset_object_data = *asset_object_data;
 
     match create_video_task(
         &file_path_data.materialized_path,
         &asset_object_data,
         ctx,
-        tx
-    ).await {
+        tx,
+    )
+    .await
+    {
         Ok(_) => Ok(()),
         Err(_) => Err(rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
@@ -81,9 +82,9 @@ pub async fn process_video_metadata(
         None => {
             error!("failed to find file_path or asset_object");
             return Err(rspc::Error::new(
-            rspc::ErrorCode::NotFound,
-            String::from("failed to find file_path or asset_object"),
-        ))
+                rspc::ErrorCode::NotFound,
+                String::from("failed to find file_path or asset_object"),
+            ))
         }
     };
     let local_video_file_full_path = format!(
@@ -101,10 +102,13 @@ pub async fn process_video_metadata(
             ))
         }
     };
+    let ai_handler = ctx.get_ai_handler();
     let video_handler = VideoHandler::new(
         local_video_file_full_path,
-        &ctx.get_resources_dir(),
         &library,
+        ai_handler.clip,
+        ai_handler.blip,
+        ai_handler.whisper,
     ).await.map_err(|e| {
         error!("Failed to create video handler: {e}");
         rspc::Error::new(

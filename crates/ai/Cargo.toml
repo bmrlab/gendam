@@ -34,3 +34,5 @@ anyhow = { workspace = true }
 num-traits = "0.2.17"
 reqwest = "0.11.24"
 futures = { workspace = true }
+async-trait = "0.1.77"
+derivative = "2.2.0"

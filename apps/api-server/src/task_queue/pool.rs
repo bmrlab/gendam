@@ -229,10 +229,14 @@ pub async fn create_video_task(
         asset_object_data.hash
     );
 
+    let ai_handler = ctx.get_ai_handler();
+
     let video_handler = match VideoHandler::new(
         local_video_file_full_path,
-        &ctx.get_resources_dir(),
         &library,
+        ai_handler.clip,
+        ai_handler.blip,
+        ai_handler.whisper,
     )
     .await
     {

@@ -5,11 +5,14 @@ edition = { workspace = true }
 
 [dependencies]
 prisma-lib = { path = "../../crates/prisma" }
-file-handler = { path = "../../crates/file-handler", features = ["ffmpeg-binary"] }
+file-handler = { path = "../../crates/file-handler", features = [
+  "ffmpeg-binary",
+] }
 content-library = { path = "../../crates/content-library" }
 vector-db = { path = "../../crates/vector-db", features = ["qdrant"] }
+ai = { path = "../../crates/ai" }
 rspc = { workspace = true }
-rspc-axum = { workspace = true}
+rspc-axum = { workspace = true }
 specta = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -20,7 +23,10 @@ dotenvy = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 axum = { version = "0.7.4", features = ["ws"] }
-tower-http = { version = "0.5.2", default-features = false, features = ["cors", "fs"] }
+tower-http = { version = "0.5.2", default-features = false, features = [
+  "cors",
+  "fs",
+] }
 rand = "0.8.5"
 chrono = "0.4.34"
 dirs = "5.0.1"

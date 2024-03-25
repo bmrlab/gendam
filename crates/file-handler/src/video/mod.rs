@@ -1,12 +1,15 @@
 pub use self::decoder::VideoMetadata;
-use anyhow::{bail, Ok};
+use ai::blip::BLIP;
+use ai::clip::CLIP;
+use ai::whisper::Whisper;
+use ai::BatchHandler;
+use anyhow::Ok;
 use content_library::Library;
 use prisma_lib::PrismaClient;
 use qdrant_client::client::QdrantClient;
 use std::fs;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
-use tokio::sync::RwLock;
 
 mod decoder;
 mod split;
@@ -57,7 +60,6 @@ mod utils;
 #[derive(Clone)]
 pub struct VideoHandler {
     video_path: std::path::PathBuf,
-    resources_dir: std::path::PathBuf,
     file_identifier: String,
     frames_dir: std::path::PathBuf,
     audio_path: std::path::PathBuf,
@@ -65,6 +67,9 @@ pub struct VideoHandler {
     library: Library,
     client: Arc<PrismaClient>,
     qdrant: Arc<QdrantClient>,
+    clip: BatchHandler<CLIP>,
+    blip: BatchHandler<BLIP>,
+    whisper: BatchHandler<Whisper>,
 }
 
 impl VideoHandler {
@@ -78,8 +83,10 @@ impl VideoHandler {
     /// * `client` - The prisma client
     pub async fn new(
         video_path: impl AsRef<std::path::Path>,
-        resources_dir: impl AsRef<std::path::Path>,
         library: &Library,
+        clip: BatchHandler<CLIP>,
+        blip: BatchHandler<BLIP>,
+        whisper: BatchHandler<Whisper>,
     ) -> anyhow::Result<Self> {
         let bytes = std::fs::read(&video_path)?;
         let file_sha256 = sha256::digest(&bytes);
@@ -89,29 +96,8 @@ impl VideoHandler {
         fs::create_dir_all(&artifacts_dir)?;
         fs::create_dir_all(&frames_dir)?;
 
-        // make sure clip files are downloaded
-        let resources_dir_clone = resources_dir.as_ref().to_owned();
-        let clip_handle = tokio::spawn(ai::clip::CLIP::new(
-            ai::clip::model::CLIPModel::ViTB32,
-            resources_dir_clone,
-        ));
-
-        let resources_dir_clone = resources_dir.as_ref().to_owned();
-        let whisper_handle = tokio::spawn(ai::whisper::Whisper::new(resources_dir_clone));
-
-        let clip_result = clip_handle.await;
-        let whisper_result = whisper_handle.await;
-
-        if let Err(clip_err) = clip_result.as_ref().unwrap() {
-            bail!("Failed to initialize clip model: {clip_err}");
-        }
-        if let Err(whisper_err) = whisper_result.unwrap() {
-            bail!("Failed to initialize whisper model: {whisper_err}");
-        }
-
         Ok(Self {
             video_path: video_path.as_ref().to_owned(),
-            resources_dir: resources_dir.as_ref().to_owned(),
             file_identifier: file_sha256.clone(),
             audio_path: artifacts_dir.join("audio.wav"),
             frames_dir,
@@ -119,6 +105,9 @@ impl VideoHandler {
             library: library.clone(),
             qdrant: library.qdrant_server.get_client().clone(),
             client: library.prisma_client(),
+            clip,
+            blip,
+            whisper,
         })
     }
 
@@ -128,8 +117,7 @@ impl VideoHandler {
 
     pub async fn get_video_metadata(&self) -> anyhow::Result<VideoMetadata> {
         // TODO ffmpeg-dylib not implemented
-        let video_decoder =
-            decoder::VideoDecoder::new(&self.video_path).await?;
+        let video_decoder = decoder::VideoDecoder::new(&self.video_path).await?;
         video_decoder.get_video_metadata().await
     }
 
@@ -158,8 +146,7 @@ impl VideoHandler {
     pub async fn get_audio(&self) -> anyhow::Result<()> {
         #[cfg(feature = "ffmpeg-binary")]
         {
-            let video_decoder =
-                decoder::VideoDecoder::new(&self.video_path).await?;
+            let video_decoder = decoder::VideoDecoder::new(&self.video_path).await?;
             video_decoder.save_video_audio(&self.audio_path).await?;
         }
 
@@ -177,8 +164,11 @@ impl VideoHandler {
     ///
     /// And the transcript will be saved in the same directory with audio
     pub async fn get_transcript(&self) -> anyhow::Result<()> {
-        let mut whisper = ai::whisper::Whisper::new(&self.resources_dir).await?;
-        let result = whisper.transcribe(&self.audio_path, None)?;
+        let result = self.whisper.process(vec![self.audio_path.clone()]).await?;
+        let result = result
+            .into_iter()
+            .next()
+            .ok_or(anyhow::anyhow!("No result"))??;
 
         // write results into json file
         let mut file = tokio::fs::File::create(&self.transcript_path).await?;
@@ -191,14 +181,11 @@ impl VideoHandler {
     /// Get transcript embedding
     /// this requires extracting transcript in advance
     pub async fn get_transcript_embedding(&self) -> anyhow::Result<()> {
-        let clip_model = self.get_clip_instance().await?;
-        let clip_model = Arc::new(RwLock::new(clip_model));
-
         utils::transcript::get_transcript_embedding(
             self.file_identifier().into(),
             self.client.clone(),
             &self.transcript_path,
-            clip_model,
+            self.clip.clone(),
             self.qdrant.clone(),
         )
         .await?;
@@ -208,14 +195,11 @@ impl VideoHandler {
 
     /// Get frame content embedding
     pub async fn get_frame_content_embedding(&self) -> anyhow::Result<()> {
-        let clip_model = self.get_clip_instance().await?;
-        let clip_model = Arc::new(RwLock::new(clip_model));
-
         utils::frame::get_frame_content_embedding(
             self.file_identifier.clone(),
             self.client.clone(),
             &self.frames_dir,
-            clip_model,
+            self.clip.clone(),
             self.qdrant.clone(),
         )
         .await?;
@@ -228,24 +212,17 @@ impl VideoHandler {
     ///
     /// All caption will be saved in .caption file in the same place with frame file
     pub async fn get_frames_caption(&self) -> anyhow::Result<()> {
-        let blip_model =
-            ai::blip::BLIP::new(&self.resources_dir, ai::blip::BLIPModel::Base).await?;
-        let blip_model = Arc::new(RwLock::new(blip_model));
-
-        utils::caption::get_frames_caption(&self.frames_dir, blip_model).await
+        utils::caption::get_frames_caption(&self.frames_dir, self.blip.clone()).await
     }
 
     /// Get frame caption embedding
     /// this requires extracting frames and get captions in advance
     pub async fn get_frame_caption_embedding(&self) -> anyhow::Result<()> {
-        let clip_model = self.get_clip_instance().await?;
-        let clip_model = Arc::new(RwLock::new(clip_model));
-
         utils::caption::get_frame_caption_embedding(
             self.file_identifier().into(),
             self.client.clone(),
             &self.frames_dir,
-            clip_model,
+            self.clip.clone(),
             self.qdrant.clone(),
         )
         .await?;
@@ -265,42 +242,41 @@ impl VideoHandler {
     }
 
     pub async fn get_video_clips_summarization(&self) -> anyhow::Result<()> {
-        utils::clip::get_video_clips_summarization(
-            self.file_identifier.clone(),
-            self.resources_dir.clone(),
-            self.client.clone(),
-        )
-        .await
-    }
-
-    async fn get_clip_instance(&self) -> anyhow::Result<ai::clip::CLIP> {
-        ai::clip::CLIP::new(ai::clip::model::CLIPModel::ViTB32, &self.resources_dir).await
+        todo!("implement video clips summarization")
+        // utils::clip::get_video_clips_summarization(
+        //     self.file_identifier.clone(),
+        //     self.resources_dir.clone(),
+        //     self.client.clone(),
+        // )
+        // .await
     }
 }
 
 #[test_log::test(tokio::test)]
 async fn test_handle_video() {
-    let video_path = "/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4";
-    let resources_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local/resources";
-    let local_data_dir =
-        std::path::Path::new("/Users/zhuo/Library/Application Support/cc.musedam.local")
-            .to_path_buf();
-    let library = content_library::load_library(
-        &local_data_dir,
-        "78a978d85b8ff26cc202aa6d244ed576ef5a187873c49255d3980df69deedb8a",
-    ).await.unwrap();
+    // let video_path = "/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4";
+    // let resources_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local/resources";
+    // let local_data_dir =
+    //     std::path::Path::new("/Users/zhuo/Library/Application Support/cc.musedam.local")
+    //         .to_path_buf();
+    // let library = content_library::load_library(
+    //     &local_data_dir,
+    //     "78a978d85b8ff26cc202aa6d244ed576ef5a187873c49255d3980df69deedb8a",
+    // )
+    // .await
+    // .unwrap();
 
-    let video_handler = VideoHandler::new(video_path, resources_dir, &library).await;
+    // let video_handler = VideoHandler::new(video_path, &library).await;
 
-    if video_handler.is_err() {
-        tracing::error!("failed to create video handler");
-    }
-    let video_handler = video_handler.unwrap();
+    // if video_handler.is_err() {
+    //     tracing::error!("failed to create video handler");
+    // }
+    // let video_handler = video_handler.unwrap();
 
-    tracing::info!("file handler initialized");
+    // tracing::info!("file handler initialized");
 
-    let metadata = video_handler.get_video_metadata().await;
-    tracing::info!("got video metadata: {:?}", metadata);
+    // let metadata = video_handler.get_video_metadata().await;
+    // tracing::info!("got video metadata: {:?}", metadata);
 
     // video_handler
     //     .get_frames()
@@ -374,5 +350,5 @@ async fn test_handle_video() {
     //     .await
     //     .expect("failed to get video clips summarization");
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+    // tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 }

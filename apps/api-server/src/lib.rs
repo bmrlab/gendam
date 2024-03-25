@@ -1,5 +1,6 @@
 mod task_queue;
 mod routes;
+mod ai;
 
 pub mod router;
 

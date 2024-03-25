@@ -1,6 +1,8 @@
 extern crate accelerate_src;
 
-use anyhow::anyhow;
+use crate::Model;
+use anyhow::{anyhow, bail};
+use async_trait::async_trait;
 use candle_core::backend::BackendDevice;
 use candle_core::MetalDevice;
 use candle_core::{Device, Tensor};
@@ -8,7 +10,7 @@ use candle_transformers::generation::LogitsProcessor;
 use candle_transformers::models::blip::VisionConfig;
 use candle_transformers::models::quantized_blip;
 use candle_transformers::models::{blip, blip_text};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tokenizers::Tokenizer;
 use tracing::debug;
 
@@ -60,6 +62,34 @@ pub enum BLIPModel {
     Large,
 }
 
+#[async_trait]
+impl Model for BLIP {
+    type Item = PathBuf;
+    type Output = String;
+
+    fn batch_size_limit(&self) -> usize {
+        1
+    }
+
+    async fn process(
+        &mut self,
+        items: Vec<Self::Item>,
+    ) -> anyhow::Result<Vec<anyhow::Result<Self::Output>>> {
+        if items.len() > self.batch_size_limit() {
+            bail!("too many items");
+        }
+
+        let mut results = vec![];
+
+        for item in items {
+            let res = self.get_caption(item).await;
+            results.push(res);
+        }
+
+        Ok(results)
+    }
+}
+
 impl BLIP {
     pub async fn new(
         resources_dir: impl AsRef<Path>,
@@ -107,7 +137,7 @@ impl BLIP {
         })
     }
 
-    pub async fn get_caption(&mut self, image_path: impl AsRef<Path>) -> anyhow::Result<String> {
+    async fn get_caption(&mut self, image_path: impl AsRef<Path>) -> anyhow::Result<String> {
         debug!(
             "generating caption for image: {}",
             image_path.as_ref().display()

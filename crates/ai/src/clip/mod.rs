@@ -1,10 +1,14 @@
+use crate::Model;
+
 use super::{preprocess, utils};
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
+use async_trait::async_trait;
 use image::RgbImage;
 use ndarray::{Array1, ArrayView1, Axis};
 use ort::{CPUExecutionProvider, CoreMLExecutionProvider, GraphOptimizationLevel, Session};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tokenizers::tokenizer::Tokenizer;
+
 pub mod model;
 
 pub struct CLIP {
@@ -24,6 +28,47 @@ fn normalize(mut x: CLIPEmbedding) -> CLIPEmbedding {
     let norm = l2_norm(x.view());
     x.mapv_inplace(|e| e / norm);
     x
+}
+
+#[derive(Clone)]
+pub enum CLIPInput {
+    Image(RgbImage),
+    ImageFilePath(PathBuf),
+    Text(String),
+}
+
+#[async_trait]
+impl Model for CLIP {
+    type Item = CLIPInput;
+    type Output = CLIPEmbedding;
+
+    fn batch_size_limit(&self) -> usize {
+        // TODO 后续可以支持 batch 模式
+        1
+    }
+
+    async fn process(
+        &mut self,
+        items: Vec<Self::Item>,
+    ) -> anyhow::Result<Vec<anyhow::Result<Self::Output>>> {
+        if items.len() > self.batch_size_limit() {
+            bail!("too many items");
+        }
+
+        let mut results = vec![];
+
+        for item in items {
+            let res = match item {
+                CLIPInput::Image(rgb) => self.get_image_embedding_from_image(&rgb).await,
+                CLIPInput::ImageFilePath(path) => self.get_image_embedding_from_file(&path).await,
+                CLIPInput::Text(text) => self.get_text_embedding(&text).await,
+            };
+
+            results.push(res);
+        }
+
+        Ok(results)
+    }
 }
 
 impl CLIP {

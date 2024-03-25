@@ -3,7 +3,7 @@ use std::{
 };
 use tokio::sync::broadcast;
 use content_library::Library;
-use crate::task_queue::TaskPayload;
+use crate::{ai::AIHandler, task_queue::TaskPayload};
 
 #[derive(Debug)]
 pub struct StoreError(pub String);
@@ -27,4 +27,5 @@ pub trait CtxWithLibrary {
     fn library(&self) -> Result<Library, rspc::Error>;
 
     fn get_task_tx(&self) -> Arc<Mutex<broadcast::Sender<TaskPayload>>>;
+    fn get_ai_handler(&self) -> AIHandler;
 }

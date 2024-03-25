@@ -1,17 +1,16 @@
 use super::save_text_embedding;
 use crate::search_payload::SearchPayload;
-use ai::{clip::CLIP, whisper::WhisperItem};
+use ai::{clip::CLIP, whisper::WhisperItem, BatchHandler};
 use prisma_lib::{video_transcript, PrismaClient};
 use qdrant_client::client::QdrantClient;
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
-use tokio::sync::RwLock;
 use tracing::error;
 
 pub async fn get_transcript_embedding(
     file_identifier: String,
     client: Arc<PrismaClient>,
     path: impl AsRef<Path>,
-    clip_model: Arc<RwLock<CLIP>>,
+    clip_model: BatchHandler<CLIP>,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
     let file = File::open(path.as_ref())?;

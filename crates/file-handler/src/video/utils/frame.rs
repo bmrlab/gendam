@@ -1,18 +1,17 @@
 use crate::search_payload::SearchPayload;
-use ai::clip::CLIP;
+use ai::{clip::{CLIPInput, CLIP}, BatchHandler};
 use anyhow::{anyhow, Ok};
 use prisma_lib::{video_frame, PrismaClient};
 use qdrant_client::{client::QdrantClient, qdrant::PointStruct};
 use serde_json::json;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use tracing::{debug, error};
 
 pub async fn get_frame_content_embedding(
     file_identifier: String,
     client: Arc<PrismaClient>,
     frames_dir: impl AsRef<std::path::Path>,
-    clip_model: Arc<RwLock<CLIP>>,
+    clip_model: BatchHandler<CLIP>,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
     let frame_paths = std::fs::read_dir(frames_dir.as_ref())?
@@ -98,14 +97,13 @@ pub async fn get_frame_content_embedding(
 async fn get_single_frame_content_embedding(
     payload: SearchPayload,
     path: impl AsRef<std::path::Path>,
-    clip_model: Arc<RwLock<ai::clip::CLIP>>,
+    clip_model: BatchHandler<CLIP>,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
-    let embedding = clip_model
-        .read()
-        .await
-        .get_image_embedding_from_file(path.as_ref())
-        .await?;
+    let embeddings = clip_model.process(vec![
+        CLIPInput::ImageFilePath(path.as_ref().to_path_buf()),
+    ]).await?;
+    let embedding = embeddings.into_iter().next().ok_or(anyhow!("empty embeddings"))??;
     let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
 
     let point = PointStruct::new(

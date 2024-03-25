@@ -1,6 +1,9 @@
 use anyhow::{anyhow, bail};
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::path::{Path,PathBuf};
+use std::path::{Path, PathBuf};
+
+use crate::Model;
 
 pub struct Whisper {
     binary_path: PathBuf,
@@ -74,7 +77,9 @@ impl Whisper {
             .await?;
 
         let current_exe_path = std::env::current_exe().expect("failed to get current executable");
-        let current_dir = current_exe_path.parent().expect("failed to get parent directory");
+        let current_dir = current_exe_path
+            .parent()
+            .expect("failed to get parent directory");
         let binary_path = current_dir.join("whisper");
         Ok(Self {
             binary_path,
@@ -118,6 +123,27 @@ impl Whisper {
         let items: WhisperResult = serde_json::from_str(&transcript)?;
 
         Ok(items)
+    }
+}
+
+#[async_trait]
+impl Model for Whisper {
+    type Item = PathBuf;
+    type Output = WhisperResult;
+
+    fn batch_size_limit(&self) -> usize {
+        1
+    }
+
+    async fn process(
+        &mut self,
+        items: Vec<Self::Item>,
+    ) -> anyhow::Result<Vec<anyhow::Result<Self::Output>>> {
+        let mut results = Vec::with_capacity(items.len());
+        for item in items {
+            results.push(self.transcribe(item, None));
+        }
+        Ok(results)
     }
 }
 

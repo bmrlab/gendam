@@ -1,5 +1,8 @@
 // Ctx 和 Store 的默认实现，主要给 api_server/main 用，不过目前 CtxWithLibrary 的实现也是可以给 tauri 用的，就先用着
-use crate::task_queue::{TaskPayload, TaskProcessor};
+use crate::{
+    ai::{init_ai_handlers, AIHandler},
+    task_queue::{TaskProcessor, TaskPayload},
+};
 use content_library::{load_library, Library};
 use std::{
     boxed::Box,
@@ -70,6 +73,7 @@ pub struct Ctx<S: CtxStore> {
     current_library: Arc<Mutex<Option<Library>>>,
     tx: Arc<Mutex<broadcast::Sender<TaskPayload>>>,
     cancel_token: Arc<Mutex<CancellationToken>>,
+    ai_handler: AIHandler,
 }
 
 impl<S: CtxStore> Clone for Ctx<S> {
@@ -81,6 +85,7 @@ impl<S: CtxStore> Clone for Ctx<S> {
             current_library: Arc::clone(&self.current_library),
             tx: Arc::clone(&self.tx),
             cancel_token: Arc::clone(&self.cancel_token),
+            ai_handler: self.ai_handler.clone(),
         }
     }
 }
@@ -97,6 +102,11 @@ impl<S: CtxStore> Ctx<S> {
         let (tx, cancel_token) = TaskProcessor::init_task_pool();
         let tx = Arc::new(Mutex::new(tx));
         let cancel_token = Arc::new(Mutex::new(cancel_token));
+
+        // FIXME need to handle error
+        let ai_handler =
+            init_ai_handlers(resources_dir.clone()).expect("Failed to init ai handlers");
+
         Self {
             local_data_root,
             resources_dir,
@@ -104,6 +114,7 @@ impl<S: CtxStore> Ctx<S> {
             current_library,
             tx,
             cancel_token,
+            ai_handler,
         }
     }
 }
@@ -167,5 +178,9 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
 
     fn get_task_tx(&self) -> Arc<Mutex<broadcast::Sender<TaskPayload>>> {
         self.tx.clone()
+    }
+
+    fn get_ai_handler(&self) -> AIHandler {
+        self.ai_handler.clone()
     }
 }

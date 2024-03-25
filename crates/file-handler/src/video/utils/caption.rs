@@ -1,16 +1,16 @@
 use super::save_text_embedding;
 use crate::search_payload::SearchPayload;
+use ai::{blip::BLIP, clip::CLIP, BatchHandler};
 use anyhow::{anyhow, Ok};
 use prisma_lib::{video_frame, video_frame_caption, PrismaClient};
 use qdrant_client::client::QdrantClient;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
-use tokio::sync::RwLock;
 use tracing::{debug, error};
 
 pub async fn get_frames_caption(
     frames_dir: impl AsRef<std::path::Path>,
-    blip_model: Arc<RwLock<ai::blip::BLIP>>,
+    blip_model: BatchHandler<BLIP>,
 ) -> anyhow::Result<()> {
     let frame_paths = std::fs::read_dir(frames_dir.as_ref())?
         .map(|res| res.map(|e| e.path()))
@@ -21,8 +21,7 @@ pub async fn get_frames_caption(
     for path in frame_paths {
         if path.extension() == Some(std::ffi::OsStr::new("jpg")) {
             debug!("get_frames_caption: {:?}", path);
-            let blip_model = Arc::clone(&blip_model);
-
+            let blip_model = blip_model.clone();
             join_set.spawn(async move {
                 if let Err(e) = get_single_frame_caption(blip_model, path).await {
                     error!("failed to get frame caption: {:?}", e);
@@ -37,10 +36,16 @@ pub async fn get_frames_caption(
 }
 
 async fn get_single_frame_caption(
-    blip_model: Arc<RwLock<ai::blip::BLIP>>,
+    blip_handler: BatchHandler<BLIP>,
     path: impl AsRef<std::path::Path>,
 ) -> anyhow::Result<()> {
-    let caption = blip_model.write().await.get_caption(path.as_ref()).await?;
+    let captions = blip_handler.process(vec![path.as_ref().to_owned()]).await?;
+    let caption = captions
+        .get(0)
+        .ok_or(anyhow!("no caption"))?
+        .as_ref()
+        .map_err(|e| anyhow!("failed to get caption: {:?}", e))?;
+
     debug!("caption: {:?}", caption);
 
     // write into file
@@ -59,7 +64,7 @@ pub async fn get_frame_caption_embedding(
     file_identifier: String,
     client: Arc<PrismaClient>,
     frames_dir: impl AsRef<std::path::Path>,
-    clip_model: Arc<RwLock<ai::clip::CLIP>>,
+    clip_model: BatchHandler<CLIP>,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
     let frame_paths = std::fs::read_dir(&frames_dir)?
@@ -70,7 +75,6 @@ pub async fn get_frame_caption_embedding(
 
     for path in frame_paths {
         if path.extension() == Some(std::ffi::OsStr::new("caption")) {
-            let clip_model = Arc::clone(&clip_model);
             let file_identifier = file_identifier.clone();
             let client = client.clone();
             let qdrant = qdrant.clone();
@@ -79,6 +83,8 @@ pub async fn get_frame_caption_embedding(
             if join_set.len() >= 3 {
                 while let Some(_) = join_set.join_next().await {}
             }
+
+            let clip_model = clip_model.clone();
 
             join_set.spawn(async move {
                 if let Err(e) = get_single_frame_caption_embedding(
@@ -105,7 +111,7 @@ async fn get_single_frame_caption_embedding(
     file_identifier: String,
     client: Arc<PrismaClient>,
     path: impl AsRef<std::path::Path>,
-    clip_model: Arc<RwLock<ai::clip::CLIP>>,
+    clip_model: BatchHandler<CLIP>,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
     let caption = tokio::fs::read_to_string(path.as_ref()).await?;
