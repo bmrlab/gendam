@@ -129,7 +129,7 @@ export default function BatchExport() {
                   }}
                   className="h-9 w-9"
                 >
-                  <source src={currentLibrary.getFileSrc(assetObjectHash)} type="video/mp4" />
+                  <source src={currentLibrary.getFileSrc(assetObjectHash)} />
                 </video>
               </div>
               <p className="truncate text-[13px] font-medium leading-[18px] text-[#323438]">{label}</p>

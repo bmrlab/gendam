@@ -29,7 +29,7 @@ const VideoPreview: React.FC<{ item: SearchResultPayload }> = ({ item }) => {
 
   return (
     <video ref={videoRef} controls autoPlay style={{ width: '100%', height: '100%', objectFit: 'contain' }}>
-      <source src={currentLibrary.getFileSrc(item.assetObjectHash)} type="video/mp4" />
+      <source src={currentLibrary.getFileSrc(item.assetObjectHash)} />
     </video>
   )
 }
@@ -70,7 +70,7 @@ const VideoItem: React.FC<{
           loop
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         >
-          <source src={currentLibrary.getFileSrc(item.assetObjectHash)} type="video/mp4" />
+          <source src={currentLibrary.getFileSrc(item.assetObjectHash)} />
         </video>
       </div>
       <div className="absolute top-0 left-0 w-full h-full px-4 py-2 bg-black/60 text-neutral-300 flex flex-col justify-between">
