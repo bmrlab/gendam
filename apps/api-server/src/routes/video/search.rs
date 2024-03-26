@@ -5,7 +5,7 @@ use file_handler::{
 };
 use prisma_lib::asset_object;
 use rspc::{Router, RouterBuilder};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::sync::Arc;
 use tracing::error;
@@ -39,21 +39,23 @@ where
                 s if s == "Transcript" => SearchRecordType::Transcript,
                 s if s == "FrameCaption" => SearchRecordType::FrameCaption,
                 s if s == "Frame" => SearchRecordType::Frame,
-                _ => return Err(rspc::Error::new(
-                    rspc::ErrorCode::BadRequest,
-                    "invalid record_type".to_string(),
-                )),
+                _ => {
+                    return Err(rspc::Error::new(
+                        rspc::ErrorCode::BadRequest,
+                        "invalid record_type".to_string(),
+                    ))
+                }
             };
             let res = file_handler::search::handle_search(
                 SearchRequest {
-                    text: text,
+                    text,
                     record_type: Some(vec![record_type]),
                     limit: None,
                     skip: None,
                 },
-                ctx.get_resources_dir(),
                 library.prisma_client(),
                 Arc::clone(&library.qdrant_server.get_client()),
+                ctx.get_ai_handler().clip,
             )
             .await;
 
