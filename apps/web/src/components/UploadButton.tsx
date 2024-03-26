@@ -3,27 +3,27 @@ import { useCallback, useEffect, useState, useContext } from "react";
 import { open } from '@tauri-apps/api/dialog';
 
 type Props = {
-  onSelectFile: (fileFullPath: string) => void;
+  onSelectFiles: (fileFullPath: string[]) => void;
 };
 
-const TauriUploadButton: React.FC<Props> = ({ onSelectFile }) => {
+const TauriUploadButton: React.FC<Props> = ({ onSelectFiles }) => {
   let handleClick = useCallback(async () => {
-    const result = await open({
+    const results = await open({
       directory: false,
-      multiple: false,
+      multiple: true,
       filters: [{
         name: "Video",
         extensions: ["mp4", "mov", "avi", "mkv"],
       }]
     });
-    // console.log("tauri selected file:", result);
-    if (result) {
-      const fileFullPath = result as string;
-      onSelectFile(fileFullPath);
+    console.log("tauri selected file:", results);
+    if (results && results.length) {
+      const fileFullPaths = results as string[];
+      onSelectFiles(fileFullPaths);
     } else {
       return null;
     }
-  }, [onSelectFile]);
+  }, [onSelectFiles]);
 
   return (
     <div>
@@ -60,9 +60,9 @@ const WebUploadButton: React.FC = () => {
   )
 }
 
-export default function UploadButton({ onSelectFile }: Props) {
+export default function UploadButton({ onSelectFiles }: Props) {
   if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-    return <TauriUploadButton onSelectFile={onSelectFile}/>;
+    return <TauriUploadButton onSelectFiles={onSelectFiles}/>;
   } else {
     return <WebUploadButton />
   }

@@ -101,15 +101,15 @@ export default function Files() {
 
   let [selectedId, setSelectedId] = useState<number | null>(null)
 
-  let handleSelectFile = useCallback(
-    (fileFullPath: string) => {
-      createAssetMut.mutate({
-        path: currentPath,
-        localFullPath: fileFullPath,
-      })
-    },
-    [createAssetMut, currentPath],
-  )
+  // let handleSelectFile = useCallback(
+  //   (fileFullPath: string) => {
+  //     createAssetMut.mutate({
+  //       path: currentPath,
+  //       localFullPath: fileFullPath,
+  //     })
+  //   },
+  //   [createAssetMut, currentPath],
+  // )
 
   const [titleInputDialogVisible, setTitleInputDialogVisible] = useState(false)
 
@@ -152,7 +152,7 @@ export default function Files() {
           <div className="cursor-pointer px-2 py-1 text-sm" onClick={() => handleCreateDir()}>
             添加文件夹
           </div>
-          <UploadButton onSelectFile={handleSelectFile} />
+          {/* <UploadButton onSelectFile={handleSelectFile} /> */}
         </div>
       </div>
       <div

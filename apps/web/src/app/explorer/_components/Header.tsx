@@ -6,10 +6,12 @@ import { rspc } from '@/lib/rspc'
 import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import TitleDialog from './TitleDialog'
+import { useUploadQueueStore } from '@/store/uploadQueue'
 
 export default function Header() {
   const router = useRouter()
   const explorer = useExplorerContext()
+  const uploadQueueStore = useUploadQueueStore()
 
   const createPathMut = rspc.useMutation(['assets.create_file_path'])
   const createAssetMut = rspc.useMutation(['assets.create_asset_object'])
@@ -30,16 +32,22 @@ export default function Header() {
     [explorer, router],
   )
 
-  let handleSelectFile = useCallback(
-    (fileFullPath: string) => {
+  let handleSelectFiles = useCallback(
+    (fileFullPaths: string[]) => {
       if (explorer.parentPath) {
-        createAssetMut.mutate({
-          path: explorer.parentPath,
-          localFullPath: fileFullPath,
-        })
+        // createAssetMut.mutate({
+        //   path: explorer.parentPath,
+        //   localFullPath: fileFullPath,
+        // })
+        for (let fileFullPath of fileFullPaths) {
+          uploadQueueStore.enqueue({
+            path: explorer.parentPath,
+            localFullPath: fileFullPath,
+          })
+        }
       }
     },
-    [createAssetMut, explorer],
+    [explorer.parentPath, uploadQueueStore],
   )
 
   const [titleInputDialogVisible, setTitleInputDialogVisible] = useState(false)
@@ -84,7 +92,7 @@ export default function Header() {
           <div className="cursor-pointer px-2 py-1 text-sm" onClick={() => handleCreateDir()}>
             添加文件夹
           </div>
-          <UploadButton onSelectFile={handleSelectFile} />
+          <UploadButton onSelectFiles={handleSelectFiles} />
         </div>
         <div className="flex items-center gap-0.5 justify-self-end text-[#676C77]">
           <div

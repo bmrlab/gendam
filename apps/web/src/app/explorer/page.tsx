@@ -3,14 +3,18 @@ import ExplorerLayout from '@/Explorer/components/ExplorerLayout'
 import { ExplorerContextProvider, ExplorerViewContextProvider, useExplorer } from '@/Explorer/hooks'
 // import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
-import { rspc } from '@/lib/rspc'
+import { client, rspc } from '@/lib/rspc'
+import { FileItem, useUploadQueueStore } from '@/store/uploadQueue'
 import { useSearchParams } from 'next/navigation'
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
 import ItemContextMenu from './_components/ItemContextMenu'
+import UploadQueue from './_components/UploadQueue'
 
 export default function ExplorerPage() {
+  const uploadQueueStore = useUploadQueueStore()
+
   const searchParams = useSearchParams()
   let dirInSearchParams = searchParams.get('dir') || '/'
   if (!/^\/([^/\\:*?"<>|]+\/)+$/.test(dirInSearchParams)) {
@@ -22,10 +26,12 @@ export default function ExplorerPage() {
   // const [parentPath, setParentPath] = useState<string>(dirInSearchParams)
   const parentPath = useMemo(() => dirInSearchParams, [dirInSearchParams])
 
+
   const {
     data: assets,
     isLoading,
     error,
+    refetch,
   } = rspc.useQuery([
     'assets.list',
     {
@@ -33,6 +39,38 @@ export default function ExplorerPage() {
       dirsOnly: false,
     },
   ])
+
+  const uploadFile = useCallback(async (file: FileItem) => {
+    // uploadQueueStore.setUploading(true)
+    // console.log("start upload", file.localFullPath)
+    // await new Promise((resolve) => {
+    //   setTimeout(() => resolve(null), 5000)
+    // })
+    await client.mutation([
+      'assets.create_asset_object',
+      {
+        path: file.path,
+        localFullPath: file.localFullPath,
+      },
+    ])
+    refetch()
+    // console.log("end upload", file.localFullPath)
+  }, [refetch])
+
+  useEffect(() => {
+    // useUploadQueueStore.subscribe((e) => {})
+    if (uploadQueueStore.uploading) {
+      return
+    }
+    const file = uploadQueueStore.peek()
+    if (file) {
+      uploadQueueStore.setUploading(true)
+      uploadQueueStore.dequeue()
+      uploadFile(file).then(() => {
+        uploadQueueStore.setUploading(false)
+      })
+    }
+  }, [uploadQueueStore, uploadFile])
 
   const explorer = useExplorer({
     items: assets ?? null,
@@ -55,7 +93,8 @@ export default function ExplorerPage() {
   return (
     <ExplorerViewContextProvider value={{ contextMenu }}>
       <ExplorerContextProvider explorer={explorer}>
-        <div className="flex h-full flex-col"
+        <div
+          className="flex h-full flex-col"
           onClick={() => explorer.resetSelectedItems()}
           // onMouseMove={handleMouseMove}
         >
@@ -64,6 +103,7 @@ export default function ExplorerPage() {
             <ExplorerLayout></ExplorerLayout>
           </div>
           <Footer></Footer>
+          <UploadQueue />
         </div>
       </ExplorerContextProvider>
     </ExplorerViewContextProvider>
