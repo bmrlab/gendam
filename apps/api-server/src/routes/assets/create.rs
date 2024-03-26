@@ -1,7 +1,7 @@
 use prisma_lib::{asset_object, file_path};
 use prisma_client_rust::QueryError;
 use content_library::Library;
-use super::utils::{normalized_materialized_path, contains_invalid_chars};
+use super::utils::{normalized_materialized_path, contains_invalid_chars, generate_file_hash};
 
 pub async fn create_file_path(
     library: &Library,
@@ -46,14 +46,24 @@ pub async fn create_asset_object(
     let file_name = local_full_path.split("/").last().unwrap().to_owned();
 
     let start_time = std::time::Instant::now();
-    let bytes = std::fs::read(&local_full_path).unwrap();
-    let file_sha256 = sha256::digest(&bytes);
+    // let bytes = std::fs::read(&local_full_path).unwrap();
+    // let file_sha256 = sha256::digest(&bytes);
+    let fs_metadata = std::fs::metadata(&local_full_path)
+        .map_err(|e| rspc::Error::new(
+            rspc::ErrorCode::InternalServerError,
+            format!("failed to get video metadata: {}", e)
+        ))?;
+    let file_hash = generate_file_hash(&local_full_path, fs_metadata.len() as u64)
+        .await.map_err(|e| rspc::Error::new(
+            rspc::ErrorCode::InternalServerError,
+            format!("failed to generate file hash: {}", e),
+        ))?;
     let duration = start_time.elapsed();
-    tracing::info!("{:?}, sha256: {:?}, duration: {:?}", local_full_path, file_sha256, duration);
+    tracing::info!("{:?}, hash: {:?}, duration: {:?}", local_full_path, file_hash, duration);
 
     let destination_path = library
         .files_dir
-        .join(file_sha256.clone());
+        .join(file_hash.clone());
     std::fs::copy(local_full_path, destination_path).map_err(|e| {
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
@@ -67,8 +77,8 @@ pub async fn create_asset_object(
             let asset_object_data = client
                 .asset_object()
                 .upsert(
-                    asset_object::hash::equals(file_sha256.clone()),
-                    asset_object::create(file_sha256.clone(), vec![]),
+                    asset_object::hash::equals(file_hash.clone()),
+                    asset_object::create(file_hash.clone(), vec![]),
                     vec![],
                 )
                 .exec()

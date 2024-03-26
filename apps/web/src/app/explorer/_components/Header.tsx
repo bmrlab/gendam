@@ -14,7 +14,6 @@ export default function Header() {
   const uploadQueueStore = useUploadQueueStore()
 
   const createPathMut = rspc.useMutation(['assets.create_file_path'])
-  const createAssetMut = rspc.useMutation(['assets.create_asset_object'])
 
   const goToDir = useCallback(
     (dirName: string) => {
@@ -35,10 +34,6 @@ export default function Header() {
   let handleSelectFiles = useCallback(
     (fileFullPaths: string[]) => {
       if (explorer.parentPath) {
-        // createAssetMut.mutate({
-        //   path: explorer.parentPath,
-        //   localFullPath: fileFullPath,
-        // })
         for (let fileFullPath of fileFullPaths) {
           uploadQueueStore.enqueue({
             path: explorer.parentPath,
