@@ -8,6 +8,7 @@ import { cn, formatBytes, formatDuration } from '@/lib/utils'
 import { Button } from '@muse/ui/v1/button'
 import { HTMLAttributes, useCallback, useMemo } from 'react'
 import { VIDEO_DIMENSION, getTaskStatus } from './utils'
+import classNames from 'classnames'
 
 export type VideoTaskItemProps = {
   videoFile: VideoWithTasksResult
@@ -24,7 +25,26 @@ export default function VideoTaskItem({
   const currentLibrary = useCurrentLibrary()
 
   const showTask = useMemo(() => {
-    return tasks.filter((task) => VIDEO_DIMENSION[task.taskType])
+    const tasksWithIndex = tasks
+      .map(task => {
+        const [taskName, index, showOnComplete] = VIDEO_DIMENSION[task.taskType] ?? []
+        const status = getTaskStatus(task)
+        return { task, taskName, index, showOnComplete, status }
+      })
+      .filter(({ task, taskName, index, showOnComplete, status }) => {
+        if (status === MuseStatus.Processing || status === MuseStatus.Failed) {
+          return true
+        }
+        if (status === MuseStatus.Done && showOnComplete) {
+          return true
+        }
+        return false
+      })
+    return tasksWithIndex.sort((a, b) => a.index - b.index)
+  }, [tasks])
+
+  const isProcessing = useMemo(() => {
+    return !!tasks.find((task) => getTaskStatus(task) === MuseStatus.Processing)
   }, [tasks])
 
   const hasAudio = useMemo(() => {
@@ -101,30 +121,23 @@ export default function VideoTaskItem({
             {/*<span>已取消</span>*/}
           </div>
           <div className="flex flex-wrap items-end gap-1.5">
-            {showTask.map((task, index) => (
-              <div key={index} className="flex gap-1.5">
-                <MuseTaskBadge key={index} name={VIDEO_DIMENSION[task.taskType]} status={getTaskStatus(task)} />
-                {index === showTask.length - 1 &&
-                  (getTaskStatus(task) !== MuseStatus.Processing ? (
-                    // TODO: real data
-                    <MuseDropdownMenu
-                      triggerIcon={<Icon.moreVertical className="size-[25px] cursor-pointer text-[#676C77]" />}
-                      options={moreActionOptions('1', getTaskStatus(task) === MuseStatus.Processing)}
-                      contentClassName="w-[215px]"
-                    >
-                      <Button
-                        variant="ghost"
-                        className="size-[25px] p-0 text-[#676C77] hover:bg-[#EBECEE] data-[state=open]:bg-[#EBECEE] data-[state=open]:text-[#262626]"
-                      >
-                        <span className="sr-only">Open menu</span>
-                        <Icon.moreVertical className="size-[25px] cursor-pointer" />
-                      </Button>
-                    </MuseDropdownMenu>
-                  ) : (
-                    <Icon.circleX className="size-[25px] cursor-pointer text-[#676C77]" />
-                  ))}
-              </div>
-            ))}
+            {showTask.map(({ taskName, index, status }) =>
+              <MuseTaskBadge key={index} name={taskName} status={status} />
+            )}
+            <MuseDropdownMenu
+              triggerIcon={<Icon.moreVertical className="size-[25px] cursor-pointer text-[#676C77]" />}
+              options={moreActionOptions('1', isProcessing)}
+              contentClassName="w-[215px]"
+            >
+              <Button
+                variant="ghost"
+                className="size-[25px] p-0 text-[#676C77] hover:bg-[#EBECEE] data-[state=open]:bg-[#EBECEE] data-[state=open]:text-[#262626]"
+              >
+                <span className="sr-only">Open menu</span>
+                <Icon.moreVertical className="size-[25px] cursor-pointer" />
+              </Button>
+            </MuseDropdownMenu>
+            {/* <Icon.circleX className="size-[25px] cursor-pointer text-[#676C77]" /> */}
           </div>
         </div>
       </div>

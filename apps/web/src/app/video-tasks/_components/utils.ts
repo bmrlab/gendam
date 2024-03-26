@@ -1,5 +1,5 @@
-import type { VideoWithTasksResult } from '@/lib/bindings'
 import { MuseStatus } from '@/components/Badge'
+import type { VideoWithTasksResult } from '@/lib/bindings'
 
 export const hasProcessing = (tasks: VideoWithTasksResult['tasks']) => {
   const dimension = Object.keys(VIDEO_DIMENSION)
@@ -9,29 +9,30 @@ export const hasProcessing = (tasks: VideoWithTasksResult['tasks']) => {
     .some((status) => status === MuseStatus.Processing)
 }
 
-
 export const getTaskStatus = (task: VideoWithTasksResult['tasks'][number]) => {
-  if (task.startsAt && !task.endsAt) {
+  const exitCode = task.exitCode ?? -1
+  if (exitCode > 1) {
+    return MuseStatus.Failed
+  }
+  if (exitCode === 1) {
+    return MuseStatus.Cancelled
+  }
+  if (exitCode === 0) {
+    return MuseStatus.Done
+  }
+  if (task.startsAt) {
     return MuseStatus.Processing // 已经开始但还没结束
   }
-  if (task.startsAt && task.endsAt) {
-    return MuseStatus.Done // 已经结束
-  }
-
-  if (task.exitCode === 1) {
-    return MuseStatus.Failed // 已经取消
-  }
-
   return MuseStatus.None
-  // return MuseStatus.Failed
 }
 
-export const VIDEO_DIMENSION: Record<string, string> = {
-  // Audio: '语音转译',
-  // "Transcript": "语音转译",
-  TranscriptEmbedding: '语音转译',
-  // "FrameCaption": "图像描述",
-  FrameCaptionEmbedding: '图像描述',
-  // "Frame": "图像特征",
-  FrameContentEmbedding: '图像特征',
+export const VIDEO_DIMENSION: Record<string, [string, number, boolean]> = {
+  // 任务类型: [任务名称, 任务排序, 完成以后是否显示]
+  Frame: ['帧处理', 1, false],
+  FrameContentEmbedding: ['视频特征', 2, true],
+  FrameCaption: ['视频描述', 3, false],
+  FrameCaptionEmbedding: ['视频描述', 4, true],
+  Audio: ['音频处理', 5, false],
+  Transcript: ['视频语音', 6, false],
+  TranscriptEmbedding: ['视频语音', 7, true],
 }

@@ -3,10 +3,11 @@ import { cn } from '@/lib/utils'
 import { HTMLAttributes, useMemo } from 'react'
 
 export enum MuseStatus {
-  None,
-  Processing,
-  Done,
   Failed,
+  Cancelled,
+  Done,
+  Processing,
+  None,
 }
 
 export type MuseBadgeProps = {
@@ -21,17 +22,23 @@ export function MuseTaskBadge({ status, name, className }: MuseBadgeProps) {
     icon: IconComponent,
   } = useMemo(() => {
     switch (status) {
-      case MuseStatus.Done:
-        return {
-          fgColor: 'text-[#34C759]',
-          bgColor: 'bg-[#EEF8E9]',
-          icon: Icon.check,
-        }
       case MuseStatus.Failed:
         return {
           fgColor: 'text-[#E61A1A]',
           bgColor: 'bg-[#FCEBEC]',
           icon: Icon.error,
+        }
+      case MuseStatus.Cancelled:
+        return {
+          fgColor: 'text-[#000000]',
+          bgColor: 'bg-[#F5F5F5]',
+          icon: Icon.error,
+        }
+      case MuseStatus.Done:
+        return {
+          fgColor: 'text-[#34C759]',
+          bgColor: 'bg-[#EEF8E9]',
+          icon: Icon.check,
         }
       case MuseStatus.Processing:
         return {
@@ -51,7 +58,7 @@ export function MuseTaskBadge({ status, name, className }: MuseBadgeProps) {
   return (
     <div className={cn('flex items-center gap-0.5 rounded-[1000px] py-1 pl-2 pr-[10px]', fgColor, bgColor, className)}>
       <IconComponent className={cn(status === MuseStatus.Processing && 'animate-spin')} />
-      <p className="text-[12px] leading-4">{name}</p>
+      <p className="text-xs leading-4">{name}</p>
     </div>
   )
 }

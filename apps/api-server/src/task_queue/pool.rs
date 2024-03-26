@@ -170,14 +170,9 @@ impl TaskProcessor {
         ] {
             // 检查任务是否已退出
             if processor.is_exit().await {
-                info!(
-                    "Task exit: {}, {}",
-                    &task_type.to_string(),
-                    &task_payload.file_path
-                );
+                info!( "Task exit: {}, {}", &task_type.to_string(), &task_payload.file_path);
                 break;
             }
-
             processor.save_starts_at(&task_type.to_string()).await;
             let result = match task_type {
                 VideoTaskType::Frame => vh.get_frames().await,
@@ -190,19 +185,12 @@ impl TaskProcessor {
                 // _ => Ok(()),
             };
             if let Err(e) = result {
-                error!(
-                    "Task failed: {}, {}, {}",
-                    &task_type.to_string(),
-                    &task_payload.file_path,
-                    e
-                );
+                error!("Task failed: {}, {}, {}", &task_type.to_string(), &task_payload.file_path, e);
                 processor.save_ends_at(&task_type.to_string(), Some(e.to_string())).await;
+                // 出错了以后，先终止
+                break;
             } else {
-                info!(
-                    "Task success: {}, {}",
-                    &task_type.to_string(),
-                    &task_payload.file_path
-                );
+                info!( "Task success: {}, {}", &task_type.to_string(), &task_payload.file_path);
                 processor.save_ends_at(&task_type.to_string(), None).await;
             }
         }
