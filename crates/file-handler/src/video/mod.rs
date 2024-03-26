@@ -83,14 +83,15 @@ impl VideoHandler {
     /// * `client` - The prisma client
     pub async fn new(
         video_path: impl AsRef<std::path::Path>,
+        video_file_hash: &str,
         library: &Library,
         clip: BatchHandler<CLIP>,
         blip: BatchHandler<BLIP>,
         whisper: BatchHandler<Whisper>,
     ) -> anyhow::Result<Self> {
-        let bytes = std::fs::read(&video_path)?;
-        let file_sha256 = sha256::digest(&bytes);
-        let artifacts_dir = library.artifacts_dir.join(&file_sha256);
+        // let bytes = std::fs::read(&video_path)?;
+        // let file_sha256 = sha256::digest(&bytes);
+        let artifacts_dir = library.artifacts_dir.join(video_file_hash);
         let frames_dir = artifacts_dir.join("frames");
 
         fs::create_dir_all(&artifacts_dir)?;
@@ -98,7 +99,7 @@ impl VideoHandler {
 
         Ok(Self {
             video_path: video_path.as_ref().to_owned(),
-            file_identifier: file_sha256.clone(),
+            file_identifier: video_file_hash.to_string(),
             audio_path: artifacts_dir.join("audio.wav"),
             frames_dir,
             transcript_path: artifacts_dir.join("transcript.txt"),

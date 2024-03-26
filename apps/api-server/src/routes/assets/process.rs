@@ -105,6 +105,7 @@ pub async fn process_video_metadata(
     let ai_handler = ctx.get_ai_handler();
     let video_handler = VideoHandler::new(
         local_video_file_full_path,
+        &asset_object_data.hash,
         &library,
         ai_handler.clip,
         ai_handler.blip,

@@ -156,8 +156,8 @@ where
         .mutation("process_video_metadata", |t| {
             t(|ctx, input: i32| async move {
                 let library = ctx.library()?;
-                let file_path_id = input;
-                process_video_metadata(&library, &ctx, file_path_id).await?;
+                let asset_object_id_id = input;
+                process_video_metadata(&library, &ctx, asset_object_id_id).await?;
                 Ok(())
             })
         })

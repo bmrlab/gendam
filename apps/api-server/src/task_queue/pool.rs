@@ -228,6 +228,7 @@ pub async fn create_video_task(
 
     let video_handler = match VideoHandler::new(
         local_video_file_full_path,
+        &asset_object_data.hash,
         &library,
         ai_handler.clip,
         ai_handler.blip,
