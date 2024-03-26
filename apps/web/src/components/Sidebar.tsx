@@ -91,9 +91,6 @@ export default function Sidebar() {
         <Link href="/debug/library" className={menuClassNames('/debug/library')}>
           <span className="font-light text-neutral-400">本地文件(Debug)</span>
         </Link>
-        <Link href="/debug/files" className={menuClassNames('/debug/files')}>
-          <span className="font-light text-neutral-400">素材文件(Debug)</span>
-        </Link>
       </div>
     </div>
   )
