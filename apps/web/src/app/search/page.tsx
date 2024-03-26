@@ -61,11 +61,11 @@ const VideoItem: React.FC<{
       className="w-64 relative overflow-hidden rounded-md shadow-md invisible hover:visible"
       onClick={() => handleVideoClick(item)}
     >
-      <div className="relative h-36 w-full cursor-pointer visible">
+      <div className="relative h-36 w-full cursor-pointer visible bg-neutral-100">
         <video
           ref={videoRef}
           controls={false}
-          autoPlay
+          autoPlay={false}
           muted
           loop
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}

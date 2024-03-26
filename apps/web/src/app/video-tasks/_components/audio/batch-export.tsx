@@ -119,7 +119,7 @@ export default function BatchExport() {
                 {/*<Image src={image} alt="" fill className="object-contain" />*/}
                 <video
                   controls={false}
-                  autoPlay
+                  autoPlay={false}
                   muted
                   loop
                   style={{

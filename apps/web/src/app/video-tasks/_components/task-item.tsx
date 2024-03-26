@@ -48,7 +48,7 @@ export default function VideoTaskItem({
   }, [tasks])
 
   const hasAudio = useMemo(() => {
-    return tasks.some((task) => task.taskType === 'Audio' && !!task.endsAt)
+    return tasks.some((task) => task.taskType === 'Audio' && task.exitCode === 0)
   }, [tasks])
 
   const moreActionOptions = useCallback((id: string, isProcessing = false) => {
@@ -95,7 +95,7 @@ export default function VideoTaskItem({
           e.stopPropagation()
         }}
       >
-        <video controls={false} autoPlay muted loop className="size-full object-contain">
+        <video controls={false} autoPlay={false} muted loop className="size-full object-contain">
           <source src={currentLibrary.getFileSrc(assetObject.hash)} />
         </video>
       </div>

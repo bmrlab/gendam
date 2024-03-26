@@ -12,7 +12,13 @@ export default function FileThumb({ data, className }: { data: ExplorerItem; cla
       {data.isDir ? (
         <Image src={Folder_Light} alt="folder" priority></Image>
       ) : data.assetObject ? (
-        <video controls={false} autoPlay muted loop style={{ width: '100%', height: '100%', objectFit: 'cover' }}>
+        <video
+          controls={false}
+          autoPlay={false}
+          muted
+          loop
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        >
           <source src={currentLibrary.getFileSrc(data.assetObject.hash)} />
         </video>
       ) : (
