@@ -1,8 +1,8 @@
-use prisma_lib::new_client_with_url;
-use prisma_lib::PrismaClient;
-use qdrant_client::qdrant::OptimizersConfigDiff;
+use prisma_lib::{new_client_with_url, PrismaClient};
 use std::{path::PathBuf, sync::Arc};
-use vector_db::{QdrantParams, QdrantServer};
+use vector_db::QdrantServer;
+mod qdrant;
+use qdrant::create_qdrant_server;
 
 #[derive(Clone, Debug)]
 pub struct Library {
@@ -33,11 +33,9 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Result
         "file:{}?connection_limit=1",
         db_dir.join("muse-v2.db").to_str().unwrap()
     );
-    let client = new_client_with_url(db_url.as_str())
-        .await
-        .map_err(|_e| {
-            tracing::error!("failed to create prisma client");
-        })?;
+    let client = new_client_with_url(db_url.as_str()).await.map_err(|_e| {
+        tracing::error!("failed to create prisma client");
+    })?;
     client
         ._db_push()
         .await // apply migrations
@@ -46,31 +44,7 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Result
         })?;
     let prisma_client = Arc::new(client);
 
-    let qdrant_server = QdrantServer::new(QdrantParams {
-        dir: qdrant_dir,
-        // TODO we should specify the port to avoid conflicts with other apps
-        http_port: None,
-        grpc_port: None,
-    })
-    .await
-    .map_err(|e| {
-        tracing::error!("failed to start qdrant server: {}", e);
-    })?;
-
-    let qdrant = qdrant_server.get_client().clone();
-    make_sure_collection_created(
-        qdrant.clone(),
-        vector_db::DEFAULT_COLLECTION_NAME,
-        vector_db::DEFAULT_COLLECTION_DIM,
-    )
-    .await
-    .map_err(|e| {
-        tracing::error!(
-            "failed to make sure collection created: {}, {}",
-            vector_db::DEFAULT_COLLECTION_NAME,
-            e
-        );
-    })?;
+    let qdrant_server = create_qdrant_server(qdrant_dir).await?;
 
     let library = Library {
         id: library_id.to_string(),
@@ -97,11 +71,11 @@ pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -
     std::fs::create_dir_all(&files_dir).unwrap();
     match std::fs::File::create(library_dir.join("settings.json")) {
         Ok(file) => {
-            let value = serde_json::json!({ title: title });
+            let value = serde_json::json!({ "title": title });
             if let Err(e) = serde_json::to_writer(file, &value) {
                 tracing::error!("Failed to write file: {}", e);
             }
-        },
+        }
         Err(e) => {
             tracing::error!("Failed to create file: {}", e);
         }
@@ -109,57 +83,64 @@ pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -
     load_library(local_data_root, &library_id).await.unwrap()
 }
 
-use qdrant_client::client::QdrantClient;
-use qdrant_client::qdrant::{
-    vectors_config::Config, CreateCollection, Distance, VectorParams, VectorsConfig,
-};
-pub async fn make_sure_collection_created(
-    qdrant: Arc<QdrantClient>,
-    collection_name: &str,
-    dim: u64,
-) -> anyhow::Result<()> {
-    async fn create(
-        qdrant: Arc<QdrantClient>,
-        collection_name: &str,
-        dim: u64,
-    ) -> anyhow::Result<()> {
-        let res = qdrant
-            .create_collection(&CreateCollection {
-                collection_name: collection_name.to_string(),
-                vectors_config: Some(VectorsConfig {
-                    config: Some(Config::Params(VectorParams {
-                        size: dim,
-                        distance: Distance::Cosine.into(),
-                        ..Default::default()
-                    })),
-                }),
-                shard_number: Some(1),
-                optimizers_config: Some(OptimizersConfigDiff {
-                    default_segment_number: Some(1),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            })
-            .await;
-        match res {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                tracing::error!("failed to create collection: {}, {:?}", collection_name, e);
-                Err(e.into())
-            }
-        }
+pub fn list_libraries(local_data_root: &PathBuf) -> Vec<serde_json::Value> {
+    let libraries_dir = local_data_root.join("libraries");
+    if !libraries_dir.exists() {
+        return vec![];
     }
-    match qdrant.collection_info(collection_name).await {
-        core::result::Result::Ok(info) => {
-            if let None = info.result {
-                create(qdrant, collection_name, dim).await
-            } else {
-                Ok(())
-            }
-        }
+    let entries = match libraries_dir.read_dir() {
+        Ok(entries) => entries,
         Err(e) => {
-            tracing::info!("collection info not found: {}, {:?}", collection_name, e);
-            create(qdrant, collection_name, dim).await
+            tracing::error!("Failed to read libraries dir: {}", e);
+            return vec![];
+        }
+    };
+    let mut res: Vec<serde_json::Value> = vec![];
+    for entry in entries {
+        let (library_dir, library_id) = match entry.as_ref() {
+            Ok(entry) => {
+                let path = entry.path();
+                if !path.is_dir() {
+                    continue;
+                }
+                let file_name = match entry.file_name().to_str() {
+                    Some(file_name) => file_name.to_string(),
+                    None => {
+                        tracing::error!("Failed to convert file name to string");
+                        continue;
+                    }
+                };
+                (path, file_name)
+            }
+            Err(e) => {
+                tracing::error!("Failed to read library dir: {}", e);
+                continue;
+            }
+        };
+        let settings = get_library_settings(&library_dir);
+        res.push(serde_json::json!({
+            "id": library_id,
+            "settings": settings,
+        }));
+    }
+    res
+}
+
+pub fn get_library_settings(library_dir: &PathBuf) -> serde_json::Value {
+    match std::fs::File::open(library_dir.join("settings.json")) {
+        Ok(file) => {
+            let reader = std::io::BufReader::new(file);
+            match serde_json::from_reader(reader) {
+                Ok(values) => values,
+                Err(e) => {
+                    tracing::error!("Failed to read file: {}", e);
+                    serde_json::json!({ "title": "Untitled" })
+                }
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to open library's settings.json, {}", e);
+            serde_json::json!({ "title": "Untitled" })
         }
     }
 }

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState, useMemo, use } from "react";
 import { client, queryClient, rspc } from "@/lib/rspc";
 import { convertFileSrc } from '@tauri-apps/api/tauri';
-import { CurrentLibrary } from "@/lib/library";
+import { CurrentLibrary, type Library } from "@/lib/library";
 import LibrariesSelect from "@/components/LibrariesSelect";
 
 export default function ClientLayout({
@@ -11,7 +11,7 @@ export default function ClientLayout({
   children: React.ReactNode;
 }>) {
   const [pending, setPending] = useState(true);
-  const [libraryId, setLibraryId] = useState<string|null>(null);
+  const [library, setLibrary] = useState<Library|null>(null);
   const [homeDir, setHomeDir] = useState<string|null>(null);
 
   const blockCmdQ = useCallback(() => {
@@ -29,11 +29,12 @@ export default function ClientLayout({
 
   useEffect(() => {
     blockCmdQ()
-    const p1 = client.query(["libraries.get_current_library"]).then((libraryIdInStorage) => {
-      setLibraryId(libraryIdInStorage);
-    }).catch(error => {
+
+    const p1 = client.query(["libraries.get_current_library"]).then(
+      ({ id, settings }: Library) => setLibrary({ id, settings })
+    ).catch(error => {
       console.log('libraries.get_current_library error:', error);
-      setLibraryId(null);
+      setLibrary(null);
     });
     const p2 = client.query(["files.home_dir"]).then((homeDir) => {
       setHomeDir(homeDir);
@@ -42,13 +43,13 @@ export default function ClientLayout({
       setHomeDir(null);
     });
     Promise.all([p1, p2]).then(() => setPending(false));
-  }, [setLibraryId, setPending, blockCmdQ]);
+  }, [setLibrary, setPending, blockCmdQ]);
 
-  const setContext = useCallback(async (id: string) => {
-    setLibraryId(id);
+  const setContext = useCallback(async (library: Library) => {
+    setLibrary(library);
     setPending(true);
     try {
-      await client.mutation(["libraries.set_current_library", id]);
+      await client.mutation(["libraries.set_current_library", library.id]);
       // setPending(false);
       // 最后 reload 一下，用新的 library 请求数据过程中，页面上还残留着上个 library 已请求的数据
       // 既然要 reload，就不设置 setPending(false) 了
@@ -56,7 +57,7 @@ export default function ClientLayout({
     } catch(err) {
       console.error('CurrentLibraryStorage.set() error:', err);
     }
-  }, [setLibraryId]);
+  }, [setLibrary]);
 
   const getFileSrc = useCallback((assetObjectHash: string) => {
     const fileFullPath = homeDir + '/' + assetObjectHash;
@@ -69,12 +70,13 @@ export default function ClientLayout({
 
   return pending ? (<></>) : (
     <CurrentLibrary.Provider value={{
-      id: libraryId,
+      id: library?.id ?? null,
+      settings: library?.settings ?? null,
       setContext,
       getFileSrc,
     }}>
       <rspc.Provider client={client} queryClient={queryClient}>
-        {libraryId ? (
+        {library?.id ? (
           <>{children}</>
         ) : (
           <LibrariesSelect />

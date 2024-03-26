@@ -1,9 +1,7 @@
 use crate::CtxWithLibrary;
-use content_library::create_library_with_title;
+use content_library::{create_library_with_title, list_libraries, get_library_settings};
 use rspc::{Router, RouterBuilder};
 use serde_json::json;
-use std::path::PathBuf;
-use tracing::error;
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -12,8 +10,8 @@ where
     Router::<TCtx>::new()
         .query("list", |t| {
             t(|ctx, _input: ()| async move {
-                let res = list_libraries(&ctx.get_local_data_root());
-                serde_json::to_value::<Vec<String>>(res).unwrap()
+                list_libraries(&ctx.get_local_data_root())
+                // serde_json::to_value::<Vec<serde_json::Value>>(res).unwrap()
             })
         })
         .mutation("create", |t| {
@@ -36,40 +34,11 @@ where
         .query("get_current_library", |t| {
             t(|ctx, _input: ()| async move {
                 let library = ctx.library()?;
-                Ok(library.id)
+                let settings = get_library_settings(&library.dir);
+                Ok(serde_json::json!({
+                    "id": library.id,
+                    "settings": settings,
+                }))
             })
         })
-}
-
-fn list_libraries(local_data_root: &PathBuf) -> Vec<String> {
-    let libraries_dir = local_data_root.join("libraries");
-    if !libraries_dir.exists() {
-        return vec![];
-    }
-    match libraries_dir.read_dir() {
-        Ok(entries) => {
-            let mut res = vec![];
-            for entry in entries {
-                match entry.as_ref() {
-                    Ok(entry) => {
-                        let path = entry.path();
-                        let file_name = entry.file_name();
-                        if path.is_dir() {
-                            let file_name = file_name.to_str().unwrap().to_string();
-                            res.push(file_name);
-                        }
-                    }
-                    Err(e) => {
-                        error!("Failed to read library dir: {}", e);
-                        continue;
-                    }
-                };
-            }
-            res
-        }
-        Err(e) => {
-            error!("Failed to read libraries dir: {}", e);
-            vec![]
-        }
-    }
 }

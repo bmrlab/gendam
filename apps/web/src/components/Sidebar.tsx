@@ -1,5 +1,5 @@
 'use client'
-import { useCurrentLibrary } from '@/lib/library'
+import { useCurrentLibrary, type Library } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { Chevron_Double, Muse_Logo } from '@muse/assets/svgs'
 import classNames from 'classnames'
@@ -9,16 +9,18 @@ import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 export default function Sidebar() {
+  const librariesQuery = rspc.useQuery(['libraries.list'])
+  const libraries = (librariesQuery.data ?? []) as Library[]
+
   const panelRef = useRef<HTMLDivElement>(null)
   const [selectPanelOpen, setSelectPanelOpen] = useState(false)
-  const { data: libraries } = rspc.useQuery(['libraries.list'])
   const pathname = usePathname()
   const currentLibrary = useCurrentLibrary()
 
   const switchLibrary = useCallback(
-    async (libraryId: string) => {
+    async (library: Library) => {
       // console.log("switchLibrary");
-      await currentLibrary.setContext(libraryId)
+      await currentLibrary.setContext(library)
     },
     [currentLibrary],
   )
@@ -49,7 +51,7 @@ export default function Sidebar() {
         <div className="flex cursor-default items-center justify-start" onClick={() => setSelectPanelOpen(true)}>
           <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>
           <div className="mx-2 w-32 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs font-semibold">
-            Muse ({currentLibrary.id})
+            {currentLibrary.settings?.title ?? "Untitled"} ({currentLibrary.id})
           </div>
           <Image src={Chevron_Double} alt="Chevron_Double" className="h-4 w-4"></Image>
         </div>
@@ -59,17 +61,16 @@ export default function Sidebar() {
             className="absolute left-32 top-3 z-10 w-60 rounded-md
               border border-neutral-200 bg-neutral-100 p-1 shadow-sm"
           >
-            {libraries?.map((libraryId: string, index: number) => {
+            {libraries.map((library, index: number) => {
               return (
                 <div
-                  key={libraryId}
-                  className="flex cursor-default items-center justify-start rounded-md px-3
-                    py-2 hover:bg-neutral-200"
-                  onClick={() => switchLibrary(libraryId)}
+                  key={library.id}
+                  className="flex cursor-default items-center justify-start rounded-md px-3 py-2 hover:bg-neutral-200"
+                  onClick={() => switchLibrary(library)}
                 >
                   <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>
                   <div className="mx-2 w-48 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs font-semibold">
-                    Muse ({libraryId})
+                    {library.settings?.title ?? 'Untitled'} ({library.id})
                   </div>
                 </div>
               )
