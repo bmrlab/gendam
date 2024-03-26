@@ -30,8 +30,8 @@ tower-http = { version = "0.5.2", default-features = false, features = [
 rand = "0.8.5"
 chrono = "0.4.34"
 dirs = "5.0.1"
-sha256 = "1.5.0"
-uuid = { version = "1.7.0", features = ["v5"] }
+sha256 = { workspace = true }
+uuid = { workspace = true }
 qdrant-client = { workspace = true }
 anyhow = "1"
 docx-rs = "0.4"

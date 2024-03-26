@@ -4,7 +4,7 @@ use api_server::{
     CtxStore,
 };
 use axum::{http::request::Parts, routing::get};
-use content_library::{load_library, upgrade_library_schemas, Library};
+use content_library::{load_library, Library};
 use dotenvy::dotenv;
 use std::{
     env,
@@ -41,8 +41,6 @@ async fn main() {
             panic!("'$LOCAL_RESOURCES_DIR' is not set ({})", _e)
         }
     };
-
-    upgrade_library_schemas(&local_data_root).await;
 
     let current_library = Arc::new(Mutex::<Option<Library>>::new(None));
 

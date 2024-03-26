@@ -17,14 +17,14 @@ tracing-subscriber = "0.3.18"
 test-log = { workspace = true }
 ndarray = { version = "0.15.6", features = ["serde"] }
 ffmpeg-next = { version = "6.1.1", optional = true }
-sha256 = "1.5.0"
+sha256 = { workspace = true }
 anyhow = { workspace = true }
 image = { workspace = true }
 futures = { workspace = true }
 prisma-lib = { path = "../../crates/prisma" }
 prisma-client-rust = { workspace = true }
 qdrant-client = { workspace = true }
-uuid = { version = "1.8.0", features = ["v5"] }
+uuid = { workspace = true }
 strum = "0.26"
 strum_macros = "0.26"
 

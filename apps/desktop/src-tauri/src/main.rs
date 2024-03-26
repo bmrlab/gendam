@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use api_server::ctx::default::Ctx;
-use content_library::{load_library, upgrade_library_schemas, Library};
+use content_library::{load_library, Library};
 use dotenvy::dotenv;
 use std::{
     path::PathBuf,
@@ -88,7 +88,6 @@ async fn main() {
     // TODO: 需要确认下 tauri_plugin_store 这个 plugin 是不是需要，如果网页上不用，应该不需要
 
     validate_app_version(window.app_handle(), &local_data_root);
-    upgrade_library_schemas(&local_data_root).await;
 
     let current_library = Arc::new(Mutex::<Option<Library>>::new(None));
 

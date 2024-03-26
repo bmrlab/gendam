@@ -5,10 +5,10 @@ edition = { workspace = true }
 
 [dependencies]
 prisma-lib = { path = "../prisma" }
+vector-db = { path = "../vector-db", features = ["qdrant"] }
 tokio = { workspace = true }
 tracing = { workspace = true }
-chrono = "0.4.34"
-sha256 = "1.5.0"
-vector-db = { path = "../vector-db", features = ["qdrant"] }
+uuid = { workspace = true }
 qdrant-client = { workspace = true }
 anyhow = { workspace = true }
+serde_json = { workspace = true }

@@ -2,7 +2,6 @@ use prisma_lib::new_client_with_url;
 use prisma_lib::PrismaClient;
 use qdrant_client::qdrant::OptimizersConfigDiff;
 use std::{path::PathBuf, sync::Arc};
-use tracing::{error, info};
 use vector_db::{QdrantParams, QdrantServer};
 
 #[derive(Clone, Debug)]
@@ -37,13 +36,13 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Result
     let client = new_client_with_url(db_url.as_str())
         .await
         .map_err(|_e| {
-            error!("failed to create prisma client");
+            tracing::error!("failed to create prisma client");
         })?;
     client
         ._db_push()
         .await // apply migrations
         .map_err(|e| {
-            error!("failed to push db: {}", e);
+            tracing::error!("failed to push db: {}", e);
         })?;
     let prisma_client = Arc::new(client);
 
@@ -55,7 +54,7 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Result
     })
     .await
     .map_err(|e| {
-        error!("failed to start qdrant server: {}", e);
+        tracing::error!("failed to start qdrant server: {}", e);
     })?;
 
     let qdrant = qdrant_server.get_client().clone();
@@ -66,7 +65,7 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Result
     )
     .await
     .map_err(|e| {
-        error!(
+        tracing::error!(
             "failed to make sure collection created: {}, {}",
             vector_db::DEFAULT_COLLECTION_NAME,
             e
@@ -86,9 +85,7 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Result
 }
 
 pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -> Library {
-    let _ = title;
-    // TODO: 使用时间戳作为 id，当用户导入别人分享的 library 的时候,可能会冲突
-    let library_id = sha256::digest(format!("{}", chrono::Utc::now()));
+    let library_id = uuid::Uuid::new_v4().to_string();
     let library_dir = local_data_root.join("libraries").join(&library_id);
     let db_dir = library_dir.join("databases");
     let qdrant_dir = library_dir.join("qdrant");
@@ -98,34 +95,18 @@ pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -
     std::fs::create_dir_all(&qdrant_dir).unwrap();
     std::fs::create_dir_all(&artifacts_dir).unwrap();
     std::fs::create_dir_all(&files_dir).unwrap();
+    match std::fs::File::create(library_dir.join("settings.json")) {
+        Ok(file) => {
+            let value = serde_json::json!({ title: title });
+            if let Err(e) = serde_json::to_writer(file, &value) {
+                tracing::error!("Failed to write file: {}", e);
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to create file: {}", e);
+        }
+    };
     load_library(local_data_root, &library_id).await.unwrap()
-}
-
-pub async fn upgrade_library_schemas(local_data_root: &PathBuf) {
-    // TODO: 现在 load library 里面会进行 migrate, 这个方法可以不要了
-    let _ = local_data_root;
-    return;
-    // let dirs = match local_data_root.join("libraries").read_dir() {
-    //     Ok(dirs) => dirs,
-    //     Err(e) => {
-    //         info!("Failed to read libraries dir: {}", e);
-    //         return;
-    //     }
-    // };
-    // let dirs = dirs
-    //     .into_iter()
-    //     .filter(|entry| entry.as_ref().unwrap().path().is_dir())
-    //     .map(|entry| entry.unwrap().path())
-    //     .collect::<Vec<PathBuf>>();
-    // for dir in dirs {
-    //     let library_id = dir.file_name().unwrap().to_str().unwrap();
-    //     let library = load_library(local_data_root, library_id).await;
-    //     let client = new_client_with_url(library.db_url.as_str())
-    //         .await
-    //         .expect("failed to create prisma client");
-    //     client._db_push().await.expect("failed to push db"); // apply migrations
-    //     info!("Upgraded library '{}'", library_id);
-    // }
 }
 
 use qdrant_client::client::QdrantClient;
@@ -163,7 +144,7 @@ pub async fn make_sure_collection_created(
         match res {
             Ok(_) => Ok(()),
             Err(e) => {
-                error!("failed to create collection: {}, {:?}", collection_name, e);
+                tracing::error!("failed to create collection: {}, {:?}", collection_name, e);
                 Err(e.into())
             }
         }
@@ -177,7 +158,7 @@ pub async fn make_sure_collection_created(
             }
         }
         Err(e) => {
-            info!("collection info not found: {}, {:?}", collection_name, e);
+            tracing::info!("collection info not found: {}, {:?}", collection_name, e);
             create(qdrant, collection_name, dim).await
         }
     }

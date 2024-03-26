@@ -1137,12 +1137,12 @@ name = "content-library"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "chrono",
  "prisma-lib",
  "qdrant-client",
- "sha256",
+ "serde_json",
  "tokio",
  "tracing",
+ "uuid",
  "vector-db",
 ]
 

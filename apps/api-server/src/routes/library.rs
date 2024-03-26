@@ -1,5 +1,5 @@
 use crate::CtxWithLibrary;
-use content_library::Library;
+use content_library::create_library_with_title;
 use rspc::{Router, RouterBuilder};
 use serde_json::json;
 use std::path::PathBuf;
@@ -18,13 +18,12 @@ where
         })
         .mutation("create", |t| {
             t(|ctx, title: String| async move {
-                let library = create_library(&ctx.get_local_data_root(), title).await;
+                let library = create_library_with_title(
+                    &ctx.get_local_data_root(), title.as_str()
+                ).await;
                 json!({
                     "id": library.id,
                     "dir": library.dir,
-                    // "artifacts_dir": library.artifacts_dir,
-                    // "index_dir": library.index_dir,
-                    // "db_url": library.db_url,
                 })
             })
         })
@@ -73,9 +72,4 @@ fn list_libraries(local_data_root: &PathBuf) -> Vec<String> {
             vec![]
         }
     }
-}
-
-async fn create_library(local_data_root: &PathBuf, title: String) -> Library {
-    let library = content_library::create_library_with_title(local_data_root, title.as_str()).await;
-    return library;
 }
