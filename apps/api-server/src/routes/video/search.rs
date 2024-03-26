@@ -35,10 +35,10 @@ where
             let library = ctx.library()?;
 
             let text = input.text.clone();
-            let record_type = match input.record_type {
-                s if s == "Transcript" => SearchRecordType::Transcript,
-                s if s == "FrameCaption" => SearchRecordType::FrameCaption,
-                s if s == "Frame" => SearchRecordType::Frame,
+            let record_types = match input.record_type {
+                s if s == "Transcript" => vec![SearchRecordType::Transcript],
+                s if s == "FrameCaption" => vec![SearchRecordType::FrameCaption, SearchRecordType::Frame],
+                s if s == "Frame" => vec![SearchRecordType::FrameCaption, SearchRecordType::Frame],
                 _ => {
                     return Err(rspc::Error::new(
                         rspc::ErrorCode::BadRequest,
@@ -49,7 +49,7 @@ where
             let res = file_handler::search::handle_search(
                 SearchRequest {
                     text,
-                    record_type: Some(vec![record_type]),
+                    record_type: Some(record_types),
                     limit: None,
                     skip: None,
                 },
