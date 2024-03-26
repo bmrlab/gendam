@@ -103,14 +103,17 @@ async fn main() {
 
     if let Some(value) = tauri_store.get("current-library-id") {
         let library_id = value.as_str().unwrap().to_owned();
-        let library = match load_library(&local_data_root, &library_id).await {
-            Ok(library) => library,
+        match load_library(&local_data_root, &library_id).await {
+            Ok(library) => {
+                current_library.lock().unwrap().replace(library);
+            },
             Err(e) => {
                 tracing::error!("Failed to load library: {:?}", e);
-                return;
+                let _ = tauri_store.delete("current-library-id");
+                let _ = tauri_store.save();
+                // return;
             }
         };
-        current_library.lock().unwrap().replace(library);
     }
 
     window.on_window_event({

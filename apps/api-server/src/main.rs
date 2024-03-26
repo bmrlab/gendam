@@ -15,7 +15,6 @@ use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
 };
-use tracing::{debug, error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -54,14 +53,16 @@ async fn main() {
     }
 
     if let Some(library_id) = default_store.get("current-library-id") {
-        let library = match load_library(&local_data_root, &library_id).await {
-            Ok(library) => library,
+         match load_library(&local_data_root, &library_id).await {
+            Ok(library) => {
+                current_library.lock().unwrap().replace(library);
+            },
             Err(e) => {
-                error!("Failed to load library: {:?}", e);
-                return;
+                tracing::error!("Failed to load library: {:?}", e);
+                let _ = default_store.delete("current-library-id");
+                let _ = default_store.save();
             }
         };
-        current_library.lock().unwrap().replace(library);
     }
 
     let cors = CorsLayer::new()
@@ -79,7 +80,7 @@ async fn main() {
         .nest("/rspc", {
             rspc_axum::endpoint(router.clone(), {
                 move |parts: Parts| {
-                    info!("Client requested operation '{}'", parts.uri.path());
+                    tracing::info!("Client requested operation '{}'", parts.uri.path());
                     // 不能每次 new 而应该是 clone，这样会保证 ctx 里面的每个元素每次只是新建了引用
                     ctx.clone()
                 }
@@ -90,7 +91,7 @@ async fn main() {
         .layer(cors);
 
     let addr = "[::]:3001".parse::<std::net::SocketAddr>().unwrap(); // This listens on IPv6 and IPv4
-    debug!("Listening on http://{}/rspc/version", addr);
+    tracing::debug!("Listening on http://{}/rspc/version", addr);
     axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app)
         .await
         .unwrap();

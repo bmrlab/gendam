@@ -13,6 +13,7 @@ pub trait CtxStore {
     fn save(&self) -> Result<(), StoreError>;
     fn insert(&mut self, key: &str, value: &str) -> Result<(), StoreError>;
     fn get(&self, key: &str) -> Option<String>;
+    fn delete(&mut self, key: &str) -> Result<(), StoreError>;
 }
 
 pub trait CtxWithLibrary {

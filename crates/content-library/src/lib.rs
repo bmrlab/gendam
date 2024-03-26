@@ -36,7 +36,9 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Result
     );
     let client = new_client_with_url(db_url.as_str())
         .await
-        .expect("failed to create prisma client");
+        .map_err(|_e| {
+            error!("failed to create prisma client");
+        })?;
     client
         ._db_push()
         .await // apply migrations

@@ -59,6 +59,10 @@ impl CtxStore for Store {
             None => None,
         }
     }
+    fn delete(&mut self, key: &str) -> Result<(), StoreError> {
+        self.values.remove(key);
+        Ok(())
+    }
 }
 
 /**

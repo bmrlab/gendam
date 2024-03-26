@@ -40,4 +40,9 @@ impl CtxStore for Store {
             None => None,
         }
     }
+    fn delete(&mut self, key: &str) -> Result<(), StoreError> {
+        self.store.delete(String::from(key))
+            .map_err(|e| StoreError(e.to_string()))?;
+        Ok(())
+    }
 }
