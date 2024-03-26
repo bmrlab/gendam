@@ -150,7 +150,10 @@ where
                     .prisma_client()
                     .file_handler_task()
                     .update_many(
-                        vec![file_handler_task::asset_object_id::equals(asset_object_id)],
+                        vec![
+                            file_handler_task::asset_object_id::equals(asset_object_id),
+                            file_handler_task::starts_at::equals(None),
+                        ],
                         vec![file_handler_task::exit_code::set(Some(1))],
                     )
                     .exec()

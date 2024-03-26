@@ -102,7 +102,11 @@ impl TaskProcessor {
             .expect(&format!("failed save_starts_at {:?}", task_type));
     }
 
-    async fn save_ends_at(&self, task_type: &str) {
+    async fn save_ends_at(&self, task_type: &str, error: Option<String>) {
+        let (exit_code, exit_message) = match error {
+            Some(error) => (Some(2), Some(error)),
+            None => (Some(0), None),
+        };
         self.payload
             .prisma_client
             .file_handler_task()
@@ -111,9 +115,11 @@ impl TaskProcessor {
                     self.payload.asset_object_id,
                     task_type.to_string(),
                 ),
-                vec![file_handler_task::ends_at::set(Some(
-                    chrono::Utc::now().into(),
-                ))],
+                vec![
+                    file_handler_task::ends_at::set(Some(chrono::Utc::now().into())),
+                    file_handler_task::exit_code::set(exit_code),
+                    file_handler_task::exit_message::set(exit_message),
+                ],
             )
             .exec()
             .await
@@ -190,14 +196,15 @@ impl TaskProcessor {
                     &task_payload.file_path,
                     e
                 );
+                processor.save_ends_at(&task_type.to_string(), Some(e.to_string())).await;
             } else {
                 info!(
                     "Task success: {}, {}",
                     &task_type.to_string(),
                     &task_payload.file_path
                 );
+                processor.save_ends_at(&task_type.to_string(), None).await;
             }
-            processor.save_ends_at(&task_type.to_string()).await;
         }
     }
 }

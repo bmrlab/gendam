@@ -140,7 +140,7 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
         },
       },
     ]
-  }, [cancelTask, handleExport, isProcessing, regenerateTask, toast, video.assetObject.id, video.materializedPath])
+  }, [cancelTask, handleExport, isProcessing, regenerateTask, taskListRefetch, toast, video.assetObject.id, video.materializedPath])
 
   return (
     <ContextMenuRoot>

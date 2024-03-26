@@ -171,6 +171,7 @@ pub async fn get_video_clips(
     create_video_clips(file_identifier.clone(), client.clone(), timestamps).await
 }
 
+#[allow(dead_code)]
 pub async fn get_video_clips_summarization(
     file_identifier: String,
     resources_dir: impl AsRef<std::path::Path>,
