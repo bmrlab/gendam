@@ -80,6 +80,13 @@ async fn main() {
         .resolve_resource("resources")
         .expect("failed to find resources dir");
 
+    // app.app_handle()
+    window
+        .app_handle()
+        .plugin(tauri_plugin_store::Builder::default().build())
+        .expect("failed to add store plugin");
+    // TODO: 需要确认下 tauri_plugin_store 这个 plugin 是不是需要，如果网页上不用，应该不需要
+
     validate_app_version(window.app_handle(), &local_data_root);
     upgrade_library_schemas(&local_data_root).await;
 
@@ -115,12 +122,6 @@ async fn main() {
             }
         }
     });
-
-    // app.app_handle()
-    window
-        .app_handle()
-        .plugin(tauri_plugin_store::Builder::default().build())
-        .expect("failed to add store plugin");
 
     let store = Arc::new(Mutex::new(Store::new(tauri_store)));
     let router = api_server::router::get_router::<Ctx<Store>>();
