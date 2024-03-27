@@ -120,6 +120,7 @@ pub fn list_libraries(local_data_root: &PathBuf) -> Vec<serde_json::Value> {
         let settings = get_library_settings(&library_dir);
         res.push(serde_json::json!({
             "id": library_id,
+            "dir": library_dir,
             "settings": settings,
         }));
     }

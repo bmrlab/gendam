@@ -12,7 +12,7 @@ export default function ClientLayout({
 }>) {
   const [pending, setPending] = useState(true);
   const [library, setLibrary] = useState<Library|null>(null);
-  const [homeDir, setHomeDir] = useState<string|null>(null);
+  // const [homeDir, setHomeDir] = useState<string|null>(null);
 
   const blockCmdQ = useCallback(() => {
     document.addEventListener('keydown', event => {
@@ -31,18 +31,19 @@ export default function ClientLayout({
     blockCmdQ()
 
     const p1 = client.query(["libraries.get_current_library"]).then(
-      ({ id, settings }: Library) => setLibrary({ id, settings })
+      (library: Library) => setLibrary(library)
     ).catch(error => {
       console.log('libraries.get_current_library error:', error);
       setLibrary(null);
     });
-    const p2 = client.query(["files.home_dir"]).then((homeDir) => {
-      setHomeDir(homeDir);
-    }).catch(error => {
-      console.log('files.home_dir error:', error);
-      setHomeDir(null);
-    });
-    Promise.all([p1, p2]).then(() => setPending(false));
+    // const p2 = client.query(["files.home_dir"]).then((homeDir) => {
+    //   setHomeDir(homeDir);
+    // }).catch(error => {
+    //   console.log('files.home_dir error:', error);
+    //   setHomeDir(null);
+    // });
+    // Promise.all([p1, p2]).then(() => setPending(false));
+    p1.then(() => setPending(false));
   }, [setLibrary, setPending, blockCmdQ]);
 
   const setContext = useCallback(async (library: Library) => {
@@ -60,18 +61,20 @@ export default function ClientLayout({
   }, [setLibrary]);
 
   const getFileSrc = useCallback((assetObjectHash: string) => {
-    const fileFullPath = homeDir + '/' + assetObjectHash;
+    if (!library) {
+      return '';
+    }
+    const fileFullPath = library.dir + '/files/' + assetObjectHash;
     if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
       return convertFileSrc(fileFullPath);
     } else {
       return `http://localhost:3001/file/localhost/${fileFullPath}`
     }
-  }, [homeDir]);
+  }, [library]);
 
   return pending ? (<></>) : (
     <CurrentLibrary.Provider value={{
-      id: library?.id ?? null,
-      settings: library?.settings ?? null,
+      ...(library ? library : {}),
       setContext,
       getFileSrc,
     }}>
