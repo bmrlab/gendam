@@ -32,17 +32,18 @@ impl FileDownload {
         }
     }
 
-    pub async fn download_if_not_exists(
+    pub async fn download_to_path_if_not_exists(
         &self,
         uri: impl AsRef<std::path::Path>,
+        file_path: impl AsRef<std::path::Path>,
     ) -> anyhow::Result<std::path::PathBuf> {
-        let file_path = self.resources_dir.join(&uri);
+        let file_path = file_path.as_ref().to_path_buf();
         info!("check file path: {:?}", file_path);
         if file_path.exists() {
             return Ok(file_path);
         }
 
-        let temp_download_path = self.resources_dir.join(uri.as_ref().with_extension("temp"));
+        let temp_download_path = file_path.with_extension("temp");
         let download_url = format!("{}/{}", self.url, uri.as_ref().to_str().unwrap());
 
         let mut response = reqwest::get(&download_url).await?;
@@ -61,5 +62,13 @@ impl FileDownload {
         info!("file {:?} downloaded", file_path);
 
         Ok(file_path)
+    }
+
+    pub async fn download_if_not_exists(
+        &self,
+        uri: impl AsRef<std::path::Path>,
+    ) -> anyhow::Result<std::path::PathBuf> {
+        let file_path = self.resources_dir.join(&uri);
+        self.download_to_path_if_not_exists(uri, file_path).await
     }
 }

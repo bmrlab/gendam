@@ -1,5 +1,8 @@
 use crate::search_payload::SearchPayload;
-use ai::{clip::{CLIPInput, CLIP}, BatchHandler};
+use ai::{
+    clip::{CLIPInput, CLIP},
+    BatchHandler,
+};
 use qdrant_client::{client::QdrantClient, qdrant::PointStruct};
 use serde_json::json;
 use std::sync::Arc;
@@ -16,8 +19,9 @@ pub async fn save_text_embedding(
     qdrant: Arc<QdrantClient>,
     collection_name: &str,
 ) -> anyhow::Result<()> {
-    let embeddings = clip.process(vec![CLIPInput::Text(text.to_string())]).await?;
-    let embedding = embeddings.into_iter().next().ok_or(anyhow::anyhow!("no embedding"))??;
+    let embedding = clip
+        .process_single(CLIPInput::Text(text.to_string()))
+        .await?;
     let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
 
     let point = PointStruct::new(

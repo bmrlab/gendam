@@ -14,6 +14,7 @@ pub enum VideoTaskType {
     FrameCaptionEmbedding,
     Audio,
     Transcript,
+    #[allow(dead_code)]
     TranscriptEmbedding,
 }
 
@@ -166,7 +167,7 @@ impl TaskProcessor {
             VideoTaskType::FrameCaptionEmbedding,
             VideoTaskType::Audio,
             VideoTaskType::Transcript,
-            VideoTaskType::TranscriptEmbedding,
+            // VideoTaskType::TranscriptEmbedding,
         ] {
             // 检查任务是否已退出
             if processor.is_exit().await {
@@ -181,8 +182,8 @@ impl TaskProcessor {
                 VideoTaskType::FrameCaptionEmbedding => vh.get_frame_caption_embedding().await,
                 VideoTaskType::Audio => vh.get_audio().await,
                 VideoTaskType::Transcript => vh.get_transcript().await,
-                VideoTaskType::TranscriptEmbedding => vh.get_transcript_embedding().await,
-                // _ => Ok(()),
+                // VideoTaskType::TranscriptEmbedding => vh.get_transcript_embedding().await,
+                _ => Ok(()),
             };
             if let Err(e) = result {
                 error!("Task failed: {}, {}, {}", &task_type.to_string(), &task_payload.file_path, e);
@@ -250,7 +251,8 @@ pub async fn create_video_task(
         VideoTaskType::FrameCaption,
         VideoTaskType::Audio,
         VideoTaskType::Transcript,
-        VideoTaskType::TranscriptEmbedding,
+        // disable transcript embedding for now
+        // VideoTaskType::TranscriptEmbedding,
     ] {
         let x = library
             .prisma_client()

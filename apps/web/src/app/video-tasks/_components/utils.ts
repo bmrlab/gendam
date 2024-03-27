@@ -33,6 +33,6 @@ export const VIDEO_DIMENSION: Record<string, [string, number, boolean]> = {
   FrameCaption: ['视频描述', 3, false],
   FrameCaptionEmbedding: ['视频描述', 4, true],
   Audio: ['音频处理', 5, false],
-  Transcript: ['视频语音', 6, false],
-  TranscriptEmbedding: ['视频语音', 7, true],
+  Transcript: ['视频语音', 6, true],
+  TranscriptEmbedding: ['视频语音', 7, false],
 }

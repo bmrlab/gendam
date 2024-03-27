@@ -147,6 +147,7 @@ where
                                 if let Err(e) = loader.offload().await {
                                     error!("failed to offload model in shutdown: {}", e);
                                 }
+                                break;
                             }
                             _ => {
                                 error!("failed to receive payload");
@@ -176,6 +177,15 @@ where
                 bail!("failed to receive results: {}", e);
             }
         }
+    }
+
+    pub async fn process_single(&self, item: T::Item) -> anyhow::Result<T::Output> {
+        let results = self.process(vec![item]).await?;
+        let result = results
+            .into_iter()
+            .next()
+            .ok_or(anyhow::anyhow!("no result"))??;
+        Ok(result)
     }
 
     pub async fn shutdown(&self) -> anyhow::Result<()> {

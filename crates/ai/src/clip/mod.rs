@@ -4,6 +4,7 @@ use super::{preprocess, utils};
 use anyhow::{anyhow, bail};
 use async_trait::async_trait;
 use image::RgbImage;
+pub use model::*;
 use ndarray::{Array1, ArrayView1, Axis};
 use ort::{CPUExecutionProvider, CoreMLExecutionProvider, GraphOptimizationLevel, Session};
 use std::path::{Path, PathBuf};

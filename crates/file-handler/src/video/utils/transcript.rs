@@ -1,11 +1,17 @@
 use super::save_text_embedding;
 use crate::search_payload::SearchPayload;
-use ai::{clip::CLIP, whisper::WhisperItem, BatchHandler};
+use ai::{
+    clip::CLIP,
+    whisper::{WhisperItem, WhisperResult},
+    BatchHandler,
+};
 use prisma_lib::{video_transcript, PrismaClient};
 use qdrant_client::client::QdrantClient;
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
 use tracing::error;
 
+#[deprecated(note = "this function need to be improved")]
+#[allow(dead_code)]
 pub async fn get_transcript_embedding(
     file_identifier: String,
     client: Arc<PrismaClient>,
@@ -13,11 +19,12 @@ pub async fn get_transcript_embedding(
     clip_model: BatchHandler<CLIP>,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
-    let file = File::open(path.as_ref())?;
-    let reader = BufReader::new(file);
-
-    // Read the JSON contents of the file as an instance of `WhisperItem`
-    let whisper_results: Vec<WhisperItem> = serde_json::from_reader(reader)?;
+    let whisper_results: Vec<WhisperItem> = {
+        let file = File::open(path.as_ref())?;
+        let reader = BufReader::new(file);
+        // Read the JSON contents of the file as an instance of `WhisperItem`
+        serde_json::from_reader(reader)?
+    };
 
     let clip_model = clip_model.clone();
 
@@ -51,7 +58,7 @@ pub async fn get_transcript_embedding(
                             file_identifier.clone(),
                             item.start_timestamp as i32,
                             item.end_timestamp as i32,
-                            item.text.clone(),
+                            item.text.clone(), // store original text
                             vec![],
                         ),
                         vec![],
@@ -70,7 +77,7 @@ pub async fn get_transcript_embedding(
                         end_timestamp: item.end_timestamp,
                     };
                     if let Err(e) = save_text_embedding(
-                        &item.text,
+                        &item.text, // but embedding english
                         payload,
                         clip_model,
                         qdrant,
@@ -84,6 +91,51 @@ pub async fn get_transcript_embedding(
                 Err(e) => {
                     error!("failed to save transcript embedding: {:?}", e);
                 }
+            }
+        });
+    }
+
+    while let Some(_) = join_set.join_next().await {}
+
+    Ok(())
+}
+
+pub async fn save_transcript(
+    result: WhisperResult,
+    file_identifier: String,
+    client: Arc<PrismaClient>,
+) -> anyhow::Result<()> {
+    let mut join_set = tokio::task::JoinSet::new();
+
+    for item in result.items() {
+        let file_identifier = file_identifier.clone();
+        let client = client.clone();
+
+        join_set.spawn(async move {
+            let x = {
+                client
+                    .video_transcript()
+                    .upsert(
+                        video_transcript::file_identifier_start_timestamp_end_timestamp(
+                            file_identifier.clone(),
+                            item.start_timestamp as i32,
+                            item.end_timestamp as i32,
+                        ),
+                        (
+                            file_identifier.clone(),
+                            item.start_timestamp as i32,
+                            item.end_timestamp as i32,
+                            item.text.clone(), // store original text
+                            vec![],
+                        ),
+                        vec![],
+                    )
+                    .exec()
+                    .await
+            };
+
+            if let Err(e) = x {
+                error!("failed to save transcript: {:?}", e);
             }
         });
     }

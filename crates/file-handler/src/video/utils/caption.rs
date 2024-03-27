@@ -39,12 +39,9 @@ async fn get_single_frame_caption(
     blip_handler: BatchHandler<BLIP>,
     path: impl AsRef<std::path::Path>,
 ) -> anyhow::Result<()> {
-    let captions = blip_handler.process(vec![path.as_ref().to_owned()]).await?;
-    let caption = captions
-        .get(0)
-        .ok_or(anyhow!("no caption"))?
-        .as_ref()
-        .map_err(|e| anyhow!("failed to get caption: {:?}", e))?;
+    let caption = blip_handler
+        .process_single(path.as_ref().to_owned())
+        .await?;
 
     debug!("caption: {:?}", caption);
 

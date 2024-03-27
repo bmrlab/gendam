@@ -31,7 +31,7 @@ async fn test_split_video() {
     let frames_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local/libraries/98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797/artifacts/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/frames";
     let resources_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local/resources";
 
-    let clip_model = ai::clip::CLIP::new(ai::clip::model::CLIPModel::ViTB32, resources_dir)
+    let clip_model = ai::clip::CLIP::new(ai::clip::CLIPModel::ViTB32, resources_dir)
         .await
         .expect("failed to load CLIP");
 

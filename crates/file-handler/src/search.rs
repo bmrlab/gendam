@@ -1,5 +1,8 @@
 use crate::search_payload::{SearchPayload, SearchRecordType};
-use ai::{clip::{CLIPInput, CLIP}, BatchHandler};
+use ai::{
+    clip::{CLIPInput, CLIP},
+    BatchHandler,
+};
 use prisma_lib::{video_frame, video_frame_caption, video_transcript, PrismaClient};
 use qdrant_client::{
     client::QdrantClient,
@@ -36,8 +39,9 @@ pub async fn handle_search(
     qdrant: Arc<QdrantClient>,
     clip: BatchHandler<CLIP>,
 ) -> anyhow::Result<Vec<SearchResult>> {
-    let embeddings = clip.process(vec![CLIPInput::Text(payload.text.clone())]).await?;
-    let embedding = embeddings.into_iter().next().expect("embedding not found")?;
+    let embedding = clip
+        .process_single(CLIPInput::Text(payload.text.clone()))
+        .await?;
     let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
 
     let record_types = payload.record_type.unwrap_or(vec![

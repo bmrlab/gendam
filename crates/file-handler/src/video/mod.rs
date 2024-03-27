@@ -1,7 +1,7 @@
 pub use self::decoder::VideoMetadata;
 use ai::blip::BLIP;
 use ai::clip::CLIP;
-use ai::whisper::Whisper;
+use ai::whisper::{Whisper, WhisperParams};
 use ai::BatchHandler;
 use anyhow::Ok;
 use content_library::Library;
@@ -78,9 +78,10 @@ impl VideoHandler {
     /// # Arguments
     ///
     /// * `video_path` - The path to the video file
-    /// * `local_data_dir` - The path to the local data directory, where artifacts (frame, transcript, etc.) will be saved into
-    /// * `resources_dir` - The path to the resources directory (src-tauri/resources), where contains model files
-    /// * `client` - The prisma client
+    /// * `library` - Current library reference
+    /// * `clip` - CLIP batch handler from ai crate
+    /// * `blip` - BLIP batch handler from ai crate
+    /// * `whisper` - whisper batch handler from ai crate
     pub async fn new(
         video_path: impl AsRef<std::path::Path>,
         video_file_hash: &str,
@@ -165,31 +166,43 @@ impl VideoHandler {
     ///
     /// And the transcript will be saved in the same directory with audio
     pub async fn get_transcript(&self) -> anyhow::Result<()> {
-        let result = self.whisper.process(vec![self.audio_path.clone()]).await?;
-        let result = result
-            .into_iter()
-            .next()
-            .ok_or(anyhow::anyhow!("No result"))??;
+        let result = self
+            .whisper
+            .process_single((
+                self.audio_path.clone(),
+                Some(WhisperParams {
+                    enable_translate: false,
+                    ..Default::default()
+                }),
+            ))
+            .await?;
 
         // write results into json file
         let mut file = tokio::fs::File::create(&self.transcript_path).await?;
         let json = serde_json::to_string(&result.items())?;
         file.write_all(json.as_bytes()).await?;
 
+        utils::transcript::save_transcript(
+            result,
+            self.file_identifier.clone(),
+            self.client.clone(),
+        ).await?;
+
         Ok(())
     }
 
+    #[deprecated(note = "deprecated for now, output language of transcript is not stable for now")]
     /// Get transcript embedding
     /// this requires extracting transcript in advance
     pub async fn get_transcript_embedding(&self) -> anyhow::Result<()> {
-        utils::transcript::get_transcript_embedding(
-            self.file_identifier().into(),
-            self.client.clone(),
-            &self.transcript_path,
-            self.clip.clone(),
-            self.qdrant.clone(),
-        )
-        .await?;
+        // utils::transcript::get_transcript_embedding(
+        //     self.file_identifier().into(),
+        //     self.client.clone(),
+        //     &self.transcript_path,
+        //     self.clip.clone(),
+        //     self.qdrant.clone(),
+        // )
+        // .await?;
 
         Ok(())
     }

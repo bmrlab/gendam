@@ -24,8 +24,8 @@ prisma-lib = { path = "../../crates/prisma" }
 prisma-client-rust = { workspace = true }
 qdrant-client = { workspace = true }
 uuid = { workspace = true }
-strum = "0.26"
-strum_macros = "0.26"
+strum = { workspace = true }
+strum_macros = { workspace = true }
 
 [features]
 default = ["ffmpeg-binary"]

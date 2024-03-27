@@ -28,7 +28,7 @@ pub fn init_ai_handlers(resources_dir: PathBuf) -> anyhow::Result<AIHandler> {
             let resources_dir_clone_clone = resources_dir_clone.clone();
             Box::pin(async move {
                 ai::clip::CLIP::new(
-                    ai::clip::model::CLIPModel::ViTB32,
+                    ai::clip::CLIPModel::ViTB32,
                     resources_dir_clone_clone,
                 )
                 .await

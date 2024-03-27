@@ -1,5 +1,8 @@
 use crate::search_payload::SearchPayload;
-use ai::{clip::{CLIPInput, CLIP}, BatchHandler};
+use ai::{
+    clip::{CLIPInput, CLIP},
+    BatchHandler,
+};
 use anyhow::{anyhow, Ok};
 use prisma_lib::{video_frame, PrismaClient};
 use qdrant_client::{client::QdrantClient, qdrant::PointStruct};
@@ -100,10 +103,9 @@ async fn get_single_frame_content_embedding(
     clip_model: BatchHandler<CLIP>,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
-    let embeddings = clip_model.process(vec![
-        CLIPInput::ImageFilePath(path.as_ref().to_path_buf()),
-    ]).await?;
-    let embedding = embeddings.into_iter().next().ok_or(anyhow!("empty embeddings"))??;
+    let embedding = clip_model
+        .process_single(CLIPInput::ImageFilePath(path.as_ref().to_path_buf()))
+        .await?;
     let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
 
     let point = PointStruct::new(
