@@ -109,10 +109,16 @@ export default function VideoTaskItem({
         ></Image>
       </div>
       <div className="grid flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[13px] font-medium leading-[18px] text-[#323438]">{name}</span>
-          <span className="truncate text-[12px] font-normal leading-4 text-[#95989F]">{materializedPath}</span>
-        </div>
+        {materializedPath ? (
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-medium leading-[18px] text-[#323438]">{name}</span>
+            <span className="truncate text-[12px] font-normal leading-4 text-[#95989F]">{materializedPath}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="truncate text-[12px] font-normal leading-4 text-[#95989F]">已删除</span>
+          </div>
+        )}
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center text-[12px] font-normal leading-4 text-[#95989F]">
             <span>{formatDuration(mediaData?.duration ?? 0)}</span>
