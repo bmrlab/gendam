@@ -1,11 +1,25 @@
 use crate::task_queue::create_video_task;
 use crate::CtxWithLibrary;
 use prisma_client_rust::Direction;
+use prisma_lib::PrismaClient;
 use prisma_lib::{asset_object, file_handler_task, media_data};
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use tracing::error;
+use std::sync::Arc;
+
+#[derive(Deserialize, Type, Debug)]
+#[serde(rename_all = "camelCase")]
+struct CancelPayload {
+    asset_object_id: i32,
+}
+
+#[derive(Deserialize, Type, Debug)]
+#[serde(rename_all = "camelCase")]
+struct TaskRegeneratePayload {
+    materialized_path: String,
+    asset_object_id: i32,
+}
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -94,89 +108,60 @@ where
             })
         })
         .mutation("regenerate", |t| {
-            #[derive(Deserialize, Type, Debug)]
-            #[serde(rename_all = "camelCase")]
-            struct TaskRegeneratePayload {
-                materialized_path: String,
-                asset_object_id: i32,
-            }
             t(|ctx: TCtx, input: TaskRegeneratePayload| async move {
                 let library = ctx.library()?;
-                let asset_object_data = library
-                    .prisma_client()
-                    .asset_object()
-                    .find_unique(asset_object::id::equals(input.asset_object_id))
-                    .exec()
+                VideoTaskHandler::new(library.prisma_client())
+                    .regenerate(input, &ctx)
                     .await
                     .map_err(|e| {
                         rspc::Error::new(
                             rspc::ErrorCode::InternalServerError,
-                            format!("sql query failed: {}", e),
+                            format!("task regenerate failed: {}", e),
                         )
                     })?;
-                if let Some(asset_object_data) = asset_object_data {
-                    create_video_task(
-                        &input.materialized_path,
-                        &asset_object_data,
-                        &ctx,
-                        ctx.get_task_tx(),
-                    )
+                Ok(())
+            })
+        })
+        .mutation("regenerate.batch", |t| {
+            t(|ctx: TCtx, input: Vec<TaskRegeneratePayload>| async move {
+                let library = ctx.library()?;
+                VideoTaskHandler::new(library.prisma_client())
+                    .batch_regenerate(input, &ctx)
                     .await
                     .map_err(|e| {
                         rspc::Error::new(
-                            rspc::ErrorCode::NotFound,
-                            format!("failed to create video task: {e:?}"),
+                            rspc::ErrorCode::InternalServerError,
+                            format!("task batch regenerate failed: {}", e),
                         )
                     })?;
-                } else {
-                    return Err(rspc::Error::new(
-                        rspc::ErrorCode::NotFound,
-                        format!("asset object not found"),
-                    ));
-                };
-
                 Ok(())
             })
         })
         .mutation("cancel", |t| {
-            #[derive(Deserialize, Type, Debug)]
-            #[serde(rename_all = "camelCase")]
-            struct CancelPayload {
-                asset_object_id: i32,
-            }
             t(|ctx: TCtx, input: CancelPayload| async move {
-                let asset_object_id = input.asset_object_id;
                 let library = ctx.library()?;
-
-                {
-                    let tx = ctx.get_task_tx();
-                    let tx = tx.lock().unwrap();
-                    if let Err(e) = tx.send(crate::task_queue::TaskPayload::CancelByAssetId(
-                        asset_object_id.to_string(),
-                    )) {
-                        error!("failed to send cancel task: {}", e);
-                    }
-                }
-
-                // Following code can be optimized
-                // task can safely cancelled by above code,
-                // maybe no need to save result in sqlite.
-                library
-                    .prisma_client()
-                    .file_handler_task()
-                    .update_many(
-                        vec![
-                            file_handler_task::asset_object_id::equals(asset_object_id),
-                            file_handler_task::starts_at::equals(None),
-                        ],
-                        vec![file_handler_task::exit_code::set(Some(1))],
-                    )
-                    .exec()
+                VideoTaskHandler::new(library.prisma_client())
+                    .cancel(input)
                     .await
                     .map_err(|e| {
                         rspc::Error::new(
                             rspc::ErrorCode::InternalServerError,
-                            format!("sql query failed: {}", e),
+                            format!("task cancel failed: {}", e),
+                        )
+                    })?;
+                Ok(())
+            })
+        })
+        .mutation("cancel.batch", |t| {
+            t(|ctx: TCtx, input: Vec<CancelPayload>| async move {
+                let library = ctx.library()?;
+                VideoTaskHandler::new(library.prisma_client())
+                    .batch_cancel(input)
+                    .await
+                    .map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("task batch cancel failed: {}", e),
                         )
                     })?;
                 Ok(())
@@ -218,3 +203,71 @@ where
 //     let result = frame_handle.await.unwrap();
 //     result.expect("failed to get frames");
 // }
+
+struct VideoTaskHandler {
+    prisma_client: Arc<PrismaClient>,
+}
+
+impl VideoTaskHandler {
+    pub fn new(prisma_client: Arc<PrismaClient>) -> Self {
+        VideoTaskHandler { prisma_client }
+    }
+
+    pub async fn cancel(&self, input: CancelPayload) -> anyhow::Result<()> {
+        let asset_object_id = input.asset_object_id;
+        self.prisma_client
+            .file_handler_task()
+            .update_many(
+                vec![
+                    file_handler_task::asset_object_id::equals(asset_object_id),
+                    file_handler_task::starts_at::equals(None),
+                ],
+                vec![file_handler_task::exit_code::set(Some(1))],
+            )
+            .exec()
+            .await
+            .map_err(|e| anyhow::anyhow!(e))?;
+        Ok(())
+    }
+
+    pub async fn batch_cancel(&self, payloads: Vec<CancelPayload>) -> anyhow::Result<()> {
+        for payload in payloads {
+            self.cancel(payload).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn regenerate(
+        &self,
+        payload: TaskRegeneratePayload,
+        ctx: &impl CtxWithLibrary,
+    ) -> anyhow::Result<()> {
+        let asset_object_data = self
+            .prisma_client
+            .asset_object()
+            .find_unique(asset_object::id::equals(payload.asset_object_id))
+            .exec()
+            .await?;
+        if let Some(asset_object_data) = asset_object_data {
+            create_video_task(
+                &payload.materialized_path,
+                &asset_object_data,
+                ctx,
+                ctx.get_task_tx(),
+            )
+            .await
+            .map_err(|e| anyhow::anyhow!("failed to create video task: {e:?}"))?;
+        }
+        Ok(())
+    }
+    pub async fn batch_regenerate(
+        &self,
+        payloads: Vec<TaskRegeneratePayload>,
+        ctx: &impl CtxWithLibrary,
+    ) -> anyhow::Result<()> {
+        for payload in payloads {
+            self.regenerate(payload, ctx).await?
+        }
+        Ok(())
+    }
+}
