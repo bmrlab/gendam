@@ -14,7 +14,7 @@ export default function Footer() {
     return list
   }, [explorer.parentPath])
 
-  const theOnlySelectedItem = useMemo<ExplorerItem|null>(() => {
+  const theFirstSelectedItem = useMemo<ExplorerItem|null>(() => {
     let arr = Array.from(explorer.selectedItems)
     return arr[0] ?? null
   }, [explorer])
@@ -32,12 +32,12 @@ export default function Footer() {
           )}
         </div>
       ))}
-      {theOnlySelectedItem && (
+      {theFirstSelectedItem && (
         <>
         <div className="mx-1 text-neutral-500">
           <Icon.arrowRight className="h-4 w-4" />
         </div>
-        <div className="text-neutral-500">{theOnlySelectedItem.name}</div>
+        <div className="text-neutral-500">{theFirstSelectedItem.name}</div>
         </>
       )}
     </div>

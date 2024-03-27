@@ -25,9 +25,14 @@ const ItemContextMenu = forwardRef<typeof ContextMenuContent, ItemContextMenuPro
   const deleteMut = rspc.useMutation(['assets.delete_file_path'])
   const metadataMut = rspc.useMutation(['assets.process_video_metadata'])
 
+  /**
+   * 这里都改成处理 selectedItems 而不只是处理当前的 item
+   * ViewItem.tsx 里面的 handleContextMenuOpenChange 已经确保了当前 item 在 selectedItems 里
+   */
+
   const handleOpen = useCallback(
-    (e: React.FormEvent<HTMLDivElement>) => {
-      e.stopPropagation()
+    (e: Event) => {
+      // e.stopPropagation()
       if (!explorer.parentPath) {
         return
       }
@@ -44,23 +49,25 @@ const ItemContextMenu = forwardRef<typeof ContextMenuContent, ItemContextMenuPro
   )
 
   const handleDelete = useCallback(
-    (e: React.FormEvent<HTMLDivElement>) => {
-      e.stopPropagation()
+    (e: Event) => {
+      // e.stopPropagation()
       if (!explorer.parentPath) {
         return
       }
+      for (let item of Array.from(explorer.selectedItems)) {
+        deleteMut.mutate({
+          path: explorer.parentPath,
+          name: item.name,
+        })
+      }
       explorer.resetSelectedItems()
-      deleteMut.mutate({
-        path: explorer.parentPath,
-        name: data.name,
-      })
     },
-    [deleteMut, explorer, data],
+    [deleteMut, explorer],
   )
 
   const handleRename = useCallback(
-    (e: React.FormEvent<HTMLDivElement>) => {
-      e.stopPropagation()
+    (e: Event) => {
+      // e.stopPropagation()
       if (!explorer.parentPath) {
         return
       }
@@ -70,14 +77,16 @@ const ItemContextMenu = forwardRef<typeof ContextMenuContent, ItemContextMenuPro
   )
 
   const handleProcessMetadata = useCallback(
-    (e: React.FormEvent<HTMLDivElement>) => {
-      e.stopPropagation()
-      if (!data.assetObject) {
-        return
+    (e: Event) => {
+      // e.stopPropagation()
+      for (let item of Array.from(explorer.selectedItems)) {
+        if (!item.assetObject) {
+          return
+        }
+        metadataMut.mutate(item.assetObject.id)
       }
-      metadataMut.mutate(data.assetObject.id)
     },
-    [metadataMut, data],
+    [metadataMut, explorer],
   )
 
   return (
@@ -85,20 +94,21 @@ const ItemContextMenu = forwardRef<typeof ContextMenuContent, ItemContextMenuPro
       ref={forwardedRef as any}
       className="w-60 rounded-md border border-neutral-100 bg-white p-1 shadow-lg"
       {...prpos}
+      onClick={(e) => e.stopPropagation()}
     >
-      <_MenuItemDefault onClick={handleOpen}>
+      <_MenuItemDefault onSelect={handleOpen} disabled={explorer.selectedItems.size > 1 }>
         <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">打开</div>
       </_MenuItemDefault>
-      <_MenuItemDefault onClick={() => explorerStore.setIsFoldersDialogOpen(true)}>
+      <_MenuItemDefault onSelect={() => explorerStore.setIsFoldersDialogOpen(true)}>
         <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">移动</div>
       </_MenuItemDefault>
-      <_MenuItemDefault onClick={handleProcessMetadata}>
+      <_MenuItemDefault onSelect={handleProcessMetadata}>
         <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">刷新视频信息</div>
       </_MenuItemDefault>
-      <_MenuItemDefault onClick={() => {}}>
+      <_MenuItemDefault onSelect={() => {}} disabled={explorer.selectedItems.size > 1 }>
         <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">预览</div>
       </_MenuItemDefault>
-      <_MenuItemDefault onClick={handleRename}>
+      <_MenuItemDefault onSelect={handleRename} disabled={explorer.selectedItems.size > 1 }>
         <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">重命名</div>
       </_MenuItemDefault>
       <ContextMenuItem
@@ -106,7 +116,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenuContent, ItemContextMenuPro
           'flex cursor-default items-center justify-start rounded-md px-2 py-2',
           'text-red-600 hover:bg-red-500/90 hover:text-white',
         )}
-        onClick={handleDelete}
+        onSelect={handleDelete}
       >
         <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">删除</div>
       </ContextMenuItem>

@@ -44,8 +44,13 @@ const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
   const explorerStore = useExplorerStore()
 
   const handleClick = (e: React.MouseEvent) => {
+    // 按住 cmd 键多选
     e.stopPropagation()
-    explorer.resetSelectedItems([data])
+    if (e.metaKey) {
+      explorer.addSelectedItem(data);
+    } else {
+      explorer.resetSelectedItems([data])
+    }
     explorerStore.reset()
   }
 

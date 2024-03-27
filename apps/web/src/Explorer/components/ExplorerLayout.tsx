@@ -41,10 +41,14 @@ export default function Explorer() {
       if (active) {
         explorerStore.setIsRenaming(false)
         if (!explorer.isItemSelected(active)) {
+          // 被 drag 的 item 没有被选中, 只处理这个 item
           explorer.resetSelectedItems([active])
+          explorerStore.setDrag({ type: 'dragging', items: [active] })
+        } else {
+          // 被 drag 的 item 已经被选中, 处理所有被选中的 item
+          const selectedItems = Array.from(explorer.selectedItems)
+          explorerStore.setDrag({ type: 'dragging', items: selectedItems })
         }
-        // 下面的要改一下，要改成使用 explorer.selectedItems
-        explorerStore.setDrag({ type: 'dragging', items: [active] })
       }
     },
     [explorerStore, explorer],
@@ -53,16 +57,17 @@ export default function Explorer() {
   const onDragEnd = useCallback(
     (e: DragEndEvent) => {
       // console.log('onDragEnd', e)
-      const over = (e.over?.data?.current as ExplorerItem) ?? null
-      const active = explorerStore.drag?.type === 'dragging' ? explorerStore.drag.items[0] : null
-      if (over && active) {
-        if (over.id === active.id) {
-          // 这个应该不会出现，因为设置了 disabled
-          console.log('cannot move to self')
-          return
+      const target = (e.over?.data?.current as ExplorerItem) ?? null
+      if (target && explorerStore.drag?.type === 'dragging') {
+        for (let active of explorerStore.drag.items) {
+          if (target.id !== active.id) {
+            // console.log('move item', active, 'to', target)
+            handleMoveRequest(active, target)
+          } else {
+            // 这个应该不会出现，因为设置了 disabled
+            console.log('cannot move to self')
+          }
         }
-        console.log('move item', active, 'to', over)
-        handleMoveRequest(active, over)
       }
       explorerStore.setDrag(null)
     },
@@ -77,15 +82,13 @@ export default function Explorer() {
     [explorerStore],
   )
 
-  const handleMovePathSelected = useCallback((target: ExplorerItem|null) => {
-    const active = Array.from(explorer.selectedItems)[0]
-    if (!active) {
-      return  // 没有选中的文件
+  const onTargetPathSelected = useCallback((target: ExplorerItem|null) => {
+    for (let active of Array.from(explorer.selectedItems)) {
+      // target 可以为空，为空就是根目录，这时候不需要检查 target.id !== active.id，因为根目录本身不会被移动
+      if (!target || target.id !== active.id) {
+        handleMoveRequest(active, target)
+      }
     }
-    if (target && target.id === active.id) {
-      return  // 不能移动到自己的目录内
-    }
-    handleMoveRequest(active, target)
   }, [explorer, handleMoveRequest])
 
   if (!explorer.items || explorer.items.length === 0) {
@@ -137,7 +140,7 @@ export default function Explorer() {
         </DragOverlay>
       )}
 
-      <FoldersDialog onConfirm={handleMovePathSelected} />
+      <FoldersDialog onConfirm={onTargetPathSelected} />
 
     </DndContext>
   )

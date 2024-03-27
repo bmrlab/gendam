@@ -19,8 +19,12 @@ export default function ViewItem({ data, children, ...props }: ViewItemProps) {
   const handleContextMenuOpenChange = useCallback((open: boolean) => {
     explorerStore.setIsContextMenuOpen(open)
     if (open) {
-      // 右键菜单出现的时候，同时也选中触发它的 item
-      explorer.resetSelectedItems([data])
+      if (!explorer.isItemSelected(data)) {
+        // 右键菜单出现的时候, 当前条目之前没被选中, 选中当前条目
+        explorer.resetSelectedItems([data])
+      } else {
+        // 右键菜单出现的时候, 当前条目之前已经被选中, 不做任何操作
+      }
     }
   }, [explorerStore, explorer, data])
 

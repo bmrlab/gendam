@@ -21,6 +21,7 @@ export default function RenamableItemText({ data }: { data: ExplorerItem }) {
 
   const handleInputSubmit = useCallback(
     (e: React.FormEvent) => {
+      e.preventDefault()
       if (!inputRef.current?.value) {
         return
       }
@@ -28,10 +29,8 @@ export default function RenamableItemText({ data }: { data: ExplorerItem }) {
         // TODO: explorer.parentPath 到这一步不应该是空的，然后 data.id 如果存在，其实可以忽略 parentPath 参数
         return
       }
-      console.log('input complete')
-      e.preventDefault()
-      // explorerStore.setIsRenaming(false)
-      explorerStore.reset()
+      explorerStore.setIsRenaming(false)
+      // explorerStore.reset()
       renameMut.mutate({
         id: data.id,
         path: explorer.parentPath,
@@ -52,6 +51,7 @@ export default function RenamableItemText({ data }: { data: ExplorerItem }) {
         onClick={(e) => e.stopPropagation()}
         onDoubleClick={(e) => e.stopPropagation()}
         onBlur={() => {
+          explorerStore.setIsRenaming(false)
           console.log('on blur, but do nothing, press enter to submit')
         }}
       />
