@@ -5,9 +5,8 @@ import ListView from '@/Explorer/components/LayoutView/ListView'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { rspc } from '@/lib/rspc'
-import { DragEndEvent, DragOverlay, DragStartEvent, DragCancelEvent } from '@dnd-kit/core'
-import { Document_Light, Folder_Light } from '@muse/assets/images'
-import Image from 'next/image'
+import DragOverlay from '@/Explorer/components/Draggable/DragOverlay'
+import { DragEndEvent, DragStartEvent, DragCancelEvent } from '@dnd-kit/core'
 import { useCallback, useState } from 'react'
 import { ExplorerItem } from '../types'
 import { FoldersDialog } from './FoldersDialog'
@@ -119,26 +118,7 @@ export default function Explorer() {
         }
       }()}
 
-      {!explorerStore.drag ? null : (
-        <DragOverlay>
-          {explorerStore.drag.items.map(
-            (data) => (
-              <div key={data.id} className="mb-2 flex items-center justify-start">
-                <div className="h-8 w-8">
-                  {data.isDir ? (
-                    <Image src={Folder_Light} alt="folder" priority></Image>
-                  ) : (
-                    <Image src={Document_Light} alt="document" priority></Image>
-                  )}
-                </div>
-                <div className="ml-2 w-32 rounded-lg bg-blue-600 p-1 text-white">
-                  <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">{data.name}</div>
-                </div>
-              </div>
-            )
-          )}
-        </DragOverlay>
-      )}
+      <DragOverlay />
 
       <FoldersDialog onConfirm={onTargetPathSelected} />
 
