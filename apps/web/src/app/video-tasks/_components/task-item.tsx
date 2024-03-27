@@ -8,7 +8,9 @@ import { cn, formatBytes, formatDuration } from '@/lib/utils'
 import { Button } from '@muse/ui/v1/button'
 import { HTMLAttributes, useCallback, useMemo } from 'react'
 import { VIDEO_DIMENSION, getTaskStatus } from './utils'
-import classNames from 'classnames'
+import Image from 'next/image'
+// import classNames from 'classnames'
+
 
 export type VideoTaskItemProps = {
   videoFile: VideoWithTasksResult
@@ -89,15 +91,22 @@ export default function VideoTaskItem({
       )}
     >
       <div
-        className="flex size-9 cursor-pointer bg-[#F6F7F9]"
+        className="flex size-9 cursor-pointer bg-[#F6F7F9] relative"
         onClick={(e) => {
           handleClick()
           e.stopPropagation()
         }}
       >
-        <video controls={false} autoPlay={false} muted loop className="size-full object-contain">
+        {/* <video controls={false} autoPlay={false} muted loop className="size-full object-contain">
           <source src={currentLibrary.getFileSrc(assetObject.hash)} />
-        </video>
+        </video> */}
+        <Image
+          src={currentLibrary.getThumbnailSrc(assetObject.hash)}
+          alt={assetObject.hash}
+          fill={true}
+          className="object-cover"
+          priority
+        ></Image>
       </div>
       <div className="grid flex-1">
         <div className="flex items-center gap-2">

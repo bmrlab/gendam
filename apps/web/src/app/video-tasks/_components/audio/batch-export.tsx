@@ -8,6 +8,7 @@ import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
 import { Button } from '@muse/ui/v1/button'
 import { ScrollArea } from '@muse/ui/v1/scroll-area'
+import Image from 'next/image'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useBoundStore } from '../../_store'
@@ -116,21 +117,16 @@ export default function BatchExport() {
           >
             <div className="col-span-5 flex items-center gap-[30px]">
               <div className="relative h-9 w-9 bg-[#F6F7F9]">
-                {/*<Image src={image} alt="" fill className="object-contain" />*/}
-                <video
-                  controls={false}
-                  autoPlay={false}
-                  muted
-                  loop
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                  }}
-                  className="h-9 w-9"
-                >
+                {/* <video controls={false} autoPlay={false} muted loop style={{ width: '100%', height: '100%', objectFit: 'cover' }} className="h-9 w-9">
                   <source src={currentLibrary.getFileSrc(assetObjectHash)} />
-                </video>
+                </video> */}
+                <Image
+                  src={currentLibrary.getThumbnailSrc(assetObjectHash)}
+                  alt={assetObjectHash}
+                  fill={true}
+                  className="object-cover"
+                  priority
+                ></Image>
               </div>
               <p className="truncate text-[13px] font-medium leading-[18px] text-[#323438]">{label}</p>
             </div>

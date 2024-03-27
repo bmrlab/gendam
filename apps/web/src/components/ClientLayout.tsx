@@ -62,9 +62,22 @@ export default function ClientLayout({
 
   const getFileSrc = useCallback((assetObjectHash: string) => {
     if (!library) {
-      return '';
+      return '/images/empty.png';
     }
     const fileFullPath = library.dir + '/files/' + assetObjectHash;
+    if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
+      return convertFileSrc(fileFullPath);
+    } else {
+      return `http://localhost:3001/file/localhost/${fileFullPath}`
+    }
+  }, [library]);
+
+  const getThumbnailSrc = useCallback((assetObjectHash: string, timestampInSecond: number = 1) => {
+    if (!library) {
+      return '/images/empty.png'
+    }
+    timestampInSecond = Math.max(1, Math.floor(timestampInSecond))  // 最小是 1
+    const fileFullPath = `${library.dir}/artifacts/${assetObjectHash}/frames/${timestampInSecond*1000}.jpg`
     if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
       return convertFileSrc(fileFullPath);
     } else {
@@ -77,6 +90,7 @@ export default function ClientLayout({
       ...(library ? library : {}),
       setContext,
       getFileSrc,
+      getThumbnailSrc,
     }}>
       <rspc.Provider client={client} queryClient={queryClient}>
         {library?.id ? (

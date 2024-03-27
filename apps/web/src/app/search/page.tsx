@@ -5,6 +5,7 @@ import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SearchRequestPayload } from '@/lib/bindings'
+import Image from 'next/image'
 import classNames from 'classnames'
 import { formatDuration } from '@/lib/utils'
 
@@ -62,7 +63,7 @@ const VideoItem: React.FC<{
       onClick={() => handleVideoClick(item)}
     >
       <div className="relative h-36 w-full cursor-pointer visible bg-neutral-100">
-        <video
+        {/* <video
           ref={videoRef}
           controls={false}
           autoPlay={false}
@@ -71,7 +72,14 @@ const VideoItem: React.FC<{
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         >
           <source src={currentLibrary.getFileSrc(item.assetObjectHash)} />
-        </video>
+        </video> */}
+        <Image
+          src={currentLibrary.getThumbnailSrc(item.assetObjectHash, item.startTime / 1e3)}
+          alt={item.name}
+          fill={true}
+          className="object-cover"
+          priority
+        ></Image>
       </div>
       <div className="absolute top-0 left-0 w-full h-full px-4 py-2 bg-black/60 text-neutral-300 flex flex-col justify-between">
         <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">
