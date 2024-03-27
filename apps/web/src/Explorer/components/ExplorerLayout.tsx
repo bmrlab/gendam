@@ -17,7 +17,7 @@ export default function Explorer() {
   const explorerStore = useExplorerStore()
   const moveMut = rspc.useMutation(['assets.move_file_path'])
 
-  const handleMove = useCallback((active: ExplorerItem, over: ExplorerItem|null) => {
+  const handleMoveRequest = useCallback((active: ExplorerItem, over: ExplorerItem|null) => {
     moveMut.mutate({
       active: {
         id: active.id,
@@ -34,18 +34,23 @@ export default function Explorer() {
     })
   }, [moveMut])
 
-  const handleDragStart = useCallback(
+  const onDragStart = useCallback(
     (e: DragStartEvent) => {
       // console.log('onDragStart', e)
       const active = (e.active?.data?.current as ExplorerItem) ?? null
       if (active) {
+        explorerStore.setIsRenaming(false)
+        if (!explorer.isItemSelected(active)) {
+          explorer.resetSelectedItems([active])
+        }
+        // 下面的要改一下，要改成使用 explorer.selectedItems
         explorerStore.setDrag({ type: 'dragging', items: [active] })
       }
     },
-    [explorerStore],
+    [explorerStore, explorer],
   )
 
-  const handleDragEnd = useCallback(
+  const onDragEnd = useCallback(
     (e: DragEndEvent) => {
       // console.log('onDragEnd', e)
       const over = (e.over?.data?.current as ExplorerItem) ?? null
@@ -57,14 +62,14 @@ export default function Explorer() {
           return
         }
         console.log('move item', active, 'to', over)
-        handleMove(active, over)
+        handleMoveRequest(active, over)
       }
       explorerStore.setDrag(null)
     },
-    [explorerStore, handleMove],
+    [explorerStore, handleMoveRequest],
   )
 
-  const handleDragCancel = useCallback(
+  const onDragCancel = useCallback(
     (e: DragCancelEvent) => {
       // console.log('onDragCancel', e)
       explorerStore.setDrag(null)
@@ -80,8 +85,8 @@ export default function Explorer() {
     if (target && target.id === active.id) {
       return  // 不能移动到自己的目录内
     }
-    handleMove(active, target)
-  }, [explorer, handleMove])
+    handleMoveRequest(active, target)
+  }, [explorer, handleMoveRequest])
 
   if (!explorer.items || explorer.items.length === 0) {
     return (
@@ -93,9 +98,9 @@ export default function Explorer() {
 
   return (
     <DndContext
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragCancel={onDragCancel}
     >
       {/* <GridView items={explorer.items}></GridView> */}
       {/* <ListView items={explorer.items}></ListView> */}

@@ -1,3 +1,5 @@
+import { useExplorerContext } from '@/Explorer/hooks'
+import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
 import { useDraggable, UseDraggableArguments } from '@dnd-kit/core'
 import { HTMLAttributes } from 'react'
@@ -12,15 +14,22 @@ const ExplorerDraggable = ({
 }: Omit<HTMLAttributes<HTMLDivElement>, 'draggable'> & {
   draggable: UseExplorerDraggableProps
 }) => {
+  const explorer = useExplorerContext()
+  const explorerStore = useExplorerStore()
+
+  // const itemIsBeingRenamed = useMemo<boolean>(() => {
+  //   return explorer.isItemSelected(draggable.data) && explorerStore.isRenaming
+  // }, [draggable.data, explorer, explorerStore.isRenaming])
+
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: draggable.data.id.toString(),
     data: draggable.data,
-    // disabled: true,  // TODO: 有些时候是不能 drag 的，这里要小心判断
+    disabled: false, // itemIsBeingRenamed,
   })
 
   // attributes.role 默认是 button, 浏览器自带样式 cursor: pointer
-  const style: {[key:string]:string} = {
-    cursor: 'default'
+  const style: { [key: string]: string } = {
+    cursor: 'default',
   }
 
   // if (transform) {
