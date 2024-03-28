@@ -70,7 +70,7 @@ const icons = {
     </svg>
   ),
   arrowUpLeft: (props: SvgIconProps) => (
-    <svg width="16" height="17" viewBox="0 0 16 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg {...props} width="16" height="17" viewBox="0 0 16 17" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M5 9L2 6L5 3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
       <path
         d="M5 13H10.5C11.4283 13 12.3185 12.6313 12.9749 11.9749C13.6313 11.3185 14 10.4283 14 9.5V9.49999C14 9.04037 13.9095 8.58524 13.7336 8.1606C13.5577 7.73596 13.2999 7.35013 12.9749 7.02512C12.6499 6.70012 12.264 6.44231 11.8394 6.26642C11.4148 6.09053 10.9596 6 10.5 6H2"
@@ -127,10 +127,10 @@ const icons = {
     </svg>
   ),
   circleX: (props: SvgIconProps) => (
-    <svg width="25" height="25" viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg {...props} width="25" height="25" viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M12.5 18.5C15.8137 18.5 18.5 15.8137 18.5 12.5C18.5 9.18629 15.8137 6.5 12.5 6.5C9.18629 6.5 6.5 9.18629 6.5 12.5C6.5 15.8137 9.18629 18.5 12.5 18.5Z"
-        stroke="#676C77"
+        stroke="currentColor"
         strokeWidth="0.9"
         strokeMiterlimit="10"
       />
@@ -151,7 +151,7 @@ const icons = {
     </svg>
   ),
   trash: (props: SvgIconProps) => (
-    <svg width="16" height="17" viewBox="0 0 16 17" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <svg {...props} width="16" height="17" viewBox="0 0 16 17" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M10.8645 14.6538H5.1361C4.14729 14.6538 3.34283 13.8494 3.34283 12.8606V4.41486H3.99157V12.8606C3.99157 13.4917 4.50498 14.0051 5.1361 14.0051H10.8645C11.4956 14.0051 12.009 13.4917 12.009 12.8606V4.41486H12.6577V12.8606C12.6577 13.8494 11.8533 14.6538 10.8645 14.6538Z"
         fill="#currentColor"
@@ -185,7 +185,7 @@ const icons = {
     </svg>
   ),
   cancel: (props: SvgIconProps) => (
-    <svg width="16" height="17" viewBox="0 0 16 17" fill="transparent" xmlns="http://www.w3.org/2000/svg">
+    <svg {...props} width="16" height="17" viewBox="0 0 16 17" fill="transparent" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M8 14.5C11.3137 14.5 14 11.8137 14 8.5C14 5.18629 11.3137 2.5 8 2.5C4.68629 2.5 2 5.18629 2 8.5C2 11.8137 4.68629 14.5 8 14.5Z"
         stroke="currentColor"
@@ -197,7 +197,7 @@ const icons = {
     </svg>
   ),
   download: (props: SvgIconProps) => (
-    <svg width="16" height="17" viewBox="0 0 16 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg {...props} width="16" height="17" viewBox="0 0 16 17" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M5.375 7.375L8 10L10.625 7.375"
         stroke="currentColor"
@@ -284,7 +284,7 @@ const icons = {
     </svg>
   ),
   search: (props: SvgIconProps) => (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg {...props} width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M6.34375 10.9375C8.88081 10.9375 10.9375 8.88081 10.9375 6.34375C10.9375 3.80669 8.88081 1.75 6.34375 1.75C3.80669 1.75 1.75 3.80669 1.75 6.34375C1.75 8.88081 3.80669 10.9375 6.34375 10.9375Z"
         stroke="currentColor"
