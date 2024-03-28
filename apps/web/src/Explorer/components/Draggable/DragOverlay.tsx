@@ -58,8 +58,8 @@ export default function DragOverlay({ children }: PropsWithChildren) {
               <Image src={Document_Light} alt="document" priority></Image>
             )}
           </div>
-          <div className="ml-2 py-1 px-2 rounded-lg bg-blue-600 text-white">
-            <div className="truncate text-xs">{data.name}</div>
+          <div className="ml-2 flex-1 overflow-hidden flex justify-start">
+            <div className="py-1 px-2 truncate text-xs rounded-lg bg-blue-600 text-white">{data.name}</div>
           </div>
         </div>
       ))}
