@@ -27,7 +27,6 @@ export default function ExplorerPage() {
   // const [parentPath, setParentPath] = useState<string>(dirInSearchParams)
   const parentPath = useMemo(() => dirInSearchParams, [dirInSearchParams])
 
-
   const {
     data: assets,
     isLoading,
@@ -64,6 +63,9 @@ export default function ExplorerPage() {
     if (uploading) {
       uploadFile(uploading).then(() => {
         uploadQueueStore.completeUploading()
+      }).catch((err) => {
+        console.error(err)
+        uploadQueueStore.failedUploading()
       })
     }
   }, [uploadQueueStore, uploadFile])

@@ -7,15 +7,18 @@ export type FileItem = {
 
 interface UploadQueue {
   completed: FileItem[]
+  failed: FileItem[]
   queue: FileItem[]
   uploading: FileItem | null
   nextUploading: () => FileItem | null
   completeUploading: () => void
+  failedUploading: () => void
   enqueue: (item: FileItem) => void
 }
 
 export const useUploadQueueStore = create<UploadQueue>((set, get) => ({
   completed: [],
+  failed: [],
   queue: [],
   uploading: null,
   nextUploading: () => {
@@ -35,6 +38,17 @@ export const useUploadQueueStore = create<UploadQueue>((set, get) => ({
       if (state.uploading) {
         return {
           completed: [state.uploading, ...state.completed],
+          uploading: null,
+        }
+      }
+      return {}
+    })
+  },
+  failedUploading: () => {
+    set((state) => {
+      if (state.uploading) {
+        return {
+          failed: [state.uploading, ...state.completed],
           uploading: null,
         }
       }

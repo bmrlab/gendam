@@ -26,7 +26,7 @@ export default function UploadQueue() {
 
   const [uploadingCounts, completedCounts] = useMemo(() => {
     const uploadingCounts = uploadQueueStore.queue.length + (uploadQueueStore.uploading ? 1 : 0)
-    const completedCounts = uploadQueueStore.completed.length
+    const completedCounts = uploadQueueStore.completed.length + uploadQueueStore.failed.length
     return [uploadingCounts, completedCounts]
   }, [uploadQueueStore])
 
@@ -49,6 +49,11 @@ export default function UploadQueue() {
           {uploadQueueStore.queue.map((file, index) => (
             <UploadingItem key={index} file={file}>
               {/*  */}
+            </UploadingItem>
+          ))}
+          {uploadQueueStore.failed.map((file, index) => (
+            <UploadingItem key={index} file={file}>
+              <Icon.error className="size-4 text-red-600"></Icon.error>
             </UploadingItem>
           ))}
           {uploadQueueStore.completed.map((file, index) => (

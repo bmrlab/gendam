@@ -189,7 +189,7 @@ fn init_tracing(log_dir: PathBuf) {
             .with_writer(Mutex::new(file))
             .with_ansi(false);
         tracing_subscriber::registry()
-            .with(tracing_subscriber::EnvFilter::new("info"))
+            .with(tracing_subscriber::EnvFilter::new("debug"))
             .with(os_logger)
             .with(os_file_logger)
             .init();
