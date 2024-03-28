@@ -8,6 +8,7 @@ import { SearchRequestPayload } from '@/lib/bindings'
 import Image from 'next/image'
 import classNames from 'classnames'
 import { formatDuration } from '@/lib/utils'
+import Viewport from '@/components/Viewport'
 
 const VideoPreview: React.FC<{ item: SearchResultPayload }> = ({ item }) => {
   const currentLibrary = useCurrentLibrary()
@@ -123,8 +124,8 @@ export default function Search() {
   const [focused, setFocused] = useState(false)
 
   return (
-    <main className="flex h-full flex-col">
-      <div className="flex h-12 items-center justify-start border-b border-neutral-100 px-4">
+    <Viewport.Page>
+      <Viewport.Toolbar>
         <div className="flex w-1/4 select-none items-center">
           <div className="px-2 py-1">&lt;</div>
           <div className="px-2 py-1">&gt;</div>
@@ -172,44 +173,46 @@ export default function Search() {
             </div>
           ) : null}
         </div>
-      </div>
-      {searchPayload ? (
-        <div className="px-8 py-2 flex items-center justify-start border-b border-neutral-100">
-          <div className="border border-neutral-200 flex items-center text-xs rounded-lg overflow-hidden">
-            <div
-              className={classNames(
-                "px-4 py-2",
-                searchPayload.recordType === "FrameCaption" && "bg-neutral-100"
-              )}
-              onClick={() => handleSearch(searchPayload.text, "FrameCaption")}
-            >视频内容</div>
-            <div
-              className={classNames(
-                "px-4 py-2",
-                searchPayload.recordType === "Transcript" && "bg-neutral-100"
-              )}
-              onClick={() => handleSearch(searchPayload.text, "Transcript")}
-            >视频语音</div>
+      </Viewport.Toolbar>
+      <Viewport.Content>
+        {searchPayload ? (
+          <div className="px-8 py-2 flex items-center justify-start border-b border-neutral-100">
+            <div className="border border-neutral-200 flex items-center text-xs rounded-lg overflow-hidden">
+              <div
+                className={classNames(
+                  "px-4 py-2",
+                  searchPayload.recordType === "FrameCaption" && "bg-neutral-100"
+                )}
+                onClick={() => handleSearch(searchPayload.text, "FrameCaption")}
+              >视频内容</div>
+              <div
+                className={classNames(
+                  "px-4 py-2",
+                  searchPayload.recordType === "Transcript" && "bg-neutral-100"
+                )}
+                onClick={() => handleSearch(searchPayload.text, "Transcript")}
+              >视频语音</div>
+            </div>
+            <div className="ml-4 text-sm text-neutral-600">{searchPayload.text}</div>
           </div>
-          <div className="ml-4 text-sm text-neutral-600">{searchPayload.text}</div>
+        ) : null}
+        <div className="p-8">
+          {queryRes.isLoading ? (
+            <div className="flex items-center justify-center px-2 py-8 text-sm text-neutral-400">正在搜索...</div>
+          ) : (
+            <div className="flex flex-wrap gap-4">
+              {queryRes.data?.map((item: SearchResultPayload, index: number) => {
+                return (
+                  <VideoItem
+                    key={`${item.assetObjectId}-${index}`} item={item}
+                    handleVideoClick={handleVideoClick}
+                  ></VideoItem>
+                )
+              })}
+            </div>
+          )}
         </div>
-      ) : null}
-      <div className="p-8">
-        {queryRes.isLoading ? (
-          <div className="flex items-center justify-center px-2 py-8 text-sm text-neutral-400">正在搜索...</div>
-        ) : (
-          <div className="flex flex-wrap gap-4">
-            {queryRes.data?.map((item: SearchResultPayload, index: number) => {
-              return (
-                <VideoItem
-                  key={`${item.assetObjectId}-${index}`} item={item}
-                  handleVideoClick={handleVideoClick}
-                ></VideoItem>
-              )
-            })}
-          </div>
-        )}
-      </div>
+      </Viewport.Content>
       {previewItem && (
         <div className="fixed left-0 top-0 flex h-full w-full items-center justify-center">
           <div
@@ -221,6 +224,6 @@ export default function Search() {
           </div>
         </div>
       )}
-    </main>
+    </Viewport.Page>
   )
 }

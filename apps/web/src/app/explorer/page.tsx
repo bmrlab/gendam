@@ -11,6 +11,7 @@ import Footer from './_components/Footer'
 import Header from './_components/Header'
 import ItemContextMenu from './_components/ItemContextMenu'
 import UploadQueue from './_components/UploadQueue'
+import Viewport from '@/components/Viewport'
 
 export default function ExplorerPage() {
   const uploadQueueStore = useUploadQueueStore()
@@ -88,18 +89,20 @@ export default function ExplorerPage() {
   return (
     <ExplorerViewContextProvider value={{ contextMenu }}>
       <ExplorerContextProvider explorer={explorer}>
-        <div
-          className="flex h-full flex-col"
+
+        <Viewport.Page
           onClick={() => explorer.resetSelectedItems()}
           // onMouseMove={handleMouseMove}
         >
           <Header></Header>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          <Viewport.Content>
             <ExplorerLayout></ExplorerLayout>
-          </div>
+          </Viewport.Content>
           <Footer></Footer>
+
           <UploadQueue />
-        </div>
+        </Viewport.Page>
+
       </ExplorerContextProvider>
     </ExplorerViewContextProvider>
   )

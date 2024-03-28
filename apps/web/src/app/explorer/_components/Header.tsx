@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import TitleDialog from './TitleDialog'
 import { useUploadQueueStore } from '@/store/uploadQueue'
+import Viewport from '@/components/Viewport'
 
 export default function Header() {
   const router = useRouter()
@@ -71,7 +72,7 @@ export default function Header() {
 
   return (
     <>
-      <div className="flex h-12 justify-start border-b border-neutral-200 px-4">
+      <Viewport.Toolbar>
         <div className="flex select-none items-center">
           <div className="px-2 py-1">&lt;</div>
           <div className="px-2 py-1">&gt;</div>
@@ -106,7 +107,7 @@ export default function Header() {
             <Icon.column className="size-4 text-[#797979]" />
           </div> */}
         </div>
-      </div>
+      </Viewport.Toolbar>
       {titleInputDialogVisible && <TitleDialog onConfirm={onConfirmTitleInput} onCancel={onCancelTitleInput} />}
     </>
   )

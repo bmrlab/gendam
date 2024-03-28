@@ -5,6 +5,7 @@ import Icon from '@/components/Icon'
 import { Folder_Light } from '@muse/assets/images'
 import Image from 'next/image'
 import { useMemo } from 'react'
+import Viewport from '@/components/Viewport'
 
 export default function Footer() {
   const explorer = useExplorerContext()
@@ -20,11 +21,11 @@ export default function Footer() {
   }, [explorer])
 
   return (
-    <div className="flex h-8 items-center justify-start border-t-2 border-neutral-100 px-4 text-xs">
+    <Viewport.StatusBar>
       {folders.map((folder, index) => (
         <div key={index} className="flex items-center">
           <Image src={Folder_Light} alt="folder" priority className="mr-1 h-4 w-4"></Image>
-          <div className="text-neutral-500">{folder}</div>
+          <div className="text-neutral-500 text-xs">{folder}</div>
           {index < folders.length - 1 && (
             <div className="mx-1 text-neutral-500">
               <Icon.arrowRight className="h-4 w-4" />
@@ -34,12 +35,12 @@ export default function Footer() {
       ))}
       {theFirstSelectedItem && (
         <>
-        <div className="mx-1 text-neutral-500">
-          <Icon.arrowRight className="h-4 w-4" />
-        </div>
-        <div className="text-neutral-500">{theFirstSelectedItem.name}</div>
+          <div className="mx-1 text-neutral-500">
+            <Icon.arrowRight className="h-4 w-4" />
+          </div>
+          <div className="text-neutral-500 text-xs">{theFirstSelectedItem.name}</div>
         </>
       )}
-    </div>
+    </Viewport.StatusBar>
   )
 }
