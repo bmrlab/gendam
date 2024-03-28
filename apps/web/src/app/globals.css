@@ -75,10 +75,10 @@ body {
   background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
   user-select: none;
   /*禁用视口弹性溢出*/
-  /*height: 100%;*/
-  /*width: 100%;*/
-  /*overflow: hidden;*/
-  /*position: fixed;*/
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: fixed;
 }
 
 @layer base {
