@@ -31,11 +31,15 @@ impl VideoDecoder {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct RawProbeStreamOutput {
-    width: usize,
-    height: usize,
+    index: usize,
+    codec_type: String, // video, audio
+    width: Option<usize>,
+    height: Option<usize>,
     avg_frame_rate: String,
     duration: String,
     bit_rate: String,
+    nb_frames: String,
+    time_base: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,6 +54,12 @@ pub struct VideoAvgFrameRate {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AudioMetadata {
+    pub bit_rate: usize,
+    pub duration: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VideoMetadata {
     pub width: usize,
     pub height: usize,
@@ -57,6 +67,13 @@ pub struct VideoMetadata {
     pub duration: f64,
     pub bit_rate: usize,
     pub avg_frame_rate: VideoAvgFrameRate,
+    pub audio: Option<AudioMetadata>,
+}
+
+impl VideoMetadata {
+    pub fn with_audio(&mut self, metadata: AudioMetadata) {
+        self.audio = Some(metadata);
+    }
 }
 
 impl From<String> for VideoAvgFrameRate {
@@ -72,14 +89,24 @@ impl From<String> for VideoAvgFrameRate {
     }
 }
 
-impl From<RawProbeStreamOutput> for VideoMetadata {
-    fn from(stream: RawProbeStreamOutput) -> Self {
+impl From<&RawProbeStreamOutput> for VideoMetadata {
+    fn from(stream: &RawProbeStreamOutput) -> Self {
         Self {
-            width: stream.width,
-            height: stream.height,
+            width: stream.width.unwrap_or(0),
+            height: stream.height.unwrap_or(0),
             duration: stream.duration.parse().unwrap_or(0.0),
             bit_rate: stream.bit_rate.parse().unwrap_or(0),
-            avg_frame_rate: VideoAvgFrameRate::from(stream.avg_frame_rate),
+            avg_frame_rate: VideoAvgFrameRate::from(stream.avg_frame_rate.clone()),
+            audio: None,
+        }
+    }
+}
+
+impl From<&RawProbeStreamOutput> for AudioMetadata {
+    fn from(stream: &RawProbeStreamOutput) -> Self {
+        Self {
+            bit_rate: stream.bit_rate.parse().unwrap_or(0),
+            duration: stream.duration.parse().unwrap_or(0.0),
         }
     }
 }
@@ -116,10 +143,7 @@ impl VideoDecoder {
             .args([
                 "-v",
                 "error",
-                "-select_streams",
-                "v:0",
-                "-show_entries",
-                "stream=width,height,duration,bit_rate,avg_frame_rate",
+                "-show_streams",
                 "-of",
                 "json",
                 self.video_file_path
@@ -132,10 +156,26 @@ impl VideoDecoder {
                 Ok(result) => {
                     let raw_output: RawProbeOutput = serde_json::from_str(&result)?;
 
-                    match raw_output.streams.into_iter().next().take() {
-                        Some(stream) => Ok(VideoMetadata::from(stream)),
+                    match raw_output
+                        .streams
+                        .iter()
+                        .find(|stream| stream.codec_type == "video")
+                    {
+                        Some(stream) => {
+                            let mut metadata = VideoMetadata::from(stream);
+
+                            if let Some(audio_stream) = raw_output
+                                .streams
+                                .iter()
+                                .find(|stream| stream.codec_type == "audio")
+                            {
+                                metadata.with_audio(AudioMetadata::from(audio_stream));
+                            }
+
+                            Ok(metadata)
+                        }
                         None => {
-                            bail!("Failed to get video stream")
+                            bail!("Failed to find video stream");
                         }
                     }
                 }
@@ -248,19 +288,23 @@ async fn test_video_decoder() {
 
     #[cfg(feature = "ffmpeg-binary")]
     {
-        let video_decoder = VideoDecoder::new(
-            "/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4",
-        )
-        .await
-        .expect("failed to find ffmpeg binary file");
+        let video_decoder = VideoDecoder::new("/Users/zhuo/Desktop/1-4 插件-整页截屏.mp4")
+            .await
+            .expect("failed to find ffmpeg binary file");
 
         // let frames_fut = video_decoder.save_video_frames("/Users/zhuo/Desktop/frames");
         // let audio_fut = video_decoder.save_video_audio("/Users/zhuo/Desktop/audio.wav");
 
         // let (_res1, _res2) = tokio::join!(frames_fut, audio_fut);
 
-        let _ = video_decoder
-            .save_video_frames("/Users/zhuo/Desktop/frames")
-            .await;
+        // let _ = video_decoder
+        //     .save_video_frames("/Users/zhuo/Desktop/frames")
+        //     .await;
+
+        let metadata = video_decoder
+            .get_video_metadata()
+            .await
+            .expect("failed to get video metadata");
+        println!("{metadata:#?}");
     }
 }
