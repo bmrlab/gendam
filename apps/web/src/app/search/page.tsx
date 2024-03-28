@@ -9,6 +9,7 @@ import Image from 'next/image'
 import classNames from 'classnames'
 import { formatDuration } from '@/lib/utils'
 import Viewport from '@/components/Viewport'
+import { useSearchParams } from 'next/navigation'
 
 const VideoPreview: React.FC<{ item: SearchResultPayload }> = ({ item }) => {
   const currentLibrary = useCurrentLibrary()
@@ -95,7 +96,22 @@ const VideoItem: React.FC<{
 }
 
 export default function Search() {
-  const [searchPayload, setSearchPayload] = useState<SearchRequestPayload|null>(null)
+  const searchParams = useSearchParams()
+  const searchPayloadInSearchParams = useMemo<SearchRequestPayload|null>(() => {
+    try {
+      const q = searchParams.get('q')
+      if (q) {
+        return JSON.parse(q)
+      } else {
+        return null
+      }
+    } catch (e) {
+      return null
+    }
+  }, [searchParams])
+
+  const [searchPayload, setSearchPayload] =
+    useState<SearchRequestPayload|null>(searchPayloadInSearchParams)
   const queryRes = rspc.useQuery(['video.search.all', searchPayload!], {
     enabled: !!searchPayload
   })
@@ -115,7 +131,11 @@ export default function Search() {
   const handleSearch = useCallback(
     (text: string, recordType: string = "FrameCaption") => {
       if (text && recordType) {
-        setSearchPayload({ text, recordType })
+        const payload = { text, recordType }
+        setSearchPayload(payload)
+        const search = new URLSearchParams()
+        search.set('q', JSON.stringify(payload))
+        window.history.replaceState({}, '', `${window.location.pathname}?${search}`)
       }
     },
     [setSearchPayload],
