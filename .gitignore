@@ -4,9 +4,12 @@ node_modules
 .DS_Store
 .qdrant-initialized
 
-.idea
-
 # DB
 *.db
 *.db-journal
 *.docx
+
+# IDE
+.idea
+.vscode
+.history

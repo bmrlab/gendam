@@ -3,24 +3,37 @@ use crate::CtxWithLibrary;
 use prisma_client_rust::Direction;
 use prisma_lib::PrismaClient;
 use prisma_lib::{asset_object, file_handler_task, media_data};
+use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::sync::Arc;
-use rspc::{Router, RouterBuilder};
 
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Pagination {
-    page_size: u32,
-    page_index: u32,
+    // https://github.com/oscartbeaumont/rspc/issues/93
+    page_size: i32,
+    page_index: i32,
+}
+
+#[derive(Deserialize, Type, Debug)]
+#[serde(rename_all = "camelCase")]
+pub enum Filter {
+    All,
+    Processing,
+    Completed,
+    Failed,
+    Canceled,
+    ExcludeCompleted,
+    ExitCode(i32),
 }
 
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
 struct ListPayload {
     pagination: Pagination,
+    filter: Filter,
 }
-
 
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -45,25 +58,56 @@ pub struct VideoWithTasksResult {
     pub media_data: Option<media_data::Data>,
 }
 
-pub struct VideoTaskHandler {
+#[derive(Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoWithTasksPageResult {
+    data: Vec<VideoWithTasksResult>,
+    max_page: i32,
+}
+
+struct VideoTaskHandler {
     prisma_client: Arc<PrismaClient>,
 }
 
 impl VideoTaskHandler {
-    pub fn new(prisma_client: Arc<PrismaClient>) -> Self {
+    fn new(prisma_client: Arc<PrismaClient>) -> Self {
         VideoTaskHandler { prisma_client }
     }
 
-    pub async fn list(&self) -> anyhow::Result<Vec<VideoWithTasksResult>> {
+    async fn count(&self) -> anyhow::Result<i64> {
+        let count = self
+            .prisma_client
+            .asset_object()
+            .count(vec![])
+            .exec()
+            .await
+            .map_err(|e| anyhow::anyhow!(e))?;
+        Ok(count)
+    }
+    async fn get_max_page(&self, page_size: i32) -> anyhow::Result<i32> {
+        let count = self.count().await?;
+        Ok((count as f64 / page_size as f64).ceil() as i32)
+    }
+
+    async fn list(&self, payload: ListPayload) -> anyhow::Result<VideoWithTasksPageResult> {
+        let task_filter = match payload.filter {
+            Filter::ExcludeCompleted => vec![file_handler_task::exit_code::gte(0)],
+            _ => vec![],
+        };
+
+        let max_page = self.get_max_page(payload.pagination.page_size).await?;
+
         let asset_object_data_list = self
             .prisma_client
             .asset_object()
             .find_many(vec![])
-            .with(asset_object::tasks::fetch(vec![]))
+            .with(asset_object::tasks::fetch(task_filter))
             .with(asset_object::file_paths::fetch(vec![]))
             // bindings 中不会自动生成 media_data 类型
             .with(asset_object::media_data::fetch())
             .order_by(asset_object::created_at::order(Direction::Desc))
+            .skip((payload.pagination.page_size * payload.pagination.page_index).into())
+            .take(payload.pagination.page_size.into())
             .exec()
             .await
             .expect("failed to list video tasks");
@@ -98,7 +142,10 @@ impl VideoTaskHandler {
                 }
             })
             .collect::<Vec<VideoWithTasksResult>>();
-        Ok(videos_with_tasks)
+        Ok(VideoWithTasksPageResult {
+            data: videos_with_tasks,
+            max_page,
+        })
     }
 
     pub async fn cancel(&self, input: CancelPayload) -> anyhow::Result<()> {
@@ -118,7 +165,7 @@ impl VideoTaskHandler {
         Ok(())
     }
 
-    pub async fn regenerate(
+    async fn regenerate(
         &self,
         payload: TaskRegeneratePayload,
         ctx: &impl CtxWithLibrary,
@@ -136,16 +183,16 @@ impl VideoTaskHandler {
                 ctx,
                 ctx.get_task_tx(),
             )
-                .await
-                .map_err(|e| anyhow::anyhow!("failed to create video task: {e:?}"))?;
+            .await
+            .map_err(|e| anyhow::anyhow!("failed to create video task: {e:?}"))?;
         }
         Ok(())
     }
 }
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
-    where
-        TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
+where
+    TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
     Router::<TCtx>::new()
         .mutation("create", |t| {
@@ -170,19 +217,22 @@ pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
                 }
             })
         })
-        .query("list", |t|
-            t(|ctx: TCtx, _input: ()| async move {
+        .query("list", |t| {
+            t(|ctx: TCtx, input: ListPayload| async move {
                 let library = ctx.library()?;
-                match VideoTaskHandler::new(library.prisma_client()).list().await {
+                match VideoTaskHandler::new(library.prisma_client())
+                    .list(input)
+                    .await
+                {
                     Ok(res) => Ok(res),
                     Err(e) => Err(rspc::Error::new(
                         rspc::ErrorCode::InternalServerError,
                         format!("task list failed: {}", e),
                     )),
                 }
-            }),
-        )
-        .mutation("regenerate", |t|
+            })
+        })
+        .mutation("regenerate", |t| {
             t(|ctx: TCtx, input: TaskRegeneratePayload| async move {
                 let library = ctx.library()?;
                 VideoTaskHandler::new(library.prisma_client())
@@ -195,9 +245,9 @@ pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
                         )
                     })?;
                 Ok(())
-            }),
-        )
-        .mutation("cancel", |t|
+            })
+        })
+        .mutation("cancel", |t| {
             t(|ctx: TCtx, input: CancelPayload| async move {
                 let library = ctx.library()?;
                 VideoTaskHandler::new(library.prisma_client())
@@ -210,8 +260,8 @@ pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
                         )
                     })?;
                 Ok(())
-            }),
-        )
+            })
+        })
 }
 /*
         .procedure(

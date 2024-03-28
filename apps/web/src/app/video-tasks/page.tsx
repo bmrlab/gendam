@@ -1,28 +1,18 @@
 'use client'
-import { useBoundStore } from '@/app/video-tasks/_store'
-import { rspc } from '@/lib/rspc'
 import { ScrollArea } from '@muse/ui/v1/scroll-area'
-import { useEffect } from 'react'
 import TaskFooter from './_components/footer'
 import VideoTasksList from './_components/task-list'
-// import { useMemo } from 'react'
-// import type { VideoItem } from './_components/task-item'
+import useTaskList from './useTaskList'
 
 export default function VideoTasksPage() {
-  const { data: videosWithTasks, isLoading, error, refetch } = rspc.useQuery(['video.tasks.list'])
-
-  const setTaskListRefetch = useBoundStore.use.setTaskListRefetch()
-
-  useEffect(() => {
-    setTaskListRefetch(refetch)
-  }, [refetch, setTaskListRefetch])
+  const { data: videos, isLoading } = useTaskList({ limit: 10 })
 
   return (
     <div className="flex h-full flex-col">
       <ScrollArea className="flex-1 rounded-[6px]">
-        <VideoTasksList data={videosWithTasks ?? []} isLoading={isLoading} />
+        <VideoTasksList data={videos ?? []} isLoading={isLoading} />
       </ScrollArea>
-      <TaskFooter total={videosWithTasks?.length ?? 0} />
+      <TaskFooter total={videos?.length ?? 0} />
     </div>
   )
 }
