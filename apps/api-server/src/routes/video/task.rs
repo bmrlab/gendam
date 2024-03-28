@@ -122,21 +122,6 @@ where
                 Ok(())
             })
         })
-        .mutation("regenerate.batch", |t| {
-            t(|ctx: TCtx, input: Vec<TaskRegeneratePayload>| async move {
-                let library = ctx.library()?;
-                VideoTaskHandler::new(library.prisma_client())
-                    .batch_regenerate(input, &ctx)
-                    .await
-                    .map_err(|e| {
-                        rspc::Error::new(
-                            rspc::ErrorCode::InternalServerError,
-                            format!("task batch regenerate failed: {}", e),
-                        )
-                    })?;
-                Ok(())
-            })
-        })
         .mutation("cancel", |t| {
             t(|ctx: TCtx, input: CancelPayload| async move {
                 let library = ctx.library()?;
@@ -147,21 +132,6 @@ where
                         rspc::Error::new(
                             rspc::ErrorCode::InternalServerError,
                             format!("task cancel failed: {}", e),
-                        )
-                    })?;
-                Ok(())
-            })
-        })
-        .mutation("cancel.batch", |t| {
-            t(|ctx: TCtx, input: Vec<CancelPayload>| async move {
-                let library = ctx.library()?;
-                VideoTaskHandler::new(library.prisma_client())
-                    .batch_cancel(input)
-                    .await
-                    .map_err(|e| {
-                        rspc::Error::new(
-                            rspc::ErrorCode::InternalServerError,
-                            format!("task batch cancel failed: {}", e),
                         )
                     })?;
                 Ok(())
@@ -230,13 +200,6 @@ impl VideoTaskHandler {
         Ok(())
     }
 
-    pub async fn batch_cancel(&self, payloads: Vec<CancelPayload>) -> anyhow::Result<()> {
-        for payload in payloads {
-            self.cancel(payload).await?;
-        }
-        Ok(())
-    }
-
     pub async fn regenerate(
         &self,
         payload: TaskRegeneratePayload,
@@ -257,16 +220,6 @@ impl VideoTaskHandler {
             )
             .await
             .map_err(|e| anyhow::anyhow!("failed to create video task: {e:?}"))?;
-        }
-        Ok(())
-    }
-    pub async fn batch_regenerate(
-        &self,
-        payloads: Vec<TaskRegeneratePayload>,
-        ctx: &impl CtxWithLibrary,
-    ) -> anyhow::Result<()> {
-        for payload in payloads {
-            self.regenerate(payload, ctx).await?
         }
         Ok(())
     }

@@ -1,7 +1,6 @@
+import useTaskAction from '@/app/video-tasks/_components/useTaskAction'
 import Icon from '@/components/Icon'
-import { useToast } from '@/components/Toast/use-toast'
 import type { VideoWithTasksResult } from '@/lib/bindings'
-import { rspc } from '@/lib/rspc'
 import {
   ContextMenuContent,
   ContextMenuItem,
@@ -9,9 +8,8 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@muse/ui/v1/context-menu'
-import { PropsWithChildren, ReactNode, useCallback, useEffect, useMemo } from 'react'
+import { PropsWithChildren, ReactNode, useEffect, useMemo } from 'react'
 import { useBoundStore } from '../_store'
-import { AudioDialogEnum } from '../_store/audio-dialog'
 
 export type TaskContextMenuProps = PropsWithChildren<{
   fileHash: string
@@ -20,17 +18,9 @@ export type TaskContextMenuProps = PropsWithChildren<{
 }>
 
 export default function TaskContextMenu({ video, fileHash, isProcessing, children }: TaskContextMenuProps) {
-  const { toast } = useToast()
-  const videoSelected = useBoundStore.use.videoSelected()
-  const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
-  const setAudioDialogProps = useBoundStore.use.setAudioDialogProps()
-  const setAudioDialogOpen = useBoundStore.use.setIsOpenAudioDialog()
   const taskListRefetch = useBoundStore.use.taskListRefetch()
 
-  const { mutateAsync: regenerateTask } = rspc.useMutation(['video.tasks.regenerate'])
-  const { mutateAsync: cancelTask } = rspc.useMutation(['video.tasks.cancel'])
-
-  const isBatchSelected = useMemo(() => videoSelected.length > 1, [videoSelected])
+  const { handleRegenerate, handleExport, handleCancel } = useTaskAction({ fileHash, video })
 
   // 有进行中的任务，定时刷新
   useEffect(() => {
@@ -45,58 +35,13 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
     }
   }, [isProcessing, taskListRefetch])
 
-  const handleSingleExport = useCallback(() => {
-    setAudioDialogProps({
-      type: AudioDialogEnum.single,
-      title: '导出语音转译',
-      params: {
-        fileHash,
-      },
-    })
-    setIsOpenAudioDialog(true)
-  }, [fileHash, setAudioDialogProps, setIsOpenAudioDialog])
-
-  const handleBatchExport = () => {
-    let orderVideoSelected = [...videoSelected]
-    orderVideoSelected.sort((a, b) => a.assetObject.id - b.assetObject.id)
-    setAudioDialogProps({
-      type: AudioDialogEnum.batch,
-      title: '批量导出语音转译',
-      params: orderVideoSelected.map((item) => ({
-        id: item.assetObject.hash, // TODO: 这里回头要改成 assetObjectId, 但是对 audio export 功能改动较大
-        label: item.name,
-        assetObjectId: item.assetObject.id,
-        assetObjectHash: item.assetObject.hash,
-      })),
-    })
-    setAudioDialogOpen(true)
-  }
-
-  const handleExport = isBatchSelected ? handleBatchExport : handleSingleExport
-
   const options = useMemo<Array<'Separator' | { label: string; icon: ReactNode; handleClick: () => void }>>(() => {
     const processingItem = isProcessing
       ? [
           {
             label: '取消任务',
             icon: <Icon.cancel />,
-            handleClick: async () => {
-              try {
-                await cancelTask({
-                  assetObjectId: video.assetObject.id,
-                })
-                await taskListRefetch()
-                toast({
-                  title: '取消任务成功',
-                })
-              } catch (e) {
-                console.error(e)
-                toast({
-                  title: '取消任务失败',
-                  variant: 'destructive',
-                })
-              }
-            },
+            handleClick: handleCancel,
           },
         ]
       : []
@@ -105,25 +50,7 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
       {
         label: '重新触发任务',
         icon: <Icon.regenerate />,
-        handleClick: async () => {
-          // TODO 要不要支持批量？
-          try {
-            await regenerateTask({
-              materializedPath: video.materializedPath,
-              assetObjectId: video.assetObject.id,
-            })
-            await taskListRefetch()
-            toast({
-              title: '重新触发任务成功',
-            })
-          } catch (e) {
-            console.error(e)
-            toast({
-              title: '重新触发任务失败',
-              variant: 'destructive',
-            })
-          }
-        },
+        handleClick: handleRegenerate,
       },
       ...processingItem,
       {
@@ -140,7 +67,7 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
         },
       },
     ]
-  }, [cancelTask, handleExport, isProcessing, regenerateTask, taskListRefetch, toast, video.assetObject.id, video.materializedPath])
+  }, [handleCancel, handleExport, handleRegenerate, isProcessing])
 
   return (
     <ContextMenuRoot>

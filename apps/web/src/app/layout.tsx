@@ -2,6 +2,8 @@ import { Toaster } from '@/components/Toast/toaster'
 import { Inter } from 'next/font/google'
 import './globals.css'
 
+import { Toaster as SonnerToaster } from '@/components/Toast/sonner'
+
 const inter = Inter({ subsets: ['latin'] })
 
 // import dynamic from 'next/dynamic';
@@ -34,6 +36,7 @@ export default function RootLayout({
           </Viewport>
         </ClientLayout>
         <Toaster />
+        <SonnerToaster />
       </body>
     </html>
   )
