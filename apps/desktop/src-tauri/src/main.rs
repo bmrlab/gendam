@@ -15,17 +15,17 @@ use store::Store;
 
 fn validate_app_version(app_handle: tauri::AppHandle, local_data_root: &PathBuf) {
     const VERSION_SHOULD_GTE: usize = 1;
-    let mut tauri_store = tauri_plugin_store::StoreBuilder::new(
-        app_handle,
-        "settings.json".parse().unwrap(),
-    ).build();
+    let mut tauri_store =
+        tauri_plugin_store::StoreBuilder::new(app_handle, "settings.json".parse().unwrap()).build();
     tauri_store.load().unwrap_or_else(|e| {
         tracing::warn!("Failed to load tauri store: {:?}", e);
     });
     let version: usize = match tauri_store.get("version") {
         Some(value) => value.as_str().unwrap_or("").to_string(),
-        None => "".to_string()
-    }.parse().unwrap_or(0);
+        None => "".to_string(),
+    }
+    .parse()
+    .unwrap_or(0);
     if version < VERSION_SHOULD_GTE {
         // check if libraries exists, if true, move it to archived/libraries
         let libraries_dir = local_data_root.join("libraries");
@@ -35,10 +35,9 @@ fn validate_app_version(app_handle: tauri::AppHandle, local_data_root: &PathBuf)
             std::fs::rename(&libraries_dir, archived_dir.join("libraries")).unwrap();
         }
         tauri_store.delete("current-library-id").unwrap();
-        tauri_store.insert(
-            "version".to_string(),
-            VERSION_SHOULD_GTE.to_string().into()
-        ).unwrap();
+        tauri_store
+            .insert("version".to_string(), VERSION_SHOULD_GTE.to_string().into())
+            .unwrap();
         tauri_store.save().unwrap();
     }
 }
@@ -94,7 +93,8 @@ async fn main() {
     let mut tauri_store = tauri_plugin_store::StoreBuilder::new(
         window.app_handle(),
         "settings.json".parse().unwrap(),
-    ).build();
+    )
+    .build();
     if let Err(e) = tauri_store.load() {
         tracing::error!("Failed to load store: {:?}", e);
         return;
@@ -105,7 +105,7 @@ async fn main() {
         match load_library(&local_data_root, &library_id).await {
             Ok(library) => {
                 current_library.lock().unwrap().replace(library);
-            },
+            }
             Err(e) => {
                 tracing::error!("Failed to load library: {:?}", e);
                 let _ = tauri_store.delete("current-library-id");
@@ -131,12 +131,10 @@ async fn main() {
 
     window
         .app_handle()
-        .plugin(
-            rspc_tauri::plugin(router.arced(), move |_window| {
-                // 不能每次 new 而应该是 clone，这样会保证 ctx 里面的每个元素每次只是新建了引用
-                ctx.clone()
-            })
-        )
+        .plugin(rspc_tauri::plugin(router.arced(), move |_window| {
+            // 不能每次 new 而应该是 clone，这样会保证 ctx 里面的每个元素每次只是新建了引用
+            ctx.clone()
+        }))
         .expect("failed to add rspc plugin");
 
     app.run(|_, _| {});
@@ -158,7 +156,11 @@ fn init_tracing(log_dir: PathBuf) {
                 tracing_subscriber::EnvFilter::try_from_default_env()
                     .unwrap_or_else(|_| "muse_desktop=debug".into()),
             )
-            .with(tracing_subscriber::fmt::layer().with_ansi(true))
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_ansi(true)
+                    .with_thread_ids(true),
+            )
             .init();
     }
     #[cfg(not(debug_assertions))]

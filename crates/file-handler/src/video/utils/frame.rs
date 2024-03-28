@@ -29,11 +29,6 @@ pub async fn save_frames(
             let frame_timestamp = get_frame_timestamp_from_path(&path)?;
             let file_identifier = file_identifier.clone();
 
-            // FIXME 这里限制一下最大任务数量，因为出现过 axum 被 block 的情况
-            if join_set.len() >= 3 {
-                while let Some(_) = join_set.join_next().await {}
-            }
-
             join_set.spawn(async move {
                 // write data using prisma
                 let x = {
@@ -88,11 +83,6 @@ pub async fn save_frame_content_embedding(
 
             let frame_timestamp = get_frame_timestamp_from_path(&path)?;
             let file_identifier = file_identifier.clone();
-
-            // FIXME 这里限制一下最大任务数量，因为出现过 axum 被 block 的情况
-            if join_set.len() >= 3 {
-                while let Some(_) = join_set.join_next().await {}
-            }
 
             join_set.spawn(async move {
                 // get data using prisma

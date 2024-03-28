@@ -126,11 +126,6 @@ pub async fn save_frame_caption_embedding(
             let client = client.clone();
             let qdrant = qdrant.clone();
 
-            // FIXME 这里限制一下最大任务数量，因为出现过 axum 被 block 的情况
-            if join_set.len() >= 3 {
-                while let Some(_) = join_set.join_next().await {}
-            }
-
             let clip_model = clip_model.clone();
 
             join_set.spawn(async move {

@@ -3,9 +3,10 @@ use file_handler::video::VideoHandler;
 use prisma_lib::{asset_object, file_handler_task, PrismaClient};
 use std::fmt::Display;
 use std::sync::{Arc, Mutex};
+use thread_priority::{ThreadBuilder, ThreadPriority};
 use tokio::sync::broadcast::{self, Sender};
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 pub enum VideoTaskType {
     Frame,
@@ -52,36 +53,70 @@ impl TaskProcessor {
     }
     pub fn init_task_pool() -> (Sender<TaskPayload>, CancellationToken) {
         let (tx, mut rx) = broadcast::channel::<TaskPayload>(500);
-        // let tx = tx;
-        // let mut rx = tx.subscribe();
 
         let cancel_token = CancellationToken::new();
         let cloned_token = cancel_token.clone();
 
-        tokio::spawn(async move {
-            loop {
-                match rx.recv().await {
-                    Ok(task_payload) => {
-                        info!("Task received: {:?}", task_payload.file_path);
+        // try to build a thread with low priority
+        // and spawn task inside it
+        //
+        // I think this is only guaranteed for `futures`,
+        // not including something like `tokio::spawn`, which should be considered as `tasks`.
+        // And `tasks` in tokio should have chances to be scheduled to another thread.
+        //
+        // But if we set tokio to be single thread, like following code using `new_current_thread`,
+        // `tasks` should also be scheduled on the same thread.
+        match ThreadBuilder::default()
+            .priority(ThreadPriority::Min)
+            .spawn(|result| {
+                if let Err(e) = result {
+                    warn!("failed to set priority: {}", e);
+                }
 
-                        tokio::select! {
-                            _ = cloned_token.cancelled() => {
-                                info!("task has been cancelled by task pool!");
+                match tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                {
+                    Ok(rt) => {
+                        rt.block_on(async move {
+                            loop {
+                                match rx.recv().await {
+                                    Ok(task_payload) => {
+                                        info!("Task received: {:?}", task_payload.file_path);
+
+                                        tokio::select! {
+                                            _ = cloned_token.cancelled() => {
+                                                info!("task has been cancelled by task pool!");
+                                            }
+                                            _ = TaskProcessor::process_task(&task_payload) => {
+                                                // ? add some log
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        error!("No Task Error: {:?}", e);
+                                        // task_pool will be dropped when library changed
+                                        // so just break here
+                                        break;
+                                    }
+                                }
                             }
-                            _ = TaskProcessor::process_task(&task_payload) => {
-                                // ? add some log
-                            }
-                        }
+                        });
                     }
                     Err(e) => {
-                        error!("No Task Error: {:?}", e);
-                        // task_pool will be dropped when library changed
-                        // so just break here
-                        break;
+                        error!("failed to build tokio runtime: {}", e);
                     }
-                }
+                };
+                info!("tokio task spawned");
+            }) {
+            Ok(thread) => {
+                info!("Task pool thread created: {:?}", thread.thread().id(),);
             }
-        });
+            Err(e) => {
+                error!("failed to build thread: {}", e);
+            }
+        };
+
         (tx, cancel_token)
     }
 
@@ -153,10 +188,6 @@ impl TaskProcessor {
     }
 
     pub async fn process_task(task_payload: &TaskPayload) {
-        // sleep for random time
-        // let sleep_time = rand::random::<u64>() % 10;
-        // tokio::time::sleep(tokio::time::Duration::from_secs(sleep_time)).await;
-        // info!("Task finished {}", &task_payload.video_path);
         let processor = TaskProcessor::new(task_payload.clone());
         let vh: &VideoHandler = &processor.payload.video_handler;
 
@@ -179,6 +210,7 @@ impl TaskProcessor {
                 break;
             }
             processor.save_starts_at(&task_type.to_string()).await;
+
             let result = match task_type {
                 VideoTaskType::Frame => vh.save_frames().await,
                 VideoTaskType::FrameContentEmbedding => vh.save_frame_content_embedding().await,

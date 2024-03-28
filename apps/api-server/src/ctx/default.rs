@@ -152,10 +152,10 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
         // cancel all tasks
         self.cancel_token.lock().unwrap().cancel();
         let (tx, cancel_token) = TaskProcessor::init_task_pool();
-        let mut old_tx = self.tx.lock().unwrap();
-        let mut old_cancel_token = self.cancel_token.lock().unwrap();
-        *old_tx = tx;
-        *old_cancel_token = cancel_token;
+        let mut current_tx = self.tx.lock().unwrap();
+        let mut current_cancel_token = self.cancel_token.lock().unwrap();
+        *current_tx = tx;
+        *current_cancel_token = cancel_token;
 
         let mut store = self.store.lock().unwrap();
         let _ = store.insert("current-library-id", library_id);

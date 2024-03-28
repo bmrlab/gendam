@@ -67,7 +67,7 @@ where
 
         let offload_duration = offload_duration.unwrap_or(Duration::from_secs(5));
 
-        let rt = tokio::runtime::Builder::new_current_thread()
+        let rt = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()?;
 
@@ -75,87 +75,88 @@ where
             let local = tokio::task::LocalSet::new();
 
             local.spawn_local(async move {
-
-            let is_processing = Arc::new(Mutex::new(false));
-            loop {
-                tokio::select! {
-                    _ = tokio::time::sleep(offload_duration) => {
-                        debug!("No message received for {:?}, offload model", offload_duration);
-                        if let Err(e) = loader.offload().await {
-                            error!("failed to offload model: {}", e);
-                        }
-                    }
-                    _ = cloned_tx.closed() => {
-                        info!("Channel closed, offload model");
-                        if let Err(e) = loader.offload().await {
-                            error!("failed to offload model: {}", e);
-                        }
-                        break;
-                    }
-                    payload = rx.recv() => {
-                        match payload {
-                            Some(HandlerPayload::BatchData((items, result_tx))) => {
-                                if let Err(e) = loader.load().await {
-                                    error!("failed to load model: {}", e);
-                                    // TODO here we need to use tx
-                                    // if let Err(_) = result_tx.send(Err(anyhow::anyhow!(e))) {
-                                    //     error!("failed to send result");
-                                    // }
+                let is_processing = Arc::new(Mutex::new(false));
+                loop {
+                    tokio::select! {
+                        _ = tokio::time::sleep(offload_duration) => {
+                            if loader.model.lock().await.is_some() {
+                                debug!("No message received for {:?}, offload model", offload_duration);
+                                if let Err(e) = loader.offload().await {
+                                    error!("failed to offload model: {}", e);
                                 }
+                            }
+                        }
+                        _ = cloned_tx.closed() => {
+                            info!("Channel closed, offload model");
+                            if let Err(e) = loader.offload().await {
+                                error!("failed to offload model: {}", e);
+                            }
+                            break;
+                        }
+                        payload = rx.recv() => {
+                            match payload {
+                                Some(HandlerPayload::BatchData((items, result_tx))) => {
+                                    if let Err(e) = loader.load().await {
+                                        error!("failed to load model: {}", e);
+                                        // TODO here we need to use tx
+                                        // if let Err(_) = result_tx.send(Err(anyhow::anyhow!(e))) {
+                                        //     error!("failed to send result");
+                                        // }
+                                    }
 
-                                {
-                                    let mut is_processing = is_processing.lock().await;
-                                    *is_processing = true;
-                                };
+                                    {
+                                        let mut is_processing = is_processing.lock().await;
+                                        *is_processing = true;
+                                    };
 
 
-                                let mut model = loader.model.lock().await;
-                                if let Some(model) = model.as_mut() {
-                                    let batch_limit = model.batch_size_limit();
-                                    let mut results = vec![];
+                                    let mut model = loader.model.lock().await;
+                                    if let Some(model) = model.as_mut() {
+                                        let batch_limit = model.batch_size_limit();
+                                        let mut results = vec![];
 
-                                    for chunk in items.as_slice().chunks(batch_limit) {
-                                        let chunk = chunk.to_vec();
+                                        for chunk in items.as_slice().chunks(batch_limit) {
+                                            let chunk = chunk.to_vec();
 
-                                        match model.process(chunk).await {
-                                            Ok(res) => {
-                                                results.extend(res);
+                                            match model.process(chunk).await {
+                                                Ok(res) => {
+                                                    results.extend(res);
+                                                }
+                                                Err(e) => {
+                                                    error!("failed to process chunk: {}", e);
+                                                    results.extend(vec![Err(anyhow::anyhow!(e))]);
+                                                }
                                             }
-                                            Err(e) => {
-                                                error!("failed to process chunk: {}", e);
-                                                results.extend(vec![Err(anyhow::anyhow!(e))]);
-                                            }
+                                        }
+
+                                        if let Err(_) = result_tx.send(Ok(results)) {
+                                            error!("failed to send results");
+                                        }
+                                    } else {
+                                        error!("failed to load model");
+                                        if let Err(_) = result_tx.send(Err(anyhow::anyhow!("failed to load model"))) {
+                                            error!("failed to send results");
                                         }
                                     }
 
-                                    if let Err(_) = result_tx.send(Ok(results)) {
-                                        error!("failed to send results");
-                                    }
-                                } else {
-                                    error!("failed to load model");
-                                    if let Err(_) = result_tx.send(Err(anyhow::anyhow!("failed to load model"))) {
-                                        error!("failed to send results");
+                                    {
+                                        let mut is_processing = is_processing.lock().await;
+                                        *is_processing = false;
                                     }
                                 }
-
-                                {
-                                    let mut is_processing = is_processing.lock().await;
-                                    *is_processing = false;
+                                Some(HandlerPayload::Shutdown) => {
+                                    if let Err(e) = loader.offload().await {
+                                        error!("failed to offload model in shutdown: {}", e);
+                                    }
+                                    break;
                                 }
-                            }
-                            Some(HandlerPayload::Shutdown) => {
-                                if let Err(e) = loader.offload().await {
-                                    error!("failed to offload model in shutdown: {}", e);
+                                _ => {
+                                    error!("failed to receive payload");
                                 }
-                                break;
-                            }
-                            _ => {
-                                error!("failed to receive payload");
                             }
                         }
                     }
                 }
-            }
             });
 
             rt.block_on(local);

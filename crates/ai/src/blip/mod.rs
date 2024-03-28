@@ -203,14 +203,17 @@ async fn test_caption() {
             tracing::info!("start execution");
             let start = std::time::Instant::now();
 
-            let frame_paths: Vec<String> = std::fs::read_dir("/Users/zhuo/Library/Application Support/cc.musedam.local/libraries/78a978d85b8ff26cc202aa6d244ed576ef5a187873c49255d3980df69deedb8a/artifacts/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/frames")
-        .unwrap()
-        .map(|res|   res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, std::io::Error>>()
-        .unwrap().iter().filter_map(|v| {
-            if v.extension() == Some("png".as_ref()) { Some(v.to_str().unwrap().to_string()) }
-            else {None}
-        }).collect();
+            let frame_paths: Vec<String> = std::fs::read_dir("/Users/zhuo/Library/Application Support/cc.musedam.local/libraries/5d2fa67e-4c9a-40fa-9304-3f61f7836044/artifacts/7e05d9f79842116c/frames")
+                .unwrap()
+                .map(|res|   res.map(|e| e.path()))
+                .collect::<Result<Vec<_>, std::io::Error>>()
+                .unwrap()
+                .iter()
+                .filter_map(|v| {
+                    if v.extension() == Some("jpg".as_ref()) { Some(v.to_str().unwrap().to_string()) }
+                    else {None}
+                })
+                .collect();
 
             for path in frame_paths {
                 let temp_start = std::time::Instant::now();

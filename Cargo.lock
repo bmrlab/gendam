@@ -232,6 +232,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "test-log",
+ "thread-priority",
  "tokio",
  "tokio-util",
  "tower-http",
@@ -7214,6 +7215,20 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.48",
+]
+
+[[package]]
+name = "thread-priority"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a617e9eeeb20448b01a8e2427fb80dfbc9c49d79a1de3b11f25731edbf547e3c"
+dependencies = [
+ "bitflags 2.4.2",
+ "cfg-if",
+ "libc",
+ "log",
+ "rustversion",
+ "winapi",
 ]
 
 [[package]]

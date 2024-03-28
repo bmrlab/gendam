@@ -41,3 +41,4 @@ test-log = { workspace = true }
 # 处理 enum
 strum = "0.26"
 strum_macros = "0.26"
+thread-priority = "0.16.0"
