@@ -46,7 +46,7 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="min-h-full w-60 bg-neutral-100 p-3">
+    <div className="h-screen w-60 bg-neutral-100 p-3">
       <div className="relative my-4">
         <div className="flex cursor-default items-center justify-start" onClick={() => setSelectPanelOpen(true)}>
           <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>

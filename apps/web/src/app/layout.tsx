@@ -29,7 +29,7 @@ export default function RootLayout({
         <ClientLayout>
           <main className="flex">
             <Sidebar />
-            <div className="min-h-screen flex-1 bg-white">{children}</div>
+            <div className="h-screen flex-1 bg-white">{children}</div>
           </main>
         </ClientLayout>
         <Toaster />

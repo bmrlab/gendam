@@ -43,16 +43,16 @@ export default function ExplorerPage() {
   const uploadFile = useCallback(async (file: FileItem) => {
     // uploadQueueStore.setUploading(true)
     // console.log("start upload", file.localFullPath)
-    await new Promise((resolve) => {
-      setTimeout(() => resolve(null), 3000)
-    })
-    // await client.mutation([
-    //   'assets.create_asset_object',
-    //   {
-    //     path: file.path,
-    //     localFullPath: file.localFullPath,
-    //   },
-    // ])
+    // await new Promise((resolve) => {
+    //   setTimeout(() => resolve(null), 3000)
+    // })
+    await client.mutation([
+      'assets.create_asset_object',
+      {
+        path: file.path,
+        localFullPath: file.localFullPath,
+      },
+    ])
     refetch()
     // console.log("end upload", file.localFullPath)
   }, [refetch])
@@ -94,7 +94,7 @@ export default function ExplorerPage() {
           // onMouseMove={handleMouseMove}
         >
           <Header></Header>
-          <div className="flex-1">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
             <ExplorerLayout></ExplorerLayout>
           </div>
           <Footer></Footer>
