@@ -50,7 +50,7 @@ export default function ClientLayout({
     p1.then(() => setPending(false));
   }, [setLibrary, setPending, blockCmdQ]);
 
-  const setContext = useCallback(async (library: Library) => {
+  const setCurrentLibraryContext = useCallback(async (library: Library) => {
     setLibrary(library);
     setPending(true);
     try {
@@ -100,27 +100,19 @@ export default function ClientLayout({
         onError: (error) => {
           console.error(error)
           if (error instanceof RSPCError) {
-            toast({
-              title: `请求出错 ${error.code}`,
-              description: error.message,
-              variant: 'destructive'
-            })
+            toast({ title: `请求出错 ${error.code}`, description: error.message, variant: 'destructive' })
           } else {
-            toast({
-              title: '未知错误',
-              description: error.message,
-              variant: 'destructive'
-            })
+            toast({ title: '未知错误', description: error.message, variant: 'destructive' })
           }
-        },
-      },
-    },
+        }
+      }
+    }
   })
 
   return pending ? (<></>) : (
     <CurrentLibrary.Provider value={{
       ...(library ? library : {}),
-      setContext,
+      set: setCurrentLibraryContext,
       getFileSrc,
       getThumbnailSrc,
     }}>

@@ -19,7 +19,7 @@ export default function LibrariesSelect() {
   const currentLibrary = useCurrentLibrary()
   const handleLibraryClick = useCallback(
     async (library: Library) => {
-      await currentLibrary.setContext(library)
+      await currentLibrary.set(library)
     },
     [currentLibrary],
   )
