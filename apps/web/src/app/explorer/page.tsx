@@ -64,7 +64,6 @@ export default function ExplorerPage() {
       uploadFile(uploading).then(() => {
         uploadQueueStore.completeUploading()
       }).catch((err) => {
-        console.error(err)
         uploadQueueStore.failedUploading()
       })
     }

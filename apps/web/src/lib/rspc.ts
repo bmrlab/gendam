@@ -1,7 +1,7 @@
 'use client'
 import { FetchTransport, createClient } from '@rspc/client'
 import { createReactQueryHooks } from '@rspc/react'
-import { QueryClient } from '@tanstack/react-query'
+// import { QueryClient } from '@tanstack/react-query'
 import { TauriTransport } from './rspc-tauri'
 // import { TauriTransport } from '@rspc/tauri'
 
@@ -14,18 +14,21 @@ export const client = createClient<Procedures>({
       : new FetchTransport('http://localhost:3001/rspc'),
 })
 
-export const queryClient: QueryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-    },
-    mutations: {
-      onSuccess: () => queryClient.invalidateQueries(),
-    },
-  },
-})
+// export const queryClient: QueryClient = new QueryClient({
+//   defaultOptions: {
+//     queries: {
+//       retry: false,
+//       refetchOnWindowFocus: false,
+//     },
+//     mutations: {
+//       onSuccess: () => queryClient.invalidateQueries(),
+//       onError: (error) => console.error(error),
+//     },
+//   },
+// })
 
 export const rspc = createReactQueryHooks<Procedures>()
+
 // export const {
 //   useContext,
 //   useMutation,

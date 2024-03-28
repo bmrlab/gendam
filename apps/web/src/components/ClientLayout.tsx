@@ -1,15 +1,19 @@
-"use client";
-import { useCallback, useEffect, useState, useMemo, use } from "react";
-import { client, queryClient, rspc } from "@/lib/rspc";
-import { convertFileSrc } from '@tauri-apps/api/tauri';
-import { CurrentLibrary, type Library } from "@/lib/library";
-import LibrariesSelect from "@/components/LibrariesSelect";
+'use client'
+import LibrariesSelect from '@/components/LibrariesSelect'
+import { useToast } from '@/components/Toast/use-toast'
+import { CurrentLibrary, type Library } from '@/lib/library'
+import { client, rspc } from '@/lib/rspc'
+import { RSPCError } from '@rspc/client'
+import { QueryClient } from '@tanstack/react-query'
+import { convertFileSrc } from '@tauri-apps/api/tauri'
+import { useCallback, useEffect, useState } from 'react'
 
 export default function ClientLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { toast } = useToast()
   const [pending, setPending] = useState(true);
   const [library, setLibrary] = useState<Library|null>(null);
   // const [homeDir, setHomeDir] = useState<string|null>(null);
@@ -84,6 +88,34 @@ export default function ClientLayout({
       return `http://localhost:3001/file/localhost/${fileFullPath}`
     }
   }, [library]);
+
+  const queryClient: QueryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        refetchOnWindowFocus: false,
+      },
+      mutations: {
+        onSuccess: () => queryClient.invalidateQueries(),
+        onError: (error) => {
+          console.error(error)
+          if (error instanceof RSPCError) {
+            toast({
+              title: `请求出错 ${error.code}`,
+              description: error.message,
+              variant: 'destructive'
+            })
+          } else {
+            toast({
+              title: '未知错误',
+              description: error.message,
+              variant: 'destructive'
+            })
+          }
+        },
+      },
+    },
+  })
 
   return pending ? (<></>) : (
     <CurrentLibrary.Provider value={{
