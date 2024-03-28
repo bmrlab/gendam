@@ -33,7 +33,7 @@ const Toolbar = ({ className, children, ...props }: HTMLAttributes<HTMLDivElemen
   return (
     <div className={classNames(
       'h-12 w-full border-b border-neutral-100',
-      'flex items-center justify-start px-4',  // default layout
+      'flex items-center px-4',  // default layout
       className
     )} {...props}>
       {children}
@@ -53,7 +53,7 @@ const StatusBar = ({ className, children, ...props }: HTMLAttributes<HTMLDivElem
   return (
     <div className={classNames(
       'h-8 w-full  border-t border-neutral-100',
-      'flex items-center justify-start px-4',  // default layout
+      'flex items-center px-4',  // default layout
       className
     )} {...props}>
       {children}

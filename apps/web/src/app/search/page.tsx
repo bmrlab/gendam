@@ -10,6 +10,7 @@ import classNames from 'classnames'
 import { formatDuration } from '@/lib/utils'
 import Viewport from '@/components/Viewport'
 import { useSearchParams } from 'next/navigation'
+import PageNav from '@/components/PageNav'
 
 const VideoPreview: React.FC<{ item: SearchResultPayload }> = ({ item }) => {
   const currentLibrary = useCurrentLibrary()
@@ -145,12 +146,9 @@ export default function Search() {
 
   return (
     <Viewport.Page>
-      <Viewport.Toolbar>
-        <div className="flex w-1/4 select-none items-center">
-          <div className="px-2 py-1">&lt;</div>
-          <div className="px-2 py-1">&gt;</div>
-          <div className="ml-2 text-sm">搜索</div>
-        </div>
+      <Viewport.Toolbar className="justify-center">
+        <PageNav title="搜索" />
+        <div className="mr-auto"></div>
         <div className="w-80 relative">
           <form onSubmit={(e) => {
             e.preventDefault()
@@ -193,6 +191,7 @@ export default function Search() {
             </div>
           ) : null}
         </div>
+        <div className="ml-auto"></div>
       </Viewport.Toolbar>
       <Viewport.Content>
         {searchPayload ? (

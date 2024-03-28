@@ -8,6 +8,7 @@ import { useCallback, useState } from 'react'
 import TitleDialog from './TitleDialog'
 import { useUploadQueueStore } from '@/store/uploadQueue'
 import Viewport from '@/components/Viewport'
+import PageNav from '@/components/PageNav'
 
 export default function Header() {
   const router = useRouter()
@@ -73,16 +74,7 @@ export default function Header() {
   return (
     <>
       <Viewport.Toolbar>
-        <div className="flex select-none items-center">
-          <div className="px-2 py-1">&lt;</div>
-          <div className="px-2 py-1">&gt;</div>
-          {explorer.parentPath !== '/' && (
-            <div className="cursor-pointer px-2 py-1" onClick={() => goToDir('-1')}>
-              ↑
-            </div>
-          )}
-          <div className="ml-2 text-sm">{explorer.parentPath === '/' ? '全部' : explorer.parentPath}</div>
-        </div>
+        <PageNav title={explorer.parentPath === '/' ? '全部' : explorer.parentPath} />
         <div className="ml-auto" />
         <div className="mr-8 flex select-none items-center">
           <div className="cursor-pointer px-2 py-1 text-sm" onClick={() => handleCreateDir()}>

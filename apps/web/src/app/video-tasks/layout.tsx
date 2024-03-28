@@ -1,10 +1,11 @@
 import AudioDialog from './_components/audio/dialog'
 import VideoTaskHeader from './_components/header'
 import { ReactNode } from 'react'
+import Viewport from '@/components/Viewport'
 
 export default function VideoTaskLayout({ children }: { children: ReactNode }) {
   return (
-    <main className="flex h-full flex-col">
+    <Viewport.Page>
       <VideoTaskHeader className="h-[54px]" />
       <div
         style={{
@@ -14,6 +15,6 @@ export default function VideoTaskLayout({ children }: { children: ReactNode }) {
         {children}
       </div>
       <AudioDialog />
-    </main>
+    </Viewport.Page>
   )
 }
