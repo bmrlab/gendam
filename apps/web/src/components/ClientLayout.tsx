@@ -89,6 +89,9 @@ export default function ClientLayout({
     }
   }, [library]);
 
+  /**
+   * 这个配置只对 useQuery 和 useMutation 有效, 对使用 client.query 和 client.mutation 调用的请求无效
+   */
   const queryClient: QueryClient = new QueryClient({
     defaultOptions: {
       queries: {

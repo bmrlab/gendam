@@ -27,47 +27,28 @@ export default function ExplorerPage() {
   // const [parentPath, setParentPath] = useState<string>(dirInSearchParams)
   const parentPath = useMemo(() => dirInSearchParams, [dirInSearchParams])
 
-  const {
-    data: assets,
-    isLoading,
-    error,
-    refetch,
-  } = rspc.useQuery([
-    'assets.list',
-    {
-      path: parentPath,
-      dirsOnly: false,
-    },
-  ])
-
-  const uploadFile = useCallback(async (file: FileItem) => {
-    // uploadQueueStore.setUploading(true)
-    // console.log("start upload", file.localFullPath)
-    // await new Promise((resolve) => {
-    //   setTimeout(() => resolve(null), 3000)
-    // })
-    await client.mutation([
-      'assets.create_asset_object',
-      {
-        path: file.path,
-        localFullPath: file.localFullPath,
-      },
-    ])
-    refetch()
-    // console.log("end upload", file.localFullPath)
-  }, [refetch])
+  const uploadMut = rspc.useMutation(['assets.create_asset_object'])
+  const { data: assets, refetch } =
+    rspc.useQuery(['assets.list', { path: parentPath, dirsOnly: false }])
 
   useEffect(() => {
     // useUploadQueueStore.subscribe((e) => {})
     const uploading = uploadQueueStore.nextUploading()
     if (uploading) {
-      uploadFile(uploading).then(() => {
-        uploadQueueStore.completeUploading()
-      }).catch((err) => {
-        uploadQueueStore.failedUploading()
+      uploadMut.mutate({
+        path: uploading.path,
+        localFullPath: uploading.localFullPath,
+      }, {
+        onSuccess: () => {
+          uploadQueueStore.completeUploading()
+          refetch()
+        },
+        onError: () => {
+          uploadQueueStore.failedUploading()
+        }
       })
     }
-  }, [uploadQueueStore, uploadFile])
+  }, [uploadQueueStore, uploadMut, refetch])
 
   const explorer = useExplorer({
     items: assets ?? null,
