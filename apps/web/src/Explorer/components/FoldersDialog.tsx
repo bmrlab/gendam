@@ -75,7 +75,7 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
                 >
                   <FileThumb data={data} className={classNames('mb-1 h-16 w-16 rounded-sm')} />
                   <div className={classNames('w-16 rounded-sm px-1')}>
-                    <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-center text-xs">
+                    <div className="truncate text-center text-xs">
                       {data.name}
                     </div>
                   </div>

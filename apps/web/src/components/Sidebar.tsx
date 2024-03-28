@@ -50,7 +50,7 @@ export default function Sidebar() {
       <div className="relative my-4">
         <div className="flex cursor-default items-center justify-start" onClick={() => setSelectPanelOpen(true)}>
           <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>
-          <div className="mx-2 w-32 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs font-semibold">
+          <div className="mx-2 w-32 truncate text-xs font-semibold">
             {currentLibrary.settings?.title ?? "Untitled"} ({currentLibrary.id})
           </div>
           <Image src={Chevron_Double} alt="Chevron_Double" className="h-4 w-4"></Image>
@@ -69,7 +69,7 @@ export default function Sidebar() {
                   onClick={() => switchLibrary(library)}
                 >
                   <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>
-                  <div className="mx-2 w-48 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs font-semibold">
+                  <div className="mx-2 w-48 truncate text-xs font-semibold">
                     {library.settings?.title ?? 'Untitled'} ({library.id})
                   </div>
                 </div>

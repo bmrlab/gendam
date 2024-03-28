@@ -42,7 +42,7 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
         <RenamableItemText data={data} />
       ) : (
         <div className={classNames('w-32', highlight ? 'text-white' : null)}>
-          <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">{data.name}</div>
+          <div className="truncate text-xs">{data.name}</div>
         </div>
       )}
       <div className="ml-auto" />

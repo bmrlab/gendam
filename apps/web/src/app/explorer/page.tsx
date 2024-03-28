@@ -43,31 +43,26 @@ export default function ExplorerPage() {
   const uploadFile = useCallback(async (file: FileItem) => {
     // uploadQueueStore.setUploading(true)
     // console.log("start upload", file.localFullPath)
-    // await new Promise((resolve) => {
-    //   setTimeout(() => resolve(null), 5000)
-    // })
-    await client.mutation([
-      'assets.create_asset_object',
-      {
-        path: file.path,
-        localFullPath: file.localFullPath,
-      },
-    ])
+    await new Promise((resolve) => {
+      setTimeout(() => resolve(null), 3000)
+    })
+    // await client.mutation([
+    //   'assets.create_asset_object',
+    //   {
+    //     path: file.path,
+    //     localFullPath: file.localFullPath,
+    //   },
+    // ])
     refetch()
     // console.log("end upload", file.localFullPath)
   }, [refetch])
 
   useEffect(() => {
     // useUploadQueueStore.subscribe((e) => {})
-    if (uploadQueueStore.uploading) {
-      return
-    }
-    const file = uploadQueueStore.peek()
-    if (file) {
-      uploadQueueStore.setUploading(true)
-      uploadQueueStore.dequeue()
-      uploadFile(file).then(() => {
-        uploadQueueStore.setUploading(false)
+    const uploading = uploadQueueStore.nextUploading()
+    if (uploading) {
+      uploadFile(uploading).then(() => {
+        uploadQueueStore.completeUploading()
       })
     }
   }, [uploadQueueStore, uploadFile])

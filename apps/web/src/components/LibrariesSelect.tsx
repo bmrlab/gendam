@@ -41,7 +41,7 @@ export default function LibrariesSelect() {
               onClick={() => handleLibraryClick(library)}
             >
               <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>
-              <div className="mx-2 w-64 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs font-semibold">
+              <div className="mx-2 w-64 truncate text-xs font-semibold">
                 {library.settings?.title ?? 'Untitled'} ({library.id})
               </div>
             </div>

@@ -59,7 +59,7 @@ export default function DragOverlay({ children }: PropsWithChildren) {
             )}
           </div>
           <div className="ml-2 py-1 px-2 rounded-lg bg-blue-600 text-white">
-            <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">{data.name}</div>
+            <div className="truncate text-xs">{data.name}</div>
           </div>
         </div>
       ))}

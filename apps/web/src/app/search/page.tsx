@@ -82,10 +82,10 @@ const VideoItem: React.FC<{
         ></Image>
       </div>
       <div className="absolute top-0 left-0 w-full h-full px-4 py-2 bg-black/60 text-neutral-300 flex flex-col justify-between">
-        <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">
+        <div className="truncate text-xs">
           {item.materializedPath}{item.name}
         </div>
-        <div className="overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">
+        <div className="truncate text-xs">
           {formatDuration(item.startTime/1000)}
         </div>
       </div>

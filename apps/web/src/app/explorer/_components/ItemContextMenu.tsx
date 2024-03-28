@@ -97,19 +97,19 @@ const ItemContextMenu = forwardRef<typeof ContextMenuContent, ItemContextMenuPro
       onClick={(e) => e.stopPropagation()}
     >
       <_MenuItemDefault onSelect={handleOpen} disabled={explorer.selectedItems.size > 1 }>
-        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">打开</div>
+        <div className="mx-1 truncate text-xs">打开</div>
       </_MenuItemDefault>
       <_MenuItemDefault onSelect={() => explorerStore.setIsFoldersDialogOpen(true)}>
-        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">移动</div>
+        <div className="mx-1 truncate text-xs">移动</div>
       </_MenuItemDefault>
       <_MenuItemDefault onSelect={handleProcessMetadata}>
-        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">刷新视频信息</div>
+        <div className="mx-1 truncate text-xs">刷新视频信息</div>
       </_MenuItemDefault>
       <_MenuItemDefault onSelect={() => {}} disabled={explorer.selectedItems.size > 1 }>
-        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">预览</div>
+        <div className="mx-1 truncate text-xs">预览</div>
       </_MenuItemDefault>
       <_MenuItemDefault onSelect={handleRename} disabled={explorer.selectedItems.size > 1 }>
-        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">重命名</div>
+        <div className="mx-1 truncate text-xs">重命名</div>
       </_MenuItemDefault>
       <ContextMenuItem
         className={classNames(
@@ -118,7 +118,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenuContent, ItemContextMenuPro
         )}
         onSelect={handleDelete}
       >
-        <div className="mx-1 overflow-hidden overflow-ellipsis whitespace-nowrap text-xs">删除</div>
+        <div className="mx-1 truncate text-xs">删除</div>
       </ContextMenuItem>
     </ContextMenuContent>
   )

@@ -6,33 +6,44 @@ export type FileItem = {
 }
 
 interface UploadQueue {
+  completed: FileItem[]
   queue: FileItem[]
-  uploading: boolean
-  setUploading: (uploading: boolean) => void
-  dequeue: () => void
+  uploading: FileItem | null
+  nextUploading: () => FileItem | null
+  completeUploading: () => void
   enqueue: (item: FileItem) => void
-  peek: () => FileItem | null
 }
 
 export const useUploadQueueStore = create<UploadQueue>((set, get) => ({
+  completed: [],
   queue: [],
-  uploading: false,
-  setUploading: (uploading) => {
-    set({ uploading })
+  uploading: null,
+  nextUploading: () => {
+    const { queue, uploading } = get()
+    if (uploading || queue.length === 0) {
+      return null
+    }
+    const [newUploading, ...newQueue] = queue
+    set({
+      uploading: newUploading,
+      queue: newQueue,
+    })
+    return newUploading
+  },
+  completeUploading: () => {
+    set((state) => {
+      if (state.uploading) {
+        return {
+          completed: [state.uploading, ...state.completed],
+          uploading: null,
+        }
+      }
+      return {}
+    })
   },
   enqueue: (item) => {
     set((state) => ({
       queue: [...state.queue, item],
     }))
-  },
-  dequeue: () => {
-    set((state) => {
-      const [, ...newQueue] = state.queue
-      return { queue: newQueue }
-    })
-  },
-  peek: () => {
-    const { queue } = get()
-    return queue.length > 0 ? queue[0] : null
   },
 }))
