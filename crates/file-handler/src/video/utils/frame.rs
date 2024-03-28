@@ -1,21 +1,21 @@
-use crate::search_payload::SearchPayload;
+use crate::{search_payload::SearchPayload, video::FRAME_FILE_EXTENSION};
 use ai::{
     clip::{CLIPInput, CLIP},
     BatchHandler,
 };
-use anyhow::{anyhow, Ok};
+use anyhow::Ok;
 use prisma_lib::{video_frame, PrismaClient};
 use qdrant_client::{client::QdrantClient, qdrant::PointStruct};
 use serde_json::json;
 use std::sync::Arc;
 use tracing::{debug, error};
 
-pub async fn get_frame_content_embedding(
+use super::get_frame_timestamp_from_path;
+
+pub async fn save_frames(
     file_identifier: String,
     client: Arc<PrismaClient>,
     frames_dir: impl AsRef<std::path::Path>,
-    clip_model: BatchHandler<CLIP>,
-    qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
     let frame_paths = std::fs::read_dir(frames_dir.as_ref())?
         .map(|res| res.map(|e| e.path()))
@@ -24,27 +24,9 @@ pub async fn get_frame_content_embedding(
     let mut join_set = tokio::task::JoinSet::new();
 
     for path in frame_paths {
-        if path.extension() == Some(std::ffi::OsStr::new("jpg")) {
-            debug!("handle file: {:?}", path);
-
-            let clip_model = clip_model.clone();
+        if path.extension() == Some(std::ffi::OsStr::new(FRAME_FILE_EXTENSION)) {
             let client = client.clone();
-            let qdrant = qdrant.clone();
-
-            let file_name = path
-                .file_name()
-                .ok_or(anyhow!("invalid path"))?
-                .to_str()
-                .ok_or(anyhow!("invalid path"))?
-                .to_owned();
-
-            let frame_timestamp: i64 = file_name
-                .split(".")
-                .next()
-                .unwrap_or("0")
-                .parse()
-                .unwrap_or(0);
-
+            let frame_timestamp = get_frame_timestamp_from_path(&path)?;
             let file_identifier = file_identifier.clone();
 
             // FIXME 这里限制一下最大任务数量，因为出现过 axum 被 block 的情况
@@ -70,8 +52,64 @@ pub async fn get_frame_content_embedding(
                     // drop the rwlock
                 };
 
+                if let Err(e) = x {
+                    error!("failed to save frame content embedding: {:?}", e);
+                }
+            });
+        }
+    }
+
+    // wait for all tasks
+    while let Some(_) = join_set.join_next().await {}
+
+    Ok(())
+}
+
+pub async fn save_frame_content_embedding(
+    file_identifier: String,
+    client: Arc<PrismaClient>,
+    frames_dir: impl AsRef<std::path::Path>,
+    clip_model: BatchHandler<CLIP>,
+    qdrant: Arc<QdrantClient>,
+) -> anyhow::Result<()> {
+    // 这里还是从本地读取所有图片
+    // 因为可能一个视频包含的帧数可能非常多，从 sqlite 读取反而麻烦了
+    let frame_paths = std::fs::read_dir(frames_dir.as_ref())?
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, std::io::Error>>()?;
+
+    let mut join_set = tokio::task::JoinSet::new();
+
+    for path in frame_paths {
+        if path.extension() == Some(std::ffi::OsStr::new(FRAME_FILE_EXTENSION)) {
+            let client = client.clone();
+            let clip_model = clip_model.clone();
+            let qdrant = qdrant.clone();
+
+            let frame_timestamp = get_frame_timestamp_from_path(&path)?;
+            let file_identifier = file_identifier.clone();
+
+            // FIXME 这里限制一下最大任务数量，因为出现过 axum 被 block 的情况
+            if join_set.len() >= 3 {
+                while let Some(_) = join_set.join_next().await {}
+            }
+
+            join_set.spawn(async move {
+                // get data using prisma
+                let x = {
+                    client
+                        .video_frame()
+                        .find_unique(video_frame::file_identifier_timestamp(
+                            file_identifier.clone(),
+                            frame_timestamp as i32,
+                        ))
+                        .exec()
+                        .await
+                    // drop the rwlock
+                };
+
                 match x {
-                    std::result::Result::Ok(res) => {
+                    std::result::Result::Ok(Some(res)) => {
                         let payload = SearchPayload::Frame {
                             id: res.id as u64,
                             file_identifier: file_identifier.clone(),
@@ -82,6 +120,9 @@ pub async fn get_frame_content_embedding(
                             get_single_frame_content_embedding(payload, &path, clip_model, qdrant)
                                 .await;
                         debug!("frame content embedding saved");
+                    }
+                    std::result::Result::Ok(None) => {
+                        error!("failed to find frame");
                     }
                     Err(e) => {
                         error!("failed to save frame content embedding: {:?}", e);

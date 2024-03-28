@@ -1,4 +1,5 @@
 use prisma_lib::{new_client_with_url, PrismaClient};
+use qdrant_client::client::QdrantClient;
 use std::{path::PathBuf, sync::Arc};
 use vector_db::QdrantServer;
 mod qdrant;
@@ -18,6 +19,10 @@ pub struct Library {
 impl Library {
     pub fn prisma_client(&self) -> Arc<PrismaClient> {
         Arc::clone(&self.prisma_client)
+    }
+
+    pub fn qdrant_client(&self) -> Arc<QdrantClient> {
+        self.qdrant_server.get_client().clone()
     }
 }
 
@@ -138,7 +143,7 @@ pub fn get_library_settings(library_dir: &PathBuf) -> serde_json::Value {
                     serde_json::json!({ "title": "Untitled" })
                 }
             }
-        },
+        }
         Err(e) => {
             tracing::error!("Failed to open library's settings.json, {}", e);
             serde_json::json!({ "title": "Untitled" })

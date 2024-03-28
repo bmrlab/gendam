@@ -53,7 +53,7 @@ where
                         create_asset_object(&library, &input.path, &input.local_full_path).await?;
                     process_video_asset(&library, &ctx, file_path_data.id).await?;
                     info!("process video asset finished");
-                    process_video_metadata(&library, &ctx, asset_object_data.id).await?;
+                    process_video_metadata(&library, asset_object_data.id).await?;
                     info!("process video metadata finished");
                     Ok(())
                 }
@@ -157,7 +157,7 @@ where
             t(|ctx, input: i32| async move {
                 let library = ctx.library()?;
                 let asset_object_id_id = input;
-                process_video_metadata(&library, &ctx, asset_object_id_id).await?;
+                process_video_metadata(&library, asset_object_id_id).await?;
                 Ok(())
             })
         })

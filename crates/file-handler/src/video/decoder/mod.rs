@@ -12,7 +12,9 @@ pub struct VideoDecoder {
 
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::{fs, path::Path};
+
+use super::FRAME_FILE_EXTENSION;
 
 #[cfg(feature = "ffmpeg-dylib")]
 impl VideoDecoder {
@@ -93,7 +95,9 @@ pub struct VideoDecoder {
 impl VideoDecoder {
     pub async fn new(filename: impl AsRef<Path>) -> anyhow::Result<Self> {
         let current_exe_path = std::env::current_exe().expect("failed to get current executable");
-        let current_dir = current_exe_path.parent().expect("failed to get parent directory");
+        let current_dir = current_exe_path
+            .parent()
+            .expect("failed to get parent directory");
         let binary_file_path = current_dir.join("ffmpeg");
         let ffprobe_file_path = current_dir.join("ffprobe");
 
@@ -146,6 +150,7 @@ impl VideoDecoder {
     }
 
     pub async fn save_video_frames(&self, frames_dir: impl AsRef<Path>) -> anyhow::Result<()> {
+        fs::create_dir_all(frames_dir.as_ref())?;
         match std::process::Command::new(&self.binary_file_path)
             .args([
                 "-i",
@@ -160,7 +165,7 @@ impl VideoDecoder {
                 "9",
                 frames_dir
                     .as_ref()
-                    .join("%d000.jpg")
+                    .join(format!("%d000.{}", FRAME_FILE_EXTENSION))
                     .to_str()
                     .expect("invalid frames dir path"),
             ])
@@ -243,7 +248,11 @@ async fn test_video_decoder() {
 
     #[cfg(feature = "ffmpeg-binary")]
     {
-        let video_decoder = VideoDecoder::new("/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4").await.expect("failed to find ffmpeg binary file");
+        let video_decoder = VideoDecoder::new(
+            "/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4",
+        )
+        .await
+        .expect("failed to find ffmpeg binary file");
 
         // let frames_fut = video_decoder.save_video_frames("/Users/zhuo/Desktop/frames");
         // let audio_fut = video_decoder.save_video_audio("/Users/zhuo/Desktop/audio.wav");

@@ -13,7 +13,7 @@ use tracing::{debug, error, info, warn};
 
 const BATCH_FRAME_COUNT: i64 = 1000;
 
-pub async fn get_video_clips(
+pub async fn save_video_clips(
     file_identifier: String,
     transcript_path: Option<impl AsRef<std::path::Path>>,
     client: Arc<PrismaClient>,
@@ -172,7 +172,7 @@ pub async fn get_video_clips(
 }
 
 #[allow(dead_code)]
-pub async fn get_video_clips_summarization(
+pub async fn save_video_clips_summarization(
     file_identifier: String,
     resources_dir: impl AsRef<std::path::Path>,
     client: Arc<PrismaClient>,
@@ -316,11 +316,11 @@ async fn test_video_clip() {
     let file_identifier =
         String::from("1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b");
 
-    let result = get_video_clips(
+    let result = save_video_clips(
         file_identifier,
         None::<std::path::PathBuf>,
         library.prisma_client(),
-        library.qdrant_server.get_client(),
+        library.qdrant_client(),
     )
     .await;
 

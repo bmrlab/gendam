@@ -1,7 +1,6 @@
-use crate::routes::audio::{
-    constant::TRANSCRIPT_FILE_NAME, downloader::DownloadHelper, reader::AudioReader,
-};
+use crate::routes::audio::{downloader::DownloadHelper, reader::AudioReader};
 use crate::CtxWithLibrary;
+use file_handler::video::TRANSCRIPT_FILE_NAME;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -11,7 +10,6 @@ use strum_macros::EnumIter;
 use tracing::log::debug;
 use tracing::{error, warn};
 
-mod constant;
 pub mod downloader;
 pub mod reader;
 

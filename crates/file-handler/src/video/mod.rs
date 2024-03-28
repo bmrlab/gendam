@@ -1,16 +1,11 @@
 pub use self::decoder::VideoMetadata;
-use ai::blip::BLIP;
-use ai::clip::CLIP;
-use ai::whisper::{Whisper, WhisperParams};
-use ai::BatchHandler;
+use ai::{blip::BLIP, clip::CLIP, whisper::Whisper, BatchHandler};
 use anyhow::Ok;
+pub use constants::*;
 use content_library::Library;
-use prisma_lib::PrismaClient;
-use qdrant_client::client::QdrantClient;
 use std::fs;
-use std::sync::Arc;
-use tokio::io::AsyncWriteExt;
 
+mod constants;
 mod decoder;
 mod split;
 mod utils;
@@ -28,6 +23,7 @@ mod utils;
 ///
 /// ```rust
 /// let video_path = "";
+/// let video_file_hash = "";
 /// let resources_dir = "";
 /// let local_data_dir = ""
 /// let library_id = "";
@@ -36,40 +32,57 @@ mod utils;
 ///     &local_data_dir.into(),
 ///     &resources_dir.into(),
 ///     library_id,
+///     clip,
+///     blip,
+///     whisper,
 /// ).await;
 ///
 /// let video_handler = VideoHandler::new(
 ///     video_path,
-///     resources_dir,
+///     video_file_hash,
 ///     &library,
 /// ).await.unwrap();
 ///
 /// // get video metadata
 /// video_handler.get_video_metadata().await;
 ///
-/// // get frames and save their embedding into faiss
-/// video_handler.get_frames().await;
-/// video_handler.get_frame_content_embedding().await;
+/// // CLIP, BLIP, Whisper model should be initialized in advanced
+/// // in order to implement advanced information extraction
+/// // following examples shows how to use them
+/// // refer to `ai` crate for initialization of these models
 ///
-/// // get audio, then extract text, and finally save text embedding in faiss
-/// video_handler.get_audio().await;
-/// video_handler.get_transcript().await;
-/// video_handler.get_transcript_embedding().await;
+/// // save frames into disk and prisma
+/// video_handler.save_frames().await;
+/// // save frames embedding into qdrant
+/// let video_handler = video_handler.with_clip(clip);
+/// video_handler.save_frame_content_embedding().await;
+///
+/// // save audio into disk
+/// video_handler.save_audio().await;
+/// // save transcript into disk and prisma
+/// let video_handler = video_handler.with_whisper(whisper);
+/// video_handler.save_transcript().await;
+/// // save transcript embedding into qdrant
+/// let video_handler = video_handler.with_clip(clip);
+/// video_handler.save_transcript_embedding().await;
+///
+/// // save frames' captions into disk and prisma
+/// let video_handler = video_handler.with_blip(blip);
+/// video_handler.save_frames_caption().await;
+/// // save frames' captions embedding into qdrant
+/// let video_handler = video_handler.with_whisper(whisper);
+/// video_handler.save_frame_caption_embedding().await;
 /// ```
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct VideoHandler {
     video_path: std::path::PathBuf,
     file_identifier: String,
-    frames_dir: std::path::PathBuf,
-    audio_path: std::path::PathBuf,
-    transcript_path: std::path::PathBuf,
+    artifacts_dir: std::path::PathBuf,
     library: Library,
-    client: Arc<PrismaClient>,
-    qdrant: Arc<QdrantClient>,
-    clip: BatchHandler<CLIP>,
-    blip: BatchHandler<BLIP>,
-    whisper: BatchHandler<Whisper>,
+    clip: Option<BatchHandler<CLIP>>,
+    blip: Option<BatchHandler<BLIP>>,
+    whisper: Option<BatchHandler<Whisper>>,
 }
 
 impl VideoHandler {
@@ -78,43 +91,68 @@ impl VideoHandler {
     /// # Arguments
     ///
     /// * `video_path` - The path to the video file
+    /// * `video_file_hash` - The hash of the video file
     /// * `library` - Current library reference
-    /// * `clip` - CLIP batch handler from ai crate
-    /// * `blip` - BLIP batch handler from ai crate
-    /// * `whisper` - whisper batch handler from ai crate
-    pub async fn new(
+    pub fn new(
         video_path: impl AsRef<std::path::Path>,
         video_file_hash: &str,
         library: &Library,
-        clip: BatchHandler<CLIP>,
-        blip: BatchHandler<BLIP>,
-        whisper: BatchHandler<Whisper>,
     ) -> anyhow::Result<Self> {
-        // let bytes = std::fs::read(&video_path)?;
-        // let file_sha256 = sha256::digest(&bytes);
         let artifacts_dir = library.artifacts_dir.join(video_file_hash);
-        let frames_dir = artifacts_dir.join("frames");
-
         fs::create_dir_all(&artifacts_dir)?;
-        fs::create_dir_all(&frames_dir)?;
 
         Ok(Self {
             video_path: video_path.as_ref().to_owned(),
             file_identifier: video_file_hash.to_string(),
-            audio_path: artifacts_dir.join("audio.wav"),
-            frames_dir,
-            transcript_path: artifacts_dir.join("transcript.txt"),
+            artifacts_dir,
             library: library.clone(),
-            qdrant: library.qdrant_server.get_client().clone(),
-            client: library.prisma_client(),
-            clip,
-            blip,
-            whisper,
+            clip: None,
+            blip: None,
+            whisper: None,
         })
     }
 
     pub fn file_identifier(&self) -> &str {
         &self.file_identifier
+    }
+
+    fn clip(&self) -> anyhow::Result<BatchHandler<CLIP>> {
+        self.clip
+            .clone()
+            .ok_or(anyhow::anyhow!("CLIP is not enabled"))
+    }
+
+    fn blip(&self) -> anyhow::Result<BatchHandler<BLIP>> {
+        self.blip
+            .clone()
+            .ok_or(anyhow::anyhow!("BLIP is not enabled"))
+    }
+
+    fn whisper(&self) -> anyhow::Result<BatchHandler<Whisper>> {
+        self.whisper
+            .clone()
+            .ok_or(anyhow::anyhow!("Whisper is not enabled"))
+    }
+
+    pub fn with_clip(self, clip: BatchHandler<CLIP>) -> Self {
+        Self {
+            clip: Some(clip),
+            ..self
+        }
+    }
+
+    pub fn with_blip(self, blip: BatchHandler<BLIP>) -> Self {
+        Self {
+            blip: Some(blip),
+            ..self
+        }
+    }
+
+    pub fn with_whisper(self, whisper: BatchHandler<Whisper>) -> Self {
+        Self {
+            whisper: Some(whisper),
+            ..self
+        }
     }
 
     pub async fn get_video_metadata(&self) -> anyhow::Result<VideoMetadata> {
@@ -123,33 +161,44 @@ impl VideoHandler {
         video_decoder.get_video_metadata().await
     }
 
-    /// Extract key frames from video
-    /// and save the results in local data directory (in a folder named by file identifier)
-    pub async fn get_frames(&self) -> anyhow::Result<()> {
+    /// Extract key frames from video and save results
+    /// - Save into disk (a folder named by `library` and `video_file_hash`)
+    /// - Save into prisma `VideoFrame` model
+    pub async fn save_frames(&self) -> anyhow::Result<()> {
         let video_path = &self.video_path;
+        let frames_dir = self.artifacts_dir.join(FRAME_DIR);
 
         #[cfg(feature = "ffmpeg-binary")]
         {
             let video_decoder = decoder::VideoDecoder::new(video_path).await?;
-            video_decoder.save_video_frames(&self.frames_dir).await?;
+            video_decoder.save_video_frames(frames_dir.clone()).await?;
         }
 
         #[cfg(feature = "ffmpeg-dylib")]
         {
             let video_decoder = decoder::VideoDecoder::new(video_path);
-            video_decoder.save_video_frames(&self.frames_dir).await?;
+            video_decoder.save_video_frames(frames_dir.clone()).await?;
         }
+
+        utils::frame::save_frames(
+            self.file_identifier().into(),
+            self.library.prisma_client(),
+            frames_dir,
+        )
+        .await?;
 
         Ok(())
     }
 
-    /// Extract audio from video
-    /// and save the results in local data directory (in a folder named by file identifier)
-    pub async fn get_audio(&self) -> anyhow::Result<()> {
+    /// Extract audio from video and save results
+    /// - Save into disk (a folder named by `library` and `video_file_hash`)
+    pub async fn save_audio(&self) -> anyhow::Result<()> {
         #[cfg(feature = "ffmpeg-binary")]
         {
             let video_decoder = decoder::VideoDecoder::new(&self.video_path).await?;
-            video_decoder.save_video_audio(&self.audio_path).await?;
+            video_decoder
+                .save_video_audio(self.artifacts_dir.join(AUDIO_FILE_NAME))
+                .await?;
         }
 
         #[cfg(feature = "ffmpeg-dylib")]
@@ -162,39 +211,23 @@ impl VideoHandler {
     }
 
     /// Convert audio of the video into text
-    /// this requires extracting audio in advance
+    /// **This requires extracting audio in advance**
     ///
-    /// And the transcript will be saved in the same directory with audio
-    pub async fn get_transcript(&self) -> anyhow::Result<()> {
-        let result = self
-            .whisper
-            .process_single((
-                self.audio_path.clone(),
-                Some(WhisperParams {
-                    enable_translate: false,
-                    ..Default::default()
-                }),
-            ))
-            .await?;
-
-        // write results into json file
-        let mut file = tokio::fs::File::create(&self.transcript_path).await?;
-        let json = serde_json::to_string(&result.items())?;
-        file.write_all(json.as_bytes()).await?;
-
+    /// This will also save results:
+    /// - Save into disk (a folder named by `library` and `video_file_hash`)
+    /// - Save into prisma `VideoTranscript` model
+    pub async fn save_transcript(&self) -> anyhow::Result<()> {
         utils::transcript::save_transcript(
-            result,
+            &self.artifacts_dir,
             self.file_identifier.clone(),
-            self.client.clone(),
-        ).await?;
-
-        Ok(())
+            self.library.prisma_client(),
+            self.whisper()?,
+        )
+        .await
     }
 
     #[deprecated(note = "deprecated for now, output language of transcript is not stable for now")]
-    /// Get transcript embedding
-    /// this requires extracting transcript in advance
-    pub async fn get_transcript_embedding(&self) -> anyhow::Result<()> {
+    pub async fn save_transcript_embedding(&self) -> anyhow::Result<()> {
         // utils::transcript::get_transcript_embedding(
         //     self.file_identifier().into(),
         //     self.client.clone(),
@@ -207,37 +240,43 @@ impl VideoHandler {
         Ok(())
     }
 
-    /// Get frame content embedding
-    pub async fn get_frame_content_embedding(&self) -> anyhow::Result<()> {
-        utils::frame::get_frame_content_embedding(
+    /// Save frame content embedding into qdrant
+    pub async fn save_frame_content_embedding(&self) -> anyhow::Result<()> {
+        utils::frame::save_frame_content_embedding(
             self.file_identifier.clone(),
-            self.client.clone(),
-            &self.frames_dir,
-            self.clip.clone(),
-            self.qdrant.clone(),
+            self.library.prisma_client(),
+            self.artifacts_dir.join(FRAME_DIR),
+            self.clip()?,
+            self.library.qdrant_client(),
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
-    /// Get frames' captions of video
-    /// this requires extracting frames in advance
+    /// Save frames' captions of video
+    /// **this requires extracting frames in advance**
     ///
-    /// All caption will be saved in .caption file in the same place with frame file
-    pub async fn get_frames_caption(&self) -> anyhow::Result<()> {
-        utils::caption::get_frames_caption(&self.frames_dir, self.blip.clone()).await
+    /// The captions will be saved:
+    /// - To disk: as `.caption` file in the same place with frame file
+    /// - To prisma `VideoFrameCaption` model
+    pub async fn save_frames_caption(&self) -> anyhow::Result<()> {
+        utils::caption::save_frames_caption(
+            self.file_identifier().into(),
+            self.artifacts_dir.join(FRAME_DIR),
+            self.blip()?,
+            self.library.prisma_client(),
+        )
+        .await
     }
 
-    /// Get frame caption embedding
+    /// Save frame caption embedding into qdrant
     /// this requires extracting frames and get captions in advance
-    pub async fn get_frame_caption_embedding(&self) -> anyhow::Result<()> {
-        utils::caption::get_frame_caption_embedding(
+    pub async fn save_frame_caption_embedding(&self) -> anyhow::Result<()> {
+        utils::caption::save_frame_caption_embedding(
             self.file_identifier().into(),
-            self.client.clone(),
-            &self.frames_dir,
-            self.clip.clone(),
-            self.qdrant.clone(),
+            self.library.prisma_client(),
+            self.artifacts_dir.join(FRAME_DIR),
+            self.clip()?,
+            self.library.qdrant_client(),
         )
         .await?;
 
@@ -245,17 +284,17 @@ impl VideoHandler {
     }
 
     /// Split video into multiple clips
-    pub async fn get_video_clips(&self) -> anyhow::Result<()> {
-        utils::clip::get_video_clips(
+    pub async fn save_video_clips(&self) -> anyhow::Result<()> {
+        utils::clip::save_video_clips(
             self.file_identifier.clone(),
-            Some(&self.transcript_path),
-            self.client.clone(),
-            self.qdrant.clone(),
+            Some(self.artifacts_dir.join(TRANSCRIPT_FILE_NAME)),
+            self.library.prisma_client(),
+            self.library.qdrant_client(),
         )
         .await
     }
 
-    pub async fn get_video_clips_summarization(&self) -> anyhow::Result<()> {
+    pub async fn save_video_clips_summarization(&self) -> anyhow::Result<()> {
         todo!("implement video clips summarization")
         // utils::clip::get_video_clips_summarization(
         //     self.file_identifier.clone(),
@@ -264,105 +303,4 @@ impl VideoHandler {
         // )
         // .await
     }
-}
-
-#[test_log::test(tokio::test)]
-async fn test_handle_video() {
-    // let video_path = "/Users/zhuo/Desktop/file_v2_f566a493-ad1b-4324-b16f-0a4c6a65666g 2.MP4";
-    // let resources_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local/resources";
-    // let local_data_dir =
-    //     std::path::Path::new("/Users/zhuo/Library/Application Support/cc.musedam.local")
-    //         .to_path_buf();
-    // let library = content_library::load_library(
-    //     &local_data_dir,
-    //     "78a978d85b8ff26cc202aa6d244ed576ef5a187873c49255d3980df69deedb8a",
-    // )
-    // .await
-    // .unwrap();
-
-    // let video_handler = VideoHandler::new(video_path, &library).await;
-
-    // if video_handler.is_err() {
-    //     tracing::error!("failed to create video handler");
-    // }
-    // let video_handler = video_handler.unwrap();
-
-    // tracing::info!("file handler initialized");
-
-    // let metadata = video_handler.get_video_metadata().await;
-    // tracing::info!("got video metadata: {:?}", metadata);
-
-    // video_handler
-    //     .get_frames()
-    //     .await
-    //     .expect("failed to get frames");
-
-    // tracing::info!("got frames");
-
-    // video_handler
-    //     .get_frame_content_embedding()
-    //     .await
-    //     .expect("failed to get frame content embedding");
-
-    // tracing::debug!("got frame content embedding");
-
-    // video_handler
-    //     .indexes
-    //     .frame_index
-    //     .flush()
-    //     .await
-    //     .expect("failed to flush index");
-
-    // video_handler
-    //     .get_audio()
-    //     .await
-    //     .expect("failed to get audio");
-
-    // tracing::info!("got audio");
-
-    // video_handler
-    //     .get_transcript()
-    //     .await
-    //     .expect("failed to get transcript");
-
-    // tracing::info!("got transcript");
-
-    // video_handler
-    //     .get_transcript_embedding()
-    //     .await
-    //     .expect("failed to get transcript embedding");
-
-    // video_handler
-    //     .indexes
-    //     .transcript_index
-    //     .flush()
-    //     .await
-    //     .expect("failed to flush index");
-
-    // video_handler
-    //     .get_frames_caption()
-    //     .await
-    //     .expect("failed to get frames caption");
-    // video_handler
-    //     .get_frame_caption_embedding()
-    //     .await
-    //     .expect("failed to get frame caption embedding");
-
-    // video_handler
-    //     .indexes
-    //     .flush()
-    //     .await
-    //     .expect("failed to flush index");
-
-    // video_handler
-    //     .get_video_clips()
-    //     .await
-    //     .expect("failed to get video clips");
-
-    // video_handler
-    //     .get_video_clips_summarization()
-    //     .await
-    //     .expect("failed to get video clips summarization");
-
-    // tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 }

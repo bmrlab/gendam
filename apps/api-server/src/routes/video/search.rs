@@ -7,7 +7,6 @@ use prisma_lib::asset_object;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use std::sync::Arc;
 use tracing::error;
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
@@ -37,7 +36,9 @@ where
             let text = input.text.clone();
             let record_types = match input.record_type {
                 s if s == "Transcript" => vec![SearchRecordType::Transcript],
-                s if s == "FrameCaption" => vec![SearchRecordType::FrameCaption, SearchRecordType::Frame],
+                s if s == "FrameCaption" => {
+                    vec![SearchRecordType::FrameCaption, SearchRecordType::Frame]
+                }
                 s if s == "Frame" => vec![SearchRecordType::FrameCaption, SearchRecordType::Frame],
                 _ => {
                     return Err(rspc::Error::new(
@@ -54,7 +55,7 @@ where
                     skip: None,
                 },
                 library.prisma_client(),
-                Arc::clone(&library.qdrant_server.get_client()),
+                library.qdrant_client(),
                 ctx.get_ai_handler().clip,
             )
             .await;

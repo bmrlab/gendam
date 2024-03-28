@@ -1,18 +1,84 @@
 use super::save_text_embedding;
-use crate::search_payload::SearchPayload;
+use crate::{
+    search_payload::SearchPayload,
+    video::{AUDIO_FILE_NAME, TRANSCRIPT_FILE_NAME},
+};
 use ai::{
     clip::CLIP,
-    whisper::{WhisperItem, WhisperResult},
+    whisper::{Whisper, WhisperItem, WhisperParams},
     BatchHandler,
 };
 use prisma_lib::{video_transcript, PrismaClient};
 use qdrant_client::client::QdrantClient;
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
+use tokio::io::AsyncWriteExt;
 use tracing::error;
+
+pub async fn save_transcript(
+    artifacts_dir: impl AsRef<std::path::Path>,
+    file_identifier: String,
+    client: Arc<PrismaClient>,
+    whisper: BatchHandler<Whisper>,
+) -> anyhow::Result<()> {
+    let result = whisper
+        .process_single((
+            artifacts_dir.as_ref().join(AUDIO_FILE_NAME),
+            Some(WhisperParams {
+                enable_translate: false,
+                ..Default::default()
+            }),
+        ))
+        .await?;
+
+    // write results into json file
+    let mut file =
+        tokio::fs::File::create(artifacts_dir.as_ref().join(TRANSCRIPT_FILE_NAME)).await?;
+    let json = serde_json::to_string(&result.items())?;
+    file.write_all(json.as_bytes()).await?;
+
+    let mut join_set = tokio::task::JoinSet::new();
+
+    for item in result.items() {
+        let file_identifier = file_identifier.clone();
+        let client = client.clone();
+
+        join_set.spawn(async move {
+            let x = {
+                client
+                    .video_transcript()
+                    .upsert(
+                        video_transcript::file_identifier_start_timestamp_end_timestamp(
+                            file_identifier.clone(),
+                            item.start_timestamp as i32,
+                            item.end_timestamp as i32,
+                        ),
+                        (
+                            file_identifier.clone(),
+                            item.start_timestamp as i32,
+                            item.end_timestamp as i32,
+                            item.text.clone(), // store original text
+                            vec![],
+                        ),
+                        vec![],
+                    )
+                    .exec()
+                    .await
+            };
+
+            if let Err(e) = x {
+                error!("failed to save transcript: {:?}", e);
+            }
+        });
+    }
+
+    while let Some(_) = join_set.join_next().await {}
+
+    Ok(())
+}
 
 #[deprecated(note = "this function need to be improved")]
 #[allow(dead_code)]
-pub async fn get_transcript_embedding(
+pub async fn save_transcript_embedding(
     file_identifier: String,
     client: Arc<PrismaClient>,
     path: impl AsRef<Path>,
@@ -91,51 +157,6 @@ pub async fn get_transcript_embedding(
                 Err(e) => {
                     error!("failed to save transcript embedding: {:?}", e);
                 }
-            }
-        });
-    }
-
-    while let Some(_) = join_set.join_next().await {}
-
-    Ok(())
-}
-
-pub async fn save_transcript(
-    result: WhisperResult,
-    file_identifier: String,
-    client: Arc<PrismaClient>,
-) -> anyhow::Result<()> {
-    let mut join_set = tokio::task::JoinSet::new();
-
-    for item in result.items() {
-        let file_identifier = file_identifier.clone();
-        let client = client.clone();
-
-        join_set.spawn(async move {
-            let x = {
-                client
-                    .video_transcript()
-                    .upsert(
-                        video_transcript::file_identifier_start_timestamp_end_timestamp(
-                            file_identifier.clone(),
-                            item.start_timestamp as i32,
-                            item.end_timestamp as i32,
-                        ),
-                        (
-                            file_identifier.clone(),
-                            item.start_timestamp as i32,
-                            item.end_timestamp as i32,
-                            item.text.clone(), // store original text
-                            vec![],
-                        ),
-                        vec![],
-                    )
-                    .exec()
-                    .await
-            };
-
-            if let Err(e) = x {
-                error!("failed to save transcript: {:?}", e);
             }
         });
     }

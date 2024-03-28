@@ -171,27 +171,42 @@ impl TaskProcessor {
         ] {
             // 检查任务是否已退出
             if processor.is_exit().await {
-                info!( "Task exit: {}, {}", &task_type.to_string(), &task_payload.file_path);
+                info!(
+                    "Task exit: {}, {}",
+                    &task_type.to_string(),
+                    &task_payload.file_path
+                );
                 break;
             }
             processor.save_starts_at(&task_type.to_string()).await;
             let result = match task_type {
-                VideoTaskType::Frame => vh.get_frames().await,
-                VideoTaskType::FrameContentEmbedding => vh.get_frame_content_embedding().await,
-                VideoTaskType::FrameCaption => vh.get_frames_caption().await,
-                VideoTaskType::FrameCaptionEmbedding => vh.get_frame_caption_embedding().await,
-                VideoTaskType::Audio => vh.get_audio().await,
-                VideoTaskType::Transcript => vh.get_transcript().await,
-                // VideoTaskType::TranscriptEmbedding => vh.get_transcript_embedding().await,
+                VideoTaskType::Frame => vh.save_frames().await,
+                VideoTaskType::FrameContentEmbedding => vh.save_frame_content_embedding().await,
+                VideoTaskType::FrameCaption => vh.save_frames_caption().await,
+                VideoTaskType::FrameCaptionEmbedding => vh.save_frame_caption_embedding().await,
+                VideoTaskType::Audio => vh.save_audio().await,
+                VideoTaskType::Transcript => vh.save_transcript().await,
+                // VideoTaskType::TranscriptEmbedding => vh.save_transcript_embedding().await,
                 _ => Ok(()),
             };
             if let Err(e) = result {
-                error!("Task failed: {}, {}, {}", &task_type.to_string(), &task_payload.file_path, e);
-                processor.save_ends_at(&task_type.to_string(), Some(e.to_string())).await;
+                error!(
+                    "Task failed: {}, {}, {}",
+                    &task_type.to_string(),
+                    &task_payload.file_path,
+                    e
+                );
+                processor
+                    .save_ends_at(&task_type.to_string(), Some(e.to_string()))
+                    .await;
                 // 出错了以后，先终止
                 break;
             } else {
-                info!( "Task success: {}, {}", &task_type.to_string(), &task_payload.file_path);
+                info!(
+                    "Task success: {}, {}",
+                    &task_type.to_string(),
+                    &task_payload.file_path
+                );
                 processor.save_ends_at(&task_type.to_string(), None).await;
             }
         }
@@ -231,13 +246,11 @@ pub async fn create_video_task(
         local_video_file_full_path,
         &asset_object_data.hash,
         &library,
-        ai_handler.clip,
-        ai_handler.blip,
-        ai_handler.whisper,
-    )
-    .await
-    {
-        Ok(vh) => vh,
+    ) {
+        Ok(vh) => vh
+            .with_clip(ai_handler.clip)
+            .with_blip(ai_handler.blip)
+            .with_whisper(ai_handler.whisper),
         Err(e) => {
             error!("failed to initialize video handler: {}", e);
             return Err(());

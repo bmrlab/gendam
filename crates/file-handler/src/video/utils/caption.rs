@@ -1,16 +1,21 @@
 use super::save_text_embedding;
-use crate::search_payload::SearchPayload;
+use crate::{
+    search_payload::SearchPayload,
+    video::{utils::get_frame_timestamp_from_path, CAPTION_FILE_EXTENSION, FRAME_FILE_EXTENSION},
+};
 use ai::{blip::BLIP, clip::CLIP, BatchHandler};
-use anyhow::{anyhow, Ok};
+use anyhow::Ok;
 use prisma_lib::{video_frame, video_frame_caption, PrismaClient};
 use qdrant_client::client::QdrantClient;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, error};
 
-pub async fn get_frames_caption(
+pub async fn save_frames_caption<'a>(
+    file_identifier: String,
     frames_dir: impl AsRef<std::path::Path>,
     blip_model: BatchHandler<BLIP>,
+    client: Arc<PrismaClient>,
 ) -> anyhow::Result<()> {
     let frame_paths = std::fs::read_dir(frames_dir.as_ref())?
         .map(|res| res.map(|e| e.path()))
@@ -19,12 +24,57 @@ pub async fn get_frames_caption(
     let mut join_set = tokio::task::JoinSet::new();
 
     for path in frame_paths {
-        if path.extension() == Some(std::ffi::OsStr::new("jpg")) {
+        if path.extension() == Some(std::ffi::OsStr::new(FRAME_FILE_EXTENSION)) {
             debug!("get_frames_caption: {:?}", path);
             let blip_model = blip_model.clone();
+            let frame_timestamp = get_frame_timestamp_from_path(&path)?;
+            let client = client.clone();
+            let file_identifier = file_identifier.clone();
+
             join_set.spawn(async move {
-                if let Err(e) = get_single_frame_caption(blip_model, path).await {
-                    error!("failed to get frame caption: {:?}", e);
+                match save_single_frame_caption(blip_model, path).await {
+                    anyhow::Result::Ok(caption) => {
+                        match client
+                            .video_frame()
+                            .upsert(
+                                video_frame::UniqueWhereParam::FileIdentifierTimestampEquals(
+                                    file_identifier.clone(),
+                                    frame_timestamp as i32,
+                                ),
+                                (file_identifier.clone(), frame_timestamp as i32, vec![]),
+                                vec![],
+                            )
+                            .exec()
+                            .await
+                        {
+                            anyhow::Result::Ok(video_frame) => {
+                                if let Err(e) = client
+                                    .video_frame_caption()
+                                    .upsert(
+                                        video_frame_caption::UniqueWhereParam::VideoFrameIdEquals(
+                                            video_frame.id,
+                                        ),
+                                        (
+                                            caption.clone(),
+                                            video_frame::UniqueWhereParam::IdEquals(video_frame.id),
+                                            vec![],
+                                        ),
+                                        vec![],
+                                    )
+                                    .exec()
+                                    .await
+                                {
+                                    error!("failed to upsert video frame caption: {}", e);
+                                }
+                            }
+                            Err(e) => {
+                                error!("failed to upsert video frame: {}", e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        error!("failed to get frame caption: {:?}", e);
+                    }
                 }
             });
         }
@@ -35,10 +85,10 @@ pub async fn get_frames_caption(
     Ok(())
 }
 
-async fn get_single_frame_caption(
+async fn save_single_frame_caption(
     blip_handler: BatchHandler<BLIP>,
     path: impl AsRef<std::path::Path>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<String> {
     let caption = blip_handler
         .process_single(path.as_ref().to_owned())
         .await?;
@@ -48,16 +98,16 @@ async fn get_single_frame_caption(
     // write into file
     let caption_path = path
         .as_ref()
-        .to_str()
-        .ok_or(anyhow!("invalid path"))?
-        .replace(".jpg", ".caption");
+        .with_extension(CAPTION_FILE_EXTENSION)
+        .to_string_lossy()
+        .to_string();
     let mut file = tokio::fs::File::create(caption_path).await?;
     file.write_all(caption.as_bytes()).await?;
 
-    Ok(())
+    Ok(caption)
 }
 
-pub async fn get_frame_caption_embedding(
+pub async fn save_frame_caption_embedding(
     file_identifier: String,
     client: Arc<PrismaClient>,
     frames_dir: impl AsRef<std::path::Path>,
@@ -112,53 +162,30 @@ async fn get_single_frame_caption_embedding(
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
     let caption = tokio::fs::read_to_string(path.as_ref()).await?;
-    let file_name = path
-        .as_ref()
-        .file_name()
-        .ok_or(anyhow!("invalid path"))?
-        .to_str()
-        .ok_or(anyhow!("invalid path"))?;
-
-    let frame_timestamp: i64 = file_name
-        .split(".")
-        .next()
-        .unwrap_or("0")
-        .parse()
-        .unwrap_or(0);
+    let frame_timestamp = get_frame_timestamp_from_path(path)?;
 
     let x = {
-        let video_frame = client
+        client
             .video_frame()
-            .upsert(
+            .find_unique(
                 video_frame::UniqueWhereParam::FileIdentifierTimestampEquals(
                     file_identifier.clone(),
                     frame_timestamp as i32,
                 ),
-                (file_identifier.clone(), frame_timestamp as i32, vec![]),
-                vec![],
             )
-            .exec()
-            .await?;
-        client
-            .video_frame_caption()
-            .upsert(
-                video_frame_caption::UniqueWhereParam::VideoFrameIdEquals(video_frame.id),
-                (
-                    caption.clone(),
-                    video_frame::UniqueWhereParam::IdEquals(video_frame.id),
-                    vec![],
-                ),
-                vec![],
-            )
+            .with(video_frame::caption::fetch())
             .exec()
             .await
-        // drop the rwlock
     };
 
     match x {
-        std::result::Result::Ok(res) => {
+        std::result::Result::Ok(Some(res)) => {
             let payload = SearchPayload::FrameCaption {
-                id: res.id as u64,
+                id: res
+                    .caption
+                    .ok_or(anyhow::anyhow!("no caption record found"))?
+                    .ok_or(anyhow::anyhow!("no caption record found"))?
+                    .id as u64,
                 file_identifier: file_identifier.clone(),
                 timestamp: frame_timestamp,
             };
@@ -170,6 +197,9 @@ async fn get_single_frame_caption_embedding(
                 vector_db::DEFAULT_COLLECTION_NAME,
             )
             .await?;
+        }
+        std::result::Result::Ok(None) => {
+            error!("failed to find frame caption");
         }
         Err(e) => {
             error!("failed to save frame caption embedding: {:?}", e);

@@ -37,3 +37,21 @@ pub async fn save_text_embedding(
 
     Ok(())
 }
+
+pub(self) fn get_frame_timestamp_from_path(path: impl AsRef<std::path::Path>) -> anyhow::Result<i64> {
+    let file_name = path
+        .as_ref()
+        .file_name()
+        .ok_or(anyhow::anyhow!("invalid path"))?
+        .to_string_lossy()
+        .to_string();
+
+    let frame_timestamp: i64 = file_name
+        .split(".")
+        .next()
+        .unwrap_or("0")
+        .parse()
+        .unwrap_or(0);
+
+    Ok(frame_timestamp)
+}
