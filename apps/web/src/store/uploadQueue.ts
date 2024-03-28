@@ -48,7 +48,7 @@ export const useUploadQueueStore = create<UploadQueue>((set, get) => ({
     set((state) => {
       if (state.uploading) {
         return {
-          failed: [state.uploading, ...state.completed],
+          failed: [state.uploading, ...state.failed],
           uploading: null,
         }
       }
