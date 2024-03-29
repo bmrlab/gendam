@@ -52,6 +52,13 @@ pub async fn handle_search(
     let mut search_results = vec![];
 
     for record_type in record_types {
+        if record_type == SearchRecordType::Transcript {
+            /*
+             * transcript 搜索不用 qdrant，这里先跳过，循环直接数据库里搜索
+             * TODO 需要优化代码
+             */
+            continue;
+        }
         let search_result = qdrant
             .search_points(&SearchPoints {
                 collection_name: vector_db::DEFAULT_COLLECTION_NAME.into(),
@@ -149,6 +156,27 @@ pub async fn handle_search(
             }
         }
     }
+
+    /*
+     * 从数据库里直接搜索 transcript
+     * TODO 需要优化代码
+     */
+    let results = client
+        .video_transcript()
+        .find_many(vec![
+            video_transcript::text::contains(payload.text.clone()),
+        ])
+        .take(10)
+        .exec()
+        .await?;
+    results.iter().for_each(|v| {
+        search_results.push(SearchResult {
+            file_identifier: v.file_identifier.clone(),
+            start_timestamp: v.start_timestamp,
+            end_timestamp: v.end_timestamp,
+            score: 0 as f32,
+        })
+    });
 
     // order results by score
     search_results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
