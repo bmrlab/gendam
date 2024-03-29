@@ -48,8 +48,8 @@ export default function useTaskList({ limit = DEFAULT_LIMIT, filter = 'all' }: T
 
   // 使用全量数据拆分成多页
   useEffect(() => {
-    if (fullVideo) {
-      let newData = new Array(fullVideo.data.length / limit)
+    if (fullVideo && fullVideo.data.length > 0) {
+      let newData = new Array(Math.ceil(fullVideo.data.length / limit))
         .fill(null)
         .map((_, i) => fullVideo.data.slice(i * limit, (i + 1) * limit))
       setData(newData)
