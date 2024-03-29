@@ -21,41 +21,33 @@ pub async fn save_frames(
         .map(|res| res.map(|e| e.path()))
         .collect::<Result<Vec<_>, std::io::Error>>()?;
 
-    let mut join_set = tokio::task::JoinSet::new();
-
     for path in frame_paths {
         if path.extension() == Some(std::ffi::OsStr::new(FRAME_FILE_EXTENSION)) {
             let client = client.clone();
             let frame_timestamp = get_frame_timestamp_from_path(&path)?;
             let file_identifier = file_identifier.clone();
 
-            join_set.spawn(async move {
-                // write data using prisma
-                let x = {
-                    client
-                        .video_frame()
-                        .upsert(
-                            video_frame::file_identifier_timestamp(
-                                file_identifier.clone(),
-                                frame_timestamp as i32,
-                            ),
-                            (file_identifier.clone(), frame_timestamp as i32, vec![]),
-                            vec![],
-                        )
-                        .exec()
-                        .await
-                    // drop the rwlock
-                };
+            // write data using prisma
+            let x = {
+                client
+                    .video_frame()
+                    .upsert(
+                        video_frame::file_identifier_timestamp(
+                            file_identifier.clone(),
+                            frame_timestamp as i32,
+                        ),
+                        (file_identifier.clone(), frame_timestamp as i32, vec![]),
+                        vec![],
+                    )
+                    .exec()
+                    .await
+            };
 
-                if let Err(e) = x {
-                    error!("failed to save frame content embedding: {:?}", e);
-                }
-            });
+            if let Err(e) = x {
+                error!("failed to save frame content embedding: {:?}", e);
+            }
         }
     }
-
-    // wait for all tasks
-    while let Some(_) = join_set.join_next().await {}
 
     Ok(())
 }
@@ -73,8 +65,6 @@ pub async fn save_frame_content_embedding(
         .map(|res| res.map(|e| e.path()))
         .collect::<Result<Vec<_>, std::io::Error>>()?;
 
-    let mut join_set = tokio::task::JoinSet::new();
-
     for path in frame_paths {
         if path.extension() == Some(std::ffi::OsStr::new(FRAME_FILE_EXTENSION)) {
             let client = client.clone();
@@ -84,46 +74,40 @@ pub async fn save_frame_content_embedding(
             let frame_timestamp = get_frame_timestamp_from_path(&path)?;
             let file_identifier = file_identifier.clone();
 
-            join_set.spawn(async move {
-                // get data using prisma
-                let x = {
-                    client
-                        .video_frame()
-                        .find_unique(video_frame::file_identifier_timestamp(
-                            file_identifier.clone(),
-                            frame_timestamp as i32,
-                        ))
-                        .exec()
-                        .await
-                    // drop the rwlock
-                };
+            // get data using prisma
+            let x = {
+                client
+                    .video_frame()
+                    .find_unique(video_frame::file_identifier_timestamp(
+                        file_identifier.clone(),
+                        frame_timestamp as i32,
+                    ))
+                    .exec()
+                    .await
+                // drop the rwlock
+            };
 
-                match x {
-                    std::result::Result::Ok(Some(res)) => {
-                        let payload = SearchPayload::Frame {
-                            id: res.id as u64,
-                            file_identifier: file_identifier.clone(),
-                            timestamp: frame_timestamp,
-                        };
+            match x {
+                std::result::Result::Ok(Some(res)) => {
+                    let payload = SearchPayload::Frame {
+                        id: res.id as u64,
+                        file_identifier: file_identifier.clone(),
+                        timestamp: frame_timestamp,
+                    };
 
-                        let _ =
-                            get_single_frame_content_embedding(payload, &path, clip_model, qdrant)
-                                .await;
-                        debug!("frame content embedding saved");
-                    }
-                    std::result::Result::Ok(None) => {
-                        error!("failed to find frame");
-                    }
-                    Err(e) => {
-                        error!("failed to save frame content embedding: {:?}", e);
-                    }
+                    let _ = get_single_frame_content_embedding(payload, &path, clip_model, qdrant)
+                        .await;
+                    debug!("frame content embedding saved");
                 }
-            });
+                std::result::Result::Ok(None) => {
+                    error!("failed to find frame");
+                }
+                Err(e) => {
+                    error!("failed to save frame content embedding: {:?}", e);
+                }
+            }
         }
     }
-
-    // wait for all tasks
-    while let Some(_) = join_set.join_next().await {}
 
     Ok(())
 }

@@ -5,6 +5,7 @@ use prisma_lib::{asset_object, file_handler_task, media_data};
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use tracing::error;
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -144,8 +145,22 @@ where
                 asset_object_id: i32,
             }
             t(|ctx: TCtx, input: CancelPayload| async move {
-                let library = ctx.library()?;
                 let asset_object_id = input.asset_object_id;
+                let library = ctx.library()?;
+
+                {
+                    let tx = ctx.get_task_tx();
+                    let tx = tx.lock().unwrap();
+                    if let Err(e) = tx.send(crate::task_queue::TaskPayload::CancelByAssetId(
+                        asset_object_id.to_string(),
+                    )) {
+                        error!("failed to send cancel task: {}", e);
+                    }
+                }
+
+                // Following code can be optimized
+                // task can safely cancelled by above code,
+                // maybe no need to save result in sqlite.
                 library
                     .prisma_client()
                     .file_handler_task()

@@ -4,13 +4,13 @@ import MuseDropdownMenu, { DropdownMenuOptions } from '@/components/DropdownMenu
 import Icon from '@/components/Icon'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
+import { rspc } from '@/lib/rspc'
 import { cn, formatBytes, formatDuration } from '@/lib/utils'
 import { Button } from '@muse/ui/v1/button'
+import Image from 'next/image'
 import { HTMLAttributes, useCallback, useMemo } from 'react'
 import { VIDEO_DIMENSION, getTaskStatus } from './utils'
-import Image from 'next/image'
 // import classNames from 'classnames'
-
 
 export type VideoTaskItemProps = {
   videoFile: VideoWithTasksResult
@@ -26,9 +26,11 @@ export default function VideoTaskItem({
 }: VideoTaskItemProps) {
   const currentLibrary = useCurrentLibrary()
 
+  const { mutateAsync } = rspc.useMutation('video.tasks.cancel')
+
   const showTask = useMemo(() => {
     const tasksWithIndex = tasks
-      .map(task => {
+      .map((task) => {
         const [taskName, index, showOnComplete] = VIDEO_DIMENSION[task.taskType] ?? []
         const status = getTaskStatus(task)
         return { task, taskName, index, showOnComplete, status }
@@ -53,34 +55,40 @@ export default function VideoTaskItem({
     return tasks.some((task) => task.taskType === 'Audio' && task.exitCode === 0)
   }, [tasks])
 
-  const moreActionOptions = useCallback((id: string, isProcessing = false) => {
-    const processItem = isProcessing
-      ? [
-          {
-            label: (
-              <div className="flex items-center gap-1.5">
-                <Icon.cancel />
-                <span>取消任务</span>
-              </div>
-            ),
-            handleClick: () => {},
-          },
-          'Separator',
-        ]
-      : []
-    return [
-      ...processItem,
-      {
-        label: (
-          <div className="flex items-center gap-1.5">
-            <Icon.trash />
-            <span>删除任务</span>
-          </div>
-        ),
-        handleClick: () => {},
-      },
-    ] as DropdownMenuOptions[]
-  }, [])
+  const moreActionOptions = useCallback(
+    (id: string, isProcessing = false) => {
+      const processItem = isProcessing
+        ? [
+            {
+              label: (
+                <div className="flex items-center gap-1.5">
+                  <Icon.cancel />
+                  <span>取消任务</span>
+                </div>
+              ),
+              handleClick: () => {
+                console.log('cancel task', assetObject.id)
+                mutateAsync({ assetObjectId: assetObject.id })
+              },
+            },
+            'Separator',
+          ]
+        : []
+      return [
+        ...processItem,
+        {
+          label: (
+            <div className="flex items-center gap-1.5">
+              <Icon.trash />
+              <span>删除任务</span>
+            </div>
+          ),
+          handleClick: () => {},
+        },
+      ] as DropdownMenuOptions[]
+    },
+    [assetObject.id, mutateAsync],
+  )
 
   return (
     <div
@@ -91,7 +99,7 @@ export default function VideoTaskItem({
       )}
     >
       <div
-        className="flex size-9 cursor-pointer bg-[#F6F7F9] relative"
+        className="relative flex size-9 cursor-pointer bg-[#F6F7F9]"
         onClick={(e) => {
           handleClick()
           e.stopPropagation()
@@ -136,9 +144,9 @@ export default function VideoTaskItem({
             {/*<span>已取消</span>*/}
           </div>
           <div className="flex flex-wrap items-end gap-1.5">
-            {showTask.map(({ taskName, index, status }) =>
+            {showTask.map(({ taskName, index, status }) => (
               <MuseTaskBadge key={index} name={taskName} status={status} />
-            )}
+            ))}
             <MuseDropdownMenu
               triggerIcon={<Icon.moreVertical className="size-[25px] cursor-pointer text-[#676C77]" />}
               options={moreActionOptions('1', isProcessing)}

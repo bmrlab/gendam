@@ -36,42 +36,36 @@ pub async fn save_transcript(
     let json = serde_json::to_string(&result.items())?;
     file.write_all(json.as_bytes()).await?;
 
-    let mut join_set = tokio::task::JoinSet::new();
-
     for item in result.items() {
         let file_identifier = file_identifier.clone();
         let client = client.clone();
 
-        join_set.spawn(async move {
-            let x = {
-                client
-                    .video_transcript()
-                    .upsert(
-                        video_transcript::file_identifier_start_timestamp_end_timestamp(
-                            file_identifier.clone(),
-                            item.start_timestamp as i32,
-                            item.end_timestamp as i32,
-                        ),
-                        (
-                            file_identifier.clone(),
-                            item.start_timestamp as i32,
-                            item.end_timestamp as i32,
-                            item.text.clone(), // store original text
-                            vec![],
-                        ),
+        let x = {
+            client
+                .video_transcript()
+                .upsert(
+                    video_transcript::file_identifier_start_timestamp_end_timestamp(
+                        file_identifier.clone(),
+                        item.start_timestamp as i32,
+                        item.end_timestamp as i32,
+                    ),
+                    (
+                        file_identifier.clone(),
+                        item.start_timestamp as i32,
+                        item.end_timestamp as i32,
+                        item.text.clone(), // store original text
                         vec![],
-                    )
-                    .exec()
-                    .await
-            };
+                    ),
+                    vec![],
+                )
+                .exec()
+                .await
+        };
 
-            if let Err(e) = x {
-                error!("failed to save transcript: {:?}", e);
-            }
-        });
+        if let Err(e) = x {
+            error!("failed to save transcript: {:?}", e);
+        }
     }
-
-    while let Some(_) = join_set.join_next().await {}
 
     Ok(())
 }
@@ -94,8 +88,6 @@ pub async fn save_transcript_embedding(
 
     let clip_model = clip_model.clone();
 
-    let mut join_set = tokio::task::JoinSet::new();
-
     for item in whisper_results {
         // if item is some like [MUSIC], just skip it
         // TODO need to make sure all filter rules
@@ -108,60 +100,56 @@ pub async fn save_transcript_embedding(
         let client = client.clone();
         let qdrant = qdrant.clone();
 
-        join_set.spawn(async move {
-            // write data using prisma
-            // here use write to make sure only one thread can using prisma client
-            let x = {
-                client
-                    .video_transcript()
-                    .upsert(
-                        video_transcript::file_identifier_start_timestamp_end_timestamp(
-                            file_identifier.clone(),
-                            item.start_timestamp as i32,
-                            item.end_timestamp as i32,
-                        ),
-                        (
-                            file_identifier.clone(),
-                            item.start_timestamp as i32,
-                            item.end_timestamp as i32,
-                            item.text.clone(), // store original text
-                            vec![],
-                        ),
+        // write data using prisma
+        // here use write to make sure only one thread can using prisma client
+        let x = {
+            client
+                .video_transcript()
+                .upsert(
+                    video_transcript::file_identifier_start_timestamp_end_timestamp(
+                        file_identifier.clone(),
+                        item.start_timestamp as i32,
+                        item.end_timestamp as i32,
+                    ),
+                    (
+                        file_identifier.clone(),
+                        item.start_timestamp as i32,
+                        item.end_timestamp as i32,
+                        item.text.clone(), // store original text
                         vec![],
-                    )
-                    .exec()
-                    .await
-                // drop the rwlock
-            };
+                    ),
+                    vec![],
+                )
+                .exec()
+                .await
+            // drop the rwlock
+        };
 
-            match x {
-                std::result::Result::Ok(res) => {
-                    let payload = SearchPayload::Transcript {
-                        id: res.id as u64,
-                        file_identifier: file_identifier.clone(),
-                        start_timestamp: item.start_timestamp,
-                        end_timestamp: item.end_timestamp,
-                    };
-                    if let Err(e) = save_text_embedding(
-                        &item.text, // but embedding english
-                        payload,
-                        clip_model,
-                        qdrant,
-                        vector_db::DEFAULT_COLLECTION_NAME,
-                    )
-                    .await
-                    {
-                        error!("failed to save transcript embedding: {:?}", e);
-                    }
-                }
-                Err(e) => {
+        match x {
+            std::result::Result::Ok(res) => {
+                let payload = SearchPayload::Transcript {
+                    id: res.id as u64,
+                    file_identifier: file_identifier.clone(),
+                    start_timestamp: item.start_timestamp,
+                    end_timestamp: item.end_timestamp,
+                };
+                if let Err(e) = save_text_embedding(
+                    &item.text, // but embedding english
+                    payload,
+                    clip_model,
+                    qdrant,
+                    vector_db::DEFAULT_COLLECTION_NAME,
+                )
+                .await
+                {
                     error!("failed to save transcript embedding: {:?}", e);
                 }
             }
-        });
+            Err(e) => {
+                error!("failed to save transcript embedding: {:?}", e);
+            }
+        }
     }
-
-    while let Some(_) = join_set.join_next().await {}
 
     Ok(())
 }

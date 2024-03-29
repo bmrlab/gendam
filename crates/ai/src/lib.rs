@@ -104,44 +104,49 @@ where
                                         // }
                                     }
 
-                                    {
-                                        let mut is_processing = is_processing.lock().await;
-                                        *is_processing = true;
-                                    };
+                                    // If channel closed,
+                                    // we have no way to response, just ignore task.
+                                    // This is very useful for task cancellation.
+                                    if !result_tx.is_closed() {
+                                        {
+                                            let mut is_processing = is_processing.lock().await;
+                                            *is_processing = true;
+                                        };
 
 
-                                    let mut model = loader.model.lock().await;
-                                    if let Some(model) = model.as_mut() {
-                                        let batch_limit = model.batch_size_limit();
-                                        let mut results = vec![];
+                                        let mut model = loader.model.lock().await;
+                                        if let Some(model) = model.as_mut() {
+                                            let batch_limit = model.batch_size_limit();
+                                            let mut results = vec![];
 
-                                        for chunk in items.as_slice().chunks(batch_limit) {
-                                            let chunk = chunk.to_vec();
+                                            for chunk in items.as_slice().chunks(batch_limit) {
+                                                let chunk = chunk.to_vec();
 
-                                            match model.process(chunk).await {
-                                                Ok(res) => {
-                                                    results.extend(res);
+                                                match model.process(chunk).await {
+                                                    Ok(res) => {
+                                                        results.extend(res);
+                                                    }
+                                                    Err(e) => {
+                                                        error!("failed to process chunk: {}", e);
+                                                        results.extend(vec![Err(anyhow::anyhow!(e))]);
+                                                    }
                                                 }
-                                                Err(e) => {
-                                                    error!("failed to process chunk: {}", e);
-                                                    results.extend(vec![Err(anyhow::anyhow!(e))]);
-                                                }
+                                            }
+
+                                            if let Err(_) = result_tx.send(Ok(results)) {
+                                                error!("failed to send results");
+                                            }
+                                        } else {
+                                            error!("failed to load model");
+                                            if let Err(_) = result_tx.send(Err(anyhow::anyhow!("failed to load model"))) {
+                                                error!("failed to send results");
                                             }
                                         }
 
-                                        if let Err(_) = result_tx.send(Ok(results)) {
-                                            error!("failed to send results");
+                                        {
+                                            let mut is_processing = is_processing.lock().await;
+                                            *is_processing = false;
                                         }
-                                    } else {
-                                        error!("failed to load model");
-                                        if let Err(_) = result_tx.send(Err(anyhow::anyhow!("failed to load model"))) {
-                                            error!("failed to send results");
-                                        }
-                                    }
-
-                                    {
-                                        let mut is_processing = is_processing.lock().await;
-                                        *is_processing = false;
                                     }
                                 }
                                 Some(HandlerPayload::Shutdown) => {

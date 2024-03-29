@@ -3,7 +3,8 @@ use ai::{blip::BLIP, clip::CLIP, whisper::Whisper, BatchHandler};
 use anyhow::Ok;
 pub use constants::*;
 use content_library::Library;
-use std::fs;
+use std::{fmt::Display, fs};
+use strum_macros::EnumDiscriminants;
 
 mod constants;
 mod decoder;
@@ -85,6 +86,25 @@ pub struct VideoHandler {
     whisper: Option<BatchHandler<Whisper>>,
 }
 
+#[derive(Clone, Debug, EnumDiscriminants)]
+#[strum_discriminants(derive(strum_macros::Display))]
+pub enum VideoTaskType {
+    Frame,
+    FrameCaption,
+    FrameContentEmbedding,
+    FrameCaptionEmbedding,
+    Audio,
+    Transcript,
+    #[allow(dead_code)]
+    TranscriptEmbedding,
+}
+
+impl Display for VideoTaskType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 impl VideoHandler {
     /// Create a new VideoHandler
     ///
@@ -110,6 +130,29 @@ impl VideoHandler {
             blip: None,
             whisper: None,
         })
+    }
+
+    pub async fn run_task(&self, task_type: VideoTaskType) -> anyhow::Result<()> {
+        match task_type {
+            VideoTaskType::Frame => self.save_frames().await,
+            VideoTaskType::FrameContentEmbedding => self.save_frame_content_embedding().await,
+            VideoTaskType::FrameCaption => self.save_frames_caption().await,
+            VideoTaskType::FrameCaptionEmbedding => self.save_frame_caption_embedding().await,
+            VideoTaskType::Audio => self.save_audio().await,
+            VideoTaskType::Transcript => self.save_transcript().await,
+            _ => Ok(()),
+        }
+    }
+
+    pub fn get_supported_task_types(&self) -> Vec<VideoTaskType> {
+        vec![
+            VideoTaskType::Frame,
+            VideoTaskType::FrameContentEmbedding,
+            VideoTaskType::FrameCaptionEmbedding,
+            VideoTaskType::FrameCaption,
+            VideoTaskType::Audio,
+            VideoTaskType::Transcript,
+        ]
     }
 
     pub fn file_identifier(&self) -> &str {

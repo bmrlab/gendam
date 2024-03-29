@@ -21,8 +21,6 @@ pub async fn save_frames_caption<'a>(
         .map(|res| res.map(|e| e.path()))
         .collect::<Result<Vec<_>, std::io::Error>>()?;
 
-    let mut join_set = tokio::task::JoinSet::new();
-
     for path in frame_paths {
         if path.extension() == Some(std::ffi::OsStr::new(FRAME_FILE_EXTENSION)) {
             debug!("get_frames_caption: {:?}", path);
@@ -31,56 +29,52 @@ pub async fn save_frames_caption<'a>(
             let client = client.clone();
             let file_identifier = file_identifier.clone();
 
-            join_set.spawn(async move {
-                match save_single_frame_caption(blip_model, path).await {
-                    anyhow::Result::Ok(caption) => {
-                        match client
-                            .video_frame()
-                            .upsert(
-                                video_frame::UniqueWhereParam::FileIdentifierTimestampEquals(
-                                    file_identifier.clone(),
-                                    frame_timestamp as i32,
-                                ),
-                                (file_identifier.clone(), frame_timestamp as i32, vec![]),
-                                vec![],
-                            )
-                            .exec()
-                            .await
-                        {
-                            anyhow::Result::Ok(video_frame) => {
-                                if let Err(e) = client
-                                    .video_frame_caption()
-                                    .upsert(
-                                        video_frame_caption::UniqueWhereParam::VideoFrameIdEquals(
-                                            video_frame.id,
-                                        ),
-                                        (
-                                            caption.clone(),
-                                            video_frame::UniqueWhereParam::IdEquals(video_frame.id),
-                                            vec![],
-                                        ),
+            match save_single_frame_caption(blip_model, path).await {
+                anyhow::Result::Ok(caption) => {
+                    match client
+                        .video_frame()
+                        .upsert(
+                            video_frame::UniqueWhereParam::FileIdentifierTimestampEquals(
+                                file_identifier.clone(),
+                                frame_timestamp as i32,
+                            ),
+                            (file_identifier.clone(), frame_timestamp as i32, vec![]),
+                            vec![],
+                        )
+                        .exec()
+                        .await
+                    {
+                        anyhow::Result::Ok(video_frame) => {
+                            if let Err(e) = client
+                                .video_frame_caption()
+                                .upsert(
+                                    video_frame_caption::UniqueWhereParam::VideoFrameIdEquals(
+                                        video_frame.id,
+                                    ),
+                                    (
+                                        caption.clone(),
+                                        video_frame::UniqueWhereParam::IdEquals(video_frame.id),
                                         vec![],
-                                    )
-                                    .exec()
-                                    .await
-                                {
-                                    error!("failed to upsert video frame caption: {}", e);
-                                }
-                            }
-                            Err(e) => {
-                                error!("failed to upsert video frame: {}", e);
+                                    ),
+                                    vec![],
+                                )
+                                .exec()
+                                .await
+                            {
+                                error!("failed to upsert video frame caption: {}", e);
                             }
                         }
-                    }
-                    Err(e) => {
-                        error!("failed to get frame caption: {:?}", e);
+                        Err(e) => {
+                            error!("failed to upsert video frame: {}", e);
+                        }
                     }
                 }
-            });
+                Err(e) => {
+                    error!("failed to get frame caption: {:?}", e);
+                }
+            }
         }
     }
-
-    while let Some(_) = join_set.join_next().await {}
 
     Ok(())
 }
@@ -118,8 +112,6 @@ pub async fn save_frame_caption_embedding(
         .map(|res| res.map(|e| e.path()))
         .collect::<Result<Vec<_>, std::io::Error>>()?;
 
-    let mut join_set = tokio::task::JoinSet::new();
-
     for path in frame_paths {
         if path.extension() == Some(std::ffi::OsStr::new("caption")) {
             let file_identifier = file_identifier.clone();
@@ -128,23 +120,19 @@ pub async fn save_frame_caption_embedding(
 
             let clip_model = clip_model.clone();
 
-            join_set.spawn(async move {
-                if let Err(e) = get_single_frame_caption_embedding(
-                    file_identifier,
-                    client,
-                    path,
-                    clip_model,
-                    qdrant,
-                )
-                .await
-                {
-                    error!("failed to save frame caption embedding: {:?}", e);
-                }
-            });
+            if let Err(e) = get_single_frame_caption_embedding(
+                file_identifier,
+                client,
+                path,
+                clip_model,
+                qdrant,
+            )
+            .await
+            {
+                error!("failed to save frame caption embedding: {:?}", e);
+            }
         }
     }
-
-    while let Some(_) = join_set.join_next().await {}
 
     Ok(())
 }

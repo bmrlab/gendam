@@ -10,11 +10,10 @@ pub struct VideoDecoder {
     video_file_path: std::path::PathBuf,
 }
 
+use super::FRAME_FILE_EXTENSION;
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
-
-use super::FRAME_FILE_EXTENSION;
 
 #[cfg(feature = "ffmpeg-dylib")]
 impl VideoDecoder {

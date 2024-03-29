@@ -1,19 +1,16 @@
 // Ctx 和 Store 的默认实现，主要给 api_server/main 用，不过目前 CtxWithLibrary 的实现也是可以给 tauri 用的，就先用着
+use super::traits::{CtxStore, CtxWithLibrary, StoreError};
 use crate::{
     ai::{init_ai_handlers, AIHandler},
-    task_queue::{TaskProcessor, TaskPayload},
+    task_queue::{init_task_pool, TaskPayload},
 };
 use content_library::{load_library, Library};
 use std::{
     boxed::Box,
     path::PathBuf,
     pin::Pin,
-    sync::{Arc, Mutex},
+    sync::{mpsc::Sender, Arc, Mutex},
 };
-use tokio::sync::broadcast;
-use tokio_util::sync::CancellationToken;
-
-use super::traits::{CtxStore, CtxWithLibrary, StoreError};
 
 /**
  * default impl of a store for rspc Ctx
@@ -75,8 +72,7 @@ pub struct Ctx<S: CtxStore> {
     resources_dir: PathBuf,
     store: Arc<Mutex<S>>,
     current_library: Arc<Mutex<Option<Library>>>,
-    tx: Arc<Mutex<broadcast::Sender<TaskPayload>>>,
-    cancel_token: Arc<Mutex<CancellationToken>>,
+    tx: Arc<Mutex<Sender<TaskPayload>>>,
     ai_handler: AIHandler,
 }
 
@@ -88,7 +84,6 @@ impl<S: CtxStore> Clone for Ctx<S> {
             store: Arc::clone(&self.store),
             current_library: Arc::clone(&self.current_library),
             tx: Arc::clone(&self.tx),
-            cancel_token: Arc::clone(&self.cancel_token),
             ai_handler: self.ai_handler.clone(),
         }
     }
@@ -103,9 +98,8 @@ impl<S: CtxStore> Ctx<S> {
         store: Arc<Mutex<S>>,
         current_library: Arc<Mutex<Option<Library>>>,
     ) -> Self {
-        let (tx, cancel_token) = TaskProcessor::init_task_pool();
+        let tx = init_task_pool().expect("Failed to init task pool");
         let tx = Arc::new(Mutex::new(tx));
-        let cancel_token = Arc::new(Mutex::new(cancel_token));
 
         // FIXME need to handle error
         let ai_handler =
@@ -117,7 +111,6 @@ impl<S: CtxStore> Ctx<S> {
             store,
             current_library,
             tx,
-            cancel_token,
             ai_handler,
         }
     }
@@ -150,12 +143,12 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
         Self: Sync + 'async_trait,
     {
         // cancel all tasks
-        self.cancel_token.lock().unwrap().cancel();
-        let (tx, cancel_token) = TaskProcessor::init_task_pool();
         let mut current_tx = self.tx.lock().unwrap();
-        let mut current_cancel_token = self.cancel_token.lock().unwrap();
+        if let Err(e) = current_tx.send(TaskPayload::CancelAll) {
+            tracing::warn!("Failed to send CancelAll task: {}", e);
+        }
+        let tx = init_task_pool().expect("Failed to init task pool");
         *current_tx = tx;
-        *current_cancel_token = cancel_token;
 
         let mut store = self.store.lock().unwrap();
         let _ = store.insert("current-library-id", library_id);
@@ -180,7 +173,7 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
         }
     }
 
-    fn get_task_tx(&self) -> Arc<Mutex<broadcast::Sender<TaskPayload>>> {
+    fn get_task_tx(&self) -> Arc<Mutex<Sender<TaskPayload>>> {
         self.tx.clone()
     }
 

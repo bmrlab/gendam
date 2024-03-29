@@ -177,9 +177,11 @@ impl Whisper {
             .output()
         {
             Ok(output) => {
-                tracing::debug!("{}", String::from_utf8_lossy(&output.stderr));
                 if !output.status.success() {
-                    bail!("{}", String::from_utf8_lossy(&output.stderr));
+                    bail!(
+                        "failed to get transcript: {}",
+                        String::from_utf8_lossy(&output.stderr)
+                    );
                 }
             }
             Err(e) => {
