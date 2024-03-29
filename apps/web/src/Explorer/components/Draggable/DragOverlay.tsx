@@ -59,7 +59,7 @@ export default function DragOverlay({ children }: PropsWithChildren) {
             )}
           </div>
           <div className="ml-2 flex-1 overflow-hidden flex justify-start">
-            <div className="py-1 px-2 truncate text-xs rounded-lg bg-blue-600 text-white">{data.name}</div>
+            <div className="py-1 px-2 truncate text-xs rounded-lg bg-blue-500 text-white">{data.name}</div>
           </div>
         </div>
       ))}

@@ -25,7 +25,7 @@ export default function FileThumb({ data, className }: { data: ExplorerItem; cla
           src={currentLibrary.getThumbnailSrc(data.assetObject.hash)}
           alt={data.name}
           fill={true}
-          className="object-cover"
+          className="object-contain"
           priority
         ></Image>
       ) : (

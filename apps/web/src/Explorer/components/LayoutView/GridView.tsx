@@ -25,12 +25,14 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
 
   return (
     <>
-      <FileThumb data={data} className={classNames('mb-1 h-32 w-32 rounded-lg', highlight ? 'bg-slate-200' : null)} />
+      <div className={classNames('mb-1 h-28 w-28 p-2 rounded-lg', highlight ? 'bg-slate-100' : null)}>
+        <FileThumb data={data} className="w-full h-full"/>
+      </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
         <RenamableItemText data={data} />
       ) : (
-        <div className={classNames('w-32 rounded-lg p-1', highlight ? 'bg-blue-600 text-white' : null)}>
-          <div className="line-clamp-2 h-[2.8em] text-center text-xs leading-[1.4em]">{data.name}</div>
+        <div className={classNames('w-28 rounded-lg p-1', highlight ? 'bg-blue-500 text-white' : null)}>
+          <div className="line-clamp-2 max-h-[2.8em] text-center text-xs leading-[1.4em]">{data.name}</div>
         </div>
       )}
     </>
@@ -73,7 +75,7 @@ const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
 
   return (
     <div
-      className="m-2 flex cursor-default select-none flex-col items-center justify-start"
+      className="flex cursor-default select-none flex-col items-center justify-start"
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
     >
@@ -90,7 +92,7 @@ const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
 
 export default function GridView({ items }: { items: ExplorerItem[] }) {
   return (
-    <div className="flex flex-wrap content-start items-start justify-start p-6">
+    <div className="flex flex-wrap content-start items-start justify-start gap-6 p-8">
       {items.map((item) => (
         <GridItem key={item.id} data={item} />
       ))}

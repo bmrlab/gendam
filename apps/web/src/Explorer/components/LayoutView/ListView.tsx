@@ -31,26 +31,31 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
   return (
     <div
       className={classNames(
-        'flex items-center justify-start px-6 py-1',
-        index % 2 === 1 && !highlight ? 'bg-slate-100' : null,
-        highlight ? 'bg-blue-600' : null,
+        'flex items-center justify-start px-6 py-2',
+        index % 2 === 1 && !highlight ? 'bg-neutral-100' : null,
+        highlight ? 'bg-blue-500' : null,
       )}
     >
-      <FileThumb data={data} className="mr-2 h-8 w-8 rounded-sm" />
-
+      <div className="mr-3 h-8 w-8">
+        <FileThumb data={data} className="w-full h-full" />
+      </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
         <RenamableItemText data={data} />
       ) : (
-        <div className={classNames('w-32', highlight ? 'text-white' : null)}>
+        <div className={classNames('flex-1', highlight ? 'text-white' : null)}>
           <div className="truncate text-xs">{data.name}</div>
         </div>
       )}
       <div className="ml-auto" />
-      <div className="text-xs text-neutral-500 w-48">{formatDate(data.createdAt)}</div>
-      <div className="text-xs text-neutral-500 w-24">
+      <div className={classNames('text-xs text-neutral-500 w-48', highlight ? 'text-white' : null )}>
+        {formatDate(data.createdAt)}
+      </div>
+      <div className={classNames('text-xs text-neutral-500 w-24', highlight ? 'text-white' : null )}>
         {data.assetObject ? formatBytes(data.assetObject.mediaData?.size ?? 0) : null}
       </div>
-      <div className="text-xs text-neutral-500 w-24">{data.isDir ? '文件夹' : '视频'}</div>
+      <div className={classNames('text-xs text-neutral-500 w-24', highlight ? 'text-white' : null )}>
+        {data.isDir ? '文件夹' : '视频'}
+      </div>
     </div>
   )
 }
@@ -90,7 +95,10 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
   )
 
   return (
-    <div className="cursor-default select-none" onClick={handleClick} onDoubleClick={handleDoubleClick}>
+    <div
+      className="cursor-default select-none rounded-md overflow-hidden"
+      onClick={handleClick} onDoubleClick={handleDoubleClick}
+    >
       <ViewItem data={data}>
         <ExplorerDroppable droppable={{ data: data }}>
           <ExplorerDraggable draggable={{ data: data }}>
@@ -104,17 +112,19 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
 
 export default function ListView({ items }: { items: ExplorerItem[] }) {
   return (
-    <div className="">
-      <div className='flex items-center justify-start px-6 py-2 border-b border-neutral-200'>
-        <div className="text-xs text-neutral-900 font-bold">名称</div>
+    <>
+      <div className='flex items-center justify-start px-10 py-2 border-b border-neutral-200'>
+        <div className="text-xs text-neutral-900 font-bold pl-9">名称</div>
         <div className="ml-auto" />
         <div className="text-xs text-neutral-900 font-bold w-48">创建时间</div>
         <div className="text-xs text-neutral-900 font-bold w-24">大小</div>
         <div className="text-xs text-neutral-900 font-bold w-24">文件类型</div>
       </div>
-      {items.map((item, index) => (
-        <ListItem key={item.id} data={item} index={index} />
-      ))}
-    </div>
+      <div className="py-2 px-4">
+        {items.map((item, index) => (
+          <ListItem key={item.id} data={item} index={index} />
+        ))}
+      </div>
+    </>
   )
 }
