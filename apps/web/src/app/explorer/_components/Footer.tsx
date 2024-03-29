@@ -2,7 +2,7 @@
 import { useExplorerContext } from '@/Explorer/hooks'
 import { ExplorerItem } from '@/Explorer/types'
 import Icon from '@/components/Icon'
-import { Folder_Light } from '@muse/assets/images'
+import { Document_Light, Folder_Light } from '@muse/assets/images'
 import Image from 'next/image'
 import { useCallback, useMemo } from 'react'
 import Viewport from '@/components/Viewport'
@@ -46,6 +46,11 @@ export default function Footer() {
           <div className="mx-1 text-neutral-500">
             <Icon.arrowRight className="h-4 w-4" />
           </div>
+          {theFirstSelectedItem.isDir ? (
+            <Image src={Folder_Light} alt="folder" priority className="mr-1 h-4 w-4"></Image>
+          ) : (
+            <Image src={Document_Light} alt="folder" priority className="mr-1 h-4 w-4"></Image>
+          )}
           <div className="text-neutral-500 text-xs">{theFirstSelectedItem.name}</div>
         </>
       )}

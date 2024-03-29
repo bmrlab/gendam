@@ -4,18 +4,16 @@ import MuseInput from '@/components/Input'
 import { cn, twx } from '@/lib/utils'
 import { useBoundStore } from '../_store'
 import { HTMLAttributes } from 'react'
+import Viewport from '@/components/Viewport'
+import PageNav from '@/components/PageNav'
 
 export default function VideoTaskHeader({ className }: HTMLAttributes<HTMLDivElement>) {
   const searchKey = useBoundStore.use.searchKey()
   const setSearchKey = useBoundStore.use.setSearchKey()
 
   return (
-    <div className={cn('flex items-center justify-between border-b border-neutral-100 px-4', className)}>
-      <div className="flex select-none items-center gap-2">
-        <Icon.arrowLeft className="size-6 cursor-pointer text-[#797979]" />
-        <Icon.arrowRight className="size-6 cursor-pointer text-[#797979]" />
-        <div className="text-[14px] font-medium leading-[18px] text-[#232526]">任务列表</div>
-      </div>
+    <Viewport.Toolbar className="items-center justify-between">
+      <PageNav title="任务列表" />
       <MuseInput
         value={searchKey}
         onChange={(e) => setSearchKey(e.target.value ?? '')}
@@ -33,7 +31,7 @@ export default function VideoTaskHeader({ className }: HTMLAttributes<HTMLDivEle
           <Icon.column className="size-4 text-[#797979]" />
         </IconButton>
       </div>
-    </div>
+    </Viewport.Toolbar>
   )
 }
 

@@ -5,6 +5,9 @@ import FilterWidget from './_components/filter'
 import TaskFooter from './_components/footer'
 import VideoTasksList from './_components/task-list'
 import useTaskList from './useTaskList'
+import Viewport from '@/components/Viewport'
+import VideoTaskHeader from './_components/header'
+import AudioDialog from './_components/audio/dialog'
 
 export default function VideoTasksPage() {
   const { data: videos, isLoading, hasNextPage, fetchNextPage } = useTaskList({ limit: 10 })
@@ -38,23 +41,27 @@ export default function VideoTasksPage() {
   }, [fetchNextPage, hasNextPage])
 
   return (
-    <div className="flex h-full flex-col">
-      <FilterWidget />
-      <ScrollArea className="flex-1 rounded-[6px]">
-        <VideoTasksList data={videos ?? []} isLoading={isLoading} />
-        <div className="flex items-center justify-center p-4">
-          {hasNextPage ? (
-            <>
-              <div className="text-xs text-slate-400">滚动加载更多</div>
-              <div ref={bottomRef}></div>
-            </>
-          ) : (
-            <div className="text-xs text-slate-400">没有更多了</div>
-          )}
-        </div>
-      </ScrollArea>
+    <Viewport.Page>
+      <VideoTaskHeader />
+      <Viewport.Content>
+        <FilterWidget />
+        <ScrollArea className="flex-1 rounded-[6px]">
+          <VideoTasksList data={videos ?? []} isLoading={isLoading} />
+          <div className="flex items-center justify-center p-4">
+            {hasNextPage ? (
+              <>
+                <div className="text-xs text-slate-400">滚动加载更多</div>
+                <div ref={bottomRef}></div>
+              </>
+            ) : (
+              <div className="text-xs text-slate-400">没有更多了</div>
+            )}
+          </div>
+        </ScrollArea>
+      </Viewport.Content>
       <TaskFooter total={videos?.length ?? 0} />
-    </div>
+      <AudioDialog />
+    </Viewport.Page>
   )
 }
 
