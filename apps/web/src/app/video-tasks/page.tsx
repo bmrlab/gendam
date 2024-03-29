@@ -1,6 +1,7 @@
 'use client'
 import { ScrollArea } from '@muse/ui/v1/scroll-area'
 import { useEffect, useRef } from 'react'
+import FilterWidget from './_components/filter'
 import TaskFooter from './_components/footer'
 import VideoTasksList from './_components/task-list'
 import useTaskList from './useTaskList'
@@ -38,6 +39,7 @@ export default function VideoTasksPage() {
 
   return (
     <div className="flex h-full flex-col">
+      <FilterWidget />
       <ScrollArea className="flex-1 rounded-[6px]">
         <VideoTasksList data={videos ?? []} isLoading={isLoading} />
         <div className="flex items-center justify-center p-4">

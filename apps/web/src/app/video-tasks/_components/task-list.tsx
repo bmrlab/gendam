@@ -1,14 +1,14 @@
 'use client'
-import { hasProcessing } from '../_components/utils'
+import type { VideoWithTasksResult } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
-import { useBoundStore } from '../_store'
 import Image from 'next/image'
 import { HTMLAttributes, useMemo } from 'react'
-import EmptyList from '/public/svg/empty-list.svg'
+import { hasProcessing } from '../_components/utils'
+import { useBoundStore } from '../_store'
 import TaskContextMenu from './task-context-menu'
 import { WithSelectVideoItem } from './with-select'
-import type { VideoWithTasksResult } from '@/lib/bindings'
+import EmptyList from '/public/svg/empty-list.svg'
 
 export type VideoTasksListProps = HTMLAttributes<HTMLDivElement> & {
   data: VideoWithTasksResult[]
@@ -24,7 +24,7 @@ export default function VideoTasksList({ data, isLoading, className }: VideoTask
   const filterVideos = useMemo(() => {
     return data.filter((videoFile) => {
       // TODO: 等加入更多视频信息后，需要修改搜索条件
-      return videoFile.name.includes(searchKey)
+      return videoFile?.name.includes(searchKey)
     })
   }, [data, searchKey])
 

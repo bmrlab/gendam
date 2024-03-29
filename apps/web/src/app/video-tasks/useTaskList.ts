@@ -10,23 +10,31 @@ export type TaskListProps = {
 
 const DEFAULT_LIMIT = 100
 
-export default function useTaskList({ limit = DEFAULT_LIMIT, filter = 'all' }: TaskListProps) {
+export default function useTaskList({ limit = DEFAULT_LIMIT }: TaskListProps) {
   const [data, setData] = useState<VideoWithTasksResult[][]>([])
   const [pageIndex, setPageIndex] = useState(0)
   const [maxPages, setMaxPages] = useState<number>(0)
   const setTaskListRefetch = useBoundStore.use.setTaskListRefetch()
+  const filter = useBoundStore.use.taskFilter()
 
   // 拿分页数据
-  const { data: videos } = rspc.useQuery([
-    'video.tasks.list',
-    {
-      pagination: {
-        pageIndex: pageIndex,
-        pageSize: limit,
+  const { data: videos } = rspc.useQuery(
+    [
+      'video.tasks.list',
+      {
+        pagination: {
+          pageIndex: pageIndex,
+          pageSize: limit,
+        },
+        filter,
       },
-      filter,
+    ],
+    {
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
     },
-  ])
+  )
 
   // 拿全量数据
   const { data: fullVideo, refetch } = rspc.useQuery(
@@ -43,8 +51,16 @@ export default function useTaskList({ limit = DEFAULT_LIMIT, filter = 'all' }: T
     {
       // 不会触发请求，除非手动调用 refetch
       enabled: false,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
     },
   )
+
+  useEffect(() => {
+    setPageIndex(0)
+    refetch()
+  }, [filter, refetch, setPageIndex])
 
   // 使用全量数据拆分成多页
   useEffect(() => {
