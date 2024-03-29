@@ -91,7 +91,7 @@ impl VideoTaskHandler {
 
     async fn list(&self, payload: ListPayload) -> anyhow::Result<VideoWithTasksPageResult> {
         let task_filter = match payload.filter {
-            Filter::ExcludeCompleted => vec![file_handler_task::exit_code::gte(0)],
+            Filter::ExcludeCompleted => vec![file_handler_task::exit_code::gte(1)],
             _ => vec![],
         };
 
@@ -100,8 +100,8 @@ impl VideoTaskHandler {
         let asset_object_data_list = self
             .prisma_client
             .asset_object()
-            .find_many(vec![])
-            .with(asset_object::tasks::fetch(task_filter))
+            .find_many(vec![asset_object::tasks::some(task_filter)])
+            .with(asset_object::tasks::fetch(vec![]))
             .with(asset_object::file_paths::fetch(vec![]))
             // bindings 中不会自动生成 media_data 类型
             .with(asset_object::media_data::fetch())
