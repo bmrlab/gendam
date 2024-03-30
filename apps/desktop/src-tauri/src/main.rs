@@ -138,7 +138,8 @@ async fn main() {
         move |e| {
             if let tauri::WindowEvent::Destroyed = e {
                 let library = current_library.lock().unwrap().take().unwrap();
-                drop(library.qdrant_server);
+                // drop(library.qdrant_server);  // drop library 的时候会同时 drop qdrant_server
+                drop(library);
             }
         }
     });

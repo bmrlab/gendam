@@ -13,7 +13,7 @@ pub struct Library {
     pub artifacts_dir: PathBuf,
     // db_url: String,
     prisma_client: Arc<PrismaClient>,
-    pub qdrant_server: Arc<QdrantServer>,
+    qdrant_server: Arc<QdrantServer>,
 }
 
 impl Library {
