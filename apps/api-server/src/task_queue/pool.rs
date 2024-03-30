@@ -165,10 +165,17 @@ pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
                     let task_type = task.task_type.clone();
                     info!("Task processing: {} {}", asset_object_id, task_type);
 
-                    let task_mapping = task_mapping_clone.read().await;
-                    let current_cancel_token = match task_mapping.get(&asset_object_id) {
+                    /*
+                     * 这里专门用 inline 写，current_cancel_token 赋值完了以后直接释放 task_mapping，
+                     * 不能改成 let 赋值给一个新变量存下来而且直接暴露在这个 fn 的上下文里，
+                     * 不然下面的 task_mapping_clone.write().await 会死锁，
+                     * 而且 current_cancel_token 不能是 & cancel_token.clone() 释放 task_mapping
+                     */
+                    let current_cancel_token =
+                        match task_mapping_clone.read().await.get(&asset_object_id)
+                    {
                         Some(item) => match item.get(&task_type) {
-                            Some(token) => token,
+                            Some(cancel_token) => cancel_token.clone(),
                             None => {
                                 error!("No task in the queue for asset obejct {} of type {}", asset_object_id, task_type);
                                 continue;
@@ -215,7 +222,10 @@ pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
         }
     };
 
-    // 在一个较低优先级的线程中执行 loop_for_next_single_task
+    /*
+     * 在一个较低优先级的线程中执行 loop_for_next_single_task
+     * 但是，感觉不大对，这么写并不会被降低优先级，需要再仔细研究下
+     */
     match ThreadBuilder::default().priority(ThreadPriority::Min).spawn(
         move |result| {
             if let Err(e) = result {
