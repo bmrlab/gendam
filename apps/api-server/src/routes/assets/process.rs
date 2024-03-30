@@ -12,7 +12,6 @@ pub async fn process_video_asset(
     file_path_id: i32,
 ) -> Result<(), rspc::Error> {
     info!("process video asset for file_path_id: {file_path_id}");
-    let tx = ctx.get_task_tx();
     let file_path_data = library
         .prisma_client()
         .file_path()
@@ -41,14 +40,7 @@ pub async fn process_video_asset(
     })?;
     // let asset_object_data = *asset_object_data;
 
-    match create_video_task(
-        &file_path_data.materialized_path,
-        &asset_object_data,
-        ctx,
-        tx,
-    )
-    .await
-    {
+    match create_video_task(&asset_object_data, ctx).await {
         Ok(_) => Ok(()),
         Err(_) => Err(rspc::Error::new(
             rspc::ErrorCode::InternalServerError,

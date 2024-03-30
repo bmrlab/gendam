@@ -5,7 +5,7 @@ use std::{
     collections::HashMap,
     sync::{
         mpsc::{self, Sender},
-        Arc, Mutex,
+        Arc,
     },
 };
 use thread_priority::{ThreadBuilder, ThreadPriority};
@@ -214,10 +214,8 @@ pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
 }
 
 pub async fn create_video_task(
-    materialized_path: &str,
     asset_object_data: &asset_object::Data,
     ctx: &impl CtxWithLibrary,
-    tx: Arc<Mutex<Sender<TaskPayload>>>,
 ) -> Result<(), ()> {
     let library = &ctx.library().map_err(|e| {
         error!(
@@ -279,6 +277,8 @@ pub async fn create_video_task(
         }
     }
 
+    let tx = ctx.get_task_tx();
+
     match tx.lock() {
         Ok(tx) => {
             for task_type in video_handler.get_supported_task_types() {
@@ -294,10 +294,10 @@ pub async fn create_video_task(
                     prisma_client,
                 })) {
                     Ok(_) => {
-                        info!("Task queued {}", materialized_path);
+                        info!("Task queued {}", asset_object_data.hash);
                     }
                     Err(e) => {
-                        error!("Failed to queue task {}: {}", materialized_path, e);
+                        error!("Failed to queue task {}: {}", asset_object_data.hash, e);
                     }
                 }
             }

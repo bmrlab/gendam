@@ -36,7 +36,7 @@ export default function useTaskAction({ fileHash, video }: TaskActionProps) {
       },
     })
     setIsOpenAudioDialog(true)
-  }, [setAudioDialogProps, setIsOpenAudioDialog])
+  }, [fileHash, setAudioDialogProps, setIsOpenAudioDialog])
 
   const handleBatchExport = () => {
     let orderVideoSelected = [...videoSelected]
@@ -58,7 +58,6 @@ export default function useTaskAction({ fileHash, video }: TaskActionProps) {
     async (param?: { path: string; id: number }) => {
       try {
         await regenerateTask({
-          materializedPath: param?.path ?? materializedPath,
           assetObjectId: param?.id ?? assetObjectId,
         })
         await taskListRefetch()
@@ -78,7 +77,7 @@ export default function useTaskAction({ fileHash, video }: TaskActionProps) {
         })
       }
     },
-    [assetObjectId, materializedPath, regenerateTask, taskListRefetch],
+    [assetObjectId, regenerateTask, taskListRefetch],
   )
 
   const handleBatchRegenerate = useCallback(() => {

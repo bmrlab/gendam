@@ -30,21 +30,20 @@ pub enum Filter {
 
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
-struct ListPayload {
+struct TaskListRequestPayload {
     pagination: Pagination,
     filter: Filter,
 }
 
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
-struct CancelPayload {
+struct TaskCancelRequestPayload {
     asset_object_id: i32,
 }
 
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
-struct TaskRegeneratePayload {
-    materialized_path: String,
+struct TaskRedoRequestPayload {
     asset_object_id: i32,
 }
 
@@ -89,7 +88,7 @@ impl VideoTaskHandler {
         Ok((count as f64 / page_size as f64).ceil() as i32)
     }
 
-    async fn list(&self, payload: ListPayload) -> anyhow::Result<VideoWithTasksPageResult> {
+    async fn list(&self, payload: TaskListRequestPayload) -> anyhow::Result<VideoWithTasksPageResult> {
         let task_filter = match payload.filter {
             Filter::ExcludeCompleted => vec![file_handler_task::exit_code::gte(1)],
             _ => vec![],
@@ -148,7 +147,7 @@ impl VideoTaskHandler {
         })
     }
 
-    pub async fn cancel(&self, input: CancelPayload) -> anyhow::Result<()> {
+    pub async fn cancel(&self, input: TaskCancelRequestPayload) -> anyhow::Result<()> {
         let asset_object_id = input.asset_object_id;
         self.prisma_client
             .file_handler_task()
@@ -167,7 +166,7 @@ impl VideoTaskHandler {
 
     async fn regenerate(
         &self,
-        payload: TaskRegeneratePayload,
+        payload: TaskRedoRequestPayload,
         ctx: &impl CtxWithLibrary,
     ) -> anyhow::Result<()> {
         let asset_object_data = self
@@ -177,14 +176,8 @@ impl VideoTaskHandler {
             .exec()
             .await?;
         if let Some(asset_object_data) = asset_object_data {
-            create_video_task(
-                &payload.materialized_path,
-                &asset_object_data,
-                ctx,
-                ctx.get_task_tx(),
-            )
-            .await
-            .map_err(|e| anyhow::anyhow!("failed to create video task: {e:?}"))?;
+            create_video_task(&asset_object_data, ctx).await
+                .map_err(|e| anyhow::anyhow!("failed to create video task: {e:?}"))?;
         }
         Ok(())
     }
@@ -218,7 +211,7 @@ where
             })
         })
         .query("list", |t| {
-            t(|ctx: TCtx, input: ListPayload| async move {
+            t(|ctx: TCtx, input: TaskListRequestPayload| async move {
                 let library = ctx.library()?;
                 match VideoTaskHandler::new(library.prisma_client())
                     .list(input)
@@ -233,7 +226,7 @@ where
             })
         })
         .mutation("regenerate", |t| {
-            t(|ctx: TCtx, input: TaskRegeneratePayload| async move {
+            t(|ctx: TCtx, input: TaskRedoRequestPayload| async move {
                 let library = ctx.library()?;
                 VideoTaskHandler::new(library.prisma_client())
                     .regenerate(input, &ctx)
@@ -248,7 +241,7 @@ where
             })
         })
         .mutation("cancel", |t| {
-            t(|ctx: TCtx, input: CancelPayload| async move {
+            t(|ctx: TCtx, input: TaskCancelRequestPayload| async move {
                 let library = ctx.library()?;
                 VideoTaskHandler::new(library.prisma_client())
                     .cancel(input)
