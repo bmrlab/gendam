@@ -22,18 +22,20 @@ export default function TaskContextMenu({ video, fileHash, isNotDone, children }
 
   const { handleRegenerate, handleExport, handleCancel } = useTaskAction({ fileHash, video })
 
-  // 有进行中的任务，定时刷新
-  useEffect(() => {
-    if (isNotDone) {
-      const timer = setInterval(() => {
-        taskListRefetch()
-      }, 10000)
-
-      return () => {
-        clearInterval(timer)
-      }
-    }
-  }, [isNotDone, taskListRefetch])
+  /**
+   * 有进行中的任务，定时刷新
+   * TODO: 不应该写在这里，要写在列表页上，这里会导致多个定时器，最后请求太多
+   */
+  // useEffect(() => {
+  //   if (isNotDone) {
+  //     const timer = setInterval(() => {
+  //       taskListRefetch()
+  //     }, 10000)
+  //     return () => {
+  //       clearInterval(timer)
+  //     }
+  //   }
+  // }, [isNotDone, taskListRefetch])
 
   const options = useMemo<Array<'Separator' | { label: string; icon: ReactNode; handleClick: () => void }>>(() => {
     const processingItem = isNotDone
@@ -41,7 +43,7 @@ export default function TaskContextMenu({ video, fileHash, isNotDone, children }
           {
             label: '取消任务',
             icon: <Icon.cancel />,
-            handleClick: handleCancel,
+            handleClick: () => handleCancel(),
           },
         ]
       : []
@@ -50,21 +52,19 @@ export default function TaskContextMenu({ video, fileHash, isNotDone, children }
       {
         label: '重新触发任务',
         icon: <Icon.regenerate />,
-        handleClick: handleRegenerate,
+        handleClick: () => handleRegenerate(),
       },
       ...processingItem,
       {
         label: '导出语音转译',
         icon: <Icon.download />,
-        handleClick: handleExport,
+        handleClick: () => handleExport(),
       },
       'Separator',
       {
         label: '删除任务',
         icon: <Icon.trash />,
-        handleClick: () => {
-          console.log('删除任务')
-        },
+        handleClick: () => console.log('删除任务'),
       },
     ]
   }, [handleCancel, handleExport, handleRegenerate, isNotDone])
