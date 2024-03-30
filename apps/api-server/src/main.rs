@@ -15,7 +15,6 @@ use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
 };
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
@@ -23,8 +22,16 @@ async fn main() {
         Ok(path) => println!(".env read successfully from {}", path.display()),
         Err(e) => println!("Could not load .env file: {e}"),
     };
-    init_tracing(); // should be after dotenv() so RUST_LOG in .env file will be loaded
-                    // debug!("test debug output");
+
+    analytics_tracing::init_tracing_to_stdout();
+    {
+        // https://docs.rs/tracing/latest/tracing/struct.Span.html#in-asynchronous-code
+        // Spans will be sent to the configured OpenTelemetry exporter
+        // let root = tracing::span!(tracing::Level::INFO, "api-server", custom_field="custom value");
+        // let _enter = root.enter();
+        // tracing::error!("This event will be logged in the root span.");
+    }
+
     let local_data_root = match env::var("LOCAL_DATA_DIR") {
         Ok(path) => Path::new(&path).to_path_buf(),
         Err(_e) => {
@@ -93,15 +100,4 @@ async fn main() {
     axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app)
         .await
         .unwrap();
-}
-
-fn init_tracing() {
-    tracing_subscriber::registry()
-        .with(
-            // load filters from the `RUST_LOG` environment variable.
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "api_server=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer().with_ansi(true))
-        .init();
 }

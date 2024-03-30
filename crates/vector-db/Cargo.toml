@@ -5,8 +5,7 @@ edition = { workspace = true }
 
 [dependencies]
 file-downloader = { path = "../file-downloader", optional = true }
-tracing = "0.1.40"
-tracing-subscriber = "0.3.18"
+tracing = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync"] }
 test-log = { workspace = true }
 ndarray = { version = "0.15.6", features = ["serde"] }

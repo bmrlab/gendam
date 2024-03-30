@@ -8,7 +8,7 @@ mod prisma_tests {
     use super::*;
     use futures::future::join_all;
     use std::sync::Arc;
-    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+    // use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
     async fn exec(client: Arc<PrismaClient>, i: i32)
         // -> Result<asset_object::Data, prisma_client_rust::QueryError>
@@ -42,14 +42,15 @@ mod prisma_tests {
 
     #[tokio::test]
     async fn test_sqlite_write() {
-        tracing_subscriber::registry()
-            .with(
-                // load filters from the `RUST_LOG` environment variable.
-                tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| "info".into()),
-            )
-            .with(tracing_subscriber::fmt::layer().with_ansi(false))
-            .init();
+        // 如果需要打印 prisma 的 SQL 日志用于 debug，需要在测试函数中初始化 tracing
+        // tracing_subscriber::registry()
+        //     .with(
+        //         // load filters from the `RUST_LOG` environment variable.
+        //         tracing_subscriber::EnvFilter::try_from_default_env()
+        //             .unwrap_or_else(|_| "info".into()),
+        //     )
+        //     .with(tracing_subscriber::fmt::layer().with_ansi(false))
+        //     .init();
 
         let client = new_client().await.unwrap();
         client._db_push().await.expect("failed to push db");

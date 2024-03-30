@@ -2,6 +2,7 @@ use prisma_lib::{asset_object, file_path};
 use content_library::Library;
 use super::utils::normalized_materialized_path;
 
+// #[tracing::instrument(level = "info")]
 pub async fn list_file_path(
     library: &Library,
     path: &str,

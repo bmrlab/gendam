@@ -32,6 +32,7 @@ file-handler = { path = "../../../crates/file-handler", features = [
 content-library = { path = "../../../crates/content-library" }
 api-server = { path = "../../api-server" }
 vector-db = { path = "../../../crates/vector-db", features = ["qdrant"] }
+analytics-tracing = { path = "../../../crates/analytics-tracing" }
 rspc = { workspace = true }
 rspc-tauri = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -42,8 +43,6 @@ tokio = { workspace = true }
 tokio-util = { workspace = true }
 dotenvy = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["env-filter"] }
-tracing-oslog = "0.1.2"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.

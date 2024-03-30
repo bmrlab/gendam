@@ -7,7 +7,6 @@ edition = { workspace = true }
 file-downloader = { path = "../file-downloader" }
 tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 test-log = { workspace = true }
 anyhow = { workspace = true }
 llama-cpp-2 = { version = "0.1.36", optional = true }

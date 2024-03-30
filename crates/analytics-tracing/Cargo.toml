@@ -1,0 +1,16 @@
+[package]
+name = "analytics-tracing"
+version = "0.1.0"
+edition = { workspace = true }
+
+[dependencies]
+dotenvy = { workspace = true }
+tracing = { workspace = true }
+tracing-oslog = "0.1.2"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+tracing-opentelemetry = "0.23"
+opentelemetry = { version = "0.22", features = ["metrics", "logs"] }
+opentelemetry_sdk = { version = "0.22", features = ["rt-tokio", "logs"] }
+opentelemetry-otlp = { version = "0.15.0", features = ["tonic", "metrics", "logs"] }
+opentelemetry-semantic-conventions = "0.14.0"
+opentelemetry-stdout = { version = "0.3.0", features = ["trace"] }

@@ -8,7 +8,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tauri::Manager;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod store;
 use store::Store;
@@ -65,7 +64,26 @@ async fn main() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    init_tracing(app.path_resolver().app_log_dir().unwrap());
+    #[cfg(not(debug_assertions))]
+    {
+        /*
+        * macos log dir
+        * ~/Library/Logs/cc.musedam.local/app.log
+        */
+        let log_dir = app.path_resolver().app_log_dir().unwrap();
+        analytics_tracing::init_tracing_to_file(log_dir);
+    }
+    #[cfg(debug_assertions)]
+    {
+        analytics_tracing::init_tracing_to_stdout();
+    }
+    {
+        // https://docs.rs/tracing/latest/tracing/struct.Span.html#in-asynchronous-code
+        // Spans will be sent to the configured OpenTelemetry exporter
+        // let root = tracing::span!(tracing::Level::INFO, "muse-desktop", custom_field="custom value");
+        // let _enter = root.enter();
+        // tracing::error!("This event will be logged in the root span.");
+    }
 
     let window = app.get_window("main").unwrap();
     let local_data_root = window
@@ -144,54 +162,4 @@ async fn main() {
 fn greet(name: &str) -> String {
     println!("Hello, {}, from Server!", name);
     format!("Hello, {}, in Client!", name)
-}
-
-fn init_tracing(log_dir: PathBuf) {
-    #[cfg(debug_assertions)]
-    {
-        let _ = log_dir;
-        tracing_subscriber::registry()
-            .with(
-                // load filters from the `RUST_LOG` environment variable.
-                tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| "muse_desktop=debug".into()),
-            )
-            .with(
-                tracing_subscriber::fmt::layer()
-                    .with_ansi(true)
-                    .with_thread_ids(true),
-            )
-            .init();
-    }
-    #[cfg(not(debug_assertions))]
-    {
-        /*
-         * see logs with cmd:
-         * log stream --debug --predicate 'subsystem=="cc.musedam.local" and category=="default"'
-         */
-        let os_logger = tracing_oslog::OsLogger::new("cc.musedam.local", "default");
-        /*
-         * macos log dir
-         * ~/Library/Logs/cc.musedam.local/app.log
-         */
-        if let Err(e) = std::fs::create_dir_all(&log_dir) {
-            eprintln!("Failed to create log dir: {}", e);
-            return;
-        }
-        let file = match std::fs::File::create(log_dir.join("app.log")) {
-            Ok(f) => f,
-            Err(e) => {
-                eprintln!("Failed to create log file: {}", e);
-                return;
-            }
-        };
-        let os_file_logger = tracing_subscriber::fmt::layer()
-            .with_writer(Mutex::new(file))
-            .with_ansi(false);
-        tracing_subscriber::registry()
-            .with(tracing_subscriber::EnvFilter::new("debug"))
-            .with(os_logger)
-            .with(os_file_logger)
-            .init();
-    }
 }
