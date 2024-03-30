@@ -3,6 +3,7 @@ import { MuseStatus, MuseTaskBadge } from '@/components/Badge'
 import MuseDropdownMenu, { DropdownMenuOptions } from '@/components/DropdownMenu'
 import Icon from '@/components/Icon'
 import type { VideoWithTasksResult } from '@/lib/bindings'
+import { isNotDone, hasAudio } from './utils'
 import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { cn, formatBytes, formatDuration } from '@/lib/utils'
@@ -47,17 +48,12 @@ export default function VideoTaskItem({
     return tasksWithIndex.sort((a, b) => a.index - b.index)
   }, [tasks])
 
-  const isProcessing = useMemo(() => {
-    return !!tasks.find((task) => getTaskStatus(task) === MuseStatus.Processing)
-  }, [tasks])
-
-  const hasAudio = useMemo(() => {
-    return tasks.some((task) => task.taskType === 'Audio' && task.exitCode === 0)
-  }, [tasks])
+  const _isNotDone = useMemo(() => isNotDone(tasks), [tasks])
+  const _hasAudio = useMemo(() => hasAudio(tasks), [tasks])
 
   const moreActionOptions = useCallback(
-    (id: string, isProcessing = false) => {
-      const processItem = isProcessing
+    () => {
+      const processItem = _isNotDone
         ? [
             {
               label: (
@@ -87,7 +83,7 @@ export default function VideoTaskItem({
         },
       ] as DropdownMenuOptions[]
     },
-    [assetObject.id, mutateAsync],
+    [assetObject.id, _isNotDone, mutateAsync],
   )
 
   return (
@@ -134,7 +130,7 @@ export default function VideoTaskItem({
             <span>{formatBytes(mediaData?.size ?? 0)}</span>
             <div className="mx-2">·</div>
             <span>{`${mediaData?.width ?? 0} x ${mediaData?.height ?? 0}`}</span>
-            {hasAudio ? null : (
+            {_hasAudio ? null : (
               <>
                 <div className="mx-2">·</div>
                 <NoAudio />
@@ -149,7 +145,7 @@ export default function VideoTaskItem({
             ))}
             <MuseDropdownMenu
               triggerIcon={<Icon.moreVertical className="size-[25px] cursor-pointer text-[#676C77]" />}
-              options={moreActionOptions('1', isProcessing)}
+              options={moreActionOptions()}
               contentClassName="w-[215px]"
             >
               <Button

@@ -13,30 +13,30 @@ import { useBoundStore } from '../_store'
 
 export type TaskContextMenuProps = PropsWithChildren<{
   fileHash: string
-  isProcessing: boolean
+  isNotDone: boolean
   video: VideoWithTasksResult
 }>
 
-export default function TaskContextMenu({ video, fileHash, isProcessing, children }: TaskContextMenuProps) {
+export default function TaskContextMenu({ video, fileHash, isNotDone, children }: TaskContextMenuProps) {
   const taskListRefetch = useBoundStore.use.taskListRefetch()
 
   const { handleRegenerate, handleExport, handleCancel } = useTaskAction({ fileHash, video })
 
   // 有进行中的任务，定时刷新
   useEffect(() => {
-    if (isProcessing) {
+    if (isNotDone) {
       const timer = setInterval(() => {
         taskListRefetch()
-      }, 2000)
+      }, 10000)
 
       return () => {
         clearInterval(timer)
       }
     }
-  }, [isProcessing, taskListRefetch])
+  }, [isNotDone, taskListRefetch])
 
   const options = useMemo<Array<'Separator' | { label: string; icon: ReactNode; handleClick: () => void }>>(() => {
-    const processingItem = isProcessing
+    const processingItem = isNotDone
       ? [
           {
             label: '取消任务',
@@ -67,7 +67,7 @@ export default function TaskContextMenu({ video, fileHash, isProcessing, childre
         },
       },
     ]
-  }, [handleCancel, handleExport, handleRegenerate, isProcessing])
+  }, [handleCancel, handleExport, handleRegenerate, isNotDone])
 
   return (
     <ContextMenuRoot>

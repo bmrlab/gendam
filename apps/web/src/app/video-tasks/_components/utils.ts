@@ -1,12 +1,21 @@
 import { MuseStatus } from '@/components/Badge'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 
-export const hasProcessing = (tasks: VideoWithTasksResult['tasks']) => {
-  const dimension = Object.keys(VIDEO_DIMENSION)
-  return tasks
-    .filter((t) => dimension.includes(t.taskType))
-    .map(getTaskStatus)
-    .some((status) => status === MuseStatus.Processing)
+// export const hasProcessing = (tasks: VideoWithTasksResult['tasks']) => {
+//   const dimension = Object.keys(VIDEO_DIMENSION)
+//   return tasks
+//     .filter((t) => dimension.includes(t.taskType))
+//     .map(getTaskStatus)
+//     .some((status) => status === MuseStatus.Processing)
+// }
+
+export const isNotDone = (tasks: VideoWithTasksResult['tasks']) => {
+  // 未开始和正在进行的
+  return !!tasks.find((task) => getTaskStatus(task) !== MuseStatus.Done)
+}
+
+export const hasAudio = (tasks: VideoWithTasksResult['tasks']) => {
+  return tasks.some((task) => task.taskType === 'Audio' && task.exitCode === 0)
 }
 
 export const getTaskStatus = (task: VideoWithTasksResult['tasks'][number]) => {

@@ -4,7 +4,7 @@ import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 import { HTMLAttributes, useMemo } from 'react'
-import { hasProcessing } from '../_components/utils'
+import { isNotDone } from './utils'
 import { useBoundStore } from '../_store'
 import TaskContextMenu from './task-context-menu'
 import { WithSelectVideoItem } from './with-select'
@@ -47,7 +47,7 @@ export default function VideoTasksList({ data, isLoading, className }: VideoTask
           <TaskContextMenu
             key={videoFile.assetObject.id}
             fileHash={videoFile.assetObject.hash}
-            isProcessing={hasProcessing(videoFile.tasks)}
+            isNotDone={isNotDone(videoFile.tasks)}
             video={videoFile}
           >
             <WithSelectVideoItem
