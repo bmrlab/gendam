@@ -80,62 +80,75 @@ impl Task {
 
 pub enum TaskPayload {
     Task(Task),
-    CancelByTaskId(String),
-    CancelByAssetId(String),
+    CancelByAssetAndType(i32, VideoTaskType),
+    CancelByAssetId(i32),
     CancelAll,
 }
 
 pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
-    // task_mapping can be optimized to HashMap<String, HashMap<String, CancellationToken>>
-    let task_mapping: HashMap<String, CancellationToken> = HashMap::new();
+    let task_mapping: HashMap<i32, HashMap<VideoTaskType, CancellationToken>> = HashMap::new();
     let task_mapping = Arc::new(RwLock::new(task_mapping));
     let task_mapping_clone = task_mapping.clone();
 
     let (tx, rx) = mpsc::channel();
     let (task_tx, task_rx) = mpsc::channel::<Task>();
 
-    let cancel_token = CancellationToken::new();
-    let cloned_token = cancel_token.clone();
+    let asset_cancel_token = CancellationToken::new();
+    let asset_cancel_token_clone = asset_cancel_token.clone();
 
+    // 监听一个 AssetObject 需要处理，加入队列后，由 task_rx 继续处理每个类型的子任务
     tokio::spawn(async move {
         loop {
             match rx.recv() {
                 Ok(payload) => match payload {
                     TaskPayload::Task(task) => {
-                        let task_id = format!("{}-{}", task.asset_object_id, task.task_type);
-
-                        info!("Task received: {}", task_id);
-
+                        let asset_object_id = task.asset_object_id;
+                        let task_type = task.task_type.clone();
+                        info!("Task received: {} {}", asset_object_id, task_type);
                         {
                             let current_cancel_token = CancellationToken::new();
-                            task_mapping
-                                .write()
-                                .await
-                                .insert(task_id.clone(), current_cancel_token.clone());
+                            let mut task_mapping = task_mapping.write().await;
+                            match task_mapping.get_mut(&asset_object_id) {
+                                Some(item) => {
+                                    item.insert(task_type, current_cancel_token);
+                                }
+                                None => {
+                                    let mut new_item = HashMap::new();
+                                    new_item.insert(task_type, current_cancel_token);
+                                    task_mapping.insert(asset_object_id, new_item);
+                                }
+                            };
                         }
-
                         if let Err(e) = task_tx.send(task) {
                             error!("failed to send task: {}", e);
                         }
                     }
-                    TaskPayload::CancelByTaskId(task_id) => {
-                        if let Some(item) = task_mapping.read().await.get(&task_id) {
-                            item.cancel();
-                            info!("task {} set to canceled", task_id);
+                    TaskPayload::CancelByAssetAndType(asset_object_id, task_type) => {
+                        let task_mapping = task_mapping.read().await;
+                        if let Some(item) = task_mapping.get(&asset_object_id) {
+                            if let Some(cancel_token) = item.get(&task_type) {
+                                cancel_token.cancel();
+                            } else {
+                                warn!("Task not found for asset obejct {} of type {}", asset_object_id, task_type);
+                            }
+                            info!("Task cancelled {} {}", asset_object_id, task_type);
                         } else {
-                            warn!("failed to find task: {}", task_id);
+                            warn!("Task not found for asset obejct {}", asset_object_id);
                         }
                     }
                     TaskPayload::CancelByAssetId(asset_object_id) => {
-                        task_mapping.read().await.iter().for_each(|(key, token)| {
-                            if key.starts_with(&asset_object_id) {
-                                token.cancel();
-                                info!("task {} set to canceled", key);
-                            }
-                        });
+                        let task_mapping = task_mapping.read().await;
+                        if let Some(item) = task_mapping.get(&asset_object_id) {
+                            item.iter().for_each(|(task_type, cancel_token)| {
+                                cancel_token.cancel();
+                                info!("Task cancelled {} {}", asset_object_id, task_type);
+                            });
+                        } else {
+                            warn!("Task not found for asset obejct {}", asset_object_id);
+                        }
                     }
                     TaskPayload::CancelAll => {
-                        cancel_token.cancel();
+                        asset_cancel_token.cancel();
                     }
                 },
                 _ => {}
@@ -143,70 +156,86 @@ pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
         }
     });
 
-    match ThreadBuilder::default()
-        .priority(ThreadPriority::Min)
-        .spawn(move |result| {
+    // 监听一个 AssetObject 的子任务
+    let loop_for_next_single_task = async move {
+        loop {
+            match task_rx.recv() {
+                Ok(task) => {
+                    let asset_object_id = task.asset_object_id;
+                    let task_type = task.task_type.clone();
+                    info!("Task processing: {} {}", asset_object_id, task_type);
+
+                    let task_mapping = task_mapping_clone.read().await;
+                    let current_cancel_token = match task_mapping.get(&asset_object_id) {
+                        Some(item) => match item.get(&task_type) {
+                            Some(token) => token,
+                            None => {
+                                error!("No task in the queue for asset obejct {} of type {}", asset_object_id, task_type);
+                                continue;
+                            }
+                        },
+                        None => {
+                            error!("No tasks in the queue for asset obejct {} ", asset_object_id);
+                            continue;
+                        }
+                    };
+
+                    tokio::select! {
+                        _ = task.run() => {
+                            info!("Task finished: {} {}", asset_object_id, task_type);
+                        }
+                        _ = current_cancel_token.cancelled() => {
+                            info!("Task canceled: {} {}", asset_object_id, task_type);
+                        }
+                        _ = asset_cancel_token_clone.cancelled() => {
+                            info!("Task canceled by CancelAll: {}", asset_object_id);
+                        }
+                    }
+
+                    // remove data in task_mapping
+                    // task_mapping_clone.write().await.remove(&task_id);
+                    let mut task_mapping = task_mapping_clone.write().await;
+                    match task_mapping.get_mut(&asset_object_id) {
+                        Some(item) => {
+                            item.remove(&task_type);
+                            if item.is_empty() {
+                                task_mapping.remove(&asset_object_id);
+                            }
+                        }
+                        None => {}  // 前面已经读取到过了, 这里不可能 None, 真的遇到了忽略也没有问题
+                    };
+                }
+                _ => {
+                    error!("No Task Error");
+                    // task_pool will be dropped when library changed
+                    // so just break here
+                    // break;
+                }
+            }
+        }
+    };
+
+    // 在一个较低优先级的线程中执行 loop_for_next_single_task
+    match ThreadBuilder::default().priority(ThreadPriority::Min).spawn(
+        move |result| {
             if let Err(e) = result {
                 warn!("failed to set priority: {}", e);
             }
-
-            match tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-            {
+            match tokio::runtime::Builder::new_multi_thread().enable_all().build() {
                 Ok(rt) => {
-                    rt.block_on(async move {
-                        loop {
-                            match task_rx.recv() {
-                                Ok(task) => {
-                                    let task_id =
-                                        format!("{}-{}", task.asset_object_id, task.task_type);
-
-                                    info!("Task processing: {}", task_id);
-
-                                    let current_cancel_token = task_mapping_clone
-                                        .read()
-                                        .await
-                                        .get(&task_id)
-                                        .expect("Error creating task: failed to find current_cancel_token")
-                                        .clone();
-
-                                    tokio::select! {
-                                        _ = task.run() => {
-                                            info!("task {} finished", task_id);
-                                        }
-                                        _ = current_cancel_token.cancelled() => {
-                                            info!("task {} canceled by Cancel", task_id);
-                                        }
-                                        _ = cloned_token.cancelled() => {
-                                            info!("task {} canceled by CancelAll", task_id);
-                                        }
-                                    }
-
-                                    // remove data in task_mapping
-                                    task_mapping_clone.write().await.remove(&task_id);
-
-                                }
-                                _ => {
-                                    error!("No Task Error");
-                                    // task_pool will be dropped when library changed
-                                    // so just break here
-                                    // break;
-                                }
-                            }
-                        }
-                    });
+                    rt.block_on(loop_for_next_single_task);
                 }
                 Err(e) => {
-                    error!("failed to build tokio runtime: {}", e);
+                    error!("Failed to build tokio runtime: {}", e);
                 }
             };
-        }) {
+        }
+    ) {
         Ok(thread) => {
-            info!("Task pool thread created: {:?}", thread.thread().id(),);
+            info!("Task pool thread created: {:?}", thread.thread().id());
         }
         Err(e) => {
-            error!("failed to build thread: {}", e);
+            error!("Failed to build thread: {}", e);
         }
     };
 
@@ -282,22 +311,17 @@ pub async fn create_video_task(
     match tx.lock() {
         Ok(tx) => {
             for task_type in video_handler.get_supported_task_types() {
-                let vh = video_handler.clone();
-                let task_type_clone = task_type.clone();
-                let asset_object_id = asset_object_data.id;
-                let prisma_client = library.prisma_client();
-
                 match tx.send(TaskPayload::Task(Task {
-                    handler: vh,
-                    task_type: task_type_clone.clone(),
-                    asset_object_id,
-                    prisma_client,
+                    handler: video_handler.clone(),
+                    task_type: task_type.clone(),
+                    asset_object_id: asset_object_data.id,
+                    prisma_client: library.prisma_client(),
                 })) {
                     Ok(_) => {
-                        info!("Task queued {}", asset_object_data.hash);
+                        info!("Task queued {} {}", asset_object_data.id, &task_type);
                     }
                     Err(e) => {
-                        error!("Failed to queue task {}: {}", asset_object_data.hash, e);
+                        error!("Failed to queue task {} {}: {}", asset_object_data.id, &task_type, e);
                     }
                 }
             }

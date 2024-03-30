@@ -86,7 +86,7 @@ pub struct VideoHandler {
     whisper: Option<BatchHandler<Whisper>>,
 }
 
-#[derive(Clone, Debug, EnumDiscriminants)]
+#[derive(Clone, Debug, EnumDiscriminants, PartialEq, Eq, Hash)]
 #[strum_discriminants(derive(strum_macros::Display))]
 pub enum VideoTaskType {
     Frame,
