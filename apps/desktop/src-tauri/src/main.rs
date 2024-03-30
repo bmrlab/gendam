@@ -144,7 +144,7 @@ async fn main() {
     });
 
     let store = Arc::new(Mutex::new(Store::new(tauri_store)));
-    let router = api_server::router::get_router::<Ctx<Store>>();
+    let router = api_server::get_routes::<Ctx<Store>>();
     let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store, current_library);
 
     window

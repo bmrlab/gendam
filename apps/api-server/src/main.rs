@@ -76,7 +76,7 @@ async fn main() {
         .allow_origin(Any);
 
     let store = Arc::new(Mutex::new(default_store));
-    let router = api_server::router::get_router::<Ctx<Store>>()
+    let router = api_server::get_routes::<Ctx<Store>>()
         .arced();
     let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store, current_library);
 

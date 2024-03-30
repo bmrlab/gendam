@@ -1,8 +1,8 @@
 mod task_queue;
-mod routes;
 mod ai;
 
-pub mod router;
+mod routes;
+pub use routes::get_routes;
 
 pub mod ctx;
 pub use ctx::traits::{CtxWithLibrary, StoreError, CtxStore};
