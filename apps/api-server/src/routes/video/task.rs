@@ -1,6 +1,6 @@
 use crate::task_queue::create_video_task;
 use crate::CtxWithLibrary;
-use prisma_client_rust::Direction;
+use prisma_client_rust::{Direction, operator};
 use prisma_lib::PrismaClient;
 use prisma_lib::{asset_object, file_handler_task, media_data};
 use rspc::{Router, RouterBuilder};
@@ -90,7 +90,12 @@ impl VideoTaskHandler {
 
     async fn list(&self, payload: TaskListRequestPayload) -> anyhow::Result<VideoWithTasksPageResult> {
         let task_filter = match payload.filter {
-            Filter::ExcludeCompleted => vec![file_handler_task::exit_code::gte(1)],
+            Filter::ExcludeCompleted => vec![operator::or(
+                vec![
+                    file_handler_task::exit_code::equals(None),
+                    file_handler_task::exit_code::gte(1),
+                ]
+            )],
             _ => vec![],
         };
 
@@ -99,7 +104,9 @@ impl VideoTaskHandler {
         let asset_object_data_list = self
             .prisma_client
             .asset_object()
-            .find_many(vec![asset_object::tasks::some(task_filter)])
+            .find_many(vec![
+                asset_object::tasks::some(task_filter)
+            ])
             .with(asset_object::tasks::fetch(vec![]))
             .with(asset_object::file_paths::fetch(vec![]))
             // bindings 中不会自动生成 media_data 类型
