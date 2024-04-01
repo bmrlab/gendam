@@ -23,7 +23,7 @@ const Viewport = ({ className, children, ...props }: HTMLAttributes<HTMLDivEleme
 
 const Page = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
-    <div className={classNames('flex h-screen flex-1 flex-col bg-white', className)} {...props}>
+    <div className={classNames('flex h-screen flex-1 flex-col bg-app', className)} {...props}>
       {children}
     </div>
   )
@@ -32,7 +32,7 @@ const Page = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>)
 const Toolbar = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
     <div className={classNames(
-      'h-12 w-full border-b border-neutral-100',
+      'h-12 w-full bg-toolbar border-b border-toolbar-line',
       'flex items-center px-4',  // default layout
       className
     )} {...props}>
@@ -52,7 +52,7 @@ const Content = ({ className, children, ...props }: HTMLAttributes<HTMLDivElemen
 const StatusBar = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
     <div className={classNames(
-      'h-8 w-full  border-t border-neutral-100',
+      'h-8 w-full bg-toolbar border-t border-toolbar-line',
       'flex items-center px-4',  // default layout
       className
     )} {...props}>
