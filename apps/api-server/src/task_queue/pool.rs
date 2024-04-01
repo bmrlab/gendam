@@ -129,7 +129,10 @@ pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
                             if let Some(cancel_token) = item.get(&task_type) {
                                 cancel_token.cancel();
                             } else {
-                                warn!("Task not found for asset obejct {} of type {}", asset_object_id, task_type);
+                                warn!(
+                                    "Task not found for asset obejct {} of type {}",
+                                    asset_object_id, task_type
+                                );
                             }
                             info!("Task cancelled {} {}", asset_object_id, task_type);
                         } else {
@@ -172,20 +175,25 @@ pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
                      * 而且 current_cancel_token 不能是 & cancel_token.clone() 释放 task_mapping
                      */
                     let current_cancel_token =
-                        match task_mapping_clone.read().await.get(&asset_object_id)
-                    {
-                        Some(item) => match item.get(&task_type) {
-                            Some(cancel_token) => cancel_token.clone(),
+                        match task_mapping_clone.read().await.get(&asset_object_id) {
+                            Some(item) => match item.get(&task_type) {
+                                Some(cancel_token) => cancel_token.clone(),
+                                None => {
+                                    error!(
+                                        "No task in the queue for asset obejct {} of type {}",
+                                        asset_object_id, task_type
+                                    );
+                                    continue;
+                                }
+                            },
                             None => {
-                                error!("No task in the queue for asset obejct {} of type {}", asset_object_id, task_type);
+                                error!(
+                                    "No tasks in the queue for asset obejct {} ",
+                                    asset_object_id
+                                );
                                 continue;
                             }
-                        },
-                        None => {
-                            error!("No tasks in the queue for asset obejct {} ", asset_object_id);
-                            continue;
-                        }
-                    };
+                        };
 
                     tokio::select! {
                         _ = task.run() => {
@@ -209,7 +217,7 @@ pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
                                 task_mapping.remove(&asset_object_id);
                             }
                         }
-                        None => {}  // 前面已经读取到过了, 这里不可能 None, 真的遇到了忽略也没有问题
+                        None => {} // 前面已经读取到过了, 这里不可能 None, 真的遇到了忽略也没有问题
                     };
                 }
                 _ => {
@@ -226,12 +234,16 @@ pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
      * 在一个较低优先级的线程中执行 loop_for_next_single_task
      * 但是，感觉不大对，这么写并不会被降低优先级，需要再仔细研究下
      */
-    match ThreadBuilder::default().priority(ThreadPriority::Min).spawn(
-        move |result| {
+    match ThreadBuilder::default()
+        .priority(ThreadPriority::Min)
+        .spawn(move |result| {
             if let Err(e) = result {
                 warn!("failed to set priority: {}", e);
             }
-            match tokio::runtime::Builder::new_multi_thread().enable_all().build() {
+            match tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+            {
                 Ok(rt) => {
                     rt.block_on(loop_for_next_single_task);
                 }
@@ -239,8 +251,7 @@ pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
                     error!("Failed to build tokio runtime: {}", e);
                 }
             };
-        }
-    ) {
+        }) {
         Ok(thread) => {
             info!("Task pool thread created: {:?}", thread.thread().id());
         }
@@ -263,11 +274,7 @@ pub async fn create_video_task(
         );
     })?;
 
-    let local_video_file_full_path = format!(
-        "{}/{}",
-        library.files_dir.to_str().unwrap(),
-        asset_object_data.hash
-    );
+    let local_video_file_full_path = library.file_path(&asset_object_data.hash);
 
     let ai_handler = ctx.get_ai_handler();
 
@@ -290,9 +297,7 @@ pub async fn create_video_task(
 
     let video_has_audio = match asset_object_data.media_data() {
         Ok(Some(metadata)) => metadata.has_audio,
-        _ => {
-            None
-        }
+        _ => None,
     };
 
     for task_type in video_handler.get_supported_task_types(video_has_audio) {
@@ -340,7 +345,10 @@ pub async fn create_video_task(
                         info!("Task queued {} {}", asset_object_data.id, &task_type);
                     }
                     Err(e) => {
-                        error!("Failed to queue task {} {}: {}", asset_object_data.id, &task_type, e);
+                        error!(
+                            "Failed to queue task {} {}: {}",
+                            asset_object_data.id, &task_type, e
+                        );
                     }
                 }
             }

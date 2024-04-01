@@ -96,11 +96,7 @@ pub async fn process_video_metadata(
             ));
         }
     };
-    let local_video_file_full_path = format!(
-        "{}/{}",
-        library.files_dir.to_str().unwrap(),
-        asset_object_data.hash
-    );
+    let local_video_file_full_path = library.file_path(&asset_object_data.hash);
     let fs_metadata = match std::fs::metadata(&local_video_file_full_path) {
         Ok(metadata) => metadata,
         Err(e) => {

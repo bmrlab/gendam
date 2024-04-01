@@ -61,9 +61,7 @@ pub async fn create_asset_object(
     let duration = start_time.elapsed();
     tracing::info!("{:?}, hash: {:?}, duration: {:?}", local_full_path, file_hash, duration);
 
-    let destination_path = library
-        .files_dir
-        .join(file_hash.clone());
+    let destination_path = library.file_path(&file_hash);
     std::fs::copy(local_full_path, destination_path).map_err(|e| {
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,

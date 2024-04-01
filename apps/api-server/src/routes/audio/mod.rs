@@ -33,15 +33,15 @@ where
         .query("find_by_hash", |t| {
             t(|ctx, hash: String| async move {
                 let library = ctx.library()?;
-                let artifacts_dir = library.artifacts_dir.clone();
-                let path = artifacts_dir.join(hash).join(TRANSCRIPT_FILE_NAME);
+                let artifacts_dir = library.artifacts_dir(&hash);
+                let path = artifacts_dir.join(TRANSCRIPT_FILE_NAME);
                 Ok(get_all_audio_format(path))
             })
         })
         .mutation("export", |t| {
             t(|ctx, input: ExportInput| async move {
                 let library = ctx.library()?;
-                let export_result = audio_export(library.artifacts_dir.clone(), input)
+                let export_result = audio_export(library.artifacts_dir(&input.hash), input)
                     .unwrap_or_else(|err| {
                         error!("Failed to export audio: {err}",);
                         vec![]
@@ -54,11 +54,12 @@ where
                 let library = ctx.library()?;
                 let mut error_list = vec![];
                 for item in input {
-                    let res =
-                        audio_export(library.artifacts_dir.clone(), item).unwrap_or_else(|err| {
+                    let res = audio_export(library.artifacts_dir(&item.hash), item).unwrap_or_else(
+                        |err| {
                             error!("Failed to export audio: {err}",);
                             vec![]
-                        });
+                        },
+                    );
                     error_list.extend(res);
                 }
                 Ok(error_list)
@@ -116,7 +117,7 @@ fn get_all_audio_format(path: PathBuf) -> Vec<AudioResp> {
 fn audio_export(artifacts_dir: PathBuf, input: ExportInput) -> anyhow::Result<Vec<AudioType>> {
     let save_dir = PathBuf::from(input.path);
     let types = input.type_group.clone();
-    let reader = AudioReader::new(artifacts_dir.join(input.hash).join(TRANSCRIPT_FILE_NAME));
+    let reader = AudioReader::new(artifacts_dir.join(TRANSCRIPT_FILE_NAME));
     let downloader = DownloadHelper::new(reader, save_dir.clone());
 
     let mut error_list = vec![];

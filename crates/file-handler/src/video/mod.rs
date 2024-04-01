@@ -3,7 +3,7 @@ use ai::{blip::BLIP, clip::CLIP, whisper::Whisper, BatchHandler};
 use anyhow::Ok;
 pub use constants::*;
 use content_library::Library;
-use std::{fmt::Display, fs};
+use std::fmt::Display;
 use strum_macros::EnumDiscriminants;
 
 mod constants;
@@ -118,8 +118,7 @@ impl VideoHandler {
         video_file_hash: &str,
         library: &Library,
     ) -> anyhow::Result<Self> {
-        let artifacts_dir = library.artifacts_dir.join(video_file_hash);
-        fs::create_dir_all(&artifacts_dir)?;
+        let artifacts_dir = library.artifacts_dir(video_file_hash);
 
         Ok(Self {
             video_path: video_path.as_ref().to_owned(),
