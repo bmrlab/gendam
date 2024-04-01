@@ -74,7 +74,7 @@ export default function TaskContextMenu({ video, fileHash, isNotDone, children }
       <ContextMenuTrigger className="flex cursor-default items-center justify-center rounded-md text-sm">
         {children}
       </ContextMenuTrigger>
-      <ContextMenuContent className="muse-border w-[215px] bg-[#F4F5F5] py-2 shadow-md">
+      <ContextMenuContent className="border border-[#DDDDDE] w-[215px] bg-[#F4F5F5] py-2 shadow-md">
         {options.map((o, index) =>
           o === 'Separator' ? (
             <ContextMenuSeparator key={index} className="mx-2.5 bg-[#DDDDDE]" />

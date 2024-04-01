@@ -46,7 +46,7 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="h-screen w-60 bg-neutral-100 p-3">
+    <div className="h-screen w-60 bg-neutral-100 p-3 relative">
       <div className="relative my-4">
         <div className="flex cursor-default items-center justify-start" onClick={() => setSelectPanelOpen(true)}>
           <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>
@@ -91,6 +91,13 @@ export default function Sidebar() {
         <Link href="/debug/library" className={menuClassNames('/debug/library')}>
           <span className="font-light text-neutral-400">本地文件(Debug)</span>
         </Link>
+      </div>
+      <div className='absolute bottom-3 lett-3 text-sm'>
+        <button
+          onClick={() => {
+            document.documentElement.classList.toggle('dark')
+          }}
+        >dark/light test</button>
       </div>
     </div>
   )

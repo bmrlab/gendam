@@ -41,7 +41,7 @@ export default function MuseDropdownMenu({
           </Button>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className={cn('muse-border bg-[#F4F5F5] py-2 shadow-md', contentClassName)}>
+      <DropdownMenuContent align="end" className={cn('border border-[#DDDDDE] bg-[#F4F5F5] py-2 shadow-md', contentClassName)}>
         {options.map((o, index) => (
           <div key={index}>
             {o === 'Separator' ? (
