@@ -236,6 +236,7 @@ dependencies = [
  "docx-rs",
  "dotenvy",
  "file-handler",
+ "priority-queue",
  "prisma-client-rust",
  "prisma-lib",
  "qdrant-client",
@@ -4985,6 +4986,17 @@ checksum = "a41cf62165e97c7f814d2221421dbb9afcbcdb0a88068e5ea206e19951c2cbb5"
 dependencies = [
  "proc-macro2",
  "syn 2.0.48",
+]
+
+[[package]]
+name = "priority-queue"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "509354d8a769e8d0b567d6821b84495c60213162761a732d68ce87c964bd347f"
+dependencies = [
+ "autocfg",
+ "equivalent",
+ "indexmap 2.2.2",
 ]
 
 [[package]]

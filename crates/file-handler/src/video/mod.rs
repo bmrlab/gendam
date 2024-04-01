@@ -147,8 +147,8 @@ impl VideoHandler {
         let mut task_types = vec![
             VideoTaskType::Frame,
             VideoTaskType::FrameContentEmbedding,
-            VideoTaskType::FrameCaptionEmbedding,
             VideoTaskType::FrameCaption,
+            VideoTaskType::FrameCaptionEmbedding,
         ];
 
         if let Some(with_audio) = with_audio {
