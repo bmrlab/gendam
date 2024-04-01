@@ -54,6 +54,7 @@ model MediaData {
   bitRate       Int?
   size          Int?
   mimeType      String?
+  hasAudio      Boolean?
 
   description   String?
 

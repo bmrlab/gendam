@@ -204,6 +204,13 @@ impl VideoHandler {
         video_decoder.get_video_metadata().await
     }
 
+    pub async fn save_thumbnail(&self, seconds: Option<u64>) -> anyhow::Result<()> {
+        let video_decoder = decoder::VideoDecoder::new(&self.video_path).await?;
+        video_decoder
+            .save_video_thumbnail(&self.artifacts_dir.join(THUMBNAIL_FILE_NAME), seconds)
+            .await
+    }
+
     /// Extract key frames from video and save results
     /// - Save into disk (a folder named by `library` and `video_file_hash`)
     /// - Save into prisma `VideoFrame` model

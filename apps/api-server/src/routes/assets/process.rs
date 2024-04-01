@@ -1,10 +1,10 @@
-use prisma_client_rust::QueryError;
-use tracing::{error, info};
-use prisma_lib::{media_data, asset_object, file_path};
-use file_handler::video::VideoHandler;
 use crate::task_queue::create_video_task;
 use crate::CtxWithLibrary;
 use content_library::Library;
+use file_handler::video::VideoHandler;
+use prisma_client_rust::QueryError;
+use prisma_lib::{asset_object, file_path, media_data};
+use tracing::{error, info};
 
 pub async fn process_video_asset(
     library: &Library,
@@ -55,7 +55,7 @@ pub async fn process_video_metadata(
 ) -> Result<(), rspc::Error> {
     info!("process video metadata for asset_object_id: {asset_object_id}");
     let sql_error = |e: QueryError| {
-        error!("sql query failed: {e}", );
+        error!("sql query failed: {e}",);
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
             format!("sql query failed: {}", e),
@@ -75,7 +75,7 @@ pub async fn process_video_metadata(
             return Err(rspc::Error::new(
                 rspc::ErrorCode::NotFound,
                 String::from("failed to find file_path or asset_object"),
-            ))
+            ));
         }
     };
     let local_video_file_full_path = format!(
@@ -90,14 +90,15 @@ pub async fn process_video_metadata(
             return Err(rspc::Error::new(
                 rspc::ErrorCode::InternalServerError,
                 format!("failed to get video metadata: {}", e),
-            ))
+            ));
         }
     };
     let video_handler = VideoHandler::new(
         local_video_file_full_path,
         &asset_object_data.hash,
         &library,
-    ).map_err(|e| {
+    )
+    .map_err(|e| {
         error!("Failed to create video handler: {e}");
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
@@ -111,12 +112,21 @@ pub async fn process_video_metadata(
             format!("failed to get video metadata: {}", e),
         )
     })?;
+    video_handler.save_thumbnail(Some(0)).await.map_err(|e| {
+        error!("failed to save thumbnail: {e}");
+        rspc::Error::new(
+            rspc::ErrorCode::InternalServerError,
+            format!("failed to save thumbnail: {}", e),
+        )
+    })?;
+
     let values: Vec<media_data::SetParam> = vec![
         media_data::width::set(Some(metadata.width as i32)),
         media_data::height::set(Some(metadata.height as i32)),
         media_data::duration::set(Some(metadata.duration as i32)),
         media_data::bit_rate::set(Some(metadata.bit_rate as i32)),
         media_data::size::set(Some(fs_metadata.len() as i32)),
+        media_data::has_audio::set(Some(metadata.audio.is_some())),
     ];
     library
         .prisma_client()

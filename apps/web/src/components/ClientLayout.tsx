@@ -76,12 +76,12 @@ export default function ClientLayout({
     }
   }, [library]);
 
-  const getThumbnailSrc = useCallback((assetObjectHash: string, timestampInSecond: number = 1) => {
+  const getThumbnailSrc = useCallback((assetObjectHash: string, _timestampInSecond: number = 1) => {
+    // TODO remove the _timestampInSecond
     if (!library) {
       return '/images/empty.png'
     }
-    timestampInSecond = Math.max(1, Math.floor(timestampInSecond))  // 最小是 1
-    const fileFullPath = `${library.dir}/artifacts/${assetObjectHash}/frames/${timestampInSecond*1000}.jpg`
+    const fileFullPath = `${library.dir}/artifacts/${assetObjectHash}/thumbnail.jpg`
     if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
       return convertFileSrc(fileFullPath);
     } else {

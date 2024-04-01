@@ -12,6 +12,8 @@ export type ExplorerItem = {
       duration: number;
       bitRate: number;
       size: number;
+      mimeType: string;
+      hasAudio: boolean;
     } | null
   } | null
   createdAt: string

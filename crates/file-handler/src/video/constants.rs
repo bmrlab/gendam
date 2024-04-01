@@ -3,3 +3,4 @@ pub const AUDIO_FILE_NAME: &str = "audio.wav";
 pub const FRAME_DIR: &str = "frames";
 pub const FRAME_FILE_EXTENSION: &str = "jpg";
 pub const CAPTION_FILE_EXTENSION: &str = "caption";
+pub const THUMBNAIL_FILE_NAME: &str = "thumbnail.jpg";

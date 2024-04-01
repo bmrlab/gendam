@@ -188,6 +188,52 @@ impl VideoDecoder {
         }
     }
 
+    pub async fn save_video_thumbnail(
+        &self,
+        thumbnail_path: impl AsRef<Path>,
+        seconds: Option<u64>,
+    ) -> anyhow::Result<()> {
+        let seconds_string = {
+            let seconds_duration = std::time::Duration::from_millis(seconds.unwrap_or(0));
+            let hours = seconds_duration.as_secs() / 3600;
+            let minutes = (seconds_duration.as_secs() % 3600) / 60;
+            let seconds = (seconds_duration.as_secs() % 3600) % 60;
+
+            format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+        };
+
+        match std::process::Command::new(&self.binary_file_path)
+            .args([
+                "-i",
+                self.video_file_path
+                    .to_str()
+                    .expect("invalid video file path"),
+                "-ss",
+                &seconds_string,
+                "-vframes",
+                "1",
+                "-compression_level",
+                "9",
+                thumbnail_path.as_ref().to_string_lossy().as_ref(),
+            ])
+            .output()
+        {
+            Ok(output) => {
+                if !output.status.success() {
+                    bail!(
+                        "Failed to save video thumbnail: {}",
+                        String::from_utf8_lossy(&output.stderr)
+                    );
+                }
+
+                Ok(())
+            }
+            Err(e) => {
+                bail!("Failed to save video thumbnail: {e}");
+            }
+        }
+    }
+
     pub async fn save_video_frames(&self, frames_dir: impl AsRef<Path>) -> anyhow::Result<()> {
         fs::create_dir_all(frames_dir.as_ref())?;
         match std::process::Command::new(&self.binary_file_path)

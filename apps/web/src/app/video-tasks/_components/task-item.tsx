@@ -3,14 +3,13 @@ import { MuseStatus, MuseTaskBadge } from '@/components/Badge'
 import MuseDropdownMenu, { DropdownMenuOptions } from '@/components/DropdownMenu'
 import Icon from '@/components/Icon'
 import type { VideoWithTasksResult } from '@/lib/bindings'
-import { isNotDone, hasAudio } from './utils'
 import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { cn, formatBytes, formatDuration } from '@/lib/utils'
 import { Button } from '@muse/ui/v1/button'
 import Image from 'next/image'
 import { HTMLAttributes, useCallback, useMemo } from 'react'
-import { VIDEO_DIMENSION, getTaskStatus } from './utils'
+import { VIDEO_DIMENSION, getTaskStatus, isNotDone } from './utils'
 // import classNames from 'classnames'
 
 export type VideoTaskItemProps = {
@@ -49,42 +48,39 @@ export default function VideoTaskItem({
   }, [tasks])
 
   const _isNotDone = useMemo(() => isNotDone(tasks), [tasks])
-  const _hasAudio = useMemo(() => hasAudio(tasks), [tasks])
+  const _hasAudio = useMemo(() => mediaData?.hasAudio ?? false, [mediaData?.hasAudio])
 
-  const moreActionOptions = useCallback(
-    () => {
-      const processItem = _isNotDone
-        ? [
-            {
-              label: (
-                <div className="flex items-center gap-1.5">
-                  <Icon.cancel />
-                  <span>取消任务</span>
-                </div>
-              ),
-              handleClick: () => {
-                console.log('cancel task', assetObject.id)
-                mutateAsync({ assetObjectId: assetObject.id })
-              },
+  const moreActionOptions = useCallback(() => {
+    const processItem = _isNotDone
+      ? [
+          {
+            label: (
+              <div className="flex items-center gap-1.5">
+                <Icon.cancel />
+                <span>取消任务</span>
+              </div>
+            ),
+            handleClick: () => {
+              console.log('cancel task', assetObject.id)
+              mutateAsync({ assetObjectId: assetObject.id })
             },
-            'Separator',
-          ]
-        : []
-      return [
-        ...processItem,
-        {
-          label: (
-            <div className="flex items-center gap-1.5">
-              <Icon.trash />
-              <span>删除任务</span>
-            </div>
-          ),
-          handleClick: () => {},
-        },
-      ] as DropdownMenuOptions[]
-    },
-    [assetObject.id, _isNotDone, mutateAsync],
-  )
+          },
+          'Separator',
+        ]
+      : []
+    return [
+      ...processItem,
+      {
+        label: (
+          <div className="flex items-center gap-1.5">
+            <Icon.trash />
+            <span>删除任务</span>
+          </div>
+        ),
+        handleClick: () => {},
+      },
+    ] as DropdownMenuOptions[]
+  }, [assetObject.id, _isNotDone, mutateAsync])
 
   return (
     <div
