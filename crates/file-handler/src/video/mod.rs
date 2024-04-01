@@ -144,15 +144,21 @@ impl VideoHandler {
         }
     }
 
-    pub fn get_supported_task_types(&self) -> Vec<VideoTaskType> {
-        vec![
+    pub fn get_supported_task_types(&self, with_audio: Option<bool>) -> Vec<VideoTaskType> {
+        let mut task_types = vec![
             VideoTaskType::Frame,
             VideoTaskType::FrameContentEmbedding,
             VideoTaskType::FrameCaptionEmbedding,
             VideoTaskType::FrameCaption,
-            VideoTaskType::Audio,
-            VideoTaskType::Transcript,
-        ]
+        ];
+
+        if let Some(with_audio) = with_audio {
+            if with_audio {
+                task_types.extend_from_slice(&[VideoTaskType::Audio, VideoTaskType::Transcript]);
+            }
+        }
+
+        task_types
     }
 
     pub fn file_identifier(&self) -> &str {

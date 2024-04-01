@@ -286,7 +286,16 @@ pub async fn create_video_task(
         }
     };
 
-    for task_type in video_handler.get_supported_task_types() {
+    tracing::debug!("asset object: {:?}", asset_object_data);
+
+    let video_has_audio = match asset_object_data.media_data() {
+        Ok(Some(metadata)) => metadata.has_audio,
+        _ => {
+            None
+        }
+    };
+
+    for task_type in video_handler.get_supported_task_types(video_has_audio) {
         let x = library
             .prisma_client()
             .file_handler_task()
@@ -320,7 +329,7 @@ pub async fn create_video_task(
 
     match tx.lock() {
         Ok(tx) => {
-            for task_type in video_handler.get_supported_task_types() {
+            for task_type in video_handler.get_supported_task_types(video_has_audio) {
                 match tx.send(TaskPayload::Task(Task {
                     handler: video_handler.clone(),
                     task_type: task_type.clone(),

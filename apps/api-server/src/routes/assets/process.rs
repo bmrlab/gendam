@@ -16,7 +16,6 @@ pub async fn process_video_asset(
         .prisma_client()
         .file_path()
         .find_unique(file_path::id::equals(file_path_id))
-        .with(file_path::asset_object::fetch())
         .exec()
         .await
         .map_err(|e| {
@@ -32,13 +31,32 @@ pub async fn process_video_asset(
             )
         })?;
 
-    let asset_object_data = file_path_data.asset_object.unwrap().ok_or_else(|| {
+    let asset_object_id = file_path_data.asset_object_id.ok_or_else(|| {
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
-            String::from("file_path.asset_object is None"),
+            String::from("file_path.asset_object_id is None"),
         )
     })?;
-    // let asset_object_data = *asset_object_data;
+
+    let asset_object_data = library
+        .prisma_client()
+        .asset_object()
+        .find_unique(asset_object::id::equals(asset_object_id))
+        .with(asset_object::media_data::fetch())
+        .exec()
+        .await
+        .map_err(|e| {
+            rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                format!("failed to find asset_object: {}", e),
+            )
+        })?
+        .ok_or_else(|| {
+            rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                format!("failed to find asset_object"),
+            )
+        })?;
 
     match create_video_task(&asset_object_data, ctx).await {
         Ok(_) => Ok(()),
