@@ -52,10 +52,9 @@ async fn main() {
     let current_library = Arc::new(Mutex::<Option<Library>>::new(None));
 
     let mut default_store = Store::new(local_data_root.join("settings.json"));
-    if let Err(e) = default_store.load() {
-        tracing::error!("Failed to load store: {:?}", e);
-        return;
-    }
+    default_store.load().unwrap_or_else(|e| {
+        tracing::warn!("Failed to load store: {:?}", e);
+    });
 
     if let Some(library_id) = default_store.get("current-library-id") {
          match load_library(&local_data_root, &library_id).await {

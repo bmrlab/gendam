@@ -111,12 +111,10 @@ async fn main() {
     let mut tauri_store = tauri_plugin_store::StoreBuilder::new(
         window.app_handle(),
         "settings.json".parse().unwrap(),
-    )
-    .build();
-    if let Err(e) = tauri_store.load() {
-        tracing::error!("Failed to load store: {:?}", e);
-        return;
-    }
+    ).build();
+    tauri_store.load().unwrap_or_else(|e| {
+        tracing::warn!("Failed to load tauri store: {:?}", e);
+    });
 
     if let Some(value) = tauri_store.get("current-library-id") {
         let library_id = value.as_str().unwrap().to_owned();
