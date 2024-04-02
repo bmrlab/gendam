@@ -14,72 +14,72 @@ datasource db {
 }
 
 model FilePath {
-  id            Int       @id @default(autoincrement())
-  isDir         Boolean
+  id    Int     @id @default(autoincrement())
+  isDir Boolean
 
   materializedPath String
-  name          String
+  name             String
 
   assetObjectId Int?
   assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: SetNull)
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([materializedPath, name])
   @@index([materializedPath])
 }
 
 model AssetObject {
-  id            Int       @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  note          String?
-  hash          String    @unique
+  note String?
+  hash String  @unique
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  mediaData     MediaData?
+  mediaData MediaData?
 
-  filePaths     FilePath[]
-  tasks         FileHandlerTask[]
+  filePaths FilePath[]
+  tasks     FileHandlerTask[]
 }
 
 model MediaData {
-  id            Int @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  width         Int?
-  height        Int?
-  duration      Int?
-  bitRate       Int?
-  size          Int?
-  mimeType      String?
-  hasAudio      Boolean?
+  width    Int?
+  height   Int?
+  duration Int?
+  bitRate  Int?
+  size     Int?
+  mimeType String?
+  hasAudio Boolean?
 
-  description   String?
+  description String?
 
-  assetObjectId Int       @unique
+  assetObjectId Int          @unique
   assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: Cascade)
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model FileHandlerTask {
-  id            Int       @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
   assetObjectId Int
   assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: Cascade)
 
-  taskType      String
+  taskType String
 
   exitCode    Int?
   exitMessage String?
 
-  startsAt      DateTime?
-  endsAt        DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@unique([assetObjectId, taskType])
 }
@@ -121,7 +121,7 @@ model VideoFrameCaption {
 
   caption String
 
-  frame        VideoFrame @relation(fields: [videoFrameId], references: [id])
+  frame        VideoFrame @relation(fields: [videoFrameId], references: [id], onDelete: Cascade)
   videoFrameId Int        @unique
 }
 

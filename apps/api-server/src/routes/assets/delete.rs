@@ -1,11 +1,12 @@
-use prisma_lib::file_path;
-use prisma_client_rust::QueryError;
-use content_library::Library;
 use super::utils::normalized_materialized_path;
+use content_library::Library;
+use file_handler::delete_artifacts::handle_delete_artifacts;
+use prisma_client_rust::{Direction, QueryError};
+use prisma_lib::{asset_object, file_path};
+use std::{collections::HashSet, sync::Arc};
+use tokio::sync::Mutex;
+use tracing::error;
 
-/**
- * TODO: 删除 file_path 以后要检查一下 assetobject 是否还有其他引用，如果没有的话，要删除 assetobject，进一步的，删除 filehandlertask
- */
 pub async fn delete_file_path(
     library: &Library,
     path: &str,
@@ -14,30 +15,94 @@ pub async fn delete_file_path(
     let materialized_path = normalized_materialized_path(path);
     let name = name.to_string();
 
-    library.prisma_client()
+    let deleted_file_hashes = Arc::new(Mutex::new(vec![]));
+    let deleted_file_hashes_clone = deleted_file_hashes.clone();
+
+    library
+        .prisma_client()
         ._transaction()
         .run(|client| async move {
-            client
+            let mut related_asset_object_ids = HashSet::new();
+
+            let deleted_one = client
                 .file_path()
-                .delete(file_path::materialized_path_name(materialized_path.clone(), name.clone()))
+                .delete(file_path::materialized_path_name(
+                    materialized_path.clone(),
+                    name.clone(),
+                ))
                 .exec()
                 .await
                 .map_err(|e| {
                     tracing::error!("failed to delete file_path item: {}", e);
                     e
                 })?;
+            related_asset_object_ids.insert(deleted_one.asset_object_id);
+
             let materialized_path_startswith = format!("{}{}/", &materialized_path, &name);
+            // TODO 这里分页查一下
+            // 会比较慢
+            let mut skip = 0;
+            loop {
+                let data: Vec<_> = client
+                    .file_path()
+                    .find_many(vec![file_path::materialized_path::starts_with(
+                        materialized_path_startswith.clone(),
+                    )])
+                    .order_by(file_path::OrderByParam::Id(Direction::Asc))
+                    .skip(skip)
+                    .take(50)
+                    .exec()
+                    .await?;
+
+                if data.len() == 0 {
+                    break;
+                }
+
+                data.iter().for_each(|v| {
+                    related_asset_object_ids.insert(v.asset_object_id);
+                });
+
+                skip += data.len() as i64;
+            }
+
+            // TODO 之前已经查过id了，这里也许可以优化一下
             client
                 .file_path()
-                .delete_many(vec![
-                    file_path::materialized_path::starts_with(materialized_path_startswith)
-                ])
+                .delete_many(vec![file_path::materialized_path::starts_with(
+                    materialized_path_startswith,
+                )])
                 .exec()
                 .await
                 .map_err(|e| {
                     tracing::error!("failed to delete file_path for children: {}", e);
                     e
                 })?;
+
+            // TODO 这里循环删，感觉又会有点慢
+            // 但是好像没有特别好的写法
+            for asset_object_id in related_asset_object_ids {
+                if let Some(asset_object_id) = asset_object_id {
+                    let count = client
+                        .file_path()
+                        .count(vec![file_path::asset_object_id::equals(Some(
+                            asset_object_id,
+                        ))])
+                        .exec()
+                        .await?;
+                    if count == 0 {
+                        let deleted_asset_object = client
+                            .asset_object()
+                            .delete(asset_object::id::equals(asset_object_id))
+                            .exec()
+                            .await?;
+                        deleted_file_hashes
+                            .lock()
+                            .await
+                            .push(deleted_asset_object.hash);
+                    }
+                }
+            }
+
             Ok(())
         })
         .await
@@ -47,6 +112,35 @@ pub async fn delete_file_path(
                 format!("failed to delete file_path: {}", e),
             )
         })?;
+
+    // delete from fs
+    deleted_file_hashes_clone
+        .lock()
+        .await
+        .iter()
+        .for_each(|file_hash| {
+            let file_path = library.file_path(file_hash);
+            if let Err(e) = std::fs::remove_file(&file_path) {
+                error!("failed to delete file({}): {}", file_path.display(), e);
+            };
+        });
+
+    handle_delete_artifacts(
+        library,
+        deleted_file_hashes_clone
+            .lock()
+            .await
+            .iter()
+            .map(|v| v.to_string())
+            .collect(),
+    )
+    .await
+    .map_err(|e| {
+        rspc::Error::new(
+            rspc::ErrorCode::InternalServerError,
+            format!("failed to delete artifacts: {}", e),
+        )
+    })?;
 
     Ok(())
 }

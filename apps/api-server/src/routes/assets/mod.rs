@@ -49,12 +49,15 @@ where
                 |ctx: TCtx, input: AssetObjectCreatePayload| async move {
                     info!("received create_asset_object: {input:?}");
                     let library = ctx.library()?;
-                    let (file_path_data, asset_object_data) =
+                    let (file_path_data, asset_object_data, asset_object_existed) =
                         create_asset_object(&library, &input.path, &input.local_full_path).await?;
-                    process_video_metadata(&library, asset_object_data.id).await?;
-                    info!("process video metadata finished");
-                    process_video_asset(&library, &ctx, file_path_data.id).await?;
-                    info!("process video asset finished");
+
+                    if !asset_object_existed {
+                        process_video_metadata(&library, asset_object_data.id).await?;
+                        info!("process video metadata finished");
+                        process_video_asset(&library, &ctx, file_path_data.id).await?;
+                        info!("process video asset finished");
+                    }
                     Ok(())
                 }
             })
