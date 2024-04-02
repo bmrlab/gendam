@@ -16,13 +16,18 @@
     /* main app 主界面 */
     --color-app: var(--light-hue) 5% 100%;
     --color-app-box: var(--light-hue) 5% 98%;
+    --color-app-hover: var(--light-hue) 5% 95%;
+    --color-app-line: var(--light-hue) 5% 90%;
+    --color-app-overlay: var(--light-hue) 5% 93%;
     /* toolbar 顶部工具栏和底部状态栏 */
     --color-toolbar: var(--light-hue) 5% 100%;
+    --color-toolbar-hover: var(--light-hue) 15% 92%;
 	  --color-toolbar-line: var(--light-hue) 5% 95%;
     /* sidebar 两侧边栏 */
     --color-sidebar: var(--light-hue) 5% 96%;
     --color-sidebar-box: var(--light-hue) 5% 100%;
-    --color-sidebar-selected: var(--light-hue) 10% 80%;
+    --color-sidebar-hover: var(--light-hue) 10% 90%;
+    --color-sidebar-line: var(--light-hue) 10% 85%;
   }
 
   html.dark {
@@ -36,13 +41,18 @@
     /* main */
     --color-app: var(--dark-hue) 15% 13%;
 	  --color-app-box: var(--dark-hue) 15% 18%;
+    --color-app-hover: var(--dark-hue) 15% 25%;
+    --color-app-line: var(--dark-hue) 15% 23%;
+    --color-app-overlay: var(--dark-hue) 15% 17%;
     /* toolbar 顶部工具栏和底部状态栏 */
     --color-toolbar: var(--dark-hue) 25% 5%;
+    --color-toolbar-hover: var(--dark-hue) 15% 30%;
 	  --color-toolbar-line: var(--dark-hue) 15% 11%;
     /* sidebar 两侧边栏 */
     --color-sidebar: var(--dark-hue) 15% 7%;
     --color-sidebar-box: var(--dark-hue) 15% 16%;
-    --color-sidebar-selected: var(--dark-hue) 15% 24%;
+    --color-sidebar-hover: var(--dark-hue) 15% 24%;
+    --color-sidebar-line: var(--dark-hue) 15% 23%;
   }
 }
 
@@ -50,7 +60,7 @@
   body {
     /* color: rgb(var(--foreground-rgb)); */
     /* background: rgb(var(--background-rgb)); */
-    @apply text-ink bg-app-box;
+    @apply text-ink bg-app;
     /* 禁用选择，桌面应用的默认行为 */
     user-select: none;
     /* 禁用视口弹性溢出 */

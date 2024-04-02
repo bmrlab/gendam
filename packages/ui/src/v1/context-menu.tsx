@@ -186,6 +186,8 @@ const ContextMenuShortcut = ({
 ContextMenuShortcut.displayName = "ContextMenuShortcut"
 
 export {
+  ContextMenuPrimitive,
+
   ContextMenuRoot,
   ContextMenuTrigger,
   ContextMenuContent,

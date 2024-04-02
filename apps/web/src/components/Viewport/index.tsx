@@ -7,7 +7,7 @@ import Sidebar from './Sidebar'
  *   <Viewport.Sidebar />
  *   <Viewport.Page>
  *     <Viewport.Toolbar />
- *     <Viewport.Main />
+ *     <Viewport.Content />
  *     <Viewport.StatusBar />
  *   </Viewport.Page>
  * </Viewport>
@@ -23,7 +23,7 @@ const Viewport = ({ className, children, ...props }: HTMLAttributes<HTMLDivEleme
 
 const Page = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
-    <div className={classNames('flex h-screen flex-1 flex-col bg-app', className)} {...props}>
+    <div className={classNames('flex h-screen flex-1 flex-col', className)} {...props}>
       {children}
     </div>
   )
@@ -32,7 +32,7 @@ const Page = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>)
 const Toolbar = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
     <div className={classNames(
-      'h-12 w-full bg-toolbar border-b border-toolbar-line',
+      'h-12 w-full text-ink bg-toolbar border-b border-toolbar-line',
       'flex items-center px-4',  // default layout
       className
     )} {...props}>
@@ -43,7 +43,11 @@ const Toolbar = ({ className, children, ...props }: HTMLAttributes<HTMLDivElemen
 
 const Content = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
-    <div className={classNames('flex-1 w-full overflow-y-auto overflow-x-hidden', className)} {...props}>
+    <div className={classNames(
+      'flex-1 w-full text-ink bg-app',
+      'overflow-y-auto overflow-x-hidden',
+      className
+    )} {...props}>
       {children}
     </div>
   )

@@ -31,16 +31,16 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
   return (
     <div
       className={classNames(
-        'flex items-center justify-start px-6 py-2',
-        index % 2 === 1 && !highlight ? 'bg-neutral-100' : null,
-        highlight ? 'bg-blue-500' : null,
+        'flex items-center justify-start px-6 py-2 text-ink',
+        index % 2 === 1 && !highlight ? 'bg-app-hover' : null,
+        highlight ? 'bg-accent text-white' : null,
       )}
     >
       <div className="mr-3 h-8 w-8">
         <FileThumb data={data} className="w-full h-full" />
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
-        <RenamableItemText data={data} />
+        <RenamableItemText data={data} className="w-28" />
       ) : (
         <div className={classNames('flex-1', highlight ? 'text-white' : null)}>
           <div className="truncate text-xs">{data.name}</div>
@@ -113,12 +113,12 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
 export default function ListView({ items }: { items: ExplorerItem[] }) {
   return (
     <>
-      <div className='flex items-center justify-start px-10 py-2 border-b border-neutral-200'>
-        <div className="text-xs text-neutral-900 font-bold pl-9">名称</div>
+      <div className='flex items-center justify-start px-10 py-2 border-b border-app-line'>
+        <div className="text-xs text-ink font-bold pl-9">名称</div>
         <div className="ml-auto" />
-        <div className="text-xs text-neutral-900 font-bold w-48">创建时间</div>
-        <div className="text-xs text-neutral-900 font-bold w-24">大小</div>
-        <div className="text-xs text-neutral-900 font-bold w-24">文件类型</div>
+        <div className="text-xs text-ink font-bold w-48">创建时间</div>
+        <div className="text-xs text-ink font-bold w-24">大小</div>
+        <div className="text-xs text-ink font-bold w-24">文件类型</div>
       </div>
       <div className="py-2 px-4">
         {items.map((item, index) => (

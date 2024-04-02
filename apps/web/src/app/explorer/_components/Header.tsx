@@ -84,19 +84,19 @@ export default function Header() {
         </div>
         <div className="flex items-center gap-0.5 justify-self-end text-[#676C77]">
           <div
-            className="h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-[#EBECEE]"
+            className="h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover"
             onClick={() => explorer.settings.update({ layout: 'grid' })}
           >
-            <Icon.grid className="size-4 text-[#797979]" />
+            <Icon.grid className="size-4" />
           </div>
           <div
-            className="h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-[#EBECEE]"
+            className="h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover"
             onClick={() => explorer.settings.update({ layout: 'list' })}
           >
-            <Icon.list className="size-4 text-[#797979]" />
+            <Icon.list className="size-4" />
           </div>
-          {/* <div className="h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-[#EBECEE]">
-            <Icon.column className="size-4 text-[#797979]" />
+          {/* <div className="h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover">
+            <Icon.column className="size-4" />
           </div> */}
         </div>
       </Viewport.Toolbar>

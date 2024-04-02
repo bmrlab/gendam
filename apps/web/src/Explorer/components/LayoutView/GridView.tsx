@@ -25,13 +25,16 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
 
   return (
     <>
-      <div className={classNames('mb-1 h-28 w-28 p-2 rounded-lg', highlight ? 'bg-slate-100' : null)}>
+      <div className={classNames('mb-1 h-28 w-28 p-2 rounded-lg', highlight ? 'bg-app-hover' : null)}>
         <FileThumb data={data} className="w-full h-full"/>
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
-        <RenamableItemText data={data} />
+        <RenamableItemText data={data} className="w-28" />
       ) : (
-        <div className={classNames('w-28 rounded-lg p-1', highlight ? 'bg-blue-500 text-white' : null)}>
+        <div className={classNames(
+          'w-28 rounded-lg p-1 text-ink',
+          highlight ? 'bg-accent text-white' : null
+        )}>
           <div className="line-clamp-2 max-h-[2.8em] text-center text-xs leading-[1.4em]">{data.name}</div>
         </div>
       )}

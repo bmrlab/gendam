@@ -36,9 +36,9 @@ export default function UploadQueue() {
 
   if (!collapsed) {
     return (
-      <div className="fixed bottom-4 right-4 overflow-hidden rounded-md border border-neutral-100 bg-white shadow-md">
-        <div className="flex justify-center hover:bg-neutral-100" onClick={() => setCollapsed(true)}>
-          <Icon.arrowDown className="size-4 text-neutral-500"></Icon.arrowDown>
+      <div className="fixed bottom-4 right-4 overflow-hidden rounded-md text-ink bg-app-box border border-app-line shadow-md">
+        <div className="flex justify-center hover:bg-app-hover" onClick={() => setCollapsed(true)}>
+          <Icon.arrowDown className="size-4 text-ink/50"></Icon.arrowDown>
         </div>
         <div className="h-80 w-80 overflow-y-auto overflow-x-hidden py-2">
           {uploadQueueStore.uploading ? (
@@ -66,9 +66,9 @@ export default function UploadQueue() {
     )
   } else {
     return (
-      <div className="fixed bottom-4 right-4 overflow-hidden rounded-lg border border-neutral-100 bg-white shadow-md">
+      <div className="fixed bottom-4 right-4 overflow-hidden rounded-lg border text-ink border-app-line bg-app-box shadow-md">
         <div
-          className="flex w-80 items-center justify-between px-4 py-2 hover:bg-neutral-100"
+          className="flex w-80 items-center justify-between px-4 py-2 hover:bg-app-hover"
           onClick={() => setCollapsed(false)}
         >
           {uploadingCounts > 0 ? (
@@ -76,7 +76,7 @@ export default function UploadQueue() {
           ) : (
             <Icon.check className="size-5 text-green-600"></Icon.check>
           )}
-          <div className="text-xs text-neutral-600">
+          <div className="text-xs text-ink/50">
             {completedCounts} / {uploadingCounts + completedCounts} 个文件已上传
           </div>
         </div>

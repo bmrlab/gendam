@@ -30,6 +30,7 @@ const ExplorerDraggable = ({
   // attributes.role 默认是 button, 浏览器自带样式 cursor: pointer
   const style: { [key: string]: string } = {
     cursor: 'default',
+    outline: 'none',
   }
 
   // if (transform) {

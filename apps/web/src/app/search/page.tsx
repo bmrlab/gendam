@@ -161,7 +161,7 @@ export default function Search() {
             <input
               ref={searchInputRef}
               type="text"
-              className="block w-full rounded-md bg-neutral-100 px-4 py-2 text-sm outline-none text-black"
+              className="block w-full rounded-md text-ink bg-app-overlay px-4 py-2 text-sm outline-none"
               placeholder="搜索"
               onInput={(e) => setKeywordTyping(e.currentTarget.value)}
               onFocus={(e) => setFocused(true)}
@@ -170,21 +170,21 @@ export default function Search() {
             {/* <button className="ml-4 px-6 bg-black text-white" type="submit">Search</button> */}
           </form>
           {focused && keywordTyping ? (
-            <div className='absolute z-10 top-full w-full text-sm rounded-md p-1 bg-white shadow-md'>
-              <div className="px-2 py-1 text-neutral-400">搜索类型</div>
+            <div className='absolute z-10 top-full w-full text-sm rounded-md p-1 bg-app-box shadow-md'>
+              <div className="px-2 py-1 text-ink/50">搜索类型</div>
               <div
-                className="px-2 py-2 flex items-center justify-start text-neutral-800 hover:bg-neutral-100 rounded-sm"
+                className="px-2 py-2 flex items-center justify-start text-ink hover:bg-app-hover rounded-md"
                 onClick={() => handleSearch(keywordTyping, "FrameCaption")}
               >
-                <span className="text-neutral-400"><Icon.image className="w-4" /></span>
+                <span className="text-ink/50"><Icon.image className="w-4" /></span>
                 <span className="mx-2">搜索视频内容</span>
                 <strong>{keywordTyping}</strong>
               </div>
               <div
-                className="px-2 py-2 flex items-center justify-start text-neutral-800 hover:bg-neutral-100 rounded-sm"
+                className="px-2 py-2 flex items-center justify-start text-ink hover:bg-app-hover rounded-md"
                 onClick={() => handleSearch(keywordTyping, "Transcript")}
               >
-                <span className="text-neutral-400"><Icon.microphone className="w-4" /></span>
+                <span className="text-ink/50"><Icon.microphone className="w-4" /></span>
                 <span className="mx-2">搜索视频语音</span>
                 <strong>{keywordTyping}</strong>
               </div>
@@ -195,29 +195,29 @@ export default function Search() {
       </Viewport.Toolbar>
       <Viewport.Content>
         {searchPayload ? (
-          <div className="px-8 py-2 flex items-center justify-start border-b border-neutral-100">
-            <div className="border border-neutral-200 flex items-center text-xs rounded-lg overflow-hidden">
+          <div className="px-8 py-2 flex items-center justify-start border-b border-app-line">
+            <div className="border border-app-line flex items-center text-xs rounded-lg overflow-hidden">
               <div
                 className={classNames(
                   "px-4 py-2",
-                  searchPayload.recordType === "FrameCaption" && "bg-neutral-100"
+                  searchPayload.recordType === "FrameCaption" && "bg-app-hover"
                 )}
                 onClick={() => handleSearch(searchPayload.text, "FrameCaption")}
               >视频内容</div>
               <div
                 className={classNames(
                   "px-4 py-2",
-                  searchPayload.recordType === "Transcript" && "bg-neutral-100"
+                  searchPayload.recordType === "Transcript" && "bg-app-hover"
                 )}
                 onClick={() => handleSearch(searchPayload.text, "Transcript")}
               >视频语音</div>
             </div>
-            <div className="ml-4 text-sm text-neutral-600">{searchPayload.text}</div>
+            <div className="ml-4 text-sm text-ink/50">{searchPayload.text}</div>
           </div>
         ) : null}
         <div className="p-8">
           {queryRes.isLoading ? (
-            <div className="flex items-center justify-center px-2 py-8 text-sm text-neutral-400">正在搜索...</div>
+            <div className="flex items-center justify-center px-2 py-8 text-sm text-ink/50">正在搜索...</div>
           ) : (
             <div className="flex flex-wrap gap-4">
               {queryRes.data?.map((item: SearchResultPayload, index: number) => {

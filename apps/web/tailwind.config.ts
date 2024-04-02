@@ -21,16 +21,24 @@ const config = {
         },
         app: {
           DEFAULT: 'hsl(var(--color-app) / <alpha-value>)',
-          box: 'hsl(var(--color-app-box) / <alpha-value>)',
+          box: {
+            DEFAULT: 'hsl(var(--color-app-box) / <alpha-value>)',
+            // dark: 'hsl(var(--color-app-box-dark) / <alpha-value>)',
+          },
+          line: 'hsl(var(--color-app-line) / <alpha-value>)',
+          hover: 'hsl(var(--color-app-hover) / <alpha-value>)',
+          overlay: 'hsl(var(--color-app-overlay) / <alpha-value>)',
         },
         toolbar: {
           DEFAULT: 'hsl(var(--color-toolbar) / <alpha-value>)',
+          hover: 'hsl(var(--color-toolbar-hover) / <alpha-value>)',
           line: 'hsl(var(--color-toolbar-line) / <alpha-value>)',
         },
         sidebar: {
           DEFAULT: 'hsl(var(--color-sidebar) / <alpha-value>)',
           box: 'hsl(var(--color-sidebar-box) / <alpha-value>)',
-          selected: 'hsl(var(--color-sidebar-selected) / <alpha-value>)',
+          hover: 'hsl(var(--color-sidebar-hover) / <alpha-value>)',
+          line: 'hsl(var(--color-sidebar-line) / <alpha-value>)',
         },
         // border: 'hsl(var(--border))',
         // input: 'hsl(var(--input))',

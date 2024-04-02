@@ -2,7 +2,7 @@ import { useExplorerContext } from '@/Explorer/hooks'
 import { ExplorerItem } from '@/Explorer/types'
 import { useExplorerStore } from '@/Explorer/store'
 import { rspc } from '@/lib/rspc'
-import { ContextMenuContent, ContextMenuItem } from '@muse/ui/v1/context-menu'
+import { ContextMenuPrimitive as ContextMenu } from '@muse/ui/v1/context-menu'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback } from 'react'
@@ -12,9 +12,14 @@ type ItemContextMenuProps = {
   data: ExplorerItem
 }
 
-const _MenuItemDefault = twx(ContextMenuItem)`flex cursor-default items-center justify-start rounded-md px-2 py-2 hover:bg-neutral-200/60`
+const ContextMenuItem = twx(ContextMenu.Item)`
+relative cursor-default select-none outline-none
+focus:bg-accent focus:text-white hover:bg-accent hover:text-white
+data-[disabled]:pointer-events-none data-[disabled]:opacity-50
+flex cursor-default items-center justify-start rounded-md px-2 py-2 text-sm
+`
 
-const ItemContextMenu = forwardRef<typeof ContextMenuContent, ItemContextMenuProps>(function ItemContextMenuComponent(
+const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuProps>(function ItemContextMenuComponent(
   { data, ...prpos },
   forwardedRef,
 ) {
@@ -90,37 +95,34 @@ const ItemContextMenu = forwardRef<typeof ContextMenuContent, ItemContextMenuPro
   )
 
   return (
-    <ContextMenuContent
+    <ContextMenu.Content
       ref={forwardedRef as any}
-      className="w-60 rounded-md border border-neutral-100 bg-white p-1 shadow-lg"
+      className="w-60 rounded-md text-ink bg-app-box border border-app-line p-1 shadow-lg"
       {...prpos}
       onClick={(e) => e.stopPropagation()}
     >
-      <_MenuItemDefault onSelect={handleOpen} disabled={explorer.selectedItems.size > 1 }>
+      <ContextMenuItem onSelect={handleOpen} disabled={explorer.selectedItems.size > 1 }>
         <div className="mx-1 truncate text-xs">打开</div>
-      </_MenuItemDefault>
-      <_MenuItemDefault onSelect={() => explorerStore.setIsFoldersDialogOpen(true)}>
+      </ContextMenuItem>
+      <ContextMenuItem onSelect={() => explorerStore.setIsFoldersDialogOpen(true)}>
         <div className="mx-1 truncate text-xs">移动</div>
-      </_MenuItemDefault>
-      <_MenuItemDefault onSelect={handleProcessMetadata}>
+      </ContextMenuItem>
+      <ContextMenuItem onSelect={handleProcessMetadata}>
         <div className="mx-1 truncate text-xs">刷新视频信息</div>
-      </_MenuItemDefault>
-      <_MenuItemDefault onSelect={() => {}} disabled={explorer.selectedItems.size > 1 }>
+      </ContextMenuItem>
+      <ContextMenuItem onSelect={() => {}} disabled={explorer.selectedItems.size > 1 }>
         <div className="mx-1 truncate text-xs">预览</div>
-      </_MenuItemDefault>
-      <_MenuItemDefault onSelect={handleRename} disabled={explorer.selectedItems.size > 1 }>
+      </ContextMenuItem>
+      <ContextMenuItem onSelect={handleRename} disabled={explorer.selectedItems.size > 1 }>
         <div className="mx-1 truncate text-xs">重命名</div>
-      </_MenuItemDefault>
+      </ContextMenuItem>
       <ContextMenuItem
-        className={classNames(
-          'flex cursor-default items-center justify-start rounded-md px-2 py-2',
-          'text-red-600 hover:bg-red-500/90 hover:text-white',
-        )}
+        className={classNames('text-red-600 focus:bg-red-500/90 focus:text-white hover:bg-red-500/90 hover:text-white')}
         onSelect={handleDelete}
       >
         <div className="mx-1 truncate text-xs">删除</div>
       </ContextMenuItem>
-    </ContextMenuContent>
+    </ContextMenu.Content>
   )
 })
 
