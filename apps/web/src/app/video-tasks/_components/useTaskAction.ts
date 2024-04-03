@@ -1,4 +1,4 @@
-import { TaskContextMenuProps } from '@/app/video-tasks/_components/task-context-menu'
+import { TaskContextMenuProps } from '@/app/video-tasks/_components/TaskContextMenu'
 import { useBoundStore } from '@/app/video-tasks/_store'
 import { AudioDialogEnum } from '@/app/video-tasks/_store/audio-dialog'
 import { rspc } from '@/lib/rspc'

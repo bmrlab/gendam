@@ -1,13 +1,6 @@
 import Icon from '@/components/Icon'
 import classNames from 'classnames'
-import {
-  DropdownMenuPrimitive as DropdownMenu,
-  // DropdownMenuRoot,
-  // DropdownMenuContent,
-  // DropdownMenuItem,
-  // DropdownMenuSeparator,
-  // DropdownMenuTrigger,
-} from '@muse/ui/v1/dropdown-menu'
+import { DropdownMenuPrimitive as DropdownMenu } from '@muse/ui/v1/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { PropsWithChildren, ReactNode } from 'react'
 
@@ -24,7 +17,7 @@ type _DropdownMenuProps = {
   contentClassName?: string
 }
 
-export default function _DropdownMenu({
+export default function TaskDropdownMenu({
   options,
   triggerIcon,
   contentClassName,

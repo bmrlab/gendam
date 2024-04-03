@@ -1,6 +1,6 @@
-import DropdownMenu from '@/app/video-tasks/_components/DropdownMenu'
+import TaskDropdownMenu from '../TaskDropdownMenu'
 import Icon from '@/components/Icon'
-import MuseMultiSelect from '@/components/MultiSelect'
+import MuseMultiSelect from '@/app/video-tasks/_components/MultiSelect'
 import { useToast } from '@/components/Toast/use-toast'
 import { AudioType, ExportInput } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
@@ -100,23 +100,23 @@ export default function BatchExport() {
 
   return (
     <div className="flex flex-col">
-      <div className="grid grid-cols-10 border-b px-6 py-2 text-[11px] font-normal leading-[14px] text-black/80">
+      <div className="grid grid-cols-10 border-b border-app-line px-6 py-2 text-xs font-normal leading-4">
         <p className="col-span-5">文件</p>
         <p className="col-span-3">格式</p>
         <p className="col-span-1">数量</p>
         <div className="col-span-1"></div>
       </div>
-      <ScrollArea className="h-[576px]">
+      <ScrollArea className="h-[30rem]">
         {data.map(({ id, label, assetObjectHash }, index) => (
           <div
             key={id}
             className={cn(
-              'grid grid-cols-10 items-center px-6 py-3',
+              'grid grid-cols-10 items-center px-6 py-3 border-app-line',
               data.length === index + 1 ? 'border-b-0' : 'border-b',
             )}
           >
-            <div className="col-span-5 flex items-center gap-[30px]">
-              <div className="relative h-9 w-9 bg-[#F6F7F9]">
+            <div className="col-span-5 flex items-center gap-4">
+              <div className="relative h-9 w-9">
                 {/* <video controls={false} autoPlay={false} muted loop style={{ width: '100%', height: '100%', objectFit: 'cover' }} className="h-9 w-9">
                   <source src={currentLibrary.getFileSrc(assetObjectHash)} />
                 </video> */}
@@ -128,9 +128,9 @@ export default function BatchExport() {
                   priority
                 ></Image>
               </div>
-              <p className="truncate text-[13px] font-medium leading-[18px] text-[#323438]">{label}</p>
+              <p className="truncate text-xs font-medium leading-4">{label}</p>
             </div>
-            <div className="col-span-3 max-w-[240px]">
+            <div className="col-span-3 max-w-48">
               <MuseMultiSelect
                 value={multiValues.find((v) => v.id === id)?.types || []}
                 onValueChange={(value) => updateItemTypes(id, value)}
@@ -142,11 +142,11 @@ export default function BatchExport() {
                 }))}
               />
             </div>
-            <div className="col-span-1 text-[13px] font-medium leading-[18px] text-[#262626]">
+            <div className="col-span-1 text-sm leading-6">
               {(multiValues.find((v) => v.id === id)?.types || []).length}
             </div>
-            <div className="col-span-1 flex size-[25px] cursor-pointer items-center justify-center rounded text-[#676C77] hover:bg-[#EBECEE]">
-              <DropdownMenu options={moreActionOptions(id)} />
+            <div className="col-span-1 cursor-pointer">
+              <TaskDropdownMenu options={moreActionOptions(id)} contentClassName='w-48' />
             </div>
           </div>
         ))}

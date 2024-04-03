@@ -85,7 +85,7 @@ export default function TaskContextMenu({ video, fileHash, isNotDone, children }
               className="relative cursor-default select-none outline-none
               focus:bg-accent focus:text-white hover:bg-accent hover:text-white
               data-[disabled]:pointer-events-none data-[disabled]:opacity-50
-              flex items-center justify-start rounded-md px-2 py-2 text-sm"
+              flex items-center justify-start rounded-md gap-2 px-2 py-2 text-sm"
               onClick={o.handleClick}
             >
               {o.icon}

@@ -1,6 +1,6 @@
 'use client'
-import { MuseStatus, MuseTaskBadge } from '@/components/Badge'
-import DropdownMenu, { DropdownMenuOptions } from '@/app/video-tasks/_components/DropdownMenu'
+import { MuseStatus, MuseTaskBadge } from '@/app/video-tasks/_components/Badge'
+import TaskDropdownMenu, { DropdownMenuOptions } from '@/app/video-tasks/_components/TaskDropdownMenu'
 import Icon from '@/components/Icon'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
@@ -138,7 +138,7 @@ export default function VideoTaskItem({
             {showTask.map(({ taskName, index, status }) => (
               <MuseTaskBadge key={index} name={taskName} status={status} />
             ))}
-            <DropdownMenu
+            <TaskDropdownMenu
               triggerIcon={<Icon.moreVertical className="size-6 cursor-pointer text-ink" />}
               options={moreActionOptions()}
               contentClassName="w-48"
@@ -152,7 +152,7 @@ export default function VideoTaskItem({
                 <span className="sr-only">Open menu</span>
                 <Icon.moreVertical className="size-6 cursor-pointer" />
               </div>
-            </DropdownMenu>
+            </TaskDropdownMenu>
             {/* <Icon.circleX className="size-[25px] cursor-pointer text-[#676C77]" /> */}
           </div>
         </div>

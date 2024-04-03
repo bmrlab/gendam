@@ -1,4 +1,4 @@
-import { MuseStatus } from '@/components/Badge'
+import { MuseStatus } from '@/app/video-tasks/_components/Badge'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 
 // export const hasProcessing = (tasks: VideoWithTasksResult['tasks']) => {

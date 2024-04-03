@@ -1,7 +1,7 @@
 import { SingleExportProps } from '../../_store/audio-dialog'
-import { MuseBadge } from '@/components/Badge'
+import { MuseBadge } from '../Badge'
+import MuseRadio from '../Radio'
 import Icon from '@/components/Icon'
-import MuseRadio from '@/components/Radio'
 import { ScrollArea } from '@muse/ui/v1/scroll-area'
 import { useToast } from '@/components/Toast/use-toast'
 import { WithDownloadDialogButton } from '../withDownloadDialog'
@@ -90,15 +90,15 @@ export default function AudioExport() {
   return (
     <div className="flex size-full items-center">
       <div className="grid flex-1 border-r">
-        <div className="w-[640px] py-4 pl-6">
-          <div className="no-scrollbar flex w-full flex-nowrap items-center overflow-x-scroll whitespace-nowrap rounded bg-black/5 px-0.5 py-0.5 text-neutral-800">
+        <div className="w-full py-4 px-6">
+          <div className="no-scrollbar flex gap-2 flex-wrap content-start items-start justify-start w-full overflow-x-scroll whitespace-nowrap rounded px-0.5 py-0.5">
             {Object.entries(FileTypeEnum).map(([key, value]) => {
               return (
                 <label
                   key={key}
                   className={cn(
-                    'select-none rounded px-2.5 py-[5px] text-[12px] font-medium leading-[14px] transition hover:cursor-pointer ',
-                    fileType === value ? 'bg-white shadow-xs' : 'hover:bg-[#DDDDDE]',
+                    'select-none rounded px-3 py-2 text-xs font-medium leading-5 transition hover:cursor-pointer ',
+                    fileType === value ? 'bg-app-hover shadow-xs' : 'hover:bg-app-hover',
                   )}
                   onClick={() => setFileType(value)}
                 >
@@ -109,8 +109,8 @@ export default function AudioExport() {
           </div>
         </div>
         <div className="relative p-6 pt-0">
-          <ScrollArea className="h-[582px] w-[592px] rounded-[6px] border">
-            <p className="p-4 text-[14px] font-normal leading-[21px] text-[#262626]">
+          <ScrollArea className="h-[30rem] w-full rounded-md border border-app-line">
+            <p className="p-4 text-sm font-normal leading-8">
               {(currentContent || '').split('\n').map((line: string, index: number) => (
                 <Fragment key={index}>
                   {line}
@@ -130,9 +130,9 @@ export default function AudioExport() {
           </MuseBadge>
         </div>
       </div>
-      <div className="flex h-full w-[280px] flex-col justify-start px-6 pb-6 pt-4">
+      <div className="flex h-full w-60 flex-col justify-start px-6 pb-6 pt-4">
         <div className="flex flex-col gap-3">
-          <p className="text-[14px] font-medium leading-5">文件格式</p>
+          <p className="text-sm font-medium leading-5">文件格式</p>
           {
             // @ts-ignore
             Object.entries(FileTypeEnum).map(([key, value], index) => {
@@ -148,7 +148,7 @@ export default function AudioExport() {
           }
         </div>
         <div className="mt-2.5 flex flex-col gap-3">
-          <p className="text-[14px] font-medium leading-5">导出选项</p>
+          <p className="text-sm font-medium leading-5">导出选项</p>
           <MuseRadio label="显示时间戳" />
           <MuseRadio label="显示发言者" />
         </div>

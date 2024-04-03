@@ -6,8 +6,8 @@ import Image from 'next/image'
 import { HTMLAttributes, useMemo } from 'react'
 import { isNotDone } from './utils'
 import { useBoundStore } from '../_store'
-import TaskContextMenu from './task-context-menu'
-import { WithSelectVideoItem } from './with-select'
+import TaskContextMenu from './TaskContextMenu'
+import { WithSelectVideoItem } from './withSelect'
 import EmptyList from '/public/svg/empty-list.svg'
 
 export type VideoTasksListProps = HTMLAttributes<HTMLDivElement> & {

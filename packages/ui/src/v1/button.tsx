@@ -9,7 +9,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        outline: 'text-ink bg-app hover:bg-app-hover border-app-line',
+        outline: 'text-ink bg-transparent hover:bg-app-hover border-app-line',
         accent: 'text-white bg-accent hover:bg-accent/90 border-accent/90',
         danger: 'text-white bg-error hover:bg-error/90 border-error/90',
       },

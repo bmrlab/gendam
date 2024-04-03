@@ -7,7 +7,7 @@ import VideoTasksList from './_components/task-list'
 import useTaskList from './useTaskList'
 import Viewport from '@/components/Viewport'
 import VideoTaskHeader from './_components/header'
-import AudioDialog from './_components/audio/dialog'
+import AudioDialog from './_components/audio/AudioDialog'
 
 export default function VideoTasksPage() {
   const { data: videos, isLoading, hasNextPage, fetchNextPage } = useTaskList({ limit: 10 })
