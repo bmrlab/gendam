@@ -152,10 +152,10 @@ export default function BatchExport() {
         ))}
       </ScrollArea>
       <div className="flex flex-1 justify-end gap-2 border-t border-[#EBECEE] px-6 py-2.5">
-        <Button variant="outline" className="px-[41px]" onClick={() => setIsOpenAudioDialog(false)}>
+        <Button variant="outline" size="md" onClick={() => setIsOpenAudioDialog(false)}>
           取消
         </Button>
-        <WithDownloadDialogButton className="px-[76px]" onSelection={handleExport}>
+        <WithDownloadDialogButton variant="outline" size="md" onSelection={handleExport}>
           导出
         </WithDownloadDialogButton>
       </div>

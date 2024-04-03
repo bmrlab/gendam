@@ -1,5 +1,5 @@
 import Icon from '@/components/Icon'
-import { Button } from '@muse/ui/v1/button'
+import classNames from 'classnames'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,10 +35,13 @@ export default function MuseDropdownMenu({
         {children ? (
           children
         ) : (
-          <Button variant="ghost" className="size-[25px] p-0 hover:bg-[#EBECEE]">
+          <div className={classNames(
+            'inline-flex items-center justify-center size-6 rounded border border-app-line',
+            'cursor-default data-[state=open]:bg-app-hover'
+          )}>
             <span className="sr-only">Open menu</span>
             {triggerIcon ? triggerIcon : <Icon.more />}
-          </Button>
+          </div>
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className={cn('border border-[#DDDDDE] bg-[#F4F5F5] py-2 shadow-md', contentClassName)}>

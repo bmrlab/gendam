@@ -16,6 +16,9 @@ const config = {
         accent: {
           DEFAULT: 'hsl(var(--color-accent) / <alpha-value>)',
         },
+        error: {
+          DEFAULT: colors.red[500],
+        },
         ink: {
           DEFAULT: 'hsl(var(--color-ink) / <alpha-value>)',
         },
