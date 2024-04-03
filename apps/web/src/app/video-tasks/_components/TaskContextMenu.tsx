@@ -18,24 +18,7 @@ export type TaskContextMenuProps = PropsWithChildren<{
 }>
 
 export default function TaskContextMenu({ video, fileHash, isNotDone, children }: TaskContextMenuProps) {
-  const taskListRefetch = useBoundStore.use.taskListRefetch()
-
   const { handleRegenerate, handleExport, handleCancel } = useTaskAction({ fileHash, video })
-
-  /**
-   * 有进行中的任务，定时刷新
-   * TODO: 不应该写在这里，要写在列表页上，这里会导致多个定时器，最后请求太多
-   */
-  // useEffect(() => {
-  //   if (isNotDone) {
-  //     const timer = setInterval(() => {
-  //       taskListRefetch()
-  //     }, 10000)
-  //     return () => {
-  //       clearInterval(timer)
-  //     }
-  //   }
-  // }, [isNotDone, taskListRefetch])
 
   const options = useMemo<Array<'Separator' | { label: string; icon: ReactNode; handleClick: () => void }>>(() => {
     const processingItem = isNotDone

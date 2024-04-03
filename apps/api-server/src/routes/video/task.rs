@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::sync::Arc;
 
-#[derive(Deserialize, Type, Debug)]
+#[derive(Deserialize, Serialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Pagination {
     // https://github.com/oscartbeaumont/rspc/issues/93
@@ -18,7 +18,7 @@ pub struct Pagination {
 
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
-pub enum Filter {
+pub enum TaskListRequestFilter {
     All,
     Processing,
     Completed,
@@ -32,7 +32,7 @@ pub enum Filter {
 #[serde(rename_all = "camelCase")]
 struct TaskListRequestPayload {
     pagination: Pagination,
-    filter: Filter,
+    filter: TaskListRequestFilter,
 }
 
 #[derive(Deserialize, Type, Debug)]
@@ -61,6 +61,7 @@ pub struct VideoWithTasksResult {
 #[serde(rename_all = "camelCase")]
 pub struct VideoWithTasksPageResult {
     data: Vec<VideoWithTasksResult>,
+    pagination: Pagination,
     max_page: i32,
 }
 
@@ -73,24 +74,32 @@ impl VideoTaskHandler {
         VideoTaskHandler { prisma_client }
     }
 
-    async fn count(&self) -> anyhow::Result<i64> {
+    async fn count(&self, task_filter: Vec<file_handler_task::WhereParam>) -> anyhow::Result<i64> {
         let count = self
             .prisma_client
             .asset_object()
-            .count(vec![])
+            .count(vec![
+                asset_object::tasks::some(task_filter)
+            ])
             .exec()
             .await
             .map_err(|e| anyhow::anyhow!(e))?;
         Ok(count)
     }
-    async fn get_max_page(&self, page_size: i32) -> anyhow::Result<i32> {
-        let count = self.count().await?;
+
+    async fn get_max_page(&self, page_size: i32, task_filter: Vec<file_handler_task::WhereParam>) -> anyhow::Result<i32> {
+        let count = self.count(task_filter).await?;
         Ok((count as f64 / page_size as f64).ceil() as i32)
     }
 
     async fn list(&self, payload: TaskListRequestPayload) -> anyhow::Result<VideoWithTasksPageResult> {
+        let Pagination { page_size, mut page_index } = payload.pagination;
+        if page_index < 1 {
+            page_index = 1;
+        }
+
         let task_filter = match payload.filter {
-            Filter::ExcludeCompleted => vec![operator::or(
+            TaskListRequestFilter::ExcludeCompleted => vec![operator::or(
                 vec![
                     file_handler_task::exit_code::equals(None),
                     file_handler_task::exit_code::gte(1),
@@ -99,7 +108,10 @@ impl VideoTaskHandler {
             _ => vec![],
         };
 
-        let max_page = self.get_max_page(payload.pagination.page_size).await?;
+        let max_page = self.get_max_page(
+            payload.pagination.page_size,
+            task_filter.clone(),
+        ).await?;
 
         let asset_object_data_list = self
             .prisma_client
@@ -112,8 +124,8 @@ impl VideoTaskHandler {
             // bindings 中不会自动生成 media_data 类型
             .with(asset_object::media_data::fetch())
             .order_by(asset_object::created_at::order(Direction::Desc))
-            .skip((payload.pagination.page_size * payload.pagination.page_index).into())
-            .take(payload.pagination.page_size.into())
+            .skip((page_size * (page_index - 1)).into())
+            .take(page_size.into())
             .exec()
             .await
             .expect("failed to list video tasks");
@@ -150,6 +162,7 @@ impl VideoTaskHandler {
             .collect::<Vec<VideoWithTasksResult>>();
         Ok(VideoWithTasksPageResult {
             data: videos_with_tasks,
+            pagination: payload.pagination,
             max_page,
         })
     }

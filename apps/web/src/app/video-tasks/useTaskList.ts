@@ -1,104 +1,85 @@
-import { Filter, VideoWithTasksResult } from '@/lib/bindings'
+import { TaskListRequestFilter, VideoWithTasksResult, TaskListRequestPayload } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useBoundStore } from './_store'
 
 export type TaskListProps = {
-  limit?: number
-  filter?: Filter
+  pageSize: number,
+  pageIndex: number,
+  filter: TaskListRequestFilter
 }
 
-const DEFAULT_LIMIT = 100
+const validateProps = ({ pageSize, pageIndex, filter }: TaskListProps) => {
+  pageSize = Math.max(10, parseInt(''+pageSize) || 10)
+  pageIndex = Math.max(1, parseInt(''+pageIndex) || 1)
+  if (filter !== 'all' && filter !== 'excludeCompleted') {
+    filter = 'excludeCompleted'
+  }
+  return { pageSize, pageIndex, filter }
+}
 
-export default function useTaskList({ limit = DEFAULT_LIMIT }: TaskListProps) {
-  const [data, setData] = useState<VideoWithTasksResult[][]>([])
-  const [pageIndex, setPageIndex] = useState(0)
-  const [maxPages, setMaxPages] = useState<number>(0)
+export default function useTaskList(props: TaskListProps = {
+  pageSize: 10,
+  pageIndex: 1,
+  filter: 'excludeCompleted',
+}) {
+  props = validateProps(props)
+  const pageSize = props.pageSize
+  const [pageIndex, setPageIndex] = useState(props.pageIndex)
+  const [filter, setFilter] = useState<TaskListRequestFilter>(props.filter)
   const setTaskListRefetch = useBoundStore.use.setTaskListRefetch()
-  const filter = useBoundStore.use.taskFilter()
 
-  // 拿分页数据
-  const { data: videos } = rspc.useQuery(
+  const { data, isLoading, refetch } = rspc.useQuery(
     [
       'video.tasks.list',
       {
         pagination: {
           pageIndex: pageIndex,
-          pageSize: limit,
+          pageSize: pageSize,
         },
         filter,
       },
     ],
     {
+      refetchInterval: 5000,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       refetchOnReconnect: false,
     },
   )
-
-  // 拿全量数据
-  const { data: fullVideo, refetch } = rspc.useQuery(
-    [
-      'video.tasks.list',
-      {
-        pagination: {
-          pageIndex: 0,
-          pageSize: limit * (pageIndex + 1),
-        },
-        filter,
-      },
-    ],
-    {
-      // 不会触发请求，除非手动调用 refetch
-      enabled: false,
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
-      refetchOnReconnect: false,
-    },
-  )
-
-  useEffect(() => {
-    setPageIndex(0)
-    refetch()
-  }, [filter, refetch, setPageIndex])
-
-  // 使用全量数据拆分成多页
-  useEffect(() => {
-    if (fullVideo && fullVideo.data.length > 0) {
-      let newData = new Array(Math.ceil(fullVideo.data.length / limit))
-        .fill(null)
-        .map((_, i) => fullVideo.data.slice(i * limit, (i + 1) * limit))
-      setData(newData)
-    }
-  }, [fullVideo, limit])
-
-  const hasNextPage = useMemo(() => pageIndex < maxPages, [pageIndex, maxPages])
-
-  // 拿到分页数据后，更新对应页的数据
-  useEffect(() => {
-    if (videos) {
-      setMaxPages(videos.maxPage)
-      let newData = [...data]
-      newData[pageIndex] = videos.data
-      setData(newData)
-    }
-  }, [data, pageIndex, videos])
-
-  const fetchNextPage = () => {
-    if (hasNextPage) {
-      setPageIndex((pageIndex) => pageIndex + 1)
-    }
-  }
 
   useEffect(() => {
     setTaskListRefetch(refetch)
   }, [refetch, setTaskListRefetch])
 
+  const [hasNextPage, maxPage] = useMemo(() => {
+    const { maxPage } = data || { maxPage: 1 }
+    return [pageIndex < maxPage, maxPage]
+  }, [pageIndex, data])
+
+  const fetchNextPage = useCallback(() => {
+    if (hasNextPage) {
+      setPageIndex((pageIndex) => pageIndex + 1)
+    }
+  }, [hasNextPage])
+
+  const videos = useMemo(() => {
+    return data ? data.data : ([] as VideoWithTasksResult[])
+  }, [data])
+
   return {
-    data: data.flat(),
+    videos,
+    maxPage,
+    pageSize,
+    pageIndex,
+    setPageIndex,
+    filter,
+    setFilter,
+
     hasNextPage,
     fetchNextPage,
-    isLoading: data.length === 0 && !videos,
+
+    isLoading,
     refetch,
   }
 }

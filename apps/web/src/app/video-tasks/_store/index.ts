@@ -6,18 +6,16 @@ import { immer } from 'zustand/middleware/immer'
 import { AudioDialogSlice, createAudioDialogSlice } from './audio-dialog'
 import { createSearchSlice, SearchSlice } from './search'
 import { createTaskContextSlice, TaskContextSlice } from './task-context'
-import { createTaskFilterSlice, TaskFilterSlice } from './task-filter'
 
 export type ImmerStateCreator<T> = StateCreator<T, [['zustand/immer', never], never], [], T>
 
-type BoundStore = AudioDialogSlice & TaskContextSlice & SearchSlice & TaskActionSlice & TaskFilterSlice
+type BoundStore = AudioDialogSlice & TaskContextSlice & SearchSlice & TaskActionSlice
 export const useBoundStoreBase = create<BoundStore>()(
   immer((...a) => ({
     ...createAudioDialogSlice(...a),
     ...createTaskContextSlice(...a),
     ...createSearchSlice(...a),
     ...createTaskActionSlice(...a),
-    ...createTaskFilterSlice(...a),
   })),
 )
 
