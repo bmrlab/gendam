@@ -1,10 +1,11 @@
 use super::LLMMessage;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, strum_macros::Display)]
 pub enum LlamaCppModel {
     Gemma2B,
     QWen0_5B,
     LLaVaMistral,
+    MXBAIEmbeddingLarge,
 }
 
 impl LlamaCppModel {
@@ -56,6 +57,7 @@ impl LlamaCppModel {
             Self::Gemma2B => "Gemma/2b.gguf",
             Self::QWen0_5B => "qwen/0.5b.gguf",
             Self::LLaVaMistral => "llava-v1.6-7b/ggml-mistral-q_4_k.gguf",
+            Self::MXBAIEmbeddingLarge => "mxbai/mxbai-embed-large-v1-fp16.gguf",
         }
         .into()
     }
@@ -73,6 +75,7 @@ impl LlamaCppModel {
             Self::Gemma2B => "<start_of_turn>",
             Self::QWen0_5B => "<|im_start|>",
             Self::LLaVaMistral => "<|im_start|>",
+            _ => "",
         }
         .into()
     }
@@ -82,6 +85,7 @@ impl LlamaCppModel {
             Self::Gemma2B => "<end_of_turn>",
             Self::QWen0_5B => "<|im_end|>",
             Self::LLaVaMistral => "<|im_end|>",
+            _ => "",
         }
         .into()
     }
@@ -105,6 +109,7 @@ impl LlamaCppModel {
             Self::Gemma2B => "model",
             Self::QWen0_5B => "assistant",
             Self::LLaVaMistral => "assistant",
+            _ => "",
         }
         .into()
     }
@@ -112,6 +117,20 @@ impl LlamaCppModel {
     pub fn is_multi_modal(self) -> bool {
         match self {
             Self::LLaVaMistral => true,
+            _ => false,
+        }
+    }
+
+    pub fn can_chat(self) -> bool {
+        match self {
+            Self::MXBAIEmbeddingLarge => false,
+            _ => true,
+        }
+    }
+
+    pub fn can_embedding(self) -> bool {
+        match self {
+            Self::MXBAIEmbeddingLarge => true,
             _ => false,
         }
     }

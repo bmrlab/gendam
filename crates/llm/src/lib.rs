@@ -67,6 +67,10 @@ pub struct LLM {
     model: Box<dyn Chat>,
 }
 
+pub struct LLMEmbedding {
+    model: Box<dyn Embedding>
+}
+
 #[async_trait]
 pub(crate) trait Chat {
     async fn get_completion(
@@ -75,8 +79,18 @@ pub(crate) trait Chat {
         images: Option<Vec<LLMImageContent>>,
         params: Option<LLMParams>,
     ) -> anyhow::Result<String>;
+    fn is_multimodal_chat(&self) -> bool;
+}
 
-    fn is_multimodal(&self) -> bool;
+#[async_trait]
+pub(crate) trait Embedding {
+    async fn get_embedding(
+        &self,
+        prompt: String,
+        images: Option<Vec<LLMImageContent>>,
+        params: Option<LLMParams>,
+    ) -> anyhow::Result<Vec<f32>>;
+    fn is_multimodal_embedding(&self) -> bool;
 }
 
 impl LLM {
@@ -108,7 +122,7 @@ impl LLM {
         images: Option<Vec<LLMImageContent>>,
         params: Option<LLMParams>,
     ) -> anyhow::Result<String> {
-        if !self.model.is_multimodal() && images.is_some() {
+        if !self.model.is_multimodal_chat() && images.is_some() {
             bail!("image input is not supported for this model");
         }
 

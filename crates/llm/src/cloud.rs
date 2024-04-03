@@ -31,7 +31,7 @@ impl Chat for CloudModel {
         todo!()
     }
 
-    fn is_multimodal(&self) -> bool {
+    fn is_multimodal_chat(&self) -> bool {
         self.is_multimodal
     }
 }

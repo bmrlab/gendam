@@ -1,6 +1,4 @@
-use crate::{
-    model::LlamaCppModel, Chat, LLMImageContent, LLMInput, LLMMessage, LLMParams, LLMPayload,
-};
+use crate::{model::LlamaCppModel, Chat, Embedding, LLMImageContent, LLMMessage, LLMParams};
 use anyhow::bail;
 use async_trait::async_trait;
 use llama_cpp_2::{
@@ -11,14 +9,12 @@ use llama_cpp_2::{
     token::data_array::LlamaTokenDataArray,
 };
 use std::{num::NonZeroU32, path::Path};
-use tokio::sync::{
-    mpsc::{self, Sender},
-    oneshot,
-};
-use tracing::{debug, error, warn};
+use tracing::{debug, warn};
 
 pub struct NativeModel {
-    tx: Sender<LLMPayload>,
+    model: LlamaModel,
+    backend: LlamaBackend,
+    input_model: LlamaCppModel,
     is_multimodal: bool,
 }
 
@@ -27,31 +23,30 @@ impl Chat for NativeModel {
     async fn get_completion(
         &self,
         history: Vec<LLMMessage>,
-        images: Option<Vec<LLMImageContent>>,
+        _images: Option<Vec<LLMImageContent>>,
         params: Option<LLMParams>,
     ) -> anyhow::Result<String> {
-        let (tx, rx) = oneshot::channel::<anyhow::Result<String>>();
-
-        self.tx
-            .send(LLMPayload::Input(LLMInput {
-                history,
-                tx,
-                params,
-                images: images.unwrap_or(vec![]),
-            }))
-            .await?;
-
-        match rx.await {
-            Ok(Ok(text)) => Ok(text),
-            Ok(Err(e)) => bail!("error from LLM: {}", e),
-            Err(e) => {
-                error!("channel error");
-                Err(e.into())
-            }
-        }
+        let prompt = self.input_model.with_chat_template(history);
+        get_completion(prompt, params.map(|v| v.into()), &self.model, &self.backend)
     }
 
-    fn is_multimodal(&self) -> bool {
+    fn is_multimodal_chat(&self) -> bool {
+        self.is_multimodal
+    }
+}
+
+#[async_trait]
+impl Embedding for NativeModel {
+    async fn get_embedding(
+        &self,
+        prompt: String,
+        _images: Option<Vec<LLMImageContent>>,
+        params: Option<LLMParams>,
+    ) -> anyhow::Result<Vec<f32>> {
+        get_embedding(prompt, params.map(|v| v.into()), &self.model, &self.backend)
+    }
+
+    fn is_multimodal_embedding(&self) -> bool {
         self.is_multimodal
     }
 }
@@ -60,7 +55,7 @@ impl NativeModel {
     pub async fn new(
         resources_dir: impl AsRef<Path>,
         model: LlamaCppModel,
-    ) -> anyhow::Result<impl Chat> {
+    ) -> anyhow::Result<impl Chat + Embedding> {
         // init backend
         let backend = LlamaBackend::init()?;
         // offload all layers to the gpu
@@ -76,49 +71,10 @@ impl NativeModel {
 
         let model = LlamaModel::load_from_file(&backend, model_path, &model_params)?;
 
-        let (tx, mut rx) = mpsc::channel::<LLMPayload>(512);
-
-        // start a new local thread where model will run, and make sure model will never be moved
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()?;
-        std::thread::spawn(move || {
-            let local = tokio::task::LocalSet::new();
-            local.spawn_local(async move {
-                loop {
-                    while let Some(payload) = rx.recv().await {
-                        match payload {
-                            LLMPayload::Input(input) => {
-                                let prompt = input_model.with_chat_template(input.history);
-                                debug!("final prompt: {}", prompt);
-
-                                match get_completion(
-                                    prompt,
-                                    input.params.map(|v| v.into()),
-                                    &model,
-                                    &backend,
-                                ) {
-                                    Ok(result) => {
-                                        let _ = input.tx.send(Ok(result));
-                                    }
-                                    Err(e) => {
-                                        let _ = input.tx.send(Err(e));
-                                    }
-                                }
-                            }
-                            _ => {
-                                todo!()
-                            }
-                        }
-                    }
-                }
-            });
-
-            rt.block_on(local);
-        });
-
         Ok(Self {
-            tx,
+            model,
+            backend,
+            input_model,
             // native model do not support image input for now
             is_multimodal: false,
         })
@@ -210,4 +166,91 @@ fn get_completion(
             bail!("failed to create context: {}", e);
         }
     }
+}
+
+fn get_embedding(
+    prompt: String,
+    ctx_params: Option<LlamaContextParams>,
+    model: &LlamaModel,
+    backend: &LlamaBackend,
+) -> anyhow::Result<Vec<f32>> {
+    debug!("start embedding");
+    let ctx_params = match ctx_params {
+        Some(params) => params,
+        // TODO not sure if it is ok to use n_ctx_train as default n_ctx and n_batch
+        None => LlamaContextParams::default()
+            .with_n_ctx(NonZeroU32::new(model.n_ctx_train() as u32))
+            .with_n_batch(model.n_ctx_train() as u32),
+    };
+
+    match model.new_context(&backend, ctx_params.with_embeddings(true)) {
+        Ok(mut ctx) => {
+            debug!("context created");
+
+            let tokens_list = model
+                .str_to_token(&prompt, AddBos::Always)
+                .expect("failed to tokenize prompt");
+
+            let mut batch = LlamaBatch::new(model.n_ctx_train() as usize, 1);
+            batch.add_sequence(&tokens_list, 0, false)?;
+            ctx.decode(&mut batch)?;
+            let embedding = ctx.embeddings_seq_ith(0)?;
+            let magnitude = embedding
+                .iter()
+                .fold(0.0, |acc, &val| val.mul_add(val, acc))
+                .sqrt();
+
+            let embedding = embedding
+                .iter()
+                .map(|&val| val / magnitude)
+                .collect::<Vec<_>>();
+
+            Ok(embedding)
+        }
+        Err(e) => {
+            bail!("failed to create context: {}", e);
+        }
+    }
+}
+
+#[test_log::test(tokio::test)]
+async fn test_native_llm() {
+    let model = NativeModel::new(
+        "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
+        LlamaCppModel::QWen0_5B,
+    )
+    .await
+    .expect("failed to create model");
+
+    let response = model
+        .get_completion(vec![LLMMessage::User("who are you?".into())], None, None)
+        .await;
+
+    tracing::info!("response: {:?}", response);
+
+    let response = model
+        .get_completion(
+            vec![LLMMessage::User(
+                "can you write a simple quick sort in python?".into(),
+            )],
+            None,
+            None,
+        )
+        .await;
+
+    tracing::info!("response: {:?}", response);
+}
+
+#[test_log::test(tokio::test)]
+async fn test_native_llm_embedding() {
+    let model = NativeModel::new(
+        "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
+        LlamaCppModel::Gemma2B,
+    )
+    .await
+    .expect("failed to create model");
+
+    let embedding = model.get_embedding("who are you?".into(), None, None).await;
+
+    tracing::info!("embedding: {:?}", embedding);
 }
