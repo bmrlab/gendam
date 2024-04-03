@@ -1,11 +1,11 @@
 'use client'
 import { MuseStatus, MuseTaskBadge } from '@/components/Badge'
-import MuseDropdownMenu, { DropdownMenuOptions } from '@/components/DropdownMenu'
+import DropdownMenu, { DropdownMenuOptions } from '@/app/video-tasks/_components/DropdownMenu'
 import Icon from '@/components/Icon'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
-import { cn, formatBytes, formatDuration } from '@/lib/utils'
+import { formatBytes, formatDuration } from '@/lib/utils'
 import Image from 'next/image'
 import { HTMLAttributes, useCallback, useMemo } from 'react'
 import { VIDEO_DIMENSION, getTaskStatus, isNotDone } from './utils'
@@ -84,13 +84,13 @@ export default function VideoTaskItem({
   return (
     <div
       {...props}
-      className={cn(
-        'flex w-full items-center justify-start gap-2 border-b border-[#EBECEE] px-4 py-3 ',
-        isSelect ? 'bg-blue-100' : 'hover:bg-neutral-100',
+      className={classNames(
+        'flex w-full items-center justify-start gap-2 border-b border-app-line px-4 py-3',
+        isSelect ? 'bg-accent/10' : null,
       )}
     >
       <div
-        className="relative flex size-9 cursor-pointer bg-[#F6F7F9]"
+        className="relative flex size-9 cursor-pointer bg-app-overlay"
         onClick={(e) => {
           handleClick()
           e.stopPropagation()
@@ -111,11 +111,11 @@ export default function VideoTaskItem({
         {materializedPath ? (
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium leading-4 text-ink">{name}</span>
-            <span className="truncate text-[12px] font-normal leading-4 text-ink/50">{materializedPath}</span>
+            <span className="truncate text-xs font-normal leading-4 text-ink/50">{materializedPath}</span>
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <span className="truncate text-x font-normal leading-4 text-ink/50">已删除</span>
+            <span className="truncate text-xs font-normal leading-4 text-ink/50">已删除</span>
           </div>
         )}
         <div className="flex w-full items-center justify-between">
@@ -138,7 +138,7 @@ export default function VideoTaskItem({
             {showTask.map(({ taskName, index, status }) => (
               <MuseTaskBadge key={index} name={taskName} status={status} />
             ))}
-            <MuseDropdownMenu
+            <DropdownMenu
               triggerIcon={<Icon.moreVertical className="size-6 cursor-pointer text-ink" />}
               options={moreActionOptions()}
               contentClassName="w-48"
@@ -152,7 +152,7 @@ export default function VideoTaskItem({
                 <span className="sr-only">Open menu</span>
                 <Icon.moreVertical className="size-6 cursor-pointer" />
               </div>
-            </MuseDropdownMenu>
+            </DropdownMenu>
             {/* <Icon.circleX className="size-[25px] cursor-pointer text-[#676C77]" /> */}
           </div>
         </div>

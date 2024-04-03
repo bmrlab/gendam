@@ -16,7 +16,7 @@ const ContextMenuItem = twx(ContextMenu.Item)`
 relative cursor-default select-none outline-none
 focus:bg-accent focus:text-white hover:bg-accent hover:text-white
 data-[disabled]:pointer-events-none data-[disabled]:opacity-50
-flex cursor-default items-center justify-start rounded-md px-2 py-2 text-sm
+flex items-center justify-start rounded-md px-2 py-2 text-sm
 `
 
 const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuProps>(function ItemContextMenuComponent(
@@ -97,7 +97,10 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   return (
     <ContextMenu.Content
       ref={forwardedRef as any}
-      className="w-60 rounded-md text-ink bg-app-box border border-app-line p-1 shadow-lg"
+      className={classNames(
+        "w-60 rounded-md text-ink bg-app-box border border-app-line p-1 shadow-lg",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95",
+      )}
       {...prpos}
       onClick={(e) => e.stopPropagation()}
     >

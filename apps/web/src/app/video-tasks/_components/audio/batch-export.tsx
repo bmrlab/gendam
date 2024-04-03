@@ -1,4 +1,4 @@
-import MuseDropdownMenu from '@/components/DropdownMenu'
+import DropdownMenu from '@/app/video-tasks/_components/DropdownMenu'
 import Icon from '@/components/Icon'
 import MuseMultiSelect from '@/components/MultiSelect'
 import { useToast } from '@/components/Toast/use-toast'
@@ -146,12 +146,12 @@ export default function BatchExport() {
               {(multiValues.find((v) => v.id === id)?.types || []).length}
             </div>
             <div className="col-span-1 flex size-[25px] cursor-pointer items-center justify-center rounded text-[#676C77] hover:bg-[#EBECEE]">
-              <MuseDropdownMenu options={moreActionOptions(id)} />
+              <DropdownMenu options={moreActionOptions(id)} />
             </div>
           </div>
         ))}
       </ScrollArea>
-      <div className="flex flex-1 justify-end gap-2 border-t border-[#EBECEE] px-6 py-2.5">
+      <div className="flex flex-1 justify-end gap-2 border-t border-app-line px-6 py-2.5">
         <Button variant="outline" size="md" onClick={() => setIsOpenAudioDialog(false)}>
           取消
         </Button>
