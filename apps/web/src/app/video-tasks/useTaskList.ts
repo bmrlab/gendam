@@ -82,7 +82,7 @@ export default function useTaskList({ limit = DEFAULT_LIMIT }: TaskListProps) {
       newData[pageIndex] = videos.data
       setData(newData)
     }
-  }, [pageIndex, videos])
+  }, [data, pageIndex, videos])
 
   const fetchNextPage = () => {
     if (hasNextPage) {
