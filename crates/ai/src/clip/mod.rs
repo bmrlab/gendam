@@ -5,10 +5,11 @@ use anyhow::{anyhow, bail};
 use async_trait::async_trait;
 use image::RgbImage;
 pub use model::*;
-use ndarray::{Array1, ArrayView1, Axis};
+use ndarray::{Array1, Axis};
 use ort::{CPUExecutionProvider, CoreMLExecutionProvider, GraphOptimizationLevel, Session};
 use std::path::{Path, PathBuf};
 use tokenizers::tokenizer::Tokenizer;
+use utils::normalize;
 
 pub mod model;
 
@@ -20,16 +21,6 @@ pub struct CLIP {
 }
 
 type CLIPEmbedding = Array1<f32>;
-
-fn l2_norm(x: ArrayView1<f32>) -> f32 {
-    x.dot(&x).sqrt()
-}
-
-fn normalize(mut x: CLIPEmbedding) -> CLIPEmbedding {
-    let norm = l2_norm(x.view());
-    x.mapv_inplace(|e| e / norm);
-    x
-}
 
 #[derive(Clone)]
 pub enum CLIPInput {

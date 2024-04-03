@@ -1,4 +1,4 @@
-use ndarray::{Array, ArrayBase, Axis, Data, Dimension, Slice};
+use ndarray::{Array, Array1, ArrayBase, ArrayView1, Axis, Data, Dimension, Slice};
 use num_traits::Zero;
 
 /// Pad the edges of an array with zeros.
@@ -42,4 +42,14 @@ where
         orig_portion.assign(arr);
     }
     padded
+}
+
+fn l2_norm(x: ArrayView1<f32>) -> f32 {
+    x.dot(&x).sqrt()
+}
+
+pub fn normalize(mut x: Array1<f32>) -> Array1<f32> {
+    let norm = l2_norm(x.view());
+    x.mapv_inplace(|e| e / norm);
+    x
 }

@@ -12,6 +12,7 @@ mod loader;
 pub mod preprocess;
 pub mod utils;
 pub mod whisper;
+pub mod text_embedding;
 
 enum HandlerPayload<T> {
     BatchData(T),
