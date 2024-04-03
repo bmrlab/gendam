@@ -85,12 +85,20 @@ export default function ClientLayout({
   )
 
   const getThumbnailSrc = useCallback(
-    (assetObjectHash: string, _timestampInSecond: number = 1) => {
+    (assetObjectHash: string, timestampInSecond?: number) => {
       // TODO remove the _timestampInSecond
       if (!library) {
         return '/images/empty.png'
       }
-      const fileFullPath = `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
+
+      const fileFullPath = (() => {
+        if (typeof timestampInSecond === 'undefined') {
+          return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
+        }
+
+        return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/frames/${timestampInSecond}000.jpg`
+      })()
+
       if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
         return convertFileSrc(fileFullPath)
       } else {
