@@ -7,7 +7,7 @@ import { create } from 'zustand'
 import { ExplorerItem } from '@/Explorer/types'
 import classNames from 'classnames'
 import Image from 'next/image'
-import { useMemo } from 'react'
+import { useEffect, useMemo, createRef } from 'react'
 import { formatBytes, formatDuration, formatDateTime } from '@/lib/utils'
 
 interface InspectorState {
@@ -32,12 +32,37 @@ const FolderDetail = ({ data }: { data: ExplorerItem }) => {
           {/* <div className="line-clamp-2 text-ink/50 text-xs mt-1">文件夹 {data.materializedPath}{data.name}</div> */}
         </div>
       </div>
+      <div className="h-px bg-app-line mt-6 mb-3"></div>
+      <div className="text-xs">
+        <div className="text-md font-medium">基本信息</div>
+        <div className="flex justify-between mt-2">
+          <div className="text-ink/50">创建时间</div>
+          <div>{formatDateTime(data.createdAt)}</div>
+        </div>
+        <div className="flex justify-between mt-2">
+          <div className="text-ink/50">更新时间</div>
+          <div>{formatDateTime(data.updatedAt)}</div>
+        </div>
+      </div>
     </div>
   )
 }
 
 const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
   const currentLibrary = useCurrentLibrary()
+
+  const videoRef = createRef<HTMLVideoElement>()
+  useEffect(() => {
+    if (!videoRef.current || !data.assetObject?.hash) {
+      return
+    }
+    const videoSrc = currentLibrary.getFileSrc(data.assetObject.hash)
+    // 重新赋值才能在 src 变化了以后重新加载视频
+    if (videoRef.current.src != videoSrc) {
+      videoRef.current.src = videoSrc
+    }
+  }, [currentLibrary, data, videoRef])
+
   if (!data.assetObject || !data.assetObject.mediaData) {
     return
   }
@@ -45,8 +70,8 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
   return (
     <div className="p-4">
       <div className="overflow-hidden rounded-md relative">
-        <video controls={true} autoPlay={true} muted loop className="w-full h-auto">
-          <source src={currentLibrary.getFileSrc(assetObject.hash)} />
+        <video ref={videoRef} controls={true} autoPlay={true} muted loop className="w-full h-auto">
+          {/* <source src={currentLibrary.getFileSrc(assetObject.hash)} /> */}
         </video>
       </div>
       <div className="overflow-hidden mt-3">
