@@ -11,12 +11,7 @@ import { useCurrentLibrary } from '@/lib/library'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
-import { formatBytes } from '@/lib/utils'
-
-const formatDate = (date: string) => {
-  const d = new Date(date)
-  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString()
-}
+import { formatBytes, formatDateTime } from '@/lib/utils'
 
 const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index }) => {
   const currentLibrary = useCurrentLibrary()
@@ -48,7 +43,7 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
       )}
       <div className="ml-auto" />
       <div className={classNames('text-xs text-neutral-500 w-48', highlight ? 'text-white' : null )}>
-        {formatDate(data.createdAt)}
+        {formatDateTime(data.createdAt)}
       </div>
       <div className={classNames('text-xs text-neutral-500 w-24', highlight ? 'text-white' : null )}>
         {data.assetObject ? formatBytes(data.assetObject.mediaData?.size ?? 0) : null}

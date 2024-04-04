@@ -30,3 +30,16 @@ export function formatBytes(bytes: number, decimals: number = 2) {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i]
 }
+
+export function formatDateTime(date: string) {
+  // format datetime as 'YYYY-MM-DD hh::mm::ss', padding with 0
+  const pad = (n: number): string => (n < 10 ? '0' : '') + n
+  const d = new Date(date)
+  const year = d.getFullYear()
+  const month = d.getMonth() + 1
+  const day = d.getDate()
+  const hour = d.getHours()
+  const minute = d.getMinutes()
+  const second = d.getSeconds()
+  return `${year}-${pad(month)}-${pad(day)} ${pad(hour)}:${pad(minute)}:${pad(second)}`
+}

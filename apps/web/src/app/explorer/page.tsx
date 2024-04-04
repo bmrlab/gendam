@@ -12,6 +12,7 @@ import Header from './_components/Header'
 import ItemContextMenu from './_components/ItemContextMenu'
 import UploadQueue from './_components/UploadQueue'
 import Viewport from '@/components/Viewport'
+import Inspector from './_components/Inspector'
 
 export default function ExplorerPage() {
   const uploadQueueStore = useUploadQueueStore()
@@ -58,30 +59,23 @@ export default function ExplorerPage() {
     },
   })
 
-  // const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
-  // const handleMouseMove = useCallback(
-  //   (event: React.MouseEvent) => {
-  //     setMousePosition({ x: event.clientX, y: event.clientY })
-  //   },
-  //   [setMousePosition],
-  // )
-
   const contextMenu = (data: ExplorerItem) => <ItemContextMenu data={data} />
 
   return (
     <ExplorerViewContextProvider value={{ contextMenu }}>
       <ExplorerContextProvider explorer={explorer}>
 
-        <Viewport.Page
-          onClick={() => explorer.resetSelectedItems()}
-          // onMouseMove={handleMouseMove}
-        >
-          <Header></Header>
-          <Viewport.Content>
-            <ExplorerLayout></ExplorerLayout>
-          </Viewport.Content>
-          <Footer></Footer>
+        <Viewport.Page onClick={() => explorer.resetSelectedItems()}>
+          <Header />
 
+          <Viewport.Content className="flex items-start justify-start">
+            <div className="flex-1 h-full">
+              <ExplorerLayout></ExplorerLayout>
+            </div>
+            <Inspector />
+          </Viewport.Content>
+
+          <Footer />
           <UploadQueue />
         </Viewport.Page>
 

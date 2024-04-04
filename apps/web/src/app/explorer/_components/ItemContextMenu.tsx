@@ -7,6 +7,7 @@ import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback } from 'react'
 import { twx } from '@/lib/utils'
+import { useInspector } from './Inspector'
 
 type ItemContextMenuProps = {
   data: ExplorerItem
@@ -24,8 +25,13 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   forwardedRef,
 ) {
   const router = useRouter()
+
+  // Explorer Component's State and Context
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
+
+  // Page Specific State and Context
+  const inspector = useInspector()
 
   const deleteMut = rspc.useMutation(['assets.delete_file_path'])
   const metadataMut = rspc.useMutation(['assets.process_video_metadata'])
@@ -53,9 +59,15 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
     [data, explorer, router, explorerStore],
   )
 
+  const handleShowInspector = useCallback(
+    (e: Event) => {
+      inspector.setShow(true)
+    },
+    [inspector],
+  )
+
   const handleDelete = useCallback(
     (e: Event) => {
-      // e.stopPropagation()
       if (!explorer.parentPath) {
         return
       }
@@ -72,7 +84,6 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
 
   const handleRename = useCallback(
     (e: Event) => {
-      // e.stopPropagation()
       if (!explorer.parentPath) {
         return
       }
@@ -83,7 +94,6 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
 
   const handleProcessMetadata = useCallback(
     (e: Event) => {
-      // e.stopPropagation()
       for (let item of Array.from(explorer.selectedItems)) {
         if (!item.assetObject) {
           return
@@ -107,18 +117,23 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       <ContextMenuItem onSelect={handleOpen} disabled={explorer.selectedItems.size > 1 }>
         <div className="mx-1 truncate text-xs">打开</div>
       </ContextMenuItem>
-      <ContextMenuItem onSelect={() => explorerStore.setIsFoldersDialogOpen(true)}>
-        <div className="mx-1 truncate text-xs">移动</div>
+      <ContextMenuItem onSelect={handleShowInspector} disabled={explorer.selectedItems.size > 1 }>
+        <div className="mx-1 truncate text-xs">查看详情</div>
       </ContextMenuItem>
+      {/* <ContextMenuItem onSelect={() => {}} disabled={explorer.selectedItems.size > 1 }>
+        <div className="mx-1 truncate text-xs">预览</div>
+      </ContextMenuItem> */}
+      <ContextMenu.Separator className='h-px bg-app-line my-1' />
       <ContextMenuItem onSelect={handleProcessMetadata}>
         <div className="mx-1 truncate text-xs">刷新视频信息</div>
       </ContextMenuItem>
-      <ContextMenuItem onSelect={() => {}} disabled={explorer.selectedItems.size > 1 }>
-        <div className="mx-1 truncate text-xs">预览</div>
+      <ContextMenuItem onSelect={() => explorerStore.setIsFoldersDialogOpen(true)}>
+        <div className="mx-1 truncate text-xs">移动</div>
       </ContextMenuItem>
       <ContextMenuItem onSelect={handleRename} disabled={explorer.selectedItems.size > 1 }>
         <div className="mx-1 truncate text-xs">重命名</div>
       </ContextMenuItem>
+      <ContextMenu.Separator className='h-px bg-app-line my-1' />
       <ContextMenuItem
         className={classNames('text-red-600 focus:bg-red-500/90 focus:text-white hover:bg-red-500/90 hover:text-white')}
         onSelect={handleDelete}

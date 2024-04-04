@@ -9,12 +9,14 @@ import TitleDialog from './TitleDialog'
 import { useUploadQueueStore } from '@/store/uploadQueue'
 import Viewport from '@/components/Viewport'
 import PageNav from '@/components/PageNav'
+import { useInspector } from './Inspector'
 
 export default function Header() {
   const router = useRouter()
   const explorer = useExplorerContext()
   const uploadQueueStore = useUploadQueueStore()
 
+  const inspector = useInspector()
   const createPathMut = rspc.useMutation(['assets.create_file_path'])
 
   const goToDir = useCallback(
@@ -94,6 +96,13 @@ export default function Header() {
             onClick={() => explorer.settings.update({ layout: 'list' })}
           >
             <Icon.list className="size-4" />
+          </div>
+          <div className="w-px h-6 mx-1 bg-app-line"></div>
+          <div
+            className="h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover"
+            onClick={() => inspector.setShow(!inspector.show)}
+          >
+            <Icon.viewVertical className="size-4" />
           </div>
           {/* <div className="h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover">
             <Icon.column className="size-4" />
