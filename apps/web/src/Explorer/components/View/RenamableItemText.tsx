@@ -3,7 +3,7 @@ import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
 import { rspc } from '@/lib/rspc'
-import { HTMLAttributes, useCallback, useEffect, useRef } from 'react'
+import { HTMLAttributes, useCallback, useEffect, createRef } from 'react'
 import classNames from 'classnames'
 
 export default function RenamableItemText({
@@ -12,13 +12,17 @@ export default function RenamableItemText({
   const explorerStore = useExplorerStore()
   const explorer = useExplorerContext()
   const renameMut = rspc.useMutation(['assets.rename_file_path'])
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = createRef<HTMLInputElement>()
 
   useEffect(() => {
     if (inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.value = data.name
-      inputRef.current.select()
+      const el = inputRef.current
+      el.value = data.name
+      // context menu 有个 transition, 要过大约 200ms 才消失, 如果提前 focus input 会立马 blur
+      setTimeout(() => {
+        el.focus()
+        el.select()
+      }, 200)
     }
   }, [inputRef, data])
 
@@ -42,14 +46,14 @@ export default function RenamableItemText({
         newName: inputRef.current.value,
       })
     },
-    [explorer.parentPath, explorerStore, renameMut, data.id, data.isDir, data.name],
+    [explorer.parentPath, explorerStore, renameMut, data.id, data.isDir, data.name, inputRef],
   )
 
   return (
-    <form className={classNames(className)} onSubmit={handleInputSubmit}>
+    <form className={classNames("w-full", className)} onSubmit={handleInputSubmit}>
       <input
         ref={inputRef}
-        className="block w-full rounded-sm outline-none border-2 border-blue-600 px-2 py-1 text-center text-xs"
+        className="block w-full rounded-md outline-none text-ink bg-app border-2 border-blue-600 px-2 py-1 text-xs"
         type="text"
         onClick={(e) => e.stopPropagation()}
         onDoubleClick={(e) => e.stopPropagation()}

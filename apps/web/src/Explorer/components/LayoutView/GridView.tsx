@@ -29,7 +29,9 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
         <FileThumb data={data} className="w-full h-full"/>
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
-        <RenamableItemText data={data} className="w-28" />
+        <div className="w-28">
+          <RenamableItemText data={data} className="text-center" />
+        </div>
       ) : (
         <div className={classNames(
           'w-28 rounded-lg p-1 text-ink',
@@ -52,7 +54,11 @@ const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
     // 按住 cmd 键多选
     e.stopPropagation()
     if (e.metaKey) {
-      explorer.addSelectedItem(data);
+      if (explorer.isItemSelected(data)) {
+        explorer.removeSelectedItem(data)
+      } else {
+        explorer.addSelectedItem(data);
+      }
     } else {
       explorer.resetSelectedItems([data])
     }
@@ -70,7 +76,7 @@ const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
         router.push('/explorer?dir=' + newPath)
       } else {
         // processVideoMut.mutate(data.id)
-        router.push('/video-tasks')
+        // router.push('/video-tasks')
       }
     },
     [data, explorer, router, explorerStore],

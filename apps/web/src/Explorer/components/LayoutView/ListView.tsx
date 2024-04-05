@@ -35,7 +35,9 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
         <FileThumb data={data} className="w-full h-full" />
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
-        <RenamableItemText data={data} className="w-28" />
+        <div className="flex-1 max-w-96 mr-2">
+          <RenamableItemText data={data} />
+        </div>
       ) : (
         <div className={classNames('flex-1', highlight ? 'text-white' : null)}>
           <div className="truncate text-xs">{data.name}</div>
@@ -65,7 +67,11 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
     // 按住 cmd 键多选
     e.stopPropagation()
     if (e.metaKey) {
-      explorer.addSelectedItem(data);
+      if (explorer.isItemSelected(data)) {
+        explorer.removeSelectedItem(data)
+      } else {
+        explorer.addSelectedItem(data);
+      }
     } else {
       explorer.resetSelectedItems([data])
     }
@@ -83,7 +89,7 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
         router.push('/explorer?dir=' + newPath)
       } else {
         // processVideoMut.mutate(data.id)
-        router.push('/video-tasks')
+        // router.push('/video-tasks')
       }
     },
     [data, explorer, router, explorerStore],
