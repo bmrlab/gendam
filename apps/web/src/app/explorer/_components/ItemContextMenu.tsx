@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback } from 'react'
 import { twx } from '@/lib/utils'
 import { useInspector } from './Inspector'
+import { useFoldersDialog } from './FoldersDialog'
 
 type ItemContextMenuProps = {
   data: ExplorerItem
@@ -32,6 +33,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
 
   // Page Specific State and Context
   const inspector = useInspector()
+  const foldersDialog = useFoldersDialog()
 
   const deleteMut = rspc.useMutation(['assets.delete_file_path'])
   const metadataMut = rspc.useMutation(['assets.process_video_metadata'])
@@ -127,7 +129,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       <ContextMenuItem onSelect={handleProcessMetadata}>
         <div className="mx-1 truncate text-xs">刷新视频信息</div>
       </ContextMenuItem>
-      <ContextMenuItem onSelect={() => explorerStore.setIsFoldersDialogOpen(true)}>
+      <ContextMenuItem onSelect={() => foldersDialog.setOpen(true)}>
         <div className="mx-1 truncate text-xs">移动</div>
       </ContextMenuItem>
       <ContextMenuItem onSelect={handleRename} disabled={explorer.selectedItems.size > 1 }>

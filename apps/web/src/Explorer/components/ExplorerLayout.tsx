@@ -9,7 +9,6 @@ import DragOverlay from '@/Explorer/components/Draggable/DragOverlay'
 import { DragEndEvent, DragStartEvent, DragCancelEvent } from '@dnd-kit/core'
 import { useCallback, useState } from 'react'
 import { ExplorerItem } from '../types'
-import { FoldersDialog } from './FoldersDialog'
 
 export default function Explorer() {
   const explorer = useExplorerContext()
@@ -81,15 +80,6 @@ export default function Explorer() {
     [explorerStore],
   )
 
-  const onTargetPathSelected = useCallback((target: ExplorerItem|null) => {
-    for (let active of Array.from(explorer.selectedItems)) {
-      // target 可以为空，为空就是根目录，这时候不需要检查 target.id !== active.id，因为根目录本身不会被移动
-      if (!target || target.id !== active.id) {
-        handleMoveRequest(active, target)
-      }
-    }
-  }, [explorer, handleMoveRequest])
-
   if (!explorer.items || explorer.items.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -119,8 +109,6 @@ export default function Explorer() {
       }()}
 
       <DragOverlay />
-
-      <FoldersDialog onConfirm={onTargetPathSelected} />
 
     </DndContext>
   )

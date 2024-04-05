@@ -40,7 +40,7 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
         </div>
       ) : (
         <div className={classNames('flex-1', highlight ? 'text-white' : null)}>
-          <div className="truncate text-xs">{data.name}</div>
+          <div className="truncate text-xs break-all">{data.name}</div>
         </div>
       )}
       <div className="ml-auto" />

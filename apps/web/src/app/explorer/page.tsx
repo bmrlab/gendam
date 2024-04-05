@@ -14,6 +14,7 @@ import UploadQueue from './_components/UploadQueue'
 import Viewport from '@/components/Viewport'
 import Inspector from './_components/Inspector'
 import { RSPCError } from '@rspc/client'
+import { FoldersDialog } from './_components/FoldersDialog'
 
 export default function ExplorerPage() {
   const uploadQueueStore = useUploadQueueStore()
@@ -29,6 +30,7 @@ export default function ExplorerPage() {
   // const [parentPath, setParentPath] = useState<string>(dirInSearchParams)
   const parentPath = useMemo(() => dirInSearchParams, [dirInSearchParams])
 
+  const moveMut = rspc.useMutation(['assets.move_file_path'])
   const uploadMut = rspc.useMutation(['assets.create_asset_object'])
   const { data: assets, isError: assetsListFailed, refetch } =
     rspc.useQuery(['assets.list', { materializedPath: parentPath, dirsOnly: false }], {
@@ -72,6 +74,28 @@ export default function ExplorerPage() {
 
   const contextMenu = (data: ExplorerItem) => <ItemContextMenu data={data} />
 
+  const onMoveTargetSelected = useCallback((target: ExplorerItem|null) => {
+    for (let active of Array.from(explorer.selectedItems)) {
+      // target 可以为空，为空就是根目录，这时候不需要检查 target.id !== active.id，因为根目录本身不会被移动
+      if (!target || target.id !== active.id) {
+        moveMut.mutate({
+          active: {
+            id: active.id,
+            materializedPath: active.materializedPath,
+            isDir: active.isDir,
+            name: active.name,
+          },
+          target: target ? {
+            id: target.id,
+            materializedPath: target.materializedPath,
+            isDir: target.isDir,
+            name: target.name,
+          } : null,
+        })
+      }
+    }
+  }, [explorer, moveMut])
+
   if (assetsListFailed) {
     return (
       <Viewport.Page className="flex items-center justify-center text-ink/50">
@@ -96,6 +120,7 @@ export default function ExplorerPage() {
 
           <Footer />
           <UploadQueue />
+          <FoldersDialog onConfirm={onMoveTargetSelected} />
         </Viewport.Page>
 
       </ExplorerContextProvider>

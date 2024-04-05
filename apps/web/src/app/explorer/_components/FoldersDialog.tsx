@@ -1,5 +1,6 @@
 import FileThumb from '@/Explorer/components/View/FileThumb'
 import Icon from '@/components/Icon'
+import { create } from 'zustand'
 import { useToast } from '@/components/Toast/use-toast'
 import { client, rspc } from '@/lib/rspc'
 import { Folder_Light } from '@muse/assets/images'
@@ -9,14 +10,21 @@ import { RSPCError } from '@rspc/client'
 import classNames from 'classnames'
 import Image from 'next/image'
 import { useCallback, useEffect, useState } from 'react'
-import { useExplorerContext } from '../hooks'
-import { useExplorerStore } from '../store'
-import { ExplorerItem } from '../types'
+import { ExplorerItem } from '@/Explorer/types'
+
+interface FoldersDialogState {
+  open: boolean
+  setOpen: (open: boolean) => void
+}
+
+export const useFoldersDialog = create<FoldersDialogState>((set) => ({
+  open: false,
+  setOpen: (open) => set({ open }),
+}))
 
 export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | null) => void }) {
   const { toast } = useToast()
-  const explorer = useExplorerContext()
-  const explorerStore = useExplorerStore()
+  const foldersDialog = useFoldersDialog()
   const [currentPath, setCurrentPath] = useState<string>('/')
 
   const { data: dirs, isError: assetsListFailed } = rspc.useQuery(
@@ -28,7 +36,7 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
       },
     ],
     {
-      enabled: explorerStore.isFoldersDialogOpen,
+      enabled: foldersDialog.open,
       throwOnError: (error: RSPCError) => {
         console.log(error)
         return false // stop propagate throwing error
@@ -81,8 +89,8 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
 
   return (
     <Dialog.Root
-      open={explorerStore.isFoldersDialogOpen}
-      onOpenChange={(open) => explorerStore.setIsFoldersDialogOpen(open)}
+      open={foldersDialog.open}
+      onOpenChange={(open) => foldersDialog.setOpen(open)}
     >
       <Dialog.Portal>
         <Dialog.Overlay

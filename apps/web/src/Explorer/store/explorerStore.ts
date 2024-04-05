@@ -16,9 +16,6 @@ interface ExplorerState {
   isContextMenuOpen: boolean
   setIsContextMenuOpen: (isContextMenuOpen: boolean) => void
 
-  isFoldersDialogOpen: boolean
-  setIsFoldersDialogOpen: (isFoldersDialogOpen: boolean) => void
-
   reset: () => void
 }
 
@@ -31,9 +28,6 @@ export const useExplorerStore = create<ExplorerState>((set) => ({
 
   isContextMenuOpen: false,
   setIsContextMenuOpen: (isContextMenuOpen) => set({ isContextMenuOpen }),
-
-  isFoldersDialogOpen: false,
-  setIsFoldersDialogOpen: (isFoldersDialogOpen) => set({ isFoldersDialogOpen }),
 
   reset: () => set({ isRenaming: false, isContextMenuOpen: false, drag: null }),
 }))

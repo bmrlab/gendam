@@ -37,7 +37,7 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
           'w-28 rounded-lg p-1 text-ink',
           highlight ? 'bg-accent text-white' : null
         )}>
-          <div className="line-clamp-2 max-h-[2.8em] text-center text-xs leading-[1.4em]">{data.name}</div>
+          <div className="line-clamp-2 max-h-[2.8em] text-center text-xs leading-[1.4em] break-all">{data.name}</div>
         </div>
       )}
     </>
