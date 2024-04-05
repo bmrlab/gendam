@@ -28,17 +28,21 @@ impl VideoDecoder {
     }
 }
 
+/*
+ * 有一些 stream 的 codec_type 比如 "hevc"，它们的 ffprobe 返回数据中没有 duration 等字段
+ * 安全点就所有字段都是 option
+ */
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct RawProbeStreamOutput {
     index: usize,
     codec_type: String, // video, audio
     width: Option<usize>,
     height: Option<usize>,
-    avg_frame_rate: String,
-    duration: String,
-    bit_rate: String,
-    nb_frames: String,
-    time_base: String,
+    avg_frame_rate: Option<String>,
+    duration: Option<String>,
+    bit_rate: Option<String>,
+    nb_frames: Option<String>,
+    time_base: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,12 +94,13 @@ impl From<String> for VideoAvgFrameRate {
 
 impl From<&RawProbeStreamOutput> for VideoMetadata {
     fn from(stream: &RawProbeStreamOutput) -> Self {
+        let stream = stream.clone();
         Self {
             width: stream.width.unwrap_or(0),
             height: stream.height.unwrap_or(0),
-            duration: stream.duration.parse().unwrap_or(0.0),
-            bit_rate: stream.bit_rate.parse().unwrap_or(0),
-            avg_frame_rate: VideoAvgFrameRate::from(stream.avg_frame_rate.clone()),
+            duration: stream.duration.unwrap_or_default().parse().unwrap_or(0.0),
+            bit_rate: stream.bit_rate.unwrap_or_default().parse().unwrap_or(0),
+            avg_frame_rate: VideoAvgFrameRate::from(stream.avg_frame_rate.unwrap_or_default().clone()),
             audio: None,
         }
     }
@@ -103,9 +108,10 @@ impl From<&RawProbeStreamOutput> for VideoMetadata {
 
 impl From<&RawProbeStreamOutput> for AudioMetadata {
     fn from(stream: &RawProbeStreamOutput) -> Self {
+        let stream = stream.clone();
         Self {
-            bit_rate: stream.bit_rate.parse().unwrap_or(0),
-            duration: stream.duration.parse().unwrap_or(0.0),
+            bit_rate: stream.bit_rate.unwrap_or_default().parse().unwrap_or(0),
+            duration: stream.duration.unwrap_or_default().parse().unwrap_or(0.0),
         }
     }
 }
