@@ -1,5 +1,6 @@
 'use client'
 import LibrariesSelect from '@/components/LibrariesSelect'
+import Shared from "@/components/Shared"
 import { useToast } from '@/components/Toast/use-toast'
 import { CurrentLibrary, type Library } from '@/lib/library'
 import { client, rspc } from '@/lib/rspc'
@@ -143,7 +144,12 @@ export default function ClientLayout({
       }}
     >
       <rspc.Provider client={client} queryClient={queryClient}>
-        {library?.id ? <>{children}</> : <LibrariesSelect />}
+        {library?.id ? (
+          <>
+            {children}
+            <Shared />
+          </>
+         ) : <LibrariesSelect />}
       </rspc.Provider>
     </CurrentLibrary.Provider>
   )

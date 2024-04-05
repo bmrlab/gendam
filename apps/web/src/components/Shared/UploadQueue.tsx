@@ -1,9 +1,10 @@
 'use client'
 import Icon from '@/components/Icon'
+import { rspc } from '@/lib/rspc'
 import { FileItem, useUploadQueueStore } from '@/store/uploadQueue'
 import { Document_Light } from '@muse/assets/images'
 import Image from 'next/image'
-import { PropsWithChildren, useMemo, useState } from 'react'
+import { PropsWithChildren, useEffect, useMemo, useState } from 'react'
 
 // import { twx } from '@/lib/utils'
 // const UploadingItem = twx.div`flex items-center justify-start pl-2 pr-4 py-2`
@@ -29,6 +30,27 @@ export default function UploadQueue() {
     const completedCounts = uploadQueueStore.completed.length + uploadQueueStore.failed.length
     return [uploadingCounts, completedCounts]
   }, [uploadQueueStore])
+
+  const uploadMut = rspc.useMutation(['assets.create_asset_object'])
+
+  useEffect(() => {
+    // useUploadQueueStore.subscribe((e) => {})
+    const uploading = uploadQueueStore.nextUploading()
+    if (uploading) {
+      uploadMut.mutate({
+        materializedPath: uploading.path,
+        localFullPath: uploading.localFullPath,
+      }, {
+        onSuccess: () => {
+          uploadQueueStore.completeUploading()
+          // refetch()
+        },
+        onError: () => {
+          uploadQueueStore.failedUploading()
+        }
+      })
+    }
+  }, [uploadQueueStore, uploadMut])
 
   if (!uploadingCounts && !completedCounts) {
     return <div></div>

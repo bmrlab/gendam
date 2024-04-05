@@ -10,15 +10,12 @@ import { useCallback, useEffect, useMemo } from 'react'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
 import ItemContextMenu from './_components/ItemContextMenu'
-import UploadQueue from './_components/UploadQueue'
 import Viewport from '@/components/Viewport'
 import Inspector from './_components/Inspector'
 import { RSPCError } from '@rspc/client'
 import { FoldersDialog } from './_components/FoldersDialog'
 
 export default function ExplorerPage() {
-  const uploadQueueStore = useUploadQueueStore()
-
   const searchParams = useSearchParams()
   let dirInSearchParams = searchParams.get('dir') || '/'
   if (!/^\/([^/\\:*?"<>|]+\/)+$/.test(dirInSearchParams)) {
@@ -31,7 +28,7 @@ export default function ExplorerPage() {
   const parentPath = useMemo(() => dirInSearchParams, [dirInSearchParams])
 
   const moveMut = rspc.useMutation(['assets.move_file_path'])
-  const uploadMut = rspc.useMutation(['assets.create_asset_object'])
+
   const { data: assets, isError: assetsListFailed, refetch } =
     rspc.useQuery(['assets.list', { materializedPath: parentPath, dirsOnly: false }], {
       /**
@@ -44,25 +41,6 @@ export default function ExplorerPage() {
         return false  // stop propagate throwing error
       },
     })
-
-  useEffect(() => {
-    // useUploadQueueStore.subscribe((e) => {})
-    const uploading = uploadQueueStore.nextUploading()
-    if (uploading) {
-      uploadMut.mutate({
-        materializedPath: uploading.path,
-        localFullPath: uploading.localFullPath,
-      }, {
-        onSuccess: () => {
-          uploadQueueStore.completeUploading()
-          refetch()
-        },
-        onError: () => {
-          uploadQueueStore.failedUploading()
-        }
-      })
-    }
-  }, [uploadQueueStore, uploadMut, refetch])
 
   const explorer = useExplorer({
     items: assets ?? null,
@@ -119,7 +97,6 @@ export default function ExplorerPage() {
           </Viewport.Content>
 
           <Footer />
-          <UploadQueue />
           <FoldersDialog onConfirm={onMoveTargetSelected} />
         </Viewport.Page>
 
