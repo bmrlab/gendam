@@ -7,14 +7,14 @@ import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
-import { useCurrentLibrary } from '@/lib/library'
+// import { useCurrentLibrary } from '@/lib/library'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 // import styles from './GridView.module.css'
 
 const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
-  const currentLibrary = useCurrentLibrary()
+  // const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
 
@@ -44,26 +44,14 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
   )
 }
 
-const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
+const GridItem: React.FC<{
+  data: ExplorerItem,
+  onSelect: (e: React.MouseEvent, data: ExplorerItem) => void
+}> = ({ data, onSelect }) => {
   const router = useRouter()
-  const currentLibrary = useCurrentLibrary()
+  // const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
-
-  const handleClick = (e: React.MouseEvent) => {
-    // 按住 cmd 键多选
-    e.stopPropagation()
-    if (e.metaKey) {
-      if (explorer.isItemSelected(data)) {
-        explorer.removeSelectedItem(data)
-      } else {
-        explorer.addSelectedItem(data);
-      }
-    } else {
-      explorer.resetSelectedItems([data])
-    }
-    explorerStore.reset()
-  }
 
   // const processVideoMut = rspc.useMutation(['assets.process_video_asset'])
   const handleDoubleClick = useCallback(
@@ -85,7 +73,10 @@ const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
   return (
     <div
       className="flex cursor-default select-none flex-col items-center justify-start"
-      onClick={handleClick}
+      onClick={(e) => {
+        e.stopPropagation()
+        onSelect(e, data)
+      }}
       onDoubleClick={handleDoubleClick}
     >
       <ViewItem data={data}>
@@ -100,10 +91,37 @@ const GridItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
 }
 
 export default function GridView({ items }: { items: ExplorerItem[] }) {
+  const explorer = useExplorerContext()
+  const explorerStore = useExplorerStore()
+  const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
+
+  const onSelect = useCallback((e: React.MouseEvent, data: ExplorerItem) => {
+    // 按住 cmd 键多选
+    const selectIndex = items.indexOf(data)
+    if (e.metaKey) {
+      if (explorer.isItemSelected(data)) {
+        explorer.removeSelectedItem(data)
+      } else {
+        explorer.addSelectedItem(data);
+      }
+      setLastSelectedIndex(selectIndex)
+    } else if (e.shiftKey) {
+      if (explorer.selectedItems.size > 0 && lastSelectIndex >= 0) {
+        const start = Math.min(lastSelectIndex, selectIndex)
+        const end = Math.max(lastSelectIndex, selectIndex)
+        explorer.resetSelectedItems(items.slice(start, end + 1))
+      }
+    } else {
+      explorer.resetSelectedItems([data])
+      setLastSelectedIndex(selectIndex)
+    }
+    explorerStore.reset()
+  }, [explorer, explorerStore, items, lastSelectIndex])
+
   return (
     <div className="flex flex-wrap content-start items-start justify-start gap-6 p-8">
       {items.map((item) => (
-        <GridItem key={item.id} data={item} />
+        <GridItem key={item.id} data={item} onSelect={onSelect} />
       ))}
     </div>
   )
