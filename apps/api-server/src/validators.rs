@@ -14,6 +14,9 @@ impl<'de> Visitor<'de> for MaterializedPathString {
     where
         E: de::Error,
     {
+        if value == "/" {
+            return Ok(value.to_string());
+        }
         // check value is matches regexpr /^(\/[^/\\:*?"<>|]+)+\/$/
         let re = regex::Regex::new(r#"^(\/[^/\\:*?"<>|]+)+\/$"#).unwrap();
         if re.is_match(value) {

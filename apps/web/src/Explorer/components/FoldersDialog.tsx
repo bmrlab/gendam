@@ -1,47 +1,82 @@
 import FileThumb from '@/Explorer/components/View/FileThumb'
-import { rspc, client } from '@/lib/rspc'
+import Icon from '@/components/Icon'
+import { useToast } from '@/components/Toast/use-toast'
+import { client, rspc } from '@/lib/rspc'
 import { Folder_Light } from '@muse/assets/images'
 import { Button } from '@muse/ui/v1/button'
 import { DialogPrimitive as Dialog } from '@muse/ui/v1/dialog'
-import Icon from '@/components/Icon'
+import { RSPCError } from '@rspc/client'
 import classNames from 'classnames'
 import Image from 'next/image'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useExplorerContext } from '../hooks'
 import { useExplorerStore } from '../store'
 import { ExplorerItem } from '../types'
 
 export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | null) => void }) {
+  const { toast } = useToast()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const [currentPath, setCurrentPath] = useState<string>('/')
 
-  const { data: dirs } = rspc.useQuery(['assets.list', { materializedPath: currentPath, dirsOnly: true }])
-  const [currentExplorerItem, setCurrentExplorerItem] = useState<ExplorerItem|null>(null)
+  const { data: dirs, isError: assetsListFailed } = rspc.useQuery(
+    [
+      'assets.list',
+      {
+        materializedPath: currentPath,
+        dirsOnly: true,
+      },
+    ],
+    {
+      enabled: explorerStore.isFoldersDialogOpen,
+      throwOnError: (error: RSPCError) => {
+        console.log(error)
+        return false // stop propagate throwing error
+      },
+    },
+  )
+
+  useEffect(() => {
+    if (assetsListFailed) {
+      toast({
+        title: `Error get folders`,
+        description: currentPath,
+        variant: 'destructive',
+        duration: 1000000,
+      })
+    }
+  }, [assetsListFailed, toast, currentPath])
+
+  const [currentExplorerItem, setCurrentExplorerItem] = useState<ExplorerItem | null>(null)
 
   useEffect(() => {
     const match = currentPath.match(/^((\/[^/]+)*\/)([^/]+)\/$/)
     if (match) {
       const materializedPath = match[1]
       const name = match[3]
-      client.query(["assets.get", { materializedPath, name }]).then((data) => {
-        setCurrentExplorerItem(data)
-      })
+      client
+        .query(['assets.get', { materializedPath, name }])
+        .then((data) => {
+          setCurrentExplorerItem(data)
+        })
+        .catch((error) => {
+          toast({ title: `Error fetch folder ${currentPath}`, description: error.message, variant: 'destructive' })
+        })
     } else {
       setCurrentExplorerItem(null)
     }
-  }, [setCurrentExplorerItem, currentPath])
+  }, [setCurrentExplorerItem, currentPath, toast])
 
   const goto = useCallback(
     (data: ExplorerItem | '-1') => {
       if (data === '-1') {
-        let newPath = currentPath.replace(/([^/]+)\/$/, "")
+        let newPath = currentPath.replace(/([^/]+)\/$/, '')
         setCurrentPath(newPath)
       } else {
         setCurrentPath(currentPath + data.name + '/')
       }
     },
-    [currentPath, setCurrentPath]
+    [currentPath, setCurrentPath],
   )
 
   return (
@@ -56,15 +91,15 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
         />
         <Dialog.Content
           className={classNames(
-            'fixed z-50 left-[50%] top-[50%] w-[38rem] max-w-full translate-x-[-50%] translate-y-[-50%] overflow-auto',
-            'border border-app-line text-ink bg-app-box shadow-lg rounded-lg',
-            'duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]'
+            'fixed left-[50%] top-[50%] z-50 w-[38rem] max-w-full translate-x-[-50%] translate-y-[-50%] overflow-auto',
+            'rounded-lg border border-app-line bg-app-box text-ink shadow-lg',
+            'duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]',
           )}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-start border-b border-app-line px-4 py-3">
             <div className="text-sm">选择文件夹</div>
-            <div className="text-xs flex items-center gap-1 ml-2 text-ink/50" onClick={() => goto('-1')}>
+            <div className="ml-2 flex items-center gap-1 text-xs text-ink/50" onClick={() => goto('-1')}>
               <Icon.arrowUpLeft className="h-4 w-4" />
               <span>返回上一级</span>
             </div>
@@ -77,11 +112,9 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
                   onDoubleClick={() => goto(data)}
                   className="flex cursor-default select-none flex-col items-center justify-start"
                 >
-                  <FileThumb data={data} className={classNames('mb-1 h-16 w-16 p-1 rounded-sm')} />
+                  <FileThumb data={data} className={classNames('mb-1 h-16 w-16 rounded-sm p-1')} />
                   <div className={classNames('w-16 rounded-sm px-1')}>
-                    <div className="truncate text-center text-xs">
-                      {data.name}
-                    </div>
+                    <div className="truncate text-center text-xs">{data.name}</div>
                   </div>
                 </div>
               ))

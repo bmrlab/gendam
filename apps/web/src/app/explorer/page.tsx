@@ -13,6 +13,7 @@ import ItemContextMenu from './_components/ItemContextMenu'
 import UploadQueue from './_components/UploadQueue'
 import Viewport from '@/components/Viewport'
 import Inspector from './_components/Inspector'
+import { RSPCError } from '@rspc/client'
 
 export default function ExplorerPage() {
   const uploadQueueStore = useUploadQueueStore()
@@ -29,8 +30,13 @@ export default function ExplorerPage() {
   const parentPath = useMemo(() => dirInSearchParams, [dirInSearchParams])
 
   const uploadMut = rspc.useMutation(['assets.create_asset_object'])
-  const { data: assets, refetch } =
-    rspc.useQuery(['assets.list', { materializedPath: parentPath, dirsOnly: false }])
+  const { data: assets, isError: assetsListFailed, refetch } =
+    rspc.useQuery(['assets.list', { materializedPath: parentPath, dirsOnly: false }], {
+      throwOnError: (e: RSPCError) => {
+        console.log(e)
+        return false  // stop propagate throwing error
+      },
+    })
 
   useEffect(() => {
     // useUploadQueueStore.subscribe((e) => {})
@@ -60,6 +66,14 @@ export default function ExplorerPage() {
   })
 
   const contextMenu = (data: ExplorerItem) => <ItemContextMenu data={data} />
+
+  if (assetsListFailed) {
+    return (
+      <Viewport.Page className="flex items-center justify-center text-ink/50">
+        Failed to load assets
+      </Viewport.Page>
+    )
+  }
 
   return (
     <ExplorerViewContextProvider value={{ contextMenu }}>
