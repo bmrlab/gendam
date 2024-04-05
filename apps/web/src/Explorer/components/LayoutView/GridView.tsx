@@ -107,4 +107,34 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
       ))}
     </div>
   )
+
+  /**
+   * 列表太长需要用 react-window 来优化，只渲染可见部分，不然会很卡
+   * 但是直接替换会导致 contextmenu 无法触发，需要研究一下
+   * import { FixedSizeGrid as Grid } from "react-window";
+   * "react-window": "^1.8"
+   * "@types/react-window": "^1.8"
+   */
+
+  // const _GridItem = ({ columnIndex, rowIndex, style }: any) => {
+  //   const item = items[rowIndex * 6 + columnIndex]; // Adjust according to your number of columns
+  //   return (
+  //     <div style={style}>
+  //       <GridItem key={item.id} data={item} />
+  //     </div>
+  //   );
+  // };
+  // return (
+  //   <Grid
+  //     className="p-8"
+  //     columnCount={6} // Adjust according to your number of columns
+  //     columnWidth={150} // Adjust according to your item width
+  //     height={500} // Adjust according to your grid height
+  //     rowCount={Math.ceil(items.length / 3)} // Adjust according to your number of columns
+  //     rowHeight={200} // Adjust according to your item height
+  //     width={900} // Adjust according to your grid width
+  //   >
+  //     {_GridItem}
+  //   </Grid>
+  // )
 }
