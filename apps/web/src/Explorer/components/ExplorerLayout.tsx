@@ -20,13 +20,13 @@ export default function Explorer() {
     moveMut.mutate({
       active: {
         id: active.id,
-        path: active.materializedPath,
+        materializedPath: active.materializedPath,
         isDir: active.isDir,
         name: active.name,
       },
       target: over ? {
         id: over.id,
-        path: over.materializedPath,
+        materializedPath: over.materializedPath,
         isDir: over.isDir,
         name: over.name,
       } : null,

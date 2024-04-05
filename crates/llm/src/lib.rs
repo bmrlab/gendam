@@ -67,6 +67,7 @@ pub struct LLM {
     model: Box<dyn Chat>,
 }
 
+#[allow(dead_code)]
 pub struct LLMEmbedding {
     model: Box<dyn Embedding>
 }

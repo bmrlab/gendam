@@ -73,7 +73,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       }
       for (let item of Array.from(explorer.selectedItems)) {
         deleteMut.mutate({
-          path: explorer.parentPath,
+          materializedPath: explorer.parentPath,
           name: item.name,
         })
       }

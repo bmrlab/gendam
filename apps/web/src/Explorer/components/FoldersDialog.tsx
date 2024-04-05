@@ -16,15 +16,15 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
   const explorerStore = useExplorerStore()
   const [currentPath, setCurrentPath] = useState<string>('/')
 
-  const { data: dirs } = rspc.useQuery(['assets.list', { path: currentPath, dirsOnly: true }])
+  const { data: dirs } = rspc.useQuery(['assets.list', { materializedPath: currentPath, dirsOnly: true }])
   const [currentExplorerItem, setCurrentExplorerItem] = useState<ExplorerItem|null>(null)
 
   useEffect(() => {
     const match = currentPath.match(/^((\/[^/]+)*\/)([^/]+)\/$/)
     if (match) {
-      const path = match[1]
+      const materializedPath = match[1]
       const name = match[3]
-      client.query(["assets.get", { path, name }]).then((data) => {
+      client.query(["assets.get", { materializedPath, name }]).then((data) => {
         setCurrentExplorerItem(data)
       })
     } else {

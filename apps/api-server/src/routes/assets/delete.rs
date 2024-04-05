@@ -1,4 +1,3 @@
-use super::utils::normalized_materialized_path;
 use content_library::Library;
 use file_handler::delete_artifacts::handle_delete_artifacts;
 use prisma_client_rust::{Direction, QueryError};
@@ -9,12 +8,9 @@ use tracing::error;
 
 pub async fn delete_file_path(
     library: &Library,
-    path: &str,
+    materialized_path: &str,
     name: &str,
 ) -> Result<(), rspc::Error> {
-    let materialized_path = normalized_materialized_path(path);
-    let name = name.to_string();
-
     let deleted_file_hashes = Arc::new(Mutex::new(vec![]));
     let deleted_file_hashes_clone = deleted_file_hashes.clone();
 
@@ -27,8 +23,8 @@ pub async fn delete_file_path(
             let deleted_one = client
                 .file_path()
                 .delete(file_path::materialized_path_name(
-                    materialized_path.clone(),
-                    name.clone(),
+                    materialized_path.to_string(),
+                    name.to_string(),
                 ))
                 .exec()
                 .await

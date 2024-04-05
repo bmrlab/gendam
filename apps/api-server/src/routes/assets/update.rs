@@ -1,35 +1,29 @@
-use prisma_lib::file_path;
-use prisma_client_rust::{PrismaValue, raw, QueryError};
-use content_library::Library;
-use super::utils::{normalized_materialized_path, contains_invalid_chars};
 use super::types::FilePathRequestPayload;
+use content_library::Library;
+use prisma_client_rust::{raw, PrismaValue, QueryError};
+use prisma_lib::file_path;
 
 pub async fn rename_file_path(
     library: &Library,
     id: i32,
     is_dir: bool,
-    path: &str,
+    materialized_path: &str,
     old_name: &str,
     new_name: &str,
 ) -> Result<(), rspc::Error> {
     // TODO: 所有 SQL 要放进一个 transaction 里面
-
-    if contains_invalid_chars(new_name) {
-        return Err(rspc::Error::new(
-            rspc::ErrorCode::BadRequest,
-            String::from("name contains invalid chars"),
-        ));
-    }
-    let materialized_path = normalized_materialized_path(path);
-    let file_path_data = library.prisma_client()
+    let file_path_data = library
+        .prisma_client()
         .file_path()
         .find_first(vec![
             file_path::id::equals(id),
-            file_path::materialized_path::equals(materialized_path.clone()),
+            file_path::materialized_path::equals(materialized_path.to_string()),
             file_path::is_dir::equals(is_dir),
             file_path::name::equals(old_name.to_string()),
         ])
-        .exec().await.map_err(|e| {
+        .exec()
+        .await
+        .map_err(|e| {
             rspc::Error::new(
                 rspc::ErrorCode::InternalServerError,
                 format!("failed to find file_path: {}", e),
@@ -42,10 +36,11 @@ pub async fn rename_file_path(
         ));
     }
 
-    library.prisma_client()
+    library
+        .prisma_client()
         .file_path()
         .update(
-            file_path::materialized_path_name(materialized_path.clone(), old_name.to_string()),
+            file_path::materialized_path_name(materialized_path.to_string(), old_name.to_string()),
             vec![file_path::name::set(new_name.to_string())],
         )
         .exec()
@@ -68,7 +63,8 @@ pub async fn rename_file_path(
     let old_materialized_path = format!("{}{}/", &materialized_path, &old_name);
     let new_materialized_path = format!("{}{}/", &materialized_path, &new_name);
     let old_materialized_path_like = format!("{}%", &old_materialized_path);
-    library.prisma_client()
+    library
+        .prisma_client()
         ._execute_raw(raw!(
             r#"
             UPDATE FilePath
@@ -96,22 +92,16 @@ pub async fn rename_file_path(
     Ok(())
 }
 
-
 pub async fn move_file_path(
     library: &Library,
-    mut active: FilePathRequestPayload,
-    mut target: Option<FilePathRequestPayload>,
+    active: FilePathRequestPayload,
+    target: Option<FilePathRequestPayload>,
 ) -> Result<(), rspc::Error> {
     // TODO: 所有 SQL 要放进一个 transaction 里面
 
-    // 其实不应该对 path 做 normalize，调用接口的时候要确保格式正确
-    active.path = normalized_materialized_path(&active.path);
-
-    if let Some(target) = target.as_mut() {
-        target.path = normalized_materialized_path(&target.path);
-
-        let target_full_path = format!("{}{}/", target.path.as_str(), target.name.as_str());
-        let active_full_path = format!("{}{}/", active.path.as_str(), active.name.as_str());
+    if let Some(target) = target.as_ref() {
+        let target_full_path = format!("{}{}/", target.materialized_path.as_str(), target.name.as_str());
+        let active_full_path = format!("{}{}/", active.materialized_path.as_str(), active.name.as_str());
         if target_full_path.starts_with(&active_full_path) {
             return Err(rspc::Error::new(
                 rspc::ErrorCode::BadRequest,
@@ -127,15 +117,18 @@ pub async fn move_file_path(
         )
     };
 
-    let active_file_path_data = library.prisma_client()
+    let active_file_path_data = library
+        .prisma_client()
         .file_path()
         .find_first(vec![
             file_path::id::equals(active.id),
-            file_path::materialized_path::equals(active.path.clone()),
+            file_path::materialized_path::equals(active.materialized_path.clone()),
             file_path::is_dir::equals(active.is_dir),
             file_path::name::equals(active.name.clone()),
         ])
-        .exec().await.map_err(sql_error)?;
+        .exec()
+        .await
+        .map_err(sql_error)?;
     let active_file_path_data = match active_file_path_data {
         Some(t) => t,
         None => {
@@ -148,15 +141,18 @@ pub async fn move_file_path(
 
     if let Some(target) = target.as_ref() {
         // TODO: 首先，确保 target.is_dir == true
-        let target_file_path_data = library.prisma_client()
+        let target_file_path_data = library
+            .prisma_client()
             .file_path()
             .find_first(vec![
                 file_path::id::equals(target.id),
-                file_path::materialized_path::equals(target.path.clone()),
+                file_path::materialized_path::equals(target.materialized_path.clone()),
                 file_path::is_dir::equals(true),
                 file_path::name::equals(target.name.clone()),
             ])
-            .exec().await.map_err(sql_error)?;
+            .exec()
+            .await
+            .map_err(sql_error)?;
         let _target_file_path_data = match target_file_path_data {
             Some(t) => t,
             None => {
@@ -169,18 +165,20 @@ pub async fn move_file_path(
     }
 
     let new_materialized_path = match target.as_ref() {
-        Some(target) =>
-            format!("{}{}/", target.path.as_str(), target.name.as_str()),
+        Some(target) => format!("{}{}/", target.materialized_path.as_str(), target.name.as_str()),
         None => "/".to_string(),
     };
     // 确保 target 下不存在相同名字的文件，不然移动失败
-    let duplicated_file_path_data = library.prisma_client()
+    let duplicated_file_path_data = library
+        .prisma_client()
         .file_path()
         .find_first(vec![
             file_path::materialized_path::equals(new_materialized_path.clone()),
             file_path::name::equals(active.name.clone()),
         ])
-        .exec().await.map_err(sql_error)?;
+        .exec()
+        .await
+        .map_err(sql_error)?;
     if let Some(data) = duplicated_file_path_data {
         return Err(rspc::Error::new(
             rspc::ErrorCode::BadRequest,
@@ -188,13 +186,18 @@ pub async fn move_file_path(
         ));
     }
     // rename file_path
-    library.prisma_client()
+    library
+        .prisma_client()
         .file_path()
         .update(
             file_path::id::equals(active_file_path_data.id),
-            vec![file_path::materialized_path::set(new_materialized_path.clone())],
+            vec![file_path::materialized_path::set(
+                new_materialized_path.clone(),
+            )],
         )
-        .exec().await.map_err(sql_error)?;
+        .exec()
+        .await
+        .map_err(sql_error)?;
 
     if !active.is_dir {
         return Ok(());
@@ -213,13 +216,18 @@ pub async fn move_file_path(
      * Same as rename
      */
     let new_materialized_path = match target.as_ref() {
-        Some(target) =>
-            format!("{}{}/{}/", target.path.as_str(), target.name.as_str(), active.name.as_str()),
+        Some(target) => format!(
+            "{}{}/{}/",
+            target.materialized_path.as_str(),
+            target.name.as_str(),
+            active.name.as_str()
+        ),
         None => format!("/{}/", active.name.as_str()),
     };
-    let old_materialized_path = format!("{}{}/", active.path.as_str(), active.name.as_str());
+    let old_materialized_path = format!("{}{}/", active.materialized_path.as_str(), active.name.as_str());
     let old_materialized_path_like = format!("{}%", &old_materialized_path);
-    library.prisma_client()
+    library
+        .prisma_client()
         ._execute_raw(raw!(
             r#"
             UPDATE FilePath

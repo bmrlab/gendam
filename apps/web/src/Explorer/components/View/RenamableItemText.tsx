@@ -36,7 +36,7 @@ export default function RenamableItemText({
       // explorerStore.reset()
       renameMut.mutate({
         id: data.id,
-        path: explorer.parentPath,
+        materializedPath: explorer.parentPath,
         isDir: data.isDir,
         oldName: data.name,
         newName: inputRef.current.value,

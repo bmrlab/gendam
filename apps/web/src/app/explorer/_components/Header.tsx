@@ -61,7 +61,7 @@ export default function Header() {
         return
       }
       createPathMut.mutate({
-        path: explorer.parentPath,
+        materializedPath: explorer.parentPath,
         name: title,
       })
       setTitleInputDialogVisible(false)

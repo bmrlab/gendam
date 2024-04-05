@@ -1,31 +1,26 @@
-use super::utils::{contains_invalid_chars, generate_file_hash, normalized_materialized_path};
+use super::utils::generate_file_hash;
 use content_library::Library;
 use prisma_client_rust::QueryError;
 use prisma_lib::{asset_object, file_path};
 
 pub async fn create_file_path(
     library: &Library,
-    path: &str,
+    materialized_path: &str,
     name: &str,
 ) -> Result<file_path::Data, rspc::Error> {
     /*
      * TODO
      * 如果 path 是 /a/b/c/, 要确保存在一条数据 {path:"/a/b/",name:"c"}, 不然就是文件夹不存在
      */
-    let name = match contains_invalid_chars(name) {
-        true => {
-            return Err(rspc::Error::new(
-                rspc::ErrorCode::BadRequest,
-                String::from("name contains invalid chars"),
-            ));
-        }
-        false => name.to_string(),
-    };
-    let materialized_path = normalized_materialized_path(path);
     let res = library
         .prisma_client()
         .file_path()
-        .create(true, materialized_path, name, vec![])
+        .create(
+            true,
+            materialized_path.to_string(),
+            name.to_string(),
+            vec![],
+        )
         .exec()
         .await
         .map_err(|e| {
@@ -39,10 +34,9 @@ pub async fn create_file_path(
 
 pub async fn create_asset_object(
     library: &Library,
-    path: &str,
+    materialized_path: &str,
     local_full_path: &str,
 ) -> Result<(file_path::Data, asset_object::Data, bool), rspc::Error> {
-    let materialized_path = normalized_materialized_path(path);
     // copy file and rename to asset object id
     let file_name = local_full_path.split("/").last().unwrap().to_owned();
 
@@ -116,7 +110,7 @@ pub async fn create_asset_object(
                     .file_path()
                     .create(
                         false,
-                        materialized_path.clone(),
+                        materialized_path.to_string(),
                         new_file_name.clone(),
                         vec![file_path::asset_object_id::set(Some(asset_object_data.id))],
                     )

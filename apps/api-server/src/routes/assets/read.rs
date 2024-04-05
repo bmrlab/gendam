@@ -1,15 +1,15 @@
 use prisma_lib::{asset_object, file_path};
 use content_library::Library;
-use super::utils::normalized_materialized_path;
 
 // #[tracing::instrument(level = "info")]
 pub async fn list_file_path(
     library: &Library,
-    path: &str,
+    materialized_path: &str,
     dirs_only: bool,
 ) -> Result<Vec<file_path::Data>, rspc::Error> {
-    let materialized_path = normalized_materialized_path(path);
-    let mut where_params = vec![file_path::materialized_path::equals(materialized_path)];
+    let mut where_params = vec![
+        file_path::materialized_path::equals(materialized_path.to_string())
+    ];
     if dirs_only {
         where_params.push(file_path::is_dir::equals(true));
     }
@@ -33,13 +33,12 @@ pub async fn list_file_path(
 
 pub async fn get_file_path(
     library: &Library,
-    path: &str,
+    materialized_path: &str,
     name: &str,
 ) -> Result<file_path::Data, rspc::Error> {
-    let materialized_path = normalized_materialized_path(path);
     let res = library.prisma_client()
         .file_path()
-        .find_unique(file_path::materialized_path_name(materialized_path, name.to_string()))
+        .find_unique(file_path::materialized_path_name(materialized_path.to_string(), name.to_string()))
         .with(
             file_path::asset_object::fetch()
             .with(asset_object::media_data::fetch())

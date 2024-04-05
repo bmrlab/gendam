@@ -1,3 +1,4 @@
+mod validators;
 mod error;
 mod task_queue;
 mod ai;

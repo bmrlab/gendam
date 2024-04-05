@@ -1,18 +1,3 @@
-pub(crate) fn contains_invalid_chars(name: &str) -> bool {
-    name.chars().any(|c| match c {
-        '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => true,
-        _ => false,
-    })
-}
-
-pub(crate) fn normalized_materialized_path(path: &str) -> String {
-    if path.ends_with("/") {
-        path.to_string()
-    } else {
-        format!("{}/", path)
-    }
-}
-
 use std::path::Path;
 use blake3::Hasher;
 use tokio::{
@@ -72,3 +57,18 @@ pub async fn generate_file_hash(path: impl AsRef<Path>, size: u64) -> Result<Str
 
 	Ok(hasher.finalize().to_hex()[..16].to_string())
 }
+
+// pub(crate) fn contains_invalid_chars(name: &str) -> bool {
+//     name.chars().any(|c| match c {
+//         '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => true,
+//         _ => false,
+//     })
+// }
+
+// pub(crate) fn normalized_materialized_path(path: &str) -> String {
+//     if path.ends_with("/") {
+//         path.to_string()
+//     } else {
+//         format!("{}/", path)
+//     }
+// }

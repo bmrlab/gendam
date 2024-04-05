@@ -12,6 +12,7 @@ use serde::Deserialize;
 use specta::Type;
 use tracing::info;
 
+use crate::validators;
 use create::{create_asset_object, create_file_path};
 use delete::delete_file_path;
 use process::{process_video_asset, process_video_metadata};
@@ -27,13 +28,16 @@ where
         .mutation("create_file_path", |t| {
             t({
                 #[derive(Deserialize, Type, Debug)]
+                #[serde(rename_all = "camelCase")]
                 struct FilePathCreatePayload {
-                    path: String,
+                    #[serde(deserialize_with = "validators::materialized_path_string")]
+                    materialized_path: String,
+                    #[serde(deserialize_with = "validators::path_name_string")]
                     name: String,
                 }
                 |ctx, input: FilePathCreatePayload| async move {
                     let library = ctx.library()?;
-                    create_file_path(&library, &input.path, &input.name).await?;
+                    create_file_path(&library, &input.materialized_path, &input.name).await?;
                     Ok(())
                 }
             })
@@ -43,14 +47,20 @@ where
                 #[derive(Deserialize, Type, Debug)]
                 #[serde(rename_all = "camelCase")]
                 struct AssetObjectCreatePayload {
-                    path: String,
+                    #[serde(deserialize_with = "validators::materialized_path_string")]
+                    materialized_path: String,
                     local_full_path: String,
                 }
                 |ctx: TCtx, input: AssetObjectCreatePayload| async move {
                     info!("received create_asset_object: {input:?}");
                     let library = ctx.library()?;
                     let (file_path_data, asset_object_data, asset_object_existed) =
-                        create_asset_object(&library, &input.path, &input.local_full_path).await?;
+                        create_asset_object(
+                            &library,
+                            &input.materialized_path,
+                            &input.local_full_path,
+                        )
+                        .await?;
 
                     if !asset_object_existed {
                         process_video_metadata(&library, asset_object_data.id).await?;
@@ -65,14 +75,17 @@ where
         .query("list", |t| {
             t({
                 #[derive(Deserialize, Type, Debug)]
+                #[serde(rename_all = "camelCase")]
                 struct FilePathQueryPayload {
-                    path: String,
-                    #[serde(rename = "dirsOnly")]
+                    #[serde(deserialize_with = "validators::materialized_path_string")]
+                    materialized_path: String,
+                    // #[serde(rename = "dirsOnly")]
                     dirs_only: bool,
                 }
                 |ctx, input: FilePathQueryPayload| async move {
                     let library = ctx.library()?;
-                    let names = list_file_path(&library, &input.path, input.dirs_only).await?;
+                    let names =
+                        list_file_path(&library, &input.materialized_path, input.dirs_only).await?;
                     Ok(names)
                 }
             })
@@ -82,12 +95,15 @@ where
                 #[derive(Deserialize, Type, Debug)]
                 #[serde(rename_all = "camelCase")]
                 struct FilePathGetPayload {
-                    path: String,
+                    #[serde(deserialize_with = "validators::materialized_path_string")]
+                    materialized_path: String,
+                    #[serde(deserialize_with = "validators::path_name_string")]
                     name: String,
                 }
                 |ctx, input: FilePathGetPayload| async move {
                     let library = ctx.library()?;
-                    let item = get_file_path(&library, &input.path, &input.name).await?;
+                    let item =
+                        get_file_path(&library, &input.materialized_path, &input.name).await?;
                     Ok(item)
                 }
             })
@@ -99,8 +115,11 @@ where
                 struct FilePathRenamePayload {
                     id: i32,
                     is_dir: bool,
-                    path: String,
+                    #[serde(deserialize_with = "validators::materialized_path_string")]
+                    materialized_path: String,
+                    #[serde(deserialize_with = "validators::path_name_string")]
                     old_name: String,
+                    #[serde(deserialize_with = "validators::path_name_string")]
                     new_name: String,
                 }
                 |ctx, input: FilePathRenamePayload| async move {
@@ -109,7 +128,7 @@ where
                         &library,
                         input.id,
                         input.is_dir,
-                        &input.path,
+                        &input.materialized_path,
                         &input.old_name,
                         &input.new_name,
                     )
@@ -138,12 +157,14 @@ where
                 #[derive(Deserialize, Type, Debug)]
                 #[serde(rename_all = "camelCase")]
                 struct FilePathDeletePayload {
-                    path: String,
+                    #[serde(deserialize_with = "validators::materialized_path_string")]
+                    materialized_path: String,
+                    #[serde(deserialize_with = "validators::path_name_string")]
                     name: String,
                 }
                 |ctx, input: FilePathDeletePayload| async move {
                     let library = ctx.library()?;
-                    delete_file_path(&library, &input.path, &input.name).await?;
+                    delete_file_path(&library, &input.materialized_path, &input.name).await?;
                     Ok(())
                 }
             })
@@ -159,8 +180,8 @@ where
         .mutation("process_video_metadata", |t| {
             t(|ctx, input: i32| async move {
                 let library = ctx.library()?;
-                let asset_object_id_id = input;
-                process_video_metadata(&library, asset_object_id_id).await?;
+                let asset_object_id = input;
+                process_video_metadata(&library, asset_object_id).await?;
                 Ok(())
             })
         })

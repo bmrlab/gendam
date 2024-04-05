@@ -30,14 +30,14 @@ export default function ExplorerPage() {
 
   const uploadMut = rspc.useMutation(['assets.create_asset_object'])
   const { data: assets, refetch } =
-    rspc.useQuery(['assets.list', { path: parentPath, dirsOnly: false }])
+    rspc.useQuery(['assets.list', { materializedPath: parentPath, dirsOnly: false }])
 
   useEffect(() => {
     // useUploadQueueStore.subscribe((e) => {})
     const uploading = uploadQueueStore.nextUploading()
     if (uploading) {
       uploadMut.mutate({
-        path: uploading.path,
+        materializedPath: uploading.path,
         localFullPath: uploading.localFullPath,
       }, {
         onSuccess: () => {
