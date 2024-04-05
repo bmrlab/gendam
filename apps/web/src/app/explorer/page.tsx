@@ -3,8 +3,7 @@ import ExplorerLayout from '@/Explorer/components/ExplorerLayout'
 import { ExplorerContextProvider, ExplorerViewContextProvider, useExplorer } from '@/Explorer/hooks'
 // import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
-import { client, rspc } from '@/lib/rspc'
-import { FileItem, useUploadQueueStore } from '@/store/uploadQueue'
+import { rspc } from '@/lib/rspc'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo } from 'react'
 import Footer from './_components/Footer'
@@ -30,7 +29,9 @@ export default function ExplorerPage() {
   const moveMut = rspc.useMutation(['assets.move_file_path'])
 
   const { data: assets, isError: assetsListFailed, refetch } =
-    rspc.useQuery(['assets.list', { materializedPath: parentPath, dirsOnly: false }], {
+    rspc.useQuery(['assets.list', {
+      materializedPath: parentPath
+    }], {
       /**
        * 这样可以在删除/重命名/刷新metadata等操作执行以后自动刷新
        * 但现在看起来虽然全局设置了 refetchOnWindowFocus: false, 还是会自动刷新的

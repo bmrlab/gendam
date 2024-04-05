@@ -7,7 +7,7 @@ export default function Library() {
   const { data: homeDir } = rspc.useQuery(["files.home_dir"]);
   const assetsMutation = rspc.useMutation(["assets.create_file_path"]);
   const assetsQuery = rspc.useQuery(["assets.list", {
-    materializedPath: "/", dirsOnly: true
+    materializedPath: "/"
   }]);
 
   const test = useCallback(() => {

@@ -77,16 +77,25 @@ where
                 #[derive(Deserialize, Type, Debug)]
                 #[serde(rename_all = "camelCase")]
                 struct FilePathQueryPayload {
+                    // #[serde(rename = "materializedPath")]
                     #[serde(deserialize_with = "validators::materialized_path_string")]
                     materialized_path: String,
-                    // #[serde(rename = "dirsOnly")]
-                    dirs_only: bool,
+                    // export `isDir?: boolean` instead of `isDir: boolean | null`
+                    #[serde(skip_serializing_if = "Option::is_none")]
+                    is_dir: Option<bool>,
+                    #[serde(skip_serializing_if = "Option::is_none")]
+                    include_subdirs: Option<bool>,
                 }
                 |ctx, input: FilePathQueryPayload| async move {
                     let library = ctx.library()?;
-                    let names =
-                        list_file_path(&library, &input.materialized_path, input.dirs_only).await?;
-                    Ok(names)
+                    let res = list_file_path(
+                        &library,
+                        &input.materialized_path,
+                        input.is_dir,
+                        input.include_subdirs,
+                    )
+                    .await?;
+                    Ok(res)
                 }
             })
         })

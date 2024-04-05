@@ -9,6 +9,7 @@ import { formatBytes, formatDuration } from '@/lib/utils'
 import Image from 'next/image'
 import { HTMLAttributes, useCallback, useMemo } from 'react'
 import { VIDEO_DIMENSION, getTaskStatus, isNotDone } from './utils'
+import { toast } from 'sonner'
 import classNames from 'classnames'
 
 export type VideoTaskItemProps = {
@@ -59,9 +60,15 @@ export default function VideoTaskItem({
                 <span>取消任务</span>
               </div>
             ),
-            handleClick: () => {
-              console.log('cancel task', assetObject.id)
-              mutateAsync({ assetObjectId: assetObject.id })
+            handleClick: async () => {
+              // console.log('cancel task', assetObject.id)
+              await mutateAsync({ assetObjectId: assetObject.id })
+              toast.success('取消任务成功', {
+                action: {
+                  label: 'Dismiss',
+                  onClick: () => {},
+                },
+              })
             },
           },
           'Separator',

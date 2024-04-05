@@ -32,7 +32,7 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
       'assets.list',
       {
         materializedPath: currentPath,
-        dirsOnly: true,
+        isDir: true,
       },
     ],
     {

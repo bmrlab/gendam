@@ -5,13 +5,17 @@ use content_library::Library;
 pub async fn list_file_path(
     library: &Library,
     materialized_path: &str,
-    dirs_only: bool,
+    is_dir: Option<bool>,
+    include_subdirs: Option<bool>
 ) -> Result<Vec<file_path::Data>, rspc::Error> {
-    let mut where_params = vec![
-        file_path::materialized_path::equals(materialized_path.to_string())
-    ];
-    if dirs_only {
-        where_params.push(file_path::is_dir::equals(true));
+    let mut where_params = vec![];
+    if include_subdirs.unwrap_or(false) {
+        where_params.push(file_path::materialized_path::starts_with(materialized_path.to_string()));
+    } else {
+        where_params.push(file_path::materialized_path::equals(materialized_path.to_string()));
+    }
+    if let Some(is_dir) = is_dir {
+        where_params.push(file_path::is_dir::equals(is_dir));
     }
     let res = library.prisma_client()
         .file_path()
