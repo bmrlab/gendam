@@ -85,7 +85,7 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
       explorer.resetSelectedItems()
       explorerStore.reset()
       if (data.isDir) {
-        let newPath = explorer.parentPath + data.name + '/'
+        let newPath = data.materializedPath + data.name + '/'
         router.push('/explorer?dir=' + newPath)
       } else {
         // processVideoMut.mutate(data.id)

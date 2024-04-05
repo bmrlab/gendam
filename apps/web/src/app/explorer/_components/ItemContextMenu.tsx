@@ -46,13 +46,10 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   const handleOpen = useCallback(
     (e: Event) => {
       // e.stopPropagation()
-      if (!explorer.parentPath) {
-        return
-      }
       explorer.resetSelectedItems()
       explorerStore.reset()
       if (data.isDir) {
-        let newPath = explorer.parentPath + data.name + '/'
+        let newPath = data.materializedPath + data.name + '/'
         router.push('/explorer?dir=' + newPath)
       } else {
         // do nothing, for the moment
@@ -70,12 +67,9 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
 
   const handleDelete = useCallback(
     (e: Event) => {
-      if (!explorer.parentPath) {
-        return
-      }
       for (let item of Array.from(explorer.selectedItems)) {
         deleteMut.mutate({
-          materializedPath: explorer.parentPath,
+          materializedPath: item.materializedPath,
           name: item.name,
         })
       }
@@ -86,12 +80,9 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
 
   const handleRename = useCallback(
     (e: Event) => {
-      if (!explorer.parentPath) {
-        return
-      }
       explorerStore.setIsRenaming(true)
     },
-    [explorer, explorerStore],
+    [explorerStore],
   )
 
   const handleProcessMetadata = useCallback(

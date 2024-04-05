@@ -24,7 +24,7 @@ export default function RenamableItemText({
         el.select()
       }, 200)
     }
-  }, [inputRef, data])
+  }, [inputRef, data.name])
 
   const handleInputSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -32,21 +32,17 @@ export default function RenamableItemText({
       if (!inputRef.current?.value) {
         return
       }
-      if (!explorer.parentPath) {
-        // TODO: explorer.parentPath 到这一步不应该是空的，然后 data.id 如果存在，其实可以忽略 parentPath 参数
-        return
-      }
       explorerStore.setIsRenaming(false)
       // explorerStore.reset()
       renameMut.mutate({
         id: data.id,
-        materializedPath: explorer.parentPath,
+        materializedPath: data.materializedPath,
         isDir: data.isDir,
         oldName: data.name,
         newName: inputRef.current.value,
       })
     },
-    [explorer.parentPath, explorerStore, renameMut, data.id, data.isDir, data.name, inputRef],
+    [inputRef, explorerStore, renameMut, data],
   )
 
   return (

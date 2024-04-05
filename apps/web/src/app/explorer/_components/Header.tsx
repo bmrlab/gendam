@@ -19,21 +19,21 @@ export default function Header() {
   const inspector = useInspector()
   const createPathMut = rspc.useMutation(['assets.create_file_path'])
 
-  const goToDir = useCallback(
-    (dirName: string) => {
-      if (!explorer.parentPath) {
-        return
-      }
-      let newPath = explorer.parentPath
-      if (dirName === '-1') {
-        newPath = newPath.replace(/(.*\/)[^/]+\/$/, '$1')
-      } else {
-        newPath += dirName + '/'
-      }
-      router.push('/explorer?dir=' + newPath)
-    },
-    [explorer, router],
-  )
+  // const goToDir = useCallback(
+  //   (dirName: string) => {
+  //     if (!explorer.parentPath) {
+  //       return
+  //     }
+  //     let newPath = explorer.parentPath
+  //     if (dirName === '-1') {
+  //       newPath = newPath.replace(/(.*\/)[^/]+\/$/, '$1')
+  //     } else {
+  //       newPath += dirName + '/'
+  //     }
+  //     router.push('/explorer?dir=' + newPath)
+  //   },
+  //   [explorer, router],
+  // )
 
   let handleSelectFiles = useCallback(
     (fileFullPaths: string[]) => {
