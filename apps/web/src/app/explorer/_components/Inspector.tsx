@@ -1,14 +1,12 @@
-import FileThumb from '@/Explorer/components/View/FileThumb'
-import { useCurrentLibrary } from '@/lib/library'
-import { Document_Light, Folder_Light } from '@muse/assets/images'
 import { useExplorerContext } from '@/Explorer/hooks'
+import { useCurrentLibrary } from '@/lib/library'
+import { Folder_Light } from '@muse/assets/images'
 import { create } from 'zustand'
 // import { useExplorerStore } from "@/Explorer/store";
 import { ExplorerItem } from '@/Explorer/types'
-import classNames from 'classnames'
+import { formatBytes, formatDateTime, formatDuration } from '@/lib/utils'
 import Image from 'next/image'
-import { useEffect, useMemo, createRef } from 'react'
-import { formatBytes, formatDuration, formatDateTime } from '@/lib/utils'
+import { createRef, useEffect, useMemo } from 'react'
 
 interface InspectorState {
   show: boolean
@@ -24,22 +22,22 @@ const FolderDetail = ({ data }: { data: ExplorerItem }) => {
   return (
     <div className="p-4">
       <div className="flex items-start justify-start">
-        <div className="w-12 h-12 relative">
-          <Image src={Folder_Light} alt="folder" fill={true} className="object-contain" ></Image>
+        <div className="relative h-12 w-12">
+          <Image src={Folder_Light} alt="folder" fill={true} className="object-contain"></Image>
         </div>
         <div className="ml-3 flex-1 overflow-hidden">
-          <div className="line-clamp-2 text-ink text-xs font-medium mt-1">{data.name}</div>
+          <div className="mt-1 line-clamp-2 text-xs font-medium text-ink">{data.name}</div>
           {/* <div className="line-clamp-2 text-ink/50 text-xs mt-1">文件夹 {data.materializedPath}{data.name}</div> */}
         </div>
       </div>
-      <div className="h-px bg-app-line mt-6 mb-3"></div>
+      <div className="mb-3 mt-6 h-px bg-app-line"></div>
       <div className="text-xs">
         <div className="text-md font-medium">基本信息</div>
-        <div className="flex justify-between mt-2">
+        <div className="mt-2 flex justify-between">
           <div className="text-ink/50">创建时间</div>
           <div>{formatDateTime(data.createdAt)}</div>
         </div>
-        <div className="flex justify-between mt-2">
+        <div className="mt-2 flex justify-between">
           <div className="text-ink/50">更新时间</div>
           <div>{formatDateTime(data.updatedAt)}</div>
         </div>
@@ -66,49 +64,52 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
   if (!data.assetObject || !data.assetObject.mediaData) {
     return
   }
-  const { assetObject, assetObject: { mediaData } } = data
+  const {
+    assetObject,
+    assetObject: { mediaData },
+  } = data
   return (
-    <div className="p-4">
-      <div className="overflow-hidden rounded-md relative">
-        <video ref={videoRef} controls={true} autoPlay={true} muted loop className="w-full h-auto">
+    <div className="p-3">
+      <div className="relative h-48 w-56 overflow-hidden bg-app-overlay/50">
+        <video ref={videoRef} controls autoPlay muted loop className="h-full w-full object-contain object-center">
           {/* <source src={currentLibrary.getFileSrc(assetObject.hash)} /> */}
         </video>
       </div>
-      <div className="overflow-hidden mt-3">
-        <div className="line-clamp-2 break-all text-ink text-sm font-medium">{data.name}{data.name}{data.name}{data.name}{data.name}</div>
-        <div className="line-clamp-2 text-ink/50 text-xs mt-1">目录 {data.materializedPath}</div>
+      <div className="mt-3 overflow-hidden">
+        <div className="line-clamp-2 break-all text-sm font-medium text-ink">{data.name}</div>
+        <div className="mt-1 line-clamp-2 text-xs text-ink/50">目录 {data.materializedPath}</div>
       </div>
-      <div className="h-px bg-app-line mt-6 mb-3"></div>
+      <div className="mb-3 mt-6 h-px bg-app-line"></div>
       <div className="text-xs">
         <div className="text-md font-medium">基本信息</div>
-        <div className="flex justify-between mt-2">
+        <div className="mt-2 flex justify-between">
           <div className="text-ink/50">大小</div>
           <div>{formatBytes(mediaData?.size ?? 0)}</div>
         </div>
-        <div className="flex justify-between mt-2">
+        <div className="mt-2 flex justify-between">
           <div className="text-ink/50">长度</div>
           <div>{formatDuration(mediaData?.duration ?? 0)}</div>
         </div>
-        <div className="flex justify-between mt-2">
+        <div className="mt-2 flex justify-between">
           <div className="text-ink/50">尺寸</div>
           <div>{`${mediaData?.width ?? 0} x ${mediaData?.height ?? 0}`}</div>
         </div>
-        <div className="flex justify-between mt-2">
+        <div className="mt-2 flex justify-between">
           <div className="text-ink/50">音频</div>
-          <div>{mediaData.hasAudio ? "有" : "无"}</div>
+          <div>{mediaData.hasAudio ? '有' : '无'}</div>
         </div>
-        <div className="flex justify-between mt-2">
+        <div className="mt-2 flex justify-between">
           <div className="text-ink/50">创建时间</div>
           <div>{formatDateTime(data.createdAt)}</div>
         </div>
-        <div className="flex justify-between mt-2">
+        <div className="mt-2 flex justify-between">
           <div className="text-ink/50">更新时间</div>
           <div>{formatDateTime(data.updatedAt)}</div>
         </div>
       </div>
-      <div className="h-px bg-app-line mt-6 mb-3"></div>
+      <div className="mb-3 mt-6 h-px bg-app-line"></div>
       <div className="text-xs">
-        <div className="flex justify-between mt-2">
+        <div className="mt-2 flex justify-between">
           <div className="text-ink/50">Content Hash</div>
           <div>{assetObject.hash}</div>
         </div>

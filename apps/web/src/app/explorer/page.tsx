@@ -32,6 +32,11 @@ export default function ExplorerPage() {
   const uploadMut = rspc.useMutation(['assets.create_asset_object'])
   const { data: assets, isError: assetsListFailed, refetch } =
     rspc.useQuery(['assets.list', { materializedPath: parentPath, dirsOnly: false }], {
+      /**
+       * 这样可以在删除/重命名/刷新metadata等操作执行以后自动刷新
+       * 但现在看起来虽然全局设置了 refetchOnWindowFocus: false, 还是会自动刷新的
+       */
+      // refetchOnWindowFocus: true,
       throwOnError: (e: RSPCError) => {
         console.log(e)
         return false  // stop propagate throwing error
