@@ -2,6 +2,7 @@
 import { DndContext } from '@/Explorer/components/Draggable/DndContext'
 import GridView from '@/Explorer/components/LayoutView/GridView'
 import ListView from '@/Explorer/components/LayoutView/ListView'
+import MediaView from '@/Explorer/components/LayoutView/MediaView'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { rspc } from '@/lib/rspc'
@@ -103,6 +104,8 @@ export default function Explorer() {
             return <GridView items={explorer.items} />
           case 'list':
             return <ListView items={explorer.items} />
+          case 'media':
+            return <MediaView items={explorer.items} />
           default:
             return null
         }

@@ -10,6 +10,7 @@ import { useUploadQueueStore } from '@/store/uploadQueue'
 import Viewport from '@/components/Viewport'
 import PageNav from '@/components/PageNav'
 import { useInspector } from './Inspector'
+import classNames from 'classnames'
 
 export default function Header() {
   const router = useRouter()
@@ -86,16 +87,31 @@ export default function Header() {
         </div>
         <div className="flex items-center gap-0.5 justify-self-end text-[#676C77]">
           <div
-            className="h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover"
+            className={classNames(
+              "h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover",
+              explorer.settings.layout === 'grid' && 'bg-toolbar-hover'
+            )}
             onClick={() => explorer.settings.update({ layout: 'grid' })}
           >
             <Icon.grid className="size-4" />
           </div>
           <div
-            className="h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover"
+            className={classNames(
+              "h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover",
+              explorer.settings.layout === 'list' && 'bg-toolbar-hover'
+            )}
             onClick={() => explorer.settings.update({ layout: 'list' })}
           >
             <Icon.list className="size-4" />
+          </div>
+          <div
+            className={classNames(
+              "h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover",
+              explorer.settings.layout === 'media' && 'bg-toolbar-hover'
+            )}
+            onClick={() => explorer.settings.update({ layout: 'media' })}
+          >
+            <Icon.image className="size-4" />
           </div>
           <div className="w-px h-6 mx-1 bg-app-line"></div>
           <div

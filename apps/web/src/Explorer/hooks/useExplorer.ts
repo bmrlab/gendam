@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import type { ExplorerItem } from '../types'
 
 type UseExplorerSettings = {
-  layout: 'grid' | 'list'
+  layout: 'grid' | 'list' | 'media'
 }
 
 function useSettings(defaultSettings: UseExplorerSettings) {

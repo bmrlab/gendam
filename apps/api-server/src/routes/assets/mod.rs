@@ -84,7 +84,7 @@ where
                     #[serde(skip_serializing_if = "Option::is_none")]
                     is_dir: Option<bool>,
                     #[serde(skip_serializing_if = "Option::is_none")]
-                    include_subdirs: Option<bool>,
+                    include_sub_dirs: Option<bool>,
                 }
                 |ctx, input: FilePathQueryPayload| async move {
                     let library = ctx.library()?;
@@ -92,7 +92,7 @@ where
                         &library,
                         &input.materialized_path,
                         input.is_dir,
-                        input.include_subdirs,
+                        input.include_sub_dirs,
                     )
                     .await?;
                     Ok(res)

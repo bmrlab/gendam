@@ -6,10 +6,10 @@ pub async fn list_file_path(
     library: &Library,
     materialized_path: &str,
     is_dir: Option<bool>,
-    include_subdirs: Option<bool>
+    include_sub_dirs: Option<bool>
 ) -> Result<Vec<file_path::Data>, rspc::Error> {
     let mut where_params = vec![];
-    if include_subdirs.unwrap_or(false) {
+    if include_sub_dirs.unwrap_or(false) {
         where_params.push(file_path::materialized_path::starts_with(materialized_path.to_string()));
     } else {
         where_params.push(file_path::materialized_path::equals(materialized_path.to_string()));
