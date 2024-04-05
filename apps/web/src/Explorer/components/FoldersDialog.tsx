@@ -41,8 +41,8 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
       toast({
         title: `Error get folders`,
         description: currentPath,
-        variant: 'destructive',
-        duration: 1000000,
+        variant: 'error',
+        duration: 5000,
       })
     }
   }, [assetsListFailed, toast, currentPath])
@@ -60,7 +60,7 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
           setCurrentExplorerItem(data)
         })
         .catch((error) => {
-          toast({ title: `Error fetch folder ${currentPath}`, description: error.message, variant: 'destructive' })
+          toast({ title: `Error fetch folder ${currentPath}`, description: error.message, variant: 'error' })
         })
     } else {
       setCurrentExplorerItem(null)

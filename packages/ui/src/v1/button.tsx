@@ -11,7 +11,7 @@ const buttonVariants = cva(
       variant: {
         outline: 'text-ink bg-transparent hover:bg-app-hover border-app-line',
         accent: 'text-white bg-accent hover:bg-accent/90 border-accent/90',
-        danger: 'text-white bg-error hover:bg-error/90 border-error/90',
+        destructive: 'text-white bg-red-400 hover:bg-red-400/90 border-red-400/90',
       },
       size: {
         sm: 'h-7 px-3 py-1 text-xs font-medium rounded-md shadow-sm',

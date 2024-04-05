@@ -122,9 +122,9 @@ export default function ClientLayout({
         onError: (error) => {
           console.error(error)
           if (error instanceof RSPCError) {
-            toast({ title: `请求出错 ${error.code}`, description: error.message, variant: 'destructive' })
+            toast({ title: `请求出错 ${error.code}`, description: error.message, variant: 'error' })
           } else {
-            toast({ title: '未知错误', description: error.message, variant: 'destructive' })
+            toast({ title: '未知错误', description: error.message, variant: 'error' })
           }
         },
       },

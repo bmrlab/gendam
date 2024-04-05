@@ -89,7 +89,7 @@ export default function BatchExport() {
     if (errorList.length > 0) {
       toast({
         title: `${errorList.join('、')}，格式导出失败`,
-        variant: 'destructive',
+        variant: 'error',
       })
     } else {
       toast({
