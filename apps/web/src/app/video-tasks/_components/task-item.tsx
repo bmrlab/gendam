@@ -56,7 +56,7 @@ export default function VideoTaskItem({
           {
             label: (
               <div className="flex items-center gap-1.5">
-                <Icon.cancel />
+                <Icon.crossCircled />
                 <span>取消任务</span>
               </div>
             ),
@@ -160,7 +160,6 @@ export default function VideoTaskItem({
                 <Icon.moreVertical className="size-6 cursor-pointer" />
               </div>
             </TaskDropdownMenu>
-            {/* <Icon.circleX className="size-[25px] cursor-pointer text-[#676C77]" /> */}
           </div>
         </div>
       </div>

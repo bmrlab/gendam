@@ -59,10 +59,10 @@ export default function QuickView() {
         </div>
         <Player data={quickViewStore.data!} />
         <div
-          className="absolute right-0 top-0 flex h-12 w-12 items-center justify-center p-2"
+          className="absolute right-0 top-0 flex h-12 w-12 items-center justify-center p-2 hover:opacity-70"
           onClick={() => quickViewStore.close()}
         >
-          <Icon.cancel className="h-8 w-8 text-white/50" />
+          <Icon.cross className="h-6 w-6 text-white/50" />
         </div>
       </div>
     </div>

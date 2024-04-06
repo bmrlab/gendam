@@ -75,7 +75,7 @@ export default function UploadQueue() {
           ))}
           {uploadQueueStore.failed.map((file, index) => (
             <UploadingItem key={index} file={file}>
-              <Icon.error className="size-4 text-red-600"></Icon.error>
+              <Icon.cross className="size-4 text-red-600"></Icon.cross>
             </UploadingItem>
           ))}
           {uploadQueueStore.completed.map((file, index) => (

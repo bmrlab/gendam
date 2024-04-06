@@ -109,7 +109,7 @@ const icons = {
       />
     </svg>
   ),
-  error: (props: SvgIconProps) => (
+  cross: (props: SvgIconProps) => (
     <svg {...props} width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
         fillRule="evenodd"
@@ -141,30 +141,6 @@ const icons = {
         clipRule="evenodd"
         d="M12.5 16.4375C13.2249 16.4375 13.8125 17.0251 13.8125 17.75C13.8125 18.4749 13.2249 19.0625 12.5 19.0625C11.7751 19.0625 11.1875 18.4749 11.1875 17.75C11.1875 17.0251 11.7751 16.4375 12.5 16.4375ZM12.5 11.1875C13.2249 11.1875 13.8125 11.7751 13.8125 12.5C13.8125 13.2249 13.2249 13.8125 12.5 13.8125C11.7751 13.8125 11.1875 13.2249 11.1875 12.5C11.1875 11.7751 11.7751 11.1875 12.5 11.1875ZM13.8125 7.25C13.8125 6.52513 13.2249 5.9375 12.5 5.9375C11.7751 5.9375 11.1875 6.52513 11.1875 7.25C11.1875 7.97487 11.7751 8.5625 12.5 8.5625C13.2249 8.5625 13.8125 7.97487 13.8125 7.25Z"
         fill="currentColor"
-      />
-    </svg>
-  ),
-  circleX: (props: SvgIconProps) => (
-    <svg {...props} width="25" height="25" viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M12.5 18.5C15.8137 18.5 18.5 15.8137 18.5 12.5C18.5 9.18629 15.8137 6.5 12.5 6.5C9.18629 6.5 6.5 9.18629 6.5 12.5C6.5 15.8137 9.18629 18.5 12.5 18.5Z"
-        stroke="currentColor"
-        strokeWidth="0.9"
-        strokeMiterlimit="10"
-      />
-      <path
-        d="M14.5 10.5L10.5 14.5"
-        stroke="currentColor"
-        strokeWidth="0.9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M14.5 14.5L10.5 10.5"
-        stroke="currentColor"
-        strokeWidth="0.9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
       />
     </svg>
   ),
@@ -202,7 +178,7 @@ const icons = {
       />
     </svg>
   ),
-  cancel: (props: SvgIconProps) => (
+  crossCircled: (props: SvgIconProps) => (
     <svg {...props} width="16" height="17" viewBox="0 0 16 17" fill="transparent" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M8 14.5C11.3137 14.5 14 11.8137 14 8.5C14 5.18629 11.3137 2.5 8 2.5C4.68629 2.5 2 5.18629 2 8.5C2 11.8137 4.68629 14.5 8 14.5Z"

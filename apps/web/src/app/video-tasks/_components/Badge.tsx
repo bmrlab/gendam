@@ -26,13 +26,13 @@ export function MuseTaskBadge({ status, name, className }: MuseBadgeProps) {
         return {
           fgColor: 'text-[#E61A1A]',
           bgColor: 'bg-[#FCEBEC]',
-          icon: Icon.error,
+          icon: Icon.cross,
         }
       case MuseStatus.Cancelled:
         return {
           fgColor: 'text-[#000000]',
           bgColor: 'bg-[#F5F5F5]',
-          icon: Icon.error,
+          icon: Icon.cross,
         }
       case MuseStatus.Done:
         return {

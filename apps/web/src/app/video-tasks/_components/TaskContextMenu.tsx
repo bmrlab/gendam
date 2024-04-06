@@ -25,7 +25,7 @@ export default function TaskContextMenu({ video, fileHash, isNotDone, children }
       ? [
           {
             label: '取消任务',
-            icon: <Icon.cancel />,
+            icon: <Icon.crossCircled />,
             handleClick: () => handleCancel(),
           },
         ]
