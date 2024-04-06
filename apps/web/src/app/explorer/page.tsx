@@ -101,12 +101,12 @@ export default function ExplorerPage() {
         <Viewport.Page onClick={() => explorer.resetSelectedItems()}>
           <Header />
 
-          <Viewport.Content className="flex items-start justify-start">
-            <div className="h-full flex-1">
+          <div className="flex-1 w-full flex flex-row overflow-hidden">
+            <Viewport.Content className="w-auto">
               <ExplorerLayout></ExplorerLayout>
-            </div>
+            </Viewport.Content>
             <Inspector />
-          </Viewport.Content>
+          </div>
 
           <Footer />
           <FoldersDialog onConfirm={onMoveTargetSelected} />

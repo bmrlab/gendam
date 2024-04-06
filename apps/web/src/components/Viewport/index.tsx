@@ -1,4 +1,5 @@
-import classNames from 'classnames'
+// import classNames from 'classnames'
+import { cn as classNames } from '@/lib/utils'
 import { HTMLAttributes } from 'react'
 import Sidebar from './Sidebar'
 
@@ -44,8 +45,7 @@ const Toolbar = ({ className, children, ...props }: HTMLAttributes<HTMLDivElemen
 const Content = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
     <div className={classNames(
-      'flex-1 w-full text-ink bg-app',
-      'overflow-y-auto overflow-x-hidden',
+      'flex-1 w-full text-ink bg-app overflow-auto',
       className
     )} {...props}>
       {children}
