@@ -9,6 +9,7 @@ import { forwardRef, useCallback } from 'react'
 import { twx } from '@/lib/utils'
 import { useInspector } from './Inspector'
 import { useFoldersDialog } from './FoldersDialog'
+import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 
 type ItemContextMenuProps = {
   data: ExplorerItem
@@ -35,6 +36,9 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   const inspector = useInspector()
   const foldersDialog = useFoldersDialog()
 
+  // Shared State and Context
+  const quickViewStore = useQuickViewStore()
+
   const deleteMut = rspc.useMutation(['assets.delete_file_path'])
   const metadataMut = rspc.useMutation(['assets.process_video_metadata'])
 
@@ -52,10 +56,10 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
         let newPath = data.materializedPath + data.name + '/'
         router.push('/explorer?dir=' + newPath)
       } else {
-        // do nothing, for the moment
+        quickViewStore.open(data)
       }
     },
-    [data, explorer, router, explorerStore],
+    [data, explorer, router, explorerStore, quickViewStore],
   )
 
   const handleShowInspector = useCallback(

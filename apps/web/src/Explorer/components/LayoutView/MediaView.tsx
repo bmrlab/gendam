@@ -7,6 +7,7 @@ import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
+import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useState } from 'react'
@@ -76,6 +77,19 @@ const MediaItem: React.FC<{
   data: ExplorerItem,
   onSelect: (e: React.MouseEvent, data: ExplorerItem) => void
 }> = ({ data, onSelect }) => {
+  const explorer = useExplorerContext()
+  const explorerStore = useExplorerStore()
+  const quickViewStore = useQuickViewStore()
+
+  const handleDoubleClick = useCallback(
+    (e: React.FormEvent<HTMLDivElement>) => {
+      explorer.resetSelectedItems()
+      explorerStore.reset()
+      quickViewStore.open(data)
+    },
+    [data, explorer, explorerStore, quickViewStore],
+  )
+
   return (
     <div
       className="flex cursor-default select-none flex-col items-center justify-start"
@@ -83,7 +97,7 @@ const MediaItem: React.FC<{
         e.stopPropagation()
         onSelect(e, data)
       }}
-      onDoubleClick={(e) => e.stopPropagation()}
+      onDoubleClick={handleDoubleClick}
     >
       <ViewItem data={data}>
         <ExplorerDroppable droppable={{ data: data }}>

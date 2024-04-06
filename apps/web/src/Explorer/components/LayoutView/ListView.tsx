@@ -7,14 +7,15 @@ import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
-import { useCurrentLibrary } from '@/lib/library'
+// import { useCurrentLibrary } from '@/lib/library'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 import { formatBytes, formatDateTime } from '@/lib/utils'
+import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 
 const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index }) => {
-  const currentLibrary = useCurrentLibrary()
+  // const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
 
@@ -59,9 +60,10 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
 
 const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index }) => {
   const router = useRouter()
-  const currentLibrary = useCurrentLibrary()
+  // const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
+  const quickViewStore = useQuickViewStore()
 
   const handleClick = (e: React.MouseEvent) => {
     // 按住 cmd 键多选
@@ -78,7 +80,6 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
     explorerStore.reset()
   }
 
-  // const processVideoMut = rspc.useMutation(['assets.process_video_asset'])
   const handleDoubleClick = useCallback(
     (e: React.FormEvent<HTMLDivElement>) => {
       // e.stopPropagation()
@@ -88,11 +89,10 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
         let newPath = data.materializedPath + data.name + '/'
         router.push('/explorer?dir=' + newPath)
       } else {
-        // processVideoMut.mutate(data.id)
-        // router.push('/video-tasks')
+        quickViewStore.open(data)
       }
     },
-    [data, explorer, router, explorerStore],
+    [data, explorer, router, explorerStore, quickViewStore],
   )
 
   return (

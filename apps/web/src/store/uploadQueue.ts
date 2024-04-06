@@ -1,3 +1,5 @@
+// TODO: move this to Shared Folder
+
 import { create } from 'zustand'
 
 export type FileItem = {

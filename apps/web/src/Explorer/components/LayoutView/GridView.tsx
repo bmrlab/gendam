@@ -7,6 +7,7 @@ import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
+import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 // import { useCurrentLibrary } from '@/lib/library'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
@@ -52,8 +53,8 @@ const GridItem: React.FC<{
   // const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
+  const quickViewStore = useQuickViewStore()
 
-  // const processVideoMut = rspc.useMutation(['assets.process_video_asset'])
   const handleDoubleClick = useCallback(
     (e: React.FormEvent<HTMLDivElement>) => {
       // e.stopPropagation()
@@ -63,11 +64,10 @@ const GridItem: React.FC<{
         let newPath = data.materializedPath + data.name + '/'
         router.push('/explorer?dir=' + newPath)
       } else {
-        // processVideoMut.mutate(data.id)
-        // router.push('/video-tasks')
+        quickViewStore.open(data)
       }
     },
-    [data, explorer, router, explorerStore],
+    [data, explorer, router, explorerStore, quickViewStore],
   )
 
   return (
