@@ -130,7 +130,7 @@ export default function Search() {
   )
 
   const handleSearch = useCallback(
-    (text: string, recordType: string = "FrameCaption") => {
+    (text: string, recordType: string = "Frame") => {
       if (text && recordType) {
         const payload = { text, recordType }
         setSearchPayload(payload)
@@ -174,7 +174,7 @@ export default function Search() {
               <div className="px-2 py-1 text-ink/50">搜索类型</div>
               <div
                 className="px-2 py-2 flex items-center justify-start text-ink hover:bg-app-hover rounded-md"
-                onClick={() => handleSearch(keywordTyping, "FrameCaption")}
+                onClick={() => handleSearch(keywordTyping, "Frame")}
               >
                 <span className="text-ink/50"><Icon.image className="w-4" /></span>
                 <span className="mx-2">搜索视频内容</span>
@@ -200,9 +200,9 @@ export default function Search() {
               <div
                 className={classNames(
                   "px-4 py-2",
-                  searchPayload.recordType === "FrameCaption" && "bg-app-hover"
+                  searchPayload.recordType === "Frame" && "bg-app-hover"
                 )}
-                onClick={() => handleSearch(searchPayload.text, "FrameCaption")}
+                onClick={() => handleSearch(searchPayload.text, "Frame")}
               >视频内容</div>
               <div
                 className={classNames(

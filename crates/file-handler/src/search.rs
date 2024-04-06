@@ -16,6 +16,7 @@ pub struct SearchResult {
     pub file_identifier: String,
     pub start_timestamp: i32,
     pub end_timestamp: i32,
+    pub record_type: SearchRecordType,
     pub score: f32,
 }
 
@@ -107,6 +108,7 @@ pub async fn handle_search(
                         file_identifier: v.file_identifier.clone(),
                         start_timestamp: v.timestamp,
                         end_timestamp: v.timestamp,
+                        record_type: SearchRecordType::Frame,
                         score: *id_score_mapping.get(&v.id).unwrap(),
                     })
                 });
@@ -132,6 +134,7 @@ pub async fn handle_search(
                         file_identifier: frame.file_identifier.clone(),
                         start_timestamp: frame.timestamp,
                         end_timestamp: frame.timestamp,
+                        record_type: SearchRecordType::FrameCaption,
                         score: *id_score_mapping.get(&v.id).unwrap(),
                     })
                 });
@@ -150,6 +153,7 @@ pub async fn handle_search(
                         file_identifier: v.file_identifier.clone(),
                         start_timestamp: v.start_timestamp,
                         end_timestamp: v.end_timestamp,
+                        record_type: SearchRecordType::Transcript,
                         score: *id_score_mapping.get(&v.id).unwrap(),
                     })
                 });
@@ -174,6 +178,7 @@ pub async fn handle_search(
             file_identifier: v.file_identifier.clone(),
             start_timestamp: v.start_timestamp,
             end_timestamp: v.end_timestamp,
+            record_type: SearchRecordType::Transcript,
             score: 0 as f32,
         })
     });

@@ -29,6 +29,8 @@ where
             pub asset_object_hash: String,
             // #[serde(rename = "startTime")]
             pub start_time: i32,
+            pub record_type: String,
+            pub score: f32,
         }
         t(move |ctx: TCtx, input: SearchRequestPayload| async move {
             let library = ctx.library()?;
@@ -37,9 +39,9 @@ where
             let record_types = match input.record_type {
                 s if s == "Transcript" => vec![SearchRecordType::Transcript],
                 s if s == "FrameCaption" => {
-                    vec![SearchRecordType::FrameCaption, SearchRecordType::Frame]
+                    vec![SearchRecordType::Frame, SearchRecordType::FrameCaption]
                 }
-                s if s == "Frame" => vec![SearchRecordType::FrameCaption, SearchRecordType::Frame],
+                s if s == "Frame" => vec![SearchRecordType::Frame, SearchRecordType::FrameCaption],
                 _ => {
                     return Err(rspc::Error::new(
                         rspc::ErrorCode::BadRequest,
@@ -73,11 +75,9 @@ where
 
             let file_identifiers = search_results
                 .iter()
-                .map(
-                    |SearchResult {
-                         file_identifier, ..
-                     }| { file_identifier.clone() },
-                )
+                .map(|SearchResult { file_identifier, .. }| {
+                    file_identifier.clone()
+                })
                 .fold(Vec::new(), |mut acc, x| {
                     if !acc.contains(&x) {
                         acc.push(x);
@@ -109,6 +109,8 @@ where
                     |SearchResult {
                          file_identifier,
                          start_timestamp,
+                         score,
+                         record_type,
                          ..
                      }| {
                         let asset_object_data = match tasks_hash_map.get(file_identifier) {
@@ -124,6 +126,8 @@ where
                                     asset_object_id: 0,
                                     asset_object_hash: "".to_string(),
                                     start_time: 0,
+                                    record_type: record_type.to_string(),
+                                    score: *score,
                                 };
                             }
                         };
@@ -146,6 +150,8 @@ where
                             asset_object_id,
                             asset_object_hash,
                             start_time: (*start_timestamp).clone(),
+                            record_type: record_type.to_string(),
+                            score: *score,
                         }
                     },
                 )
