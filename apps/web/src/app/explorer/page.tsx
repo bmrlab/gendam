@@ -56,11 +56,14 @@ export default function ExplorerPage() {
     },
   )
 
+  const resetSelectedItems = explorer.resetSelectedItems;
   useEffect(() => {
     if (assetsQuery.isSuccess) {
       setItems([ ...assetsQuery.data ])
+      // 重新获取数据要清空选中的项目，以免出现不在列表中但是还被选中的情况
+      resetSelectedItems()
     }
-  }, [assetsQuery.isSuccess, assetsQuery.data, setItems])
+  }, [assetsQuery.isLoading, assetsQuery.isSuccess, assetsQuery.data, resetSelectedItems])
 
   const contextMenu = (data: ExplorerItem) => <ItemContextMenu data={data} />
 
@@ -98,11 +101,11 @@ export default function ExplorerPage() {
   return (
     <ExplorerViewContextProvider value={{ contextMenu }}>
       <ExplorerContextProvider explorer={explorer}>
-        <Viewport.Page onClick={() => explorer.resetSelectedItems()}>
+        <Viewport.Page>
           <Header />
 
           <div className="flex-1 w-full flex flex-row overflow-hidden">
-            <Viewport.Content className="w-auto">
+            <Viewport.Content className="w-auto" onClick={() => explorer.resetSelectedItems()}>
               <ExplorerLayout></ExplorerLayout>
             </Viewport.Content>
             <Inspector />
