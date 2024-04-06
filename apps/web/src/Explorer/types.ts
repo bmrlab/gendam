@@ -14,11 +14,16 @@ export type ExplorerItem = {
       size: number;
       mimeType: string;
       hasAudio: boolean;
-    } | null
-  } | null
-  createdAt: string
-  updatedAt: string
+    } | null;
+    note: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
 }
+
+export type AssetObject = { id: number; note: string | null; hash: string; createdAt: string; updatedAt: string }
 
 /**
  * FilePath 上面没有 assetObject，主要是 prisma.rs 里面对这个字段设置了 #[specta(skip)]，

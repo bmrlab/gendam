@@ -11,32 +11,7 @@ import { formatDuration } from '@/lib/utils'
 import Viewport from '@/components/Viewport'
 import { useSearchParams } from 'next/navigation'
 import PageNav from '@/components/PageNav'
-
-const VideoPreview: React.FC<{ item: SearchResultPayload }> = ({ item }) => {
-  const currentLibrary = useCurrentLibrary()
-
-  const videoRef = useRef<HTMLVideoElement>(null)
-  let startTime = Math.max(0, item.startTime / 1e3 - 0.5)
-  let endTime = startTime + 2
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-    video.currentTime = startTime
-    video.ontimeupdate = () => {
-      if (video.currentTime >= endTime) {
-        video.pause()
-        video.ontimeupdate = null
-      }
-    }
-  }, [startTime, endTime])
-
-  return (
-    <video ref={videoRef} controls autoPlay style={{ width: '100%', height: '100%', objectFit: 'contain' }}>
-      <source src={currentLibrary.getFileSrc(item.assetObjectHash)} />
-    </video>
-  )
-}
+import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 
 const VideoItem: React.FC<{
   item: SearchResultPayload
@@ -117,17 +92,23 @@ export default function Search() {
     enabled: !!searchPayload
   })
 
+  const quickViewStore = useQuickViewStore()
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const [previewItem, setPreviewItem] = useState<SearchResultPayload | null>(null)
 
   const [keywordTyping, setKeywordTyping] = useState<string>('')
 
-  const handleVideoClick = useCallback(
-    (item: SearchResultPayload) => {
-      setPreviewItem(item)
-    },
-    [setPreviewItem],
-  )
+  const handleVideoClick = useCallback((item: SearchResultPayload) => {
+    quickViewStore.open({
+      name: item.name,
+      assetObject: {
+        id: item.assetObjectId,
+        hash: item.assetObjectHash,
+      },
+      video: {
+        currentTime: item.startTime / 1e3,
+      },
+    })
+  }, [quickViewStore])
 
   const handleSearch = useCallback(
     (text: string, recordType: string = "Frame") => {
@@ -232,17 +213,6 @@ export default function Search() {
           )}
         </div>
       </Viewport.Content>
-      {previewItem && (
-        <div className="fixed left-0 top-0 flex h-full w-full items-center justify-center">
-          <div
-            className="absolute left-0 top-0 h-full w-full bg-black opacity-70"
-            onClick={() => setPreviewItem(null)}
-          ></div>
-          <div className="relative h-[90%] w-[80%]">
-            <VideoPreview item={previewItem}></VideoPreview>
-          </div>
-        </div>
-      )}
     </Viewport.Page>
   )
 }

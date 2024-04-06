@@ -85,7 +85,10 @@ const MediaItem: React.FC<{
     (e: React.FormEvent<HTMLDivElement>) => {
       explorer.resetSelectedItems()
       explorerStore.reset()
-      quickViewStore.open(data)
+      if (data.assetObject) {
+        const { name, assetObject } = data
+        quickViewStore.open({ name, assetObject })
+      }
     },
     [data, explorer, explorerStore, quickViewStore],
   )

@@ -49,6 +49,7 @@ const FolderDetail = ({ data }: { data: ExplorerItem }) => {
 const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
   const currentLibrary = useCurrentLibrary()
 
+  // TODO: 这里应该用 useRef
   const videoRef = createRef<HTMLVideoElement>()
   useEffect(() => {
     if (!videoRef.current || !data.assetObject?.hash) {

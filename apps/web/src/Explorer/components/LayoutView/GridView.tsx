@@ -63,8 +63,9 @@ const GridItem: React.FC<{
       if (data.isDir) {
         let newPath = data.materializedPath + data.name + '/'
         router.push('/explorer?dir=' + newPath)
-      } else {
-        quickViewStore.open(data)
+      } else if (data.assetObject) {
+        const { name, assetObject } = data
+        quickViewStore.open({ name, assetObject })
       }
     },
     [data, explorer, router, explorerStore, quickViewStore],
