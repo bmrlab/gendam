@@ -183,6 +183,13 @@ pub async fn handle_search(
         })
     });
 
+    // 先来个简单的 magic 加权，让 caption 的分数低一点
+    search_results.iter_mut().for_each(|x| {
+        if x.record_type == SearchRecordType::FrameCaption {
+            x.score /= 3.0;
+        }
+    });
+
     // order results by score
     search_results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
     Ok(search_results.into_iter().collect())
