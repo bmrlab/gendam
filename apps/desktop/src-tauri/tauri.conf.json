@@ -113,11 +113,14 @@
     "windows": [
       {
         "label": "main",
-        "fullscreen": false,
-        "height": 800,
-        "resizable": true,
         "title": "Muse V2",
-        "width": 1200
+        "titleBarStyle":"Transparent",
+        "height": 800,
+        "width": 1400,
+        "minHeight": 600,
+        "minWidth": 1050,
+        "fullscreen": false,
+        "resizable": true
       }
     ]
   }
