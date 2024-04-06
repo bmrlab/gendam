@@ -6,7 +6,7 @@ import { create } from 'zustand'
 import { ExplorerItem } from '@/Explorer/types'
 import { formatBytes, formatDateTime, formatDuration } from '@/lib/utils'
 import Image from 'next/image'
-import { createRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 
 interface InspectorState {
   show: boolean
@@ -49,10 +49,9 @@ const FolderDetail = ({ data }: { data: ExplorerItem }) => {
 const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
   const currentLibrary = useCurrentLibrary()
 
-  // TODO: 这里应该用 useRef
-  const videoRef = createRef<HTMLVideoElement>()
+  const videoRef = useRef<HTMLVideoElement|null>(null)
   useEffect(() => {
-    if (!videoRef.current || !data.assetObject?.hash) {
+    if (!videoRef?.current || !data.assetObject?.hash) {
       return
     }
     const videoSrc = currentLibrary.getFileSrc(data.assetObject.hash)
@@ -71,7 +70,7 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
   } = data
   return (
     <div className="p-3">
-      <div className="relative h-48 w-56 overflow-hidden bg-app-overlay/50">
+      <div className="relative h-48 w-58 overflow-hidden bg-app-overlay/50">
         <video ref={videoRef} controls autoPlay muted loop className="h-full w-full object-contain object-center">
           {/* <source src={currentLibrary.getFileSrc(assetObject.hash)} /> */}
         </video>
