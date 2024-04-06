@@ -77,7 +77,7 @@ const VideoItem: React.FC<{
           <source src={currentLibrary.getFileSrc(item.assetObjectHash)} />
         </video> */}
         <Image
-          src={currentLibrary.getThumbnailSrc(item.assetObjectHash, item.startTime / 1e3)}
+          src={currentLibrary.getThumbnailSrc(item.assetObjectHash, Math.floor(item.startTime / 1e3))}
           alt={item.name}
           fill={true}
           className="object-cover"

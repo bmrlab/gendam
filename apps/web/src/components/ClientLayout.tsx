@@ -93,7 +93,7 @@ export default function ClientLayout({
       }
 
       const fileFullPath = (() => {
-        if (typeof timestampInSecond === 'undefined') {
+        if (typeof timestampInSecond === 'undefined' || timestampInSecond < 1) {
           return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
         }
 
