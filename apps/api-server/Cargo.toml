@@ -12,6 +12,9 @@ content-library = { path = "../../crates/content-library" }
 vector-db = { path = "../../crates/vector-db", features = ["qdrant"] }
 analytics-tracing = { path = "../../crates/analytics-tracing" }
 ai = { path = "../../crates/ai" }
+p2p = { path = "../../crates/p2p" }
+p2p-block = { path = "../../crates/p2p-block" }
+
 rspc = { workspace = true }
 rspc-axum = { workspace = true }
 specta = { workspace = true }
@@ -49,3 +52,13 @@ strum_macros = "0.26"
 thread-priority = "0.16.0"
 regex = "1.10.4"
 mime_guess = "2.0.4"
+futures.workspace = true
+libp2p = "0.53.2"
+async-stream = "0.3.5"
+walkdir = "2.5.0"
+zip = "0.6.6"
+
+# 处理数据库数据序列化和反序列化
+asynchronous-codec = "0.7.0"
+quick-protobuf = "0.8.1"
+quick-protobuf-codec = "0.3.1"

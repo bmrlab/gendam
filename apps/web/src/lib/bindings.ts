@@ -10,6 +10,7 @@ export type Procedures = {
         { key: "libraries.models.get_model", input: string, result: AIModelResult } | 
         { key: "libraries.models.list", input: never, result: Result[] } | 
         { key: "libraries.status", input: never, result: LibraryStatusResult } | 
+        { key: "p2p.state", input: never, result: any } | 
         { key: "users.get", input: never, result: Auth | null } | 
         { key: "version", input: never, result: string } | 
         { key: "video.search.all", input: SearchRequestPayload, result: SearchResultPayload[] } | 
@@ -30,11 +31,15 @@ export type Procedures = {
         { key: "libraries.models.set_model", input: SetModelPayload, result: null } | 
         { key: "libraries.unload_library", input: any | null, result: null } | 
         { key: "libraries.update_library_settings", input: LibrarySettings, result: null } | 
+        { key: "p2p.acceptFileShare", input: [string, string[] | null], result: any } | 
+        { key: "p2p.cancelFileShare", input: string, result: any } | 
+        { key: "p2p.share", input: SharePayload, result: any } | 
         { key: "users.set", input: Auth, result: Auth } | 
         { key: "video.tasks.cancel", input: TaskCancelRequestPayload, result: null } | 
         { key: "video.tasks.create", input: string, result: null } | 
         { key: "video.tasks.regenerate", input: TaskRedoRequestPayload, result: null },
-    subscriptions: never
+    subscriptions: 
+        { key: "p2p.events", input: never, result: any }
 };
 
 export type SetModelPayload = { category: AIModelCategory; modelId: string }
@@ -88,6 +93,8 @@ export type FilePathRequestPayload = { id: number; isDir: boolean; materializedP
 export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string }
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
+
+export type SharePayload = { fileIdList: number[]; peerId: string }
 
 export type Result = { category: AIModelCategory; models: AIModelResult[] }
 

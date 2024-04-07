@@ -36,6 +36,8 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
 
   const deleteMut = rspc.useMutation(['assets.delete_file_path'])
   const metadataMut = rspc.useMutation(['assets.process_video_metadata'])
+  const { data: stateData } = rspc.useQuery(['p2p.state'])
+  const p2pMut = rspc.useMutation(['p2p.share'])
 
   /**
    * 这里都改成处理 selectedItems 而不只是处理当前的 item
@@ -75,7 +77,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
           })
         } catch (error) {}
         queryClient.invalidateQueries({
-          queryKey: ['assets.list', { materializedPath: item.materializedPath }]
+          queryKey: ['assets.list', { materializedPath: item.materializedPath }],
         })
       }
       explorer.resetSelectedItems()
@@ -100,41 +102,60 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
           await metadataMut.mutateAsync(item.assetObject.id)
         } catch (error) {}
         queryClient.invalidateQueries({
-          queryKey: ['assets.list', { materializedPath: item.materializedPath }]
+          queryKey: ['assets.list', { materializedPath: item.materializedPath }],
         })
       }
     },
     [metadataMut, explorer],
   )
 
+  const handleShare = useCallback(
+    (peerId: string) => {
+      let idList = Array.from(explorer.selectedItems).map((item) => {
+        return item.id
+      })
+      p2pMut.mutate({ fileIdList: idList, peerId: peerId })
+    },
+    [explorer.selectedItems, p2pMut],
+  )
+
   return (
     <ContextMenu.Content ref={forwardedRef as any} {...prpos} onClick={(e) => e.stopPropagation()}>
-      <ContextMenu.Item onSelect={handleOpen} disabled={explorer.selectedItems.size > 1 }>
+      <ContextMenu.Item onSelect={handleOpen} disabled={explorer.selectedItems.size > 1}>
         <div>Open</div>
       </ContextMenu.Item>
-      <ContextMenu.Item onSelect={handleShowInspector} disabled={explorer.selectedItems.size > 1 }>
+      <ContextMenu.Item onSelect={handleShowInspector} disabled={explorer.selectedItems.size > 1}>
         <div>Details</div>
       </ContextMenu.Item>
       {/* <ContextMenu.Item onSelect={() => {}} disabled={explorer.selectedItems.size > 1 }>
         <div>Quick view</div>
       </ContextMenu.Item> */}
-      <ContextMenu.Separator className='h-px bg-app-line my-1' />
-      <ContextMenu.Item onSelect={handleProcessMetadata} disabled={
-        Array.from(explorer.selectedItems).some((item) => !item.assetObject)
-      }>
+      <ContextMenu.Separator className="bg-app-line my-1 h-px" />
+      <ContextMenu.Item
+        onSelect={handleProcessMetadata}
+        disabled={Array.from(explorer.selectedItems).some((item) => !item.assetObject)}
+      >
         <div>Regen Thumbnail</div>
       </ContextMenu.Item>
       <ContextMenu.Item onSelect={() => openFileSelection().then((path) => onMoveTargetSelected(path))}>
         <div>Move</div>
       </ContextMenu.Item>
-      <ContextMenu.Item onSelect={handleRename} disabled={explorer.selectedItems.size > 1 }>
+      <ContextMenu.Item onSelect={handleRename} disabled={explorer.selectedItems.size > 1}>
         <div>Rename</div>
       </ContextMenu.Item>
-      <ContextMenu.Separator className='h-px bg-app-line my-1' />
-      <ContextMenu.Item
-        variant='destructive'
-        onSelect={handleDelete}
-      >
+      <ContextMenu.Separator className="bg-app-line my-1 h-px" />
+      <ContextMenu.Sub>
+        <ContextMenu.SubTrigger disabled={(stateData?.peers?.length ?? 0) === 0}>Share</ContextMenu.SubTrigger>
+        <ContextMenu.SubContent>
+          {stateData?.peers?.map((peer: { peer_id: string; metadata: { name?: string } }) => (
+            <ContextMenu.Item key={peer.peer_id} onSelect={() => handleShare(peer.peer_id)}>
+              {peer.metadata.name || peer.peer_id}
+            </ContextMenu.Item>
+          ))}
+        </ContextMenu.SubContent>
+      </ContextMenu.Sub>
+      <ContextMenu.Separator className="bg-app-line my-1 h-px" />
+      <ContextMenu.Item variant="destructive" onSelect={handleDelete}>
         <div>Delete</div>
       </ContextMenu.Item>
     </ContextMenu.Content>

@@ -3,6 +3,7 @@ mod assets;
 mod video;
 mod libraries;
 mod audio;
+mod p2p;
 
 use rspc::Router;
 use crate::CtxWithLibrary;
@@ -24,6 +25,7 @@ where
         .merge("video.", video::get_routes::<TCtx>())
         .merge("audio.", audio::get_routes::<TCtx>())
         .merge("libraries.", libraries::get_routes::<TCtx>())
+        .merge("p2p.", p2p::get_routes::<TCtx>())
         .query("version", |t| {
             t(|_ctx, _input: ()| env!("CARGO_PKG_VERSION"))
         })

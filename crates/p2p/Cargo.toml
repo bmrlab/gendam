@@ -1,0 +1,42 @@
+[package]
+name = "p2p"
+version = "0.1.0"
+edition.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+p2p-metadata = { path = "../p2p-metadata" }
+p2p-block = { path = "../p2p-block" }
+anyhow.workspace = true
+ed25519-dalek = "2.1.1"
+libp2p = { version = "0.53.2", features = [
+    "tokio",
+    "serde",
+    "quic",
+    "tcp",
+    "ping",
+    "noise",
+    "yamux",
+    "mdns",
+    "macros",
+    "kad",
+    "autonat",
+    "ed25519",
+    "dcutr", "relay"
+] }
+rand_core = "0.6.4"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["full"] }
+tracing.workspace = true
+uuid.workspace = true
+libp2p-stream = "0.1.0-alpha"
+
+strum = { workspace = true, features = ["derive"] }
+strum_macros = { workspace = true }
+base58 = "0.2.0"
+zip = "0.6.6"
+
+whoami = "1.5.1"
