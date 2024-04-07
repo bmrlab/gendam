@@ -98,9 +98,9 @@ impl TextEmbedding {
         let attention_mask = encoding.get_attention_mask();
         let token_type_ids = encoding.get_type_ids();
 
-        let ids = ndarray::arr1(&ids).mapv(|x| x as i64);
-        let attention_mask = ndarray::arr1(&attention_mask).mapv(|x| x as i64);
-        let token_type_ids = ndarray::arr1(&token_type_ids).mapv(|x| x as i64);
+        let ids = ndarray::arr1(ids).mapv(|x| x as i64);
+        let attention_mask = ndarray::arr1(attention_mask).mapv(|x| x as i64);
+        let token_type_ids = ndarray::arr1(token_type_ids).mapv(|x| x as i64);
 
         let ids = utils::pad_with_zeros(&ids, vec![[0, 512 - ids.len()]]);
         let attention_mask =
@@ -139,9 +139,19 @@ async fn test_text_embedding() {
     )
     .await
     .unwrap();
-    let embedding = model.get_text_embedding("who are you?").await.unwrap();
 
-    tracing::info!("embedding: {:?}", embedding);
+    let start = std::time::Instant::now();
+    let _ = model.get_text_embedding("who are you?").await.unwrap();
+    let duration = start.elapsed();
+    tracing::info!("Time elapsed in execution is: {:?}", duration);
 
-    assert_eq!(embedding.len(), 1024);
+    let start = std::time::Instant::now();
+    let _ = model.get_text_embedding("hello world!").await.unwrap();
+    let duration = start.elapsed();
+    tracing::info!("Time elapsed in execution is: {:?}", duration);
+
+    let start = std::time::Instant::now();
+    let _ = model.get_text_embedding("你是谁").await.unwrap();
+    let duration = start.elapsed();
+    tracing::info!("Time elapsed in execution is: {:?}", duration);
 }

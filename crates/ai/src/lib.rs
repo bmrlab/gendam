@@ -10,9 +10,9 @@ pub mod blip;
 pub mod clip;
 mod loader;
 pub mod preprocess;
+pub mod text_embedding;
 pub mod utils;
 pub mod whisper;
-pub mod text_embedding;
 
 enum HandlerPayload<T> {
     BatchData(T),
@@ -31,18 +31,20 @@ pub trait Model {
     fn batch_size_limit(&self) -> usize;
 }
 
+type BatchHandlerTx<Item, Output> = mpsc::Sender<
+    HandlerPayload<(
+        Vec<Item>,
+        oneshot::Sender<anyhow::Result<Vec<anyhow::Result<Output>>>>,
+    )>,
+>;
+
 #[derive(Derivative)]
 #[derivative(Clone, Debug)]
 pub struct BatchHandler<T>
 where
     T: Model + 'static,
 {
-    tx: mpsc::Sender<
-        HandlerPayload<(
-            Vec<T::Item>,
-            oneshot::Sender<anyhow::Result<Vec<anyhow::Result<T::Output>>>>,
-        )>,
-    >,
+    tx: BatchHandlerTx<T::Item, T::Output>,
 }
 
 impl<T> BatchHandler<T>
@@ -134,12 +136,12 @@ where
                                                 }
                                             }
 
-                                            if let Err(_) = result_tx.send(Ok(results)) {
+                                            if result_tx.send(Ok(results)).is_err() {
                                                 error!("failed to send results");
                                             }
                                         } else {
                                             error!("failed to load model");
-                                            if let Err(_) = result_tx.send(Err(anyhow::anyhow!("failed to load model"))) {
+                                            if result_tx.send(Err(anyhow::anyhow!("failed to load model"))).is_err() {
                                                 error!("failed to send results");
                                             }
                                         }

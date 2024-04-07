@@ -1,6 +1,6 @@
 use crate::task_queue::create_video_task;
 use crate::CtxWithLibrary;
-use prisma_client_rust::{Direction, operator};
+use prisma_client_rust::{operator, Direction};
 use prisma_lib::PrismaClient;
 use prisma_lib::{asset_object, file_handler_task, media_data};
 use rspc::{Router, RouterBuilder};
@@ -78,47 +78,50 @@ impl VideoTaskHandler {
         let count = self
             .prisma_client
             .asset_object()
-            .count(vec![
-                asset_object::tasks::some(task_filter)
-            ])
+            .count(vec![asset_object::tasks::some(task_filter)])
             .exec()
             .await
             .map_err(|e| anyhow::anyhow!(e))?;
         Ok(count)
     }
 
-    async fn get_max_page(&self, page_size: i32, task_filter: Vec<file_handler_task::WhereParam>) -> anyhow::Result<i32> {
+    async fn get_max_page(
+        &self,
+        page_size: i32,
+        task_filter: Vec<file_handler_task::WhereParam>,
+    ) -> anyhow::Result<i32> {
         let count = self.count(task_filter).await?;
         Ok((count as f64 / page_size as f64).ceil() as i32)
     }
 
-    async fn list(&self, payload: TaskListRequestPayload) -> anyhow::Result<VideoWithTasksPageResult> {
-        let Pagination { page_size, mut page_index } = payload.pagination;
+    async fn list(
+        &self,
+        payload: TaskListRequestPayload,
+    ) -> anyhow::Result<VideoWithTasksPageResult> {
+        let Pagination {
+            page_size,
+            mut page_index,
+        } = payload.pagination;
         if page_index < 1 {
             page_index = 1;
         }
 
         let task_filter = match payload.filter {
-            TaskListRequestFilter::ExcludeCompleted => vec![operator::or(
-                vec![
-                    file_handler_task::exit_code::equals(None),
-                    file_handler_task::exit_code::gte(1),
-                ]
-            )],
+            TaskListRequestFilter::ExcludeCompleted => vec![operator::or(vec![
+                file_handler_task::exit_code::equals(None),
+                file_handler_task::exit_code::gte(1),
+            ])],
             _ => vec![],
         };
 
-        let max_page = self.get_max_page(
-            payload.pagination.page_size,
-            task_filter.clone(),
-        ).await?;
+        let max_page = self
+            .get_max_page(payload.pagination.page_size, task_filter.clone())
+            .await?;
 
         let asset_object_data_list = self
             .prisma_client
             .asset_object()
-            .find_many(vec![
-                asset_object::tasks::some(task_filter)
-            ])
+            .find_many(vec![asset_object::tasks::some(task_filter)])
             .with(asset_object::tasks::fetch(vec![]))
             .with(asset_object::file_paths::fetch(vec![]))
             // bindings 中不会自动生成 media_data 类型
@@ -167,8 +170,21 @@ impl VideoTaskHandler {
         })
     }
 
-    pub async fn cancel(&self, input: TaskCancelRequestPayload) -> anyhow::Result<()> {
+    pub async fn cancel(
+        &self,
+        input: TaskCancelRequestPayload,
+        ctx: &impl CtxWithLibrary,
+    ) -> anyhow::Result<()> {
         let asset_object_id = input.asset_object_id;
+
+        let tx = ctx.get_task_tx();
+
+        if let Ok(tx) = tx.lock() {
+            tx.send(crate::task_queue::TaskPayload::CancelByAssetId(
+                asset_object_id,
+            ))?;
+        }
+
         self.prisma_client
             .file_handler_task()
             .update_many(
@@ -193,10 +209,12 @@ impl VideoTaskHandler {
             .prisma_client
             .asset_object()
             .find_unique(asset_object::id::equals(payload.asset_object_id))
+            .with(asset_object::media_data::fetch())
             .exec()
             .await?;
         if let Some(asset_object_data) = asset_object_data {
-            create_video_task(&asset_object_data, ctx).await
+            create_video_task(&asset_object_data, ctx)
+                .await
                 .map_err(|e| anyhow::anyhow!("failed to create video task: {e:?}"))?;
         }
         Ok(())
@@ -264,7 +282,7 @@ where
             t(|ctx: TCtx, input: TaskCancelRequestPayload| async move {
                 let library = ctx.library()?;
                 VideoTaskHandler::new(library.prisma_client())
-                    .cancel(input)
+                    .cancel(input, &ctx)
                     .await
                     .map_err(|e| {
                         rspc::Error::new(
