@@ -5,6 +5,7 @@ use api_server::{
 };
 use axum::{http::request::Parts, routing::get};
 use dotenvy::dotenv;
+use p2p::Node;
 use std::{
     env,
     path::Path,
@@ -50,6 +51,8 @@ async fn main() {
         }
     };
 
+    let temp_dir = std::env::temp_dir();
+
     let mut default_store = Store::new(local_data_root.join("settings.json"));
     default_store.load().unwrap_or_else(|e| {
         tracing::warn!("Failed to load store: {:?}", e);
@@ -62,7 +65,12 @@ async fn main() {
 
     let store = Arc::new(Mutex::new(default_store));
     let router = api_server::get_routes::<Ctx<Store>>().arced();
-    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store);
+
+    let node = Arc::new(Mutex::<Node>::new(
+        p2p::Node::new().expect("create node error"),
+    ));
+
+    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, temp_dir, store, node);
 
     let app: axum::Router = axum::Router::new()
         .route("/", get(|| async { "Hello 'rspc'!" }))

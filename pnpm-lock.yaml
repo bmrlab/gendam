@@ -23,6 +23,8 @@ importers:
 
   apps/api-server: {}
 
+  apps/autonat: {}
+
   apps/desktop:
     devDependencies:
       '@tauri-apps/cli':

@@ -31,6 +31,8 @@ content-library = { path = "../../../crates/content-library" }
 api-server = { path = "../../api-server" }
 vector-db = { path = "../../../crates/vector-db", features = ["qdrant"] }
 analytics-tracing = { path = "../../../crates/analytics-tracing" }
+p2p = { path = "../../../crates/p2p" }
+
 rspc = { workspace = true }
 rspc-tauri = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

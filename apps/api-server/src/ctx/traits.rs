@@ -5,8 +5,8 @@ use crate::{
 };
 use async_trait::async_trait;
 use content_library::{Library, QdrantServerInfo};
+use p2p::Node;
 use std::{
-    boxed::Box,
     path::PathBuf,
     sync::{mpsc::Sender, Arc, Mutex},
 };
@@ -23,11 +23,12 @@ pub trait CtxStore {
 }
 
 #[async_trait]
-pub trait CtxWithLibrary: Sync {
+pub trait CtxWithLibrary: Sync + P2pTrait {
     fn is_busy(&self) -> Arc<Mutex<std::sync::atomic::AtomicBool>>;
 
     fn get_local_data_root(&self) -> PathBuf;
     fn get_resources_dir(&self) -> PathBuf;
+    fn get_temp_dir(&self) -> PathBuf;
 
     async fn load_library(&self, library_id: &str) -> Result<Library, rspc::Error>;
     async fn unload_library(&self) -> Result<(), rspc::Error>;
@@ -40,6 +41,9 @@ pub trait CtxWithLibrary: Sync {
     fn ai_handler_mutex(&self) -> Arc<Mutex<Option<AIHandler>>>;
     fn download_reporter(&self) -> Result<DownloadReporter, rspc::Error>;
     fn download_status(&self) -> Result<Vec<DownloadStatus>, rspc::Error>;
-
     fn qdrant_info(&self) -> Result<QdrantServerInfo, rspc::Error>;
+}
+
+pub trait P2pTrait {
+    fn node(&self) -> Result<Node, rspc::Error>;
 }

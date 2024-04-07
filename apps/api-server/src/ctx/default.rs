@@ -1,5 +1,5 @@
 // Ctx 和 Store 的默认实现，主要给 api_server/main 用，不过目前 CtxWithLibrary 的实现也是可以给 tauri 用的，就先用着
-use super::traits::{CtxStore, CtxWithLibrary, StoreError};
+use super::traits::{CtxStore, CtxWithLibrary, P2pTrait, StoreError};
 use crate::{
     ai::{models::get_model_info_by_id, AIHandler},
     download::{DownloadHub, DownloadReporter, DownloadStatus},
@@ -10,6 +10,7 @@ use async_trait::async_trait;
 use content_library::{
     load_library, make_sure_collection_created, Library, QdrantCollectionInfo, QdrantServerInfo,
 };
+use p2p::Node;
 use std::{
     boxed::Box,
     fmt::Debug,
@@ -76,11 +77,13 @@ pub struct Ctx<S: CtxStore> {
     is_busy: Arc<Mutex<AtomicBool>>, // is loading or unloading a library
     local_data_root: PathBuf,
     resources_dir: PathBuf,
+    temp_dir: PathBuf,
     store: Arc<Mutex<S>>,
     current_library: Arc<Mutex<Option<Library>>>,
     tx: Arc<Mutex<Option<Sender<TaskPayload>>>>,
     ai_handler: Arc<Mutex<Option<AIHandler>>>,
     download_hub: Arc<Mutex<Option<DownloadHub>>>,
+    node: Arc<Mutex<Node>>,
 }
 
 impl<S: CtxStore> Clone for Ctx<S> {
@@ -94,6 +97,8 @@ impl<S: CtxStore> Clone for Ctx<S> {
             ai_handler: self.ai_handler.clone(),
             is_busy: self.is_busy.clone(),
             download_hub: self.download_hub.clone(),
+            temp_dir: self.temp_dir.clone(),
+            node: Arc::clone(&self.node),
         }
     }
 }
@@ -117,16 +122,36 @@ impl Drop for BusyGuard {
 // pub const R: Rspc<Ctx> = Rspc::new();
 
 impl<S: CtxStore> Ctx<S> {
-    pub fn new(local_data_root: PathBuf, resources_dir: PathBuf, store: Arc<Mutex<S>>) -> Self {
+    pub fn new(
+        local_data_root: PathBuf,
+        resources_dir: PathBuf,
+        temp_dir: PathBuf,
+        store: Arc<Mutex<S>>,
+        node: Arc<Mutex<Node>>,
+    ) -> Self {
         Self {
             local_data_root,
             resources_dir,
+            temp_dir,
             store,
             current_library: Arc::new(Mutex::new(None)),
             tx: Arc::new(Mutex::new(None)),
             ai_handler: Arc::new(Mutex::new(None)),
             is_busy: Arc::new(Mutex::new(AtomicBool::new(false))),
             download_hub: Arc::new(Mutex::new(None)),
+            node,
+        }
+    }
+}
+
+impl<S: CtxStore + Send> P2pTrait for Ctx<S> {
+    fn node(&self) -> Result<Node, rspc::Error> {
+        match self.node.lock() {
+            Ok(node) => Ok(node.clone()),
+            Err(e) => Err(rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                e.to_string(),
+            )),
         }
     }
 }
@@ -179,6 +204,10 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
     fn library_id_in_store(&self) -> Option<String> {
         let store = self.store.lock().unwrap();
         store.get("current-library-id")
+    }
+
+    fn get_temp_dir(&self) -> PathBuf {
+        self.temp_dir.clone()
     }
 
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
