@@ -92,8 +92,8 @@ export default function Sidebar() {
           <Icon.Briefcase className="h-4 w-4 text-ink/70 mr-2" />
           视频任务
         </Link>
-        <Link href="/debug/library" className={menuClassNames('/debug/library')}>
-          <span className="font-light text-neutral-400">本地文件(Debug)</span>
+        <Link href="/debug/ui" className={menuClassNames('/debug/ui')}>
+          <span className="font-light text-neutral-400">Debug</span>
         </Link>
       </div>
       <div className='absolute bottom-3 lett-3 text-sm'>

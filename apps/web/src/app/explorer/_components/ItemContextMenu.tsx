@@ -2,7 +2,7 @@ import { useExplorerContext } from '@/Explorer/hooks'
 import { ExplorerItem } from '@/Explorer/types'
 import { useExplorerStore } from '@/Explorer/store'
 import { rspc } from '@/lib/rspc'
-import { ContextMenuPrimitive as ContextMenu } from '@muse/ui/v1/context-menu'
+import { ContextMenu } from '@muse/ui/v2/context-menu'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback } from 'react'
@@ -14,13 +14,6 @@ import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 type ItemContextMenuProps = {
   data: ExplorerItem
 }
-
-const ContextMenuItem = twx(ContextMenu.Item)`
-relative cursor-default select-none outline-none
-focus:bg-accent focus:text-white hover:bg-accent hover:text-white
-data-[disabled]:pointer-events-none data-[disabled]:opacity-50
-flex items-center justify-start rounded-md px-2 py-2 text-sm
-`
 
 const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuProps>(function ItemContextMenuComponent(
   { data, ...prpos },
@@ -103,41 +96,33 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   )
 
   return (
-    <ContextMenu.Content
-      ref={forwardedRef as any}
-      className={classNames(
-        "w-60 rounded-md text-ink bg-app-box border border-app-line p-1 shadow-lg",
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95",
-      )}
-      {...prpos}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <ContextMenuItem onSelect={handleOpen} disabled={explorer.selectedItems.size > 1 }>
-        <div className="mx-1 truncate text-xs">打开</div>
-      </ContextMenuItem>
-      <ContextMenuItem onSelect={handleShowInspector} disabled={explorer.selectedItems.size > 1 }>
-        <div className="mx-1 truncate text-xs">查看详情</div>
-      </ContextMenuItem>
-      {/* <ContextMenuItem onSelect={() => {}} disabled={explorer.selectedItems.size > 1 }>
-        <div className="mx-1 truncate text-xs">预览</div>
-      </ContextMenuItem> */}
+    <ContextMenu.Content ref={forwardedRef as any} {...prpos} onClick={(e) => e.stopPropagation()}>
+      <ContextMenu.Item onSelect={handleOpen} disabled={explorer.selectedItems.size > 1 }>
+        <div>打开</div>
+      </ContextMenu.Item>
+      <ContextMenu.Item onSelect={handleShowInspector} disabled={explorer.selectedItems.size > 1 }>
+        <div>查看详情</div>
+      </ContextMenu.Item>
+      {/* <ContextMenu.Item onSelect={() => {}} disabled={explorer.selectedItems.size > 1 }>
+        <div>预览</div>
+      </ContextMenu.Item> */}
       <ContextMenu.Separator className='h-px bg-app-line my-1' />
-      <ContextMenuItem onSelect={handleProcessMetadata}>
-        <div className="mx-1 truncate text-xs">刷新视频信息</div>
-      </ContextMenuItem>
-      <ContextMenuItem onSelect={() => foldersDialog.setOpen(true)}>
-        <div className="mx-1 truncate text-xs">移动</div>
-      </ContextMenuItem>
-      <ContextMenuItem onSelect={handleRename} disabled={explorer.selectedItems.size > 1 }>
-        <div className="mx-1 truncate text-xs">重命名</div>
-      </ContextMenuItem>
+      <ContextMenu.Item onSelect={handleProcessMetadata}>
+        <div>刷新视频信息</div>
+      </ContextMenu.Item>
+      <ContextMenu.Item onSelect={() => foldersDialog.setOpen(true)}>
+        <div>移动</div>
+      </ContextMenu.Item>
+      <ContextMenu.Item onSelect={handleRename} disabled={explorer.selectedItems.size > 1 }>
+        <div>重命名</div>
+      </ContextMenu.Item>
       <ContextMenu.Separator className='h-px bg-app-line my-1' />
-      <ContextMenuItem
-        className={classNames('text-red-600 focus:bg-red-500/90 focus:text-white hover:bg-red-500/90 hover:text-white')}
+      <ContextMenu.Item
+        variant='destructive'
         onSelect={handleDelete}
       >
-        <div className="mx-1 truncate text-xs">删除</div>
-      </ContextMenuItem>
+        <div>删除</div>
+      </ContextMenu.Item>
     </ContextMenu.Content>
   )
 })

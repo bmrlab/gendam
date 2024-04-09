@@ -5,6 +5,7 @@
   "sideEffects": false,
   "exports": {
     "./v1/*": "./src/v1/*.tsx",
+    "./v2/*": "./src/v2/*.tsx",
     "./icons": "./src/icons/index.tsx"
   },
   "dependencies": {

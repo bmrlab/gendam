@@ -2,7 +2,7 @@
 import { useExplorerContext, useExplorerViewContext } from '@/Explorer/hooks'
 import { useExplorerStore } from '@/Explorer/store'
 import { type ExplorerItem } from '@/Explorer/types'
-import { ContextMenuPortal, ContextMenuRoot, ContextMenuTrigger } from '@muse/ui/v1/context-menu'
+import { ContextMenu } from '@muse/ui/v2/context-menu'
 import { PropsWithChildren, useCallback, type HTMLAttributes } from 'react'
 
 // see spacedrive's `interface/app/$libraryId/Explorer/View/ViewItem.tsx`
@@ -29,13 +29,13 @@ export default function ViewItem({ data, children, ...props }: ViewItemProps) {
   }, [explorerStore, explorer, data])
 
   return (
-    <ContextMenuRoot onOpenChange={handleContextMenuOpenChange}>
-      <ContextMenuTrigger>
+    <ContextMenu.Root onOpenChange={handleContextMenuOpenChange}>
+      <ContextMenu.Trigger>
         {children}
-      </ContextMenuTrigger>
-      <ContextMenuPortal>
+      </ContextMenu.Trigger>
+      <ContextMenu.Portal>
         {explorerViewContext.contextMenu && explorerViewContext.contextMenu(data)}
-      </ContextMenuPortal>
-    </ContextMenuRoot>
+      </ContextMenu.Portal>
+    </ContextMenu.Root>
   )
 }

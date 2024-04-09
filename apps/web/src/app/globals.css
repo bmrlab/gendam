@@ -31,9 +31,9 @@ accent: 高亮色，我们是蓝色
     /* main app 主界面 */
     --color-app: var(--light-hue) 5% 100%;
     --color-app-box: var(--light-hue) 5% 100%;
-    --color-app-hover: var(--light-hue) 5% 92%;
+    --color-app-hover: var(--light-hue) 5% 95%;
     --color-app-line: var(--light-hue) 5% 95%;
-    --color-app-overlay: var(--light-hue) 5% 95%;
+    --color-app-overlay: var(--light-hue) 5% 96%;
     /* toolbar 顶部工具栏和底部状态栏 */
     --color-toolbar: var(--light-hue) 5% 100%;
     --color-toolbar-hover: var(--light-hue) 5% 95%;
