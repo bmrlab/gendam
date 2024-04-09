@@ -23,7 +23,7 @@ tauri = { version = "1.5.4", features = [ "dialog-message", "os-all", "path-all"
   "fs-all",
   "devtools",
 ] }
-tauri-plugin-store = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
+tauri-plugin-store = { git = "https://github.com/tauri-apps/plugins-workspace", rev = "dbe0277824676b978ed616ddb28f988689df6f7e" } # branch = "v1" }
 prisma-lib = { path = "../../../crates/prisma" }
 file-downloader = { path = "../../../crates/file-downloader" }
 file-handler = { path = "../../../crates/file-handler", features = [
