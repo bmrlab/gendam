@@ -88,12 +88,12 @@ export default function VideoTaskItem({
     ] as DropdownMenuOptions[]
   }, [assetObject.id, _isNotDone, mutateAsync])
 
-  return (
+  return <>
     <div
       {...props}
       className={classNames(
-        'flex w-full items-center justify-start gap-2 border-b border-app-line px-4 py-3',
-        isSelect ? 'bg-accent/10' : null,
+        'flex items-center justify-start cursor-default w-full gap-2 rounded-md text-sm px-4 py-3',
+        isSelect ? 'bg-accent text-white' : null,
       )}
     >
       <div
@@ -117,16 +117,16 @@ export default function VideoTaskItem({
       <div className="grid flex-1">
         {materializedPath ? (
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium leading-4 text-ink">{name}</span>
-            <span className="truncate text-xs font-normal leading-4 text-ink/50">{materializedPath}</span>
+            <span className="text-xs font-medium leading-4">{name}</span>
+            <span className="truncate text-xs font-normal leading-4 opacity-60">{materializedPath}</span>
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <span className="truncate text-xs font-normal leading-4 text-ink/50">已删除</span>
+            <span className="truncate text-xs font-normal leading-4 opacity-60">已删除</span>
           </div>
         )}
         <div className="flex w-full items-center justify-between">
-          <div className="flex items-center text-xs font-normal leading-4 text-ink/50">
+          <div className="flex items-center text-xs font-normal leading-4 opacity-60">
             <span>{formatDuration(mediaData?.duration ?? 0)}</span>
             <div className="mx-2">·</div>
             <span>{formatBytes(mediaData?.size ?? 0)}</span>
@@ -146,13 +146,13 @@ export default function VideoTaskItem({
               <MuseTaskBadge key={index} name={taskName} status={status} />
             ))}
             <TaskDropdownMenu
-              triggerIcon={<Icon.moreVertical className="size-6 cursor-pointer text-ink" />}
+              triggerIcon={<Icon.moreVertical className="size-6 cursor-pointer" />}
               options={moreActionOptions()}
               contentClassName="w-48"
             >
               <div
                 className={classNames(
-                  'inline-flex items-center justify-center size-6 rounded border border-app-line',
+                  'inline-flex items-center justify-center size-6 rounded border',
                   'cursor-default data-[state=open]:bg-app-hover'
                 )}
               >
@@ -164,7 +164,8 @@ export default function VideoTaskItem({
         </div>
       </div>
     </div>
-  )
+    <div className="h-px mx-2 bg-app-line my-px"></div>
+  </>
 }
 
 const NoAudio = () => {

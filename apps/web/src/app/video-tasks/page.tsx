@@ -45,7 +45,7 @@ export default function VideoTasksPage() {
     return (
       <RadioGroup
         defaultValue={filter as string}
-        className="flex px-8 py-2"
+        className="flex px-8 py-4 mb-2 border-b border-app-line"
         value={filter as string}
         onValueChange={(filter) => setFilter(filter as TaskListRequestFilter)}
       >

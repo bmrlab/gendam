@@ -54,7 +54,7 @@ export default function TaskContextMenu({ video, fileHash, isNotDone, children }
 
   return (
     <ContextMenuRoot>
-      <ContextMenuTrigger className="flex cursor-default items-center justify-center rounded-md text-sm">
+      <ContextMenuTrigger>
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent className="w-60 rounded-md text-ink bg-app-box border border-app-line p-1 shadow-lg">
