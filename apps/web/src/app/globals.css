@@ -1,58 +1,68 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/*
+区域
+app: 中间的主界面
+sidebar: 左右两侧的边栏
+toolbar: 顶部和底部的工具栏
+
+每个区域定义几种颜色语义
+背景色: 直接用区域名字，比如 --color-app
+ink: 文字颜色
+line: 边框、分割线、等
+box: 对话框、菜单、等
+overlay: 高亮区域（比如间隔行、输入框、等）
+hover: hover和选中的交互区域
+
+全局的语义颜色
+accent: 高亮色，我们是蓝色
+*/
 
 @layer base {
   :root {
-    --dark-hue: 235;
-	  --light-hue: 235;
-    /* --foreground-rgb: 0 0 0; */
-    /* --background-rgb: 250 250 250; */
+    --dark-hue: 211;
+    --light-hue: 211;
 
     /* accent theme colors */
-	  --color-accent: 208 100% 57%;
+    --color-accent: 211 100% 50%;
     /* text */
-    --color-ink: var(--light-hue) 5% 20%;
+    --color-ink: var(--light-hue) 5% 5%;
     /* main app 主界面 */
     --color-app: var(--light-hue) 5% 100%;
-    --color-app-box: var(--light-hue) 5% 98%;
-    --color-app-hover: var(--light-hue) 5% 95%;
-    --color-app-line: var(--light-hue) 5% 90%;
-    --color-app-overlay: var(--light-hue) 5% 93%;
+    --color-app-box: var(--light-hue) 5% 100%;
+    --color-app-hover: var(--light-hue) 5% 92%;
+    --color-app-line: var(--light-hue) 5% 92%;
+    --color-app-overlay: var(--light-hue) 5% 95%;
     /* toolbar 顶部工具栏和底部状态栏 */
     --color-toolbar: var(--light-hue) 5% 100%;
-    --color-toolbar-hover: var(--light-hue) 15% 92%;
-	  --color-toolbar-line: var(--light-hue) 5% 95%;
+    --color-toolbar-hover: var(--light-hue) 5% 95%;
+    --color-toolbar-line: var(--light-hue) 5% 95%;
     /* sidebar 两侧边栏 */
-    --color-sidebar: var(--light-hue) 5% 96%;
-    --color-sidebar-box: var(--light-hue) 5% 100%;
-    --color-sidebar-hover: var(--light-hue) 10% 90%;
-    --color-sidebar-line: var(--light-hue) 10% 85%;
+    --color-sidebar: var(--light-hue) 5% 97%;
+    --color-sidebar-hover: var(--light-hue) 5% 92%;
+    --color-sidebar-line: var(--light-hue) 5% 92%;
   }
 
   html.dark {
-    /* --foreground-rgb: 250 250 250; */
-    /* --background-rgb: 0 0 0; */
-
     /* accent theme colors */
-	  --color-accent: 208 100% 57%;
+    --color-accent: 211 100% 50%;
     /* text */
-	  --color-ink: var(--dark-hue) 0% 100%;
+    --color-ink: var(--dark-hue) 0% 95%;
     /* main */
-    --color-app: var(--dark-hue) 15% 13%;
-	  --color-app-box: var(--dark-hue) 15% 18%;
-    --color-app-hover: var(--dark-hue) 15% 25%;
-    --color-app-line: var(--dark-hue) 15% 23%;
-    --color-app-overlay: var(--dark-hue) 15% 17%;
+    --color-app: var(--dark-hue) 0% 15%;
+    --color-app-box: var(--dark-hue) 0% 21%;
+    --color-app-hover: var(--dark-hue) 0% 24%;
+    --color-app-line: var(--dark-hue) 0% 24%;
+    --color-app-overlay: var(--dark-hue) 0% 19%;
     /* toolbar 顶部工具栏和底部状态栏 */
-    --color-toolbar: var(--dark-hue) 25% 5%;
-    --color-toolbar-hover: var(--dark-hue) 15% 30%;
-	  --color-toolbar-line: var(--dark-hue) 15% 11%;
+    --color-toolbar: var(--dark-hue) 0% 15%;
+    --color-toolbar-hover: var(--dark-hue) 0% 21%;
+    --color-toolbar-line: var(--dark-hue) 0% 21%;
     /* sidebar 两侧边栏 */
-    --color-sidebar: var(--dark-hue) 15% 7%;
-    --color-sidebar-box: var(--dark-hue) 15% 16%;
-    --color-sidebar-hover: var(--dark-hue) 15% 24%;
-    --color-sidebar-line: var(--dark-hue) 15% 23%;
+    --color-sidebar: var(--dark-hue) 0% 25%;
+    --color-sidebar-hover: var(--dark-hue) 0% 31%;
+    --color-sidebar-line: var(--dark-hue) 0% 31%;
   }
 }
 

@@ -7,14 +7,14 @@ const icons = {
     <svg {...props} width="16" height="16" viewBox="0 0 16 16" fill="transparent" xmlns="http://www.w3.org/2000/svg">
       <path
         d="M13.5623 11.5397V2.43768H4.45996"
-        stroke="white"
+        stroke="currentColor"
         strokeWidth="1.01132"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
         d="M11.54 4.46045H2.43774V13.5624H11.54V4.46045Z"
-        stroke="white"
+        stroke="currentColor"
         strokeWidth="1.01132"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -129,7 +129,7 @@ const icons = {
       </g>
       <defs>
         <clipPath id="clip0_154_70728">
-          <rect width="7.49" height="7.49" fill="white" transform="translate(6.125)" />
+          <rect width="7.49" height="7.49" fill="currentColor" transform="translate(6.125)" />
         </clipPath>
       </defs>
     </svg>

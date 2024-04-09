@@ -36,7 +36,6 @@ const config = {
         },
         sidebar: {
           DEFAULT: 'hsl(var(--color-sidebar) / <alpha-value>)',
-          box: 'hsl(var(--color-sidebar-box) / <alpha-value>)',
           hover: 'hsl(var(--color-sidebar-hover) / <alpha-value>)',
           line: 'hsl(var(--color-sidebar-line) / <alpha-value>)',
         },

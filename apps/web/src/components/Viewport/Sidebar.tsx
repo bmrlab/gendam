@@ -41,7 +41,7 @@ export default function Sidebar() {
 
   const menuClassNames = (path: string) => {
     return classNames(
-      'mb-1 block cursor-default rounded-md px-4 py-2 hover:bg-sidebar-hover',
+      'mb-1 block cursor-default rounded-md px-4 py-2 hover:bg-sidebar-hover flex items-center justify-start',
       pathname === path && 'bg-sidebar-hover',
     )
   }
@@ -60,13 +60,13 @@ export default function Sidebar() {
           <div
             ref={panelRef}
             className="absolute left-32 top-3 z-10 w-60 rounded-md
-              border border-sidebar-line bg-sidebar-box p-1 shadow-sm"
+              border border-app-line bg-app-box text-ink p-1 shadow-sm"
           >
             {libraries.map((library, index: number) => {
               return (
                 <div
                   key={library.id}
-                  className="flex cursor-default items-center justify-start rounded-md px-3 py-2 hover:bg-sidebar-hover"
+                  className="flex cursor-default items-center justify-start rounded-md px-3 py-2 hover:bg-app-hover/50"
                   onClick={() => switchLibrary(library)}
                 >
                   <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>
@@ -81,12 +81,15 @@ export default function Sidebar() {
       </div>
       <div className="text-sm">
         <Link href="/explorer" className={menuClassNames('/explorer')}>
+          <Icon.copy className="h-4 w-4 text-ink/60 mr-1" />
           素材库
         </Link>
         <Link href="/search" className={menuClassNames('/search')}>
+          <Icon.copy className="h-4 w-4 text-ink/60 mr-1" />
           搜索
         </Link>
         <Link href="/video-tasks" className={menuClassNames('/video-tasks')}>
+          <Icon.copy className="h-4 w-4 text-ink/60 mr-1" />
           视频任务
         </Link>
         <Link href="/debug/library" className={menuClassNames('/debug/library')}>

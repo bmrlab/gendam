@@ -85,10 +85,10 @@ export default function Header() {
           </div>
           <UploadButton onSelectFiles={handleSelectFiles} />
         </div>
-        <div className="flex items-center gap-0.5 justify-self-end text-[#676C77]">
+        <div className="flex items-center gap-0.5 justify-self-end text-ink/50">
           <div
             className={classNames(
-              "h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover",
+              "h-6 w-6 cursor-pointer rounded p-1 hover:bg-toolbar-hover",
               explorer.settings.layout === 'grid' && 'bg-toolbar-hover'
             )}
             onClick={() => explorer.settings.update({ layout: 'grid' })}
@@ -97,7 +97,7 @@ export default function Header() {
           </div>
           <div
             className={classNames(
-              "h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover",
+              "h-6 w-6 cursor-pointer rounded p-1 hover:bg-toolbar-hover",
               explorer.settings.layout === 'list' && 'bg-toolbar-hover'
             )}
             onClick={() => explorer.settings.update({ layout: 'list' })}
@@ -106,16 +106,19 @@ export default function Header() {
           </div>
           <div
             className={classNames(
-              "h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover",
+              "h-6 w-6 cursor-pointer rounded p-1 hover:bg-toolbar-hover",
               explorer.settings.layout === 'media' && 'bg-toolbar-hover'
             )}
             onClick={() => explorer.settings.update({ layout: 'media' })}
           >
             <Icon.image className="size-4" />
           </div>
-          <div className="w-px h-6 mx-1 bg-app-line"></div>
+          <div className="w-px h-4 mx-1 bg-toolbar-line"></div>
           <div
-            className="h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover"
+            className={classNames(
+              "h-6 w-6 cursor-pointer rounded p-1 hover:bg-toolbar-hover",
+              inspector.show && 'bg-toolbar-hover'
+            )}
             onClick={() => inspector.setShow(!inspector.show)}
           >
             <Icon.viewVertical className="size-4" />
