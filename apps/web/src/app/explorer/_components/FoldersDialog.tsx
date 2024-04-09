@@ -4,8 +4,8 @@ import { create } from 'zustand'
 import { useToast } from '@/components/Toast/use-toast'
 import { client, rspc } from '@/lib/rspc'
 import { Folder_Light } from '@muse/assets/images'
-import { Button } from '@muse/ui/v1/button'
-import { DialogPrimitive as Dialog } from '@muse/ui/v1/dialog'
+import { Button } from '@muse/ui/v2/button'
+import { Dialog } from '@muse/ui/v2/dialog'
 import { RSPCError } from '@rspc/client'
 import classNames from 'classnames'
 import Image from 'next/image'
@@ -93,18 +93,8 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
       onOpenChange={(open) => foldersDialog.setOpen(open)}
     >
       <Dialog.Portal>
-        <Dialog.Overlay
-          className="fixed inset-0 z-50 bg-black/30  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-          onClick={(e) => e.stopPropagation()}
-        />
-        <Dialog.Content
-          className={classNames(
-            'fixed left-[50%] top-[50%] z-50 w-[38rem] max-w-full translate-x-[-50%] translate-y-[-50%] overflow-auto',
-            'rounded-lg border border-app-line bg-app-box text-ink shadow-lg',
-            'duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]',
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
+        <Dialog.Overlay onClick={(e) => e.stopPropagation()} />
+        <Dialog.Content onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center justify-start border-b border-app-line px-4 py-3">
             <div className="text-sm">选择文件夹</div>
             <div className="ml-2 flex items-center gap-1 text-xs text-ink/50" onClick={() => goto('-1')}>
@@ -137,14 +127,10 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
             <div className="text-xs">{currentPath}</div>
             <div className="mr-auto"></div>
             <Dialog.Close asChild>
-              <Button variant="outline" size="sm">
-                取消
-              </Button>
+              <Button variant="outline" size="sm">取消</Button>
             </Dialog.Close>
             <Dialog.Close asChild onClick={() => onConfirm(currentExplorerItem)}>
-              <Button variant="accent" size="sm">
-                选择当前文件夹
-              </Button>
+              <Button variant="accent" size="sm">选择当前文件夹</Button>
             </Dialog.Close>
             {/* {Array.from(explorer.selectedItems).map((item) => {
               return (

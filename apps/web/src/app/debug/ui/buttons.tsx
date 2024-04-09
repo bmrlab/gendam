@@ -1,5 +1,4 @@
 import { Button } from '@muse/ui/v2/button'
-// import { Button } from '@muse/ui/v1/button'
 
 export default function Icons() {
   const buttons = []

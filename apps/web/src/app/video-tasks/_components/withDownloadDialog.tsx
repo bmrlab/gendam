@@ -1,5 +1,5 @@
 'use client'
-import { Button, ButtonProps } from '@muse/ui/v1/button'
+import { Button, ButtonProps } from '@muse/ui/v2/button'
 import React from 'react'
 
 interface WithOpenProps {

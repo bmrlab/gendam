@@ -88,28 +88,26 @@ export default function AudioExport() {
   }
 
   return (
-    <div className="flex size-full items-center">
-      <div className="grid flex-1 border-r">
-        <div className="w-full py-4 px-6">
-          <div className="no-scrollbar flex gap-2 flex-wrap content-start items-start justify-start w-full overflow-x-scroll whitespace-nowrap rounded px-0.5 py-0.5">
-            {Object.entries(FileTypeEnum).map(([key, value]) => {
-              return (
-                <label
-                  key={key}
-                  className={cn(
-                    'select-none rounded px-3 py-2 text-xs font-medium leading-5 transition hover:cursor-pointer ',
-                    fileType === value ? 'bg-app-hover shadow-xs' : 'hover:bg-app-hover',
-                  )}
-                  onClick={() => setFileType(value)}
-                >
-                  {value}
-                </label>
-              )
-            })}
-          </div>
+    <div className="flex-1 flex items-stretch overflow-hidden">
+      <div className="flex-1 flex flex-col border-r border-app-line overflow-hidden">
+        <div className="flex gap-2 flex-wrap content-start items-start justify-start w-full py-4 px-6">
+          {Object.entries(FileTypeEnum).map(([key, value]) => {
+            return (
+              <label
+                key={key}
+                className={cn(
+                  'select-none rounded px-3 py-2 text-xs font-medium leading-5 transition hover:cursor-pointer ',
+                  fileType === value ? 'bg-app-hover shadow-xs' : 'hover:bg-app-hover',
+                )}
+                onClick={() => setFileType(value)}
+              >
+                {value}
+              </label>
+            )
+          })}
         </div>
-        <div className="relative p-6 pt-0">
-          <ScrollArea className="h-[30rem] w-full rounded-md border border-app-line">
+        <div className="flex-1 relative px-6 pb-6 overflow-hidden">
+          <ScrollArea className="h-full w-full rounded-md bg-app-overlay border border-app-line">
             <p className="p-4 text-sm font-normal leading-8">
               {(currentContent || '').split('\n').map((line: string, index: number) => (
                 <Fragment key={index}>
@@ -120,7 +118,7 @@ export default function AudioExport() {
             </p>
           </ScrollArea>
           <MuseBadge
-            className="absolute bottom-[34px] right-[34px]"
+            className="absolute bottom-8 right-8"
             onClick={() => navigator.clipboard.writeText(currentContent ?? '')}
           >
             <div className="flex gap-0.5">

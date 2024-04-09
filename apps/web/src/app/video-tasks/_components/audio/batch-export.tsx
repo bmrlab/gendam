@@ -6,7 +6,7 @@ import { AudioType, ExportInput } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
-import { Button } from '@muse/ui/v1/button'
+import { Button } from '@muse/ui/v2/button'
 import { ScrollArea } from '@muse/ui/v1/scroll-area'
 import Image from 'next/image'
 import { produce } from 'immer'
@@ -155,7 +155,7 @@ export default function BatchExport() {
         <Button variant="outline" size="md" onClick={() => setIsOpenAudioDialog(false)}>
           取消
         </Button>
-        <WithDownloadDialogButton variant="outline" size="md" onSelection={handleExport}>
+        <WithDownloadDialogButton variant="accent" size="md" onSelection={handleExport}>
           导出
         </WithDownloadDialogButton>
       </div>
