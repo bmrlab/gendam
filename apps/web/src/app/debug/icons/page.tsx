@@ -2,7 +2,7 @@ import Icon from '@muse/ui/icons'
 
 export default function Debug() {
   return (
-    <div className='h-screen flex-1 overflow-auto'>
+    <div className='h-screen flex-1 overflow-auto text-red-500'>
       <div className='flex items-center gap-2'><Icon.Trash className="w-4 h-4" /> Trash</div>
       <div className='flex items-center gap-2'><Icon.Upload className="w-4 h-4" /> Upload</div>
       <div className='flex items-center gap-2'><Icon.Download className="w-4 h-4" /> Download</div>

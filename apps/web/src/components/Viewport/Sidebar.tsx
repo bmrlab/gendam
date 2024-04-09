@@ -7,7 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Icon from '@/components/Icon'
+import Icon from '@muse/ui/icons'
 
 export default function Sidebar() {
   const librariesQuery = rspc.useQuery(['libraries.list'])
@@ -41,7 +41,7 @@ export default function Sidebar() {
 
   const menuClassNames = (path: string) => {
     return classNames(
-      'mb-1 block cursor-default rounded-md px-4 py-2 hover:bg-sidebar-hover flex items-center justify-start',
+      'mb-1 block cursor-default rounded-md px-2 py-2 hover:bg-sidebar-hover flex items-center justify-start',
       pathname === path && 'bg-sidebar-hover',
     )
   }
@@ -54,7 +54,7 @@ export default function Sidebar() {
           <div className="mx-2 w-32 truncate text-xs font-semibold">
             {currentLibrary.settings?.title ?? "Untitled"} ({currentLibrary.id})
           </div>
-          <Icon.arrowUpAndDown className="h-4 w-4"></Icon.arrowUpAndDown>
+          <Icon.UpAndDownArrow className="h-4 w-4"></Icon.UpAndDownArrow>
         </div>
         {selectPanelOpen && (
           <div
@@ -81,15 +81,15 @@ export default function Sidebar() {
       </div>
       <div className="text-sm">
         <Link href="/explorer" className={menuClassNames('/explorer')}>
-          <Icon.copy className="h-4 w-4 text-ink/60 mr-1" />
+          <Icon.File className="h-4 w-4 text-ink/70 mr-2" />
           素材库
         </Link>
         <Link href="/search" className={menuClassNames('/search')}>
-          <Icon.copy className="h-4 w-4 text-ink/60 mr-1" />
+          <Icon.MagnifyingGlass className="h-4 w-4 text-ink/70 mr-2" />
           搜索
         </Link>
         <Link href="/video-tasks" className={menuClassNames('/video-tasks')}>
-          <Icon.copy className="h-4 w-4 text-ink/60 mr-1" />
+          <Icon.Briefcase className="h-4 w-4 text-ink/70 mr-2" />
           视频任务
         </Link>
         <Link href="/debug/library" className={menuClassNames('/debug/library')}>
