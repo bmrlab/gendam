@@ -1,5 +1,6 @@
 use crate::{ai::AIHandler, task_queue::TaskPayload};
 use content_library::Library;
+use file_handler::video::{VideoHandler, VideoTaskType};
 use std::{
     boxed::Box,
     path::PathBuf,
@@ -31,6 +32,6 @@ pub trait CtxWithLibrary {
 
     fn library(&self) -> Result<Library, rspc::Error>;
 
-    fn get_task_tx(&self) -> Arc<Mutex<Sender<TaskPayload>>>;
+    fn get_task_tx(&self) -> Arc<Mutex<Sender<TaskPayload<VideoHandler, VideoTaskType>>>>;
     fn get_ai_handler(&self) -> AIHandler;
 }

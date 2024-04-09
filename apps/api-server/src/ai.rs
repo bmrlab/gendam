@@ -1,4 +1,4 @@
-use ai::{blip::BLIP, clip::CLIP, whisper::Whisper, BatchHandler};
+use ai::{blip::BLIP, clip::CLIP, text_embedding::TextEmbedding, whisper::Whisper, BatchHandler};
 use std::{path::PathBuf, time::Duration};
 
 #[derive(Clone, Debug)]
@@ -6,6 +6,7 @@ pub struct AIHandler {
     pub clip: BatchHandler<CLIP>,
     pub blip: BatchHandler<BLIP>,
     pub whisper: BatchHandler<Whisper>,
+    pub text_embedding: BatchHandler<TextEmbedding>,
 }
 
 pub fn init_ai_handlers(resources_dir: PathBuf) -> anyhow::Result<AIHandler> {
@@ -15,9 +16,9 @@ pub fn init_ai_handlers(resources_dir: PathBuf) -> anyhow::Result<AIHandler> {
     let blip_handler = BatchHandler::new(
         move || {
             let resources_dir_clone_clone = resources_dir_clone.clone();
-            Box::pin(async move {
+            async move {
                 ai::blip::BLIP::new(resources_dir_clone_clone, ai::blip::BLIPModel::Base).await
-            })
+            }
         },
         Some(offload_duration.clone()),
     )?;
@@ -26,13 +27,9 @@ pub fn init_ai_handlers(resources_dir: PathBuf) -> anyhow::Result<AIHandler> {
     let clip_handler = BatchHandler::new(
         move || {
             let resources_dir_clone_clone = resources_dir_clone.clone();
-            Box::pin(async move {
-                ai::clip::CLIP::new(
-                    ai::clip::CLIPModel::ViTB32,
-                    resources_dir_clone_clone,
-                )
-                .await
-            })
+            async move {
+                ai::clip::CLIP::new(ai::clip::CLIPModel::ViTB32, resources_dir_clone_clone).await
+            }
         },
         Some(offload_duration.clone()),
     )?;
@@ -41,7 +38,16 @@ pub fn init_ai_handlers(resources_dir: PathBuf) -> anyhow::Result<AIHandler> {
     let whisper_handler = BatchHandler::new(
         move || {
             let resources_dir_clone_clone = resources_dir_clone.clone();
-            Box::pin(async move { Whisper::new(resources_dir_clone_clone).await })
+            async move { Whisper::new(resources_dir_clone_clone).await }
+        },
+        Some(offload_duration.clone()),
+    )?;
+
+    let resources_dir_clone = resources_dir.clone();
+    let text_embedding_handler = BatchHandler::new(
+        move || {
+            let resources_dir_clone_clone = resources_dir_clone.clone();
+            async move { TextEmbedding::new(resources_dir_clone_clone).await }
         },
         Some(offload_duration.clone()),
     )?;
@@ -50,5 +56,6 @@ pub fn init_ai_handlers(resources_dir: PathBuf) -> anyhow::Result<AIHandler> {
         clip: clip_handler,
         blip: blip_handler,
         whisper: whisper_handler,
+        text_embedding: text_embedding_handler,
     })
 }

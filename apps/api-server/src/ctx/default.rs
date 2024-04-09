@@ -5,6 +5,7 @@ use crate::{
     task_queue::{init_task_pool, TaskPayload},
 };
 use content_library::{load_library, Library};
+use file_handler::video::{VideoHandler, VideoTaskType};
 use std::{
     boxed::Box,
     path::PathBuf,
@@ -72,7 +73,7 @@ pub struct Ctx<S: CtxStore> {
     resources_dir: PathBuf,
     store: Arc<Mutex<S>>,
     current_library: Arc<Mutex<Option<Library>>>,
-    tx: Arc<Mutex<Sender<TaskPayload>>>,
+    tx: Arc<Mutex<Sender<TaskPayload<VideoHandler, VideoTaskType>>>>,
     ai_handler: AIHandler,
 }
 
@@ -173,7 +174,7 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
         }
     }
 
-    fn get_task_tx(&self) -> Arc<Mutex<Sender<TaskPayload>>> {
+    fn get_task_tx(&self) -> Arc<Mutex<Sender<TaskPayload<VideoHandler, VideoTaskType>>>> {
         self.tx.clone()
     }
 

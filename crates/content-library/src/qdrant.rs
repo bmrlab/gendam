@@ -1,9 +1,9 @@
 use qdrant_client::{
+    client::QdrantClient,
     qdrant::{
-        OptimizersConfigDiff,
-        vectors_config::Config, CreateCollection, Distance, VectorParams, VectorsConfig,
+        vectors_config::Config, CreateCollection, Distance, OptimizersConfigDiff, VectorParams,
+        VectorsConfig,
     },
-    client::QdrantClient
 };
 use std::{path::PathBuf, sync::Arc};
 use vector_db::{QdrantParams, QdrantServer};
@@ -21,19 +21,27 @@ pub async fn create_qdrant_server(qdrant_dir: PathBuf) -> Result<QdrantServer, (
     })?;
 
     let qdrant = qdrant_server.get_client().clone();
-    make_sure_collection_created(
-        qdrant.clone(),
-        vector_db::DEFAULT_COLLECTION_NAME,
-        vector_db::DEFAULT_COLLECTION_DIM,
-    )
-    .await
-    .map_err(|e| {
-        tracing::error!(
-            "failed to make sure collection created: {}, {}",
-            vector_db::DEFAULT_COLLECTION_NAME,
-            e
-        );
-    })?;
+
+    for (collection_name, collection_dim) in vec![
+        vector_db::DEFAULT_VISION_COLLECTION_NAME,
+        vector_db::DEFAULT_LANGUAGE_COLLECTION_NAME,
+    ]
+    .iter()
+    .zip(vec![
+        vector_db::DEFAULT_VISION_COLLECTION_DIM,
+        vector_db::DEFAULT_LANGUAGE_COLLECTION_DIM,
+    ]) {
+        make_sure_collection_created(qdrant.clone(), &collection_name, collection_dim)
+            .await
+            .map_err(|e| {
+                tracing::error!(
+                    "failed to make sure collection created: {}, {}",
+                    collection_name,
+                    e
+                );
+            })?;
+    }
+
     Ok(qdrant_server)
 }
 

@@ -4,7 +4,7 @@ use crate::{
     video::{AUDIO_FILE_NAME, TRANSCRIPT_FILE_NAME},
 };
 use ai::{
-    clip::CLIP,
+    text_embedding::TextEmbedding,
     whisper::{Whisper, WhisperItem, WhisperParams},
     BatchHandler,
 };
@@ -70,13 +70,11 @@ pub async fn save_transcript(
     Ok(())
 }
 
-#[deprecated(note = "this function need to be improved")]
-#[allow(dead_code)]
 pub async fn save_transcript_embedding(
     file_identifier: String,
     client: Arc<PrismaClient>,
     path: impl AsRef<Path>,
-    clip_model: BatchHandler<CLIP>,
+    text_embedding: BatchHandler<TextEmbedding>,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
     let whisper_results: Vec<WhisperItem> = {
@@ -86,7 +84,7 @@ pub async fn save_transcript_embedding(
         serde_json::from_reader(reader)?
     };
 
-    let clip_model = clip_model.clone();
+    let text_embedding = text_embedding.clone();
 
     for item in whisper_results {
         // if item is some like [MUSIC], just skip it
@@ -95,7 +93,7 @@ pub async fn save_transcript_embedding(
             continue;
         }
 
-        let clip_model = clip_model.clone();
+        let text_embedding = text_embedding.clone();
         let file_identifier = file_identifier.clone();
         let client = client.clone();
         let qdrant = qdrant.clone();
@@ -136,9 +134,9 @@ pub async fn save_transcript_embedding(
                 if let Err(e) = save_text_embedding(
                     &item.text, // but embedding english
                     payload,
-                    clip_model,
+                    text_embedding,
                     qdrant,
-                    vector_db::DEFAULT_COLLECTION_NAME,
+                    vector_db::DEFAULT_LANGUAGE_COLLECTION_NAME,
                 )
                 .await
                 {

@@ -1,10 +1,10 @@
 pub use self::decoder::VideoMetadata;
-use ai::{blip::BLIP, clip::CLIP, whisper::Whisper, BatchHandler};
+use ai::{blip::BLIP, clip::CLIP, text_embedding::TextEmbedding, whisper::Whisper, BatchHandler};
 use anyhow::Ok;
 pub use constants::*;
 use content_library::Library;
 use std::fmt::Display;
-use strum_macros::EnumDiscriminants;
+use strum_macros::{EnumDiscriminants, EnumString};
 
 mod constants;
 mod decoder;
@@ -84,9 +84,10 @@ pub struct VideoHandler {
     clip: Option<BatchHandler<CLIP>>,
     blip: Option<BatchHandler<BLIP>>,
     whisper: Option<BatchHandler<Whisper>>,
+    text_embedding: Option<BatchHandler<TextEmbedding>>,
 }
 
-#[derive(Clone, Debug, EnumDiscriminants, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, EnumDiscriminants, EnumString, PartialEq, Eq, Hash)]
 #[strum_discriminants(derive(strum_macros::Display))]
 pub enum VideoTaskType {
     Frame,
@@ -95,7 +96,6 @@ pub enum VideoTaskType {
     FrameCaptionEmbedding,
     Audio,
     Transcript,
-    #[allow(dead_code)]
     TranscriptEmbedding,
 }
 
@@ -128,6 +128,7 @@ impl VideoHandler {
             clip: None,
             blip: None,
             whisper: None,
+            text_embedding: None,
         })
     }
 
@@ -139,7 +140,7 @@ impl VideoHandler {
             VideoTaskType::FrameCaptionEmbedding => self.save_frame_caption_embedding().await,
             VideoTaskType::Audio => self.save_audio().await,
             VideoTaskType::Transcript => self.save_transcript().await,
-            _ => Ok(()),
+            VideoTaskType::TranscriptEmbedding => self.save_transcript_embedding().await,
         }
     }
 
@@ -153,7 +154,11 @@ impl VideoHandler {
 
         if let Some(with_audio) = with_audio {
             if with_audio {
-                task_types.extend_from_slice(&[VideoTaskType::Audio, VideoTaskType::Transcript]);
+                task_types.extend_from_slice(&[
+                    VideoTaskType::Audio,
+                    VideoTaskType::Transcript,
+                    VideoTaskType::TranscriptEmbedding,
+                ]);
             }
         }
 
@@ -182,6 +187,12 @@ impl VideoHandler {
             .ok_or(anyhow::anyhow!("Whisper is not enabled"))
     }
 
+    fn text_embedding(&self) -> anyhow::Result<BatchHandler<TextEmbedding>> {
+        self.text_embedding
+            .clone()
+            .ok_or(anyhow::anyhow!("Text Embedding is not enabled"))
+    }
+
     pub fn with_clip(self, clip: BatchHandler<CLIP>) -> Self {
         Self {
             clip: Some(clip),
@@ -199,6 +210,13 @@ impl VideoHandler {
     pub fn with_whisper(self, whisper: BatchHandler<Whisper>) -> Self {
         Self {
             whisper: Some(whisper),
+            ..self
+        }
+    }
+
+    pub fn with_text_embedding(self, text_embedding: BatchHandler<TextEmbedding>) -> Self {
+        Self {
+            text_embedding: Some(text_embedding),
             ..self
         }
     }
@@ -281,16 +299,15 @@ impl VideoHandler {
         .await
     }
 
-    #[deprecated(note = "deprecated for now, output language of transcript is not stable for now")]
     pub async fn save_transcript_embedding(&self) -> anyhow::Result<()> {
-        // utils::transcript::get_transcript_embedding(
-        //     self.file_identifier().into(),
-        //     self.client.clone(),
-        //     &self.transcript_path,
-        //     self.clip.clone(),
-        //     self.qdrant.clone(),
-        // )
-        // .await?;
+        utils::transcript::save_transcript_embedding(
+            self.file_identifier().into(),
+            self.library.prisma_client(),
+            self.artifacts_dir.join(TRANSCRIPT_FILE_NAME),
+            self.text_embedding()?,
+            self.library.qdrant_client(),
+        )
+        .await?;
 
         Ok(())
     }
@@ -330,7 +347,7 @@ impl VideoHandler {
             self.file_identifier().into(),
             self.library.prisma_client(),
             self.artifacts_dir.join(FRAME_DIR),
-            self.clip()?,
+            self.text_embedding()?,
             self.library.qdrant_client(),
         )
         .await?;

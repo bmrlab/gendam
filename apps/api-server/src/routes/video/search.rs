@@ -59,6 +59,7 @@ where
                 library.prisma_client(),
                 library.qdrant_client(),
                 ctx.get_ai_handler().clip,
+                ctx.get_ai_handler().text_embedding,
             )
             .await;
 
@@ -75,9 +76,11 @@ where
 
             let file_identifiers = search_results
                 .iter()
-                .map(|SearchResult { file_identifier, .. }| {
-                    file_identifier.clone()
-                })
+                .map(
+                    |SearchResult {
+                         file_identifier, ..
+                     }| { file_identifier.clone() },
+                )
                 .fold(Vec::new(), |mut acc, x| {
                     if !acc.contains(&x) {
                         acc.push(x);

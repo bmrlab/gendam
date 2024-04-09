@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::{anyhow, bail};
 use async_trait::async_trait;
-use ndarray::{s, Array1, Axis};
+use ndarray::{Array1, Axis};
 use ort::{CPUExecutionProvider, CoreMLExecutionProvider, GraphOptimizationLevel, Session};
 use std::path::Path;
 use tokenizers::Tokenizer;
@@ -13,6 +13,7 @@ pub struct TextEmbedding {
     model: Session,
     tokenizer: Tokenizer,
     dim: usize,
+    max_len: usize,
 }
 
 #[async_trait]
@@ -51,10 +52,10 @@ impl TextEmbedding {
         });
 
         let model_path = download
-            .download_if_not_exists("mxbai-embed-large/mxbai-embed-large-v1.onnx")
+            .download_if_not_exists("puff-base-v1/model_quantized.onnx")
             .await?;
         let tokenizer_config_path = download
-            .download_if_not_exists("mxbai-embed-large/tokenizer.json")
+            .download_if_not_exists("puff-base-v1/tokenizer.json")
             .await?;
 
         let model = Session::builder()?
@@ -85,6 +86,7 @@ impl TextEmbedding {
             model,
             tokenizer,
             dim: 1024,
+            max_len: 512,
         })
     }
 
@@ -93,38 +95,42 @@ impl TextEmbedding {
             .tokenizer
             .encode(text, true)
             .map_err(|err| anyhow!(err))?;
-        // let ids: Vec<i64> = encoding.get_ids().iter().map(|&v| v as i64).collect();
+
         let ids = encoding.get_ids();
         let attention_mask = encoding.get_attention_mask();
-        let token_type_ids = encoding.get_type_ids();
+        // let token_type_ids = encoding.get_type_ids();
 
         let ids = ndarray::arr1(ids).mapv(|x| x as i64);
         let attention_mask = ndarray::arr1(attention_mask).mapv(|x| x as i64);
-        let token_type_ids = ndarray::arr1(token_type_ids).mapv(|x| x as i64);
+        // let token_type_ids = ndarray::arr1(token_type_ids).mapv(|x| x as i64);
 
-        let ids = utils::pad_with_zeros(&ids, vec![[0, 512 - ids.len()]]);
-        let attention_mask =
-            utils::pad_with_zeros(&attention_mask, vec![[0, 512 - attention_mask.len()]]);
-        let token_type_ids =
-            utils::pad_with_zeros(&token_type_ids, vec![[0, 512 - token_type_ids.len()]]);
+        let ids = utils::pad_with_zeros(&ids, vec![[0, self.max_len - ids.len()]]);
+        let attention_mask = utils::pad_with_zeros(
+            &attention_mask,
+            vec![[0, self.max_len - attention_mask.len()]],
+        );
+        // let token_type_ids = utils::pad_with_zeros(
+        //     &token_type_ids,
+        //     vec![[0, self.max_len - token_type_ids.len()]],
+        // );
 
         let ids = ids.insert_axis(Axis(0));
         let attention_mask = attention_mask.insert_axis(Axis(0)).clone();
-        let token_type_ids = token_type_ids.insert_axis(Axis(0)).clone();
+        // let token_type_ids = token_type_ids.insert_axis(Axis(0)).clone();
 
         let outputs = self.model.run(
-            ort::inputs!["input_ids" => ids.view(), "attention_mask" => attention_mask.view(), "token_type_ids" => token_type_ids.view()]?,
+            ort::inputs!["input_ids" => ids.view(), "attention_mask" => attention_mask.view()]?,
         )?;
 
         let output = outputs
-            .get("last_hidden_state")
+            .get("sentence_embedding")
             .ok_or(anyhow!("output not found"))?
             .extract_tensor::<f32>()?
             .view()
             .to_owned();
 
         // for model mxbai-embed-large-v1, the pooling method is `cls`
-        let output = output.slice(s![.., 0, ..]).to_owned();
+        // let output = output.slice(s![.., 0, ..]).to_owned();
 
         let output: Array1<f32> = output.into_shape(self.dim)?.into_dimensionality()?;
 
@@ -141,17 +147,26 @@ async fn test_text_embedding() {
     .unwrap();
 
     let start = std::time::Instant::now();
-    let _ = model.get_text_embedding("who are you?").await.unwrap();
+    let embed1 = model.get_text_embedding("who are you?").await.unwrap();
     let duration = start.elapsed();
     tracing::info!("Time elapsed in execution is: {:?}", duration);
 
     let start = std::time::Instant::now();
-    let _ = model.get_text_embedding("hello world!").await.unwrap();
+    let embed2 = model.get_text_embedding("hello world!").await.unwrap();
     let duration = start.elapsed();
     tracing::info!("Time elapsed in execution is: {:?}", duration);
 
     let start = std::time::Instant::now();
-    let _ = model.get_text_embedding("你是谁").await.unwrap();
+    let embed3 = model.get_text_embedding("你是谁").await.unwrap();
     let duration = start.elapsed();
     tracing::info!("Time elapsed in execution is: {:?}", duration);
+
+    // compare cosine similarity
+    let sim1: f32 = embed1.iter().zip(embed2.iter()).map(|(x, y)| x * y).sum();
+    tracing::info!("sim 1 and 2: {:?}", sim1);
+    let sim2: f32 = embed1.iter().zip(embed3.iter()).map(|(x, y)| x * y).sum();
+    tracing::info!("sim 1 and 3: {:?}", sim2);
+
+    assert!(sim1 < sim2);
+    assert!(embed1.len() == 1024);
 }

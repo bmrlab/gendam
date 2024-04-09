@@ -10,5 +10,7 @@ mod qdrant;
 #[cfg(feature = "qdrant")]
 pub use qdrant::{QdrantParams, QdrantServer};
 
-pub const DEFAULT_COLLECTION_NAME: &str = "muse-v2-512";
-pub const DEFAULT_COLLECTION_DIM: u64 = 512;
+pub const DEFAULT_VISION_COLLECTION_NAME: &str = "muse-v2-vision-512";
+pub const DEFAULT_LANGUAGE_COLLECTION_NAME: &str = "muse-v2-language-1024";
+pub const DEFAULT_VISION_COLLECTION_DIM: u64 = 512;
+pub const DEFAULT_LANGUAGE_COLLECTION_DIM: u64 = 1024;

@@ -3,7 +3,7 @@ use crate::{
     search_payload::SearchPayload,
     video::{utils::get_frame_timestamp_from_path, CAPTION_FILE_EXTENSION, FRAME_FILE_EXTENSION},
 };
-use ai::{blip::BLIP, clip::CLIP, BatchHandler};
+use ai::{blip::BLIP, text_embedding::TextEmbedding, BatchHandler};
 use anyhow::Ok;
 use prisma_lib::{video_frame, video_frame_caption, PrismaClient};
 use qdrant_client::client::QdrantClient;
@@ -105,7 +105,7 @@ pub async fn save_frame_caption_embedding(
     file_identifier: String,
     client: Arc<PrismaClient>,
     frames_dir: impl AsRef<std::path::Path>,
-    clip_model: BatchHandler<CLIP>,
+    text_embedding: BatchHandler<TextEmbedding>,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
     let frame_paths = std::fs::read_dir(&frames_dir)?
@@ -113,18 +113,19 @@ pub async fn save_frame_caption_embedding(
         .collect::<Result<Vec<_>, std::io::Error>>()?;
 
     for path in frame_paths {
-        if path.extension() == Some(std::ffi::OsStr::new("caption")) {
+        debug!("get_frame_caption_embedding: {:?}", path);
+        if path.extension() == Some(std::ffi::OsStr::new(CAPTION_FILE_EXTENSION)) {
             let file_identifier = file_identifier.clone();
             let client = client.clone();
             let qdrant = qdrant.clone();
 
-            let clip_model = clip_model.clone();
+            let text_embedding = text_embedding.clone();
 
             if let Err(e) = get_single_frame_caption_embedding(
                 file_identifier,
                 client,
                 path,
-                clip_model,
+                text_embedding,
                 qdrant,
             )
             .await
@@ -141,7 +142,7 @@ async fn get_single_frame_caption_embedding(
     file_identifier: String,
     client: Arc<PrismaClient>,
     path: impl AsRef<std::path::Path>,
-    clip_model: BatchHandler<CLIP>,
+    text_embedding: BatchHandler<TextEmbedding>,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
     let caption = tokio::fs::read_to_string(path.as_ref()).await?;
@@ -175,9 +176,9 @@ async fn get_single_frame_caption_embedding(
             save_text_embedding(
                 &caption,
                 payload,
-                clip_model,
+                text_embedding,
                 qdrant,
-                vector_db::DEFAULT_COLLECTION_NAME,
+                vector_db::DEFAULT_LANGUAGE_COLLECTION_NAME,
             )
             .await?;
         }

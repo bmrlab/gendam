@@ -131,7 +131,12 @@ async fn get_single_frame_content_embedding(
             .map_err(|_| anyhow::anyhow!("invalid payload"))?,
     );
     qdrant
-        .upsert_points(vector_db::DEFAULT_COLLECTION_NAME, None, vec![point], None)
+        .upsert_points(
+            vector_db::DEFAULT_VISION_COLLECTION_NAME,
+            None,
+            vec![point],
+            None,
+        )
         .await?;
 
     Ok(())

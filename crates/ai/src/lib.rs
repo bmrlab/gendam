@@ -2,7 +2,7 @@ use anyhow::bail;
 use async_trait::async_trait;
 use derivative::Derivative;
 use futures::Future;
-use std::{pin::Pin, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 use tokio::sync::{mpsc, oneshot, Mutex};
 use tracing::{debug, error, info};
 
@@ -53,10 +53,14 @@ where
     T::Item: Send + Sync + Clone + 'static,
     T::Output: Send + Sync + 'static,
 {
-    pub fn new<F: Fn() -> Pin<Box<dyn Future<Output = anyhow::Result<T>>>> + Send + 'static>(
-        create_model: F,
+    pub fn new<TFut, TFn>(
+        create_model: TFn,
         offload_duration: Option<Duration>,
-    ) -> anyhow::Result<Self> {
+    ) -> anyhow::Result<Self>
+    where
+        TFut: Future<Output = anyhow::Result<T>> + 'static,
+        TFn: Fn() -> TFut + Send + 'static,
+    {
         let loader = loader::ModelLoader::new(create_model);
 
         let (tx, mut rx) = mpsc::channel::<

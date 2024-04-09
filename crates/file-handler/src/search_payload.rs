@@ -39,3 +39,14 @@ impl SearchPayload {
         Uuid::new_v5(&Uuid::NAMESPACE_OID, json!(self).to_string().as_bytes())
     }
 }
+
+impl SearchRecordType {
+    /// Get the qdrant collection name that the search record should be stored in
+    pub fn get_collection_name(&self) -> &str {
+        match self {
+            SearchRecordType::Frame { .. } => vector_db::DEFAULT_VISION_COLLECTION_NAME,
+            SearchRecordType::FrameCaption { .. } => vector_db::DEFAULT_LANGUAGE_COLLECTION_NAME,
+            SearchRecordType::Transcript { .. } => vector_db::DEFAULT_LANGUAGE_COLLECTION_NAME,
+        }
+    }
+}

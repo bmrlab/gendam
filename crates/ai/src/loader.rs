@@ -1,27 +1,29 @@
 use crate::Model;
 use futures::Future;
-use std::{pin::Pin, sync::Arc};
+use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::debug;
 
-pub(crate) struct ModelLoader<T>
+pub(crate) struct ModelLoader<T, TFn, TFut>
 where
     T: Model,
+    TFut: Future<Output = anyhow::Result<T>>,
+    TFn: Fn() -> TFut,
 {
     pub model: Arc<Mutex<Option<T>>>,
-    create_model_fn: Box<dyn Fn() -> Pin<Box<dyn Future<Output = anyhow::Result<T>>>> + Send>,
+    create_model_fn: TFn,
 }
 
-impl<T> ModelLoader<T>
+impl<T, TFn, TFut> ModelLoader<T, TFn, TFut>
 where
     T: Model,
+    TFut: Future<Output = anyhow::Result<T>>,
+    TFn: Fn() -> TFut,
 {
-    pub fn new<F: Fn() -> Pin<Box<dyn Future<Output = anyhow::Result<T>>>> + Send + 'static>(
-        create_model: F,
-    ) -> Self {
+    pub fn new(create_model: TFn) -> Self {
         Self {
             model: Arc::new(Mutex::new(None)),
-            create_model_fn: Box::new(create_model),
+            create_model_fn: create_model,
         }
     }
 

@@ -4,7 +4,7 @@ use prisma_lib::{video_clip, video_frame, video_transcript};
 use qdrant_client::qdrant::{
     points_selector::PointsSelectorOneOf, Condition, Filter, PointsSelector,
 };
-use vector_db::DEFAULT_COLLECTION_NAME;
+use vector_db::{DEFAULT_LANGUAGE_COLLECTION_NAME, DEFAULT_VISION_COLLECTION_NAME};
 
 pub async fn handle_delete_artifacts(
     library: &Library,
@@ -51,7 +51,19 @@ pub async fn handle_delete_artifacts(
     for file_hash in file_hashes_clone.iter() {
         qdrant
             .delete_points(
-                DEFAULT_COLLECTION_NAME,
+                DEFAULT_LANGUAGE_COLLECTION_NAME,
+                None,
+                &PointsSelector {
+                    points_selector_one_of: Some(PointsSelectorOneOf::Filter(Filter::all(vec![
+                        Condition::matches("file_identifier", file_hash.to_string()),
+                    ]))),
+                },
+                None,
+            )
+            .await?;
+        qdrant
+            .delete_points(
+                DEFAULT_VISION_COLLECTION_NAME,
                 None,
                 &PointsSelector {
                     points_selector_one_of: Some(PointsSelectorOneOf::Filter(Filter::all(vec![

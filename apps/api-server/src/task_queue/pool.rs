@@ -1,9 +1,9 @@
-use super::priority::TaskPriority;
-use file_handler::video::{VideoHandler, VideoTaskType};
+use super::{priority::TaskPriority, Handler};
 use priority_queue::PriorityQueue;
 use prisma_lib::{file_handler_task, PrismaClient};
 use std::{
     collections::HashMap,
+    fmt::Display,
     hash::Hash,
     sync::{
         mpsc::{self, Sender},
@@ -15,23 +15,39 @@ use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 
-// TODO make this more generic
 #[derive(Clone)]
-pub struct Task {
-    pub task_type: VideoTaskType,
+pub struct Task<THandler, Type>
+where
+    THandler: Handler + Clone + Send + Sync + 'static,
+    Type: Display + Clone + Send + Sync + 'static,
+{
+    pub task_type: Type,
     pub asset_object_id: i32,
     pub prisma_client: Arc<PrismaClient>,
-    pub handler: VideoHandler,
+    pub handler: THandler,
 }
 
-impl Task {
+impl<THandler, Type> Task<THandler, Type>
+where
+    THandler: Handler + Clone + Send + Sync + 'static,
+    Type: Display + Clone + Send + Sync + 'static,
+{
     async fn run(&self) -> anyhow::Result<()> {
         self.save_starts_at().await;
-        match self.handler.run_task(self.task_type.clone()).await {
+
+        match self
+            .handler
+            .process(self.task_type.to_string().as_str())
+            .await
+        {
             Ok(()) => {
                 self.save_ends_at(None).await;
             }
             Err(e) => {
+                warn!(
+                    "task {}/{} exit with error: {}",
+                    self.asset_object_id, self.task_type, e
+                );
                 self.save_ends_at(Some(e.to_string())).await;
             }
         }
@@ -81,30 +97,53 @@ impl Task {
     }
 }
 
-impl Hash for Task {
+impl<THandler, Type> Hash for Task<THandler, Type>
+where
+    THandler: Handler + Clone + Send + Sync + 'static,
+    Type: Display + Clone + Send + Sync + 'static,
+{
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.asset_object_id.hash(state);
-        self.task_type.hash(state);
+        self.task_type.to_string().hash(state);
     }
 }
 
-impl PartialEq for Task {
+impl<THandler, Type> PartialEq for Task<THandler, Type>
+where
+    THandler: Handler + Clone + Send + Sync + 'static,
+    Type: Display + Clone + Send + Sync + 'static,
+{
     fn eq(&self, other: &Self) -> bool {
-        self.asset_object_id == other.asset_object_id && self.task_type == other.task_type
+        self.asset_object_id == other.asset_object_id
+            && self.task_type.to_string() == other.task_type.to_string()
     }
 }
 
-impl Eq for Task {}
+impl<THandler, Type> Eq for Task<THandler, Type>
+where
+    THandler: Handler + Clone + Send + Sync + 'static,
+    Type: Display + Clone + Send + Sync + 'static,
+{
+}
 
-pub enum TaskPayload {
-    Task((Task, TaskPriority)),
-    CancelByAssetAndType(i32, VideoTaskType),
+pub enum TaskPayload<THandler, Type>
+where
+    THandler: Handler + Clone + Send + Sync + 'static,
+    Type: Display + Clone + Send + Sync + 'static,
+{
+    Task((Task<THandler, Type>, TaskPriority)),
+    #[allow(dead_code)]
+    CancelByAssetAndType(i32, String),
     CancelByAssetId(i32),
     CancelAll,
 }
 
-pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
-    let task_mapping: HashMap<i32, HashMap<VideoTaskType, CancellationToken>> = HashMap::new();
+pub fn init_task_pool<THandler, Type>() -> anyhow::Result<Sender<TaskPayload<THandler, Type>>>
+where
+    THandler: Handler + Clone + Send + Sync + 'static,
+    Type: Display + Clone + Send + Sync + 'static,
+{
+    let task_mapping: HashMap<i32, HashMap<String, CancellationToken>> = HashMap::new();
     let task_mapping = Arc::new(RwLock::new(task_mapping));
     let task_mapping_clone = task_mapping.clone();
 
@@ -180,15 +219,18 @@ pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
 
 /// 监听来自外部的任务创建、任务取消
 /// 收到任务则将任务加入队列
-async fn handle_task_payload_input(
-    task_queue: Arc<RwLock<PriorityQueue<Task, TaskPriority>>>,
-    task_mapping: Arc<RwLock<HashMap<i32, HashMap<VideoTaskType, CancellationToken>>>>,
+async fn handle_task_payload_input<THandler, Type>(
+    task_queue: Arc<RwLock<PriorityQueue<Task<THandler, Type>, TaskPriority>>>,
+    task_mapping: Arc<RwLock<HashMap<i32, HashMap<String, CancellationToken>>>>,
     current_task_priority: Arc<RwLock<Option<TaskPriority>>>,
-    rx: mpsc::Receiver<TaskPayload>,
+    rx: mpsc::Receiver<TaskPayload<THandler, Type>>,
     task_tx: tokio::sync::mpsc::Sender<()>,
     priority_tx: tokio::sync::mpsc::Sender<()>,
     asset_cancel_token: CancellationToken,
-) {
+) where
+    THandler: Handler + Clone + Send + Sync + 'static,
+    Type: Display + Clone + Send + Sync + 'static,
+{
     loop {
         match rx.recv() {
             Ok(payload) => match payload {
@@ -201,11 +243,11 @@ async fn handle_task_payload_input(
                         let mut task_mapping = task_mapping.write().await;
                         match task_mapping.get_mut(&asset_object_id) {
                             Some(item) => {
-                                item.insert(task_type, current_cancel_token);
+                                item.insert(task_type.to_string(), current_cancel_token);
                             }
                             None => {
                                 let mut new_item = HashMap::new();
-                                new_item.insert(task_type, current_cancel_token);
+                                new_item.insert(task_type.to_string(), current_cancel_token);
                                 task_mapping.insert(asset_object_id, new_item);
                             }
                         };
@@ -237,7 +279,7 @@ async fn handle_task_payload_input(
                 TaskPayload::CancelByAssetAndType(asset_object_id, task_type) => {
                     let task_mapping = task_mapping.read().await;
                     if let Some(item) = task_mapping.get(&asset_object_id) {
-                        if let Some(cancel_token) = item.get(&task_type) {
+                        if let Some(cancel_token) = item.get(&task_type.to_string()) {
                             cancel_token.cancel();
                         } else {
                             warn!(
@@ -272,14 +314,17 @@ async fn handle_task_payload_input(
 
 /// 持续处理任务队列中的任务
 /// 当任务队列为空时，如果 task_rx 收到信息，则继续处理任务
-async fn loop_until_queue_empty(
-    task_queue: Arc<RwLock<PriorityQueue<Task, TaskPriority>>>,
-    task_mapping: Arc<RwLock<HashMap<i32, HashMap<VideoTaskType, CancellationToken>>>>,
+async fn loop_until_queue_empty<THandler, Type>(
+    task_queue: Arc<RwLock<PriorityQueue<Task<THandler, Type>, TaskPriority>>>,
+    task_mapping: Arc<RwLock<HashMap<i32, HashMap<String, CancellationToken>>>>,
     current_task_priority: Arc<RwLock<Option<TaskPriority>>>,
     mut task_rx: tokio::sync::mpsc::Receiver<()>,
     mut priority_rx: tokio::sync::mpsc::Receiver<()>,
     asset_cancel_token: CancellationToken,
-) {
+) where
+    THandler: Handler + Clone + Send + Sync + 'static,
+    Type: Display + Clone + Send + Sync + 'static,
+{
     // TODO 优化这里的两层循环
     loop {
         // 等待 task_rx 收到任务
@@ -314,7 +359,7 @@ async fn loop_until_queue_empty(
                      */
                     let current_cancel_token = match task_mapping.read().await.get(&asset_object_id)
                     {
-                        Some(item) => match item.get(&task_type) {
+                        Some(item) => match item.get(&task_type.to_string()) {
                             Some(cancel_token) => cancel_token.clone(),
                             None => {
                                 error!(
@@ -375,7 +420,7 @@ async fn loop_until_queue_empty(
                         let mut task_mapping = task_mapping.write().await;
                         match task_mapping.get_mut(&asset_object_id) {
                             Some(item) => {
-                                item.remove(&task_type);
+                                item.remove(&task_type.to_string());
                                 if item.is_empty() {
                                     task_mapping.remove(&asset_object_id);
                                 }
