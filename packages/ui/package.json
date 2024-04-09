@@ -1,10 +1,11 @@
 {
-	"name": "@muse/ui",
-	"version": "1.0.0",
-	"private": true,
-	"sideEffects": false,
+  "name": "@muse/ui",
+  "version": "1.0.0",
+  "private": true,
+  "sideEffects": false,
   "exports": {
-    "./v1/*": "./src/v1/*.tsx"
+    "./v1/*": "./src/v1/*.tsx",
+    "./icons": "./src/icons/index.tsx"
   },
   "dependencies": {
     "@radix-ui/react-context-menu": "^2.1.5",
@@ -30,6 +31,7 @@
     "tailwind-merge": "^2.2.1"
   },
   "devDependencies": {
+    "@svgr/cli": "^8.1.0",
     "@types/react": "^18",
     "@types/react-dom": "^18"
   }
