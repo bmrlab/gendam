@@ -1,6 +1,10 @@
 # bash scripts/download-sidecar.sh
 
 triple=$(rustc -Vv | grep host | cut -f2 -d' ')
+if [ $# -eq 1 ]; then
+  triple=$1
+fi
+
 sidecar_dir="apps/desktop/src-tauri/sidecar"
 mkdir -p "${sidecar_dir}"
 

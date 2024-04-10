@@ -12,30 +12,46 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest]
-    runs-on: ${{ matrix.platform }}
+        settings:
+        - platform: 'macos-14' # for Arm based macs (M1 and above).
+          target: 'aarch64-apple-darwin'
+        - platform: 'macos-13' # for Intel based macs.
+          target: 'x86_64-apple-darwin'
+    runs-on: ${{ matrix.settings.platform }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Rust setup
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
         with:
-          workspaces: './apps/desktop/src-tauri -> target'
+          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
+          targets: ${{ matrix.settings.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
 
       - name: Sync node version and setup cache
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 'lts/iron'
+          node-version: 20
           cache: 'pnpm' # Set this to npm, yarn or pnpm.
 
       - name: Install frontend dependencies
         # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
         run: pnpm install # Change this to npm, yarn or pnpm.
+
+      - name: Download sidecar binaries
+        run: bash scripts/download-sidecar.sh ${{ matrix.settings.target }}
+
+      # - name: Rust cache
+      #   uses: swatinem/rust-cache@v2
+      #   with:
+      #     workspaces: '. -> target'
+      #     cache-on-failure: true
 
       - name: Generate prisma artifacts
         run: pnpm prisma generate
@@ -47,12 +63,13 @@ jobs:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
-          tagName: app-v0.1.0 # the action automatically replaces \_\_VERSION\_\_ with the app version
-          releaseName: 'App v0.1.0'
+          tagName: desktop-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
+          releaseName: 'Desktop v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
           prerelease: false
+          args: --target ${{ matrix.settings.target }}
