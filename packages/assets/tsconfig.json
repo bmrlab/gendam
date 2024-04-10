@@ -1,3 +1,5 @@
 {
-  "include": ["svgs/*", "images/*", "declarations.d.ts"]
+  "extends": "../../tsconfig.base.json",
+  "include": ["svgs/*", "images/*", "declarations.d.ts"],
+  "exclude": ["node_modules"]
 }
