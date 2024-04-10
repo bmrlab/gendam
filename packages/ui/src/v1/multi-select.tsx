@@ -1,11 +1,9 @@
 'use client'
-
 import { CaretSortIcon, CheckIcon, Cross2Icon } from '@radix-ui/react-icons'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { Primitive, type ComponentPropsWithoutRef } from '@radix-ui/react-primitive'
 import { useControllableState } from '@radix-ui/react-use-controllable-state'
 import { createPortal } from 'react-dom'
-
 import { Badge } from './badge'
 import {
   Command,
@@ -17,7 +15,7 @@ import {
   CommandSeparator,
 } from './command'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip'
-import { cn } from '../utils'
+import { cn } from '@muse/tailwind/utils'
 import {
   ElementRef,
   FC,
