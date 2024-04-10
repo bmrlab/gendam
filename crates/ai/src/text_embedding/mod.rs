@@ -65,7 +65,7 @@ impl TextEmbedding {
             ])?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(16)?
-            .with_model_from_file(model_path)?;
+            .commit_from_file(model_path)?;
 
         let tokenizer = match Tokenizer::from_file(tokenizer_config_path) {
             Ok(mut tokenizer) => {
@@ -125,7 +125,7 @@ impl TextEmbedding {
         let output = outputs
             .get("sentence_embedding")
             .ok_or(anyhow!("output not found"))?
-            .extract_tensor::<f32>()?
+            .try_extract_tensor::<f32>()?
             .view()
             .to_owned();
 

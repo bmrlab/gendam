@@ -13,6 +13,8 @@ pub mod preprocess;
 pub mod text_embedding;
 pub mod utils;
 pub mod whisper;
+pub mod moondream;
+pub mod yolo;
 
 enum HandlerPayload<T> {
     BatchData(T),

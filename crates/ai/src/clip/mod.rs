@@ -103,7 +103,7 @@ impl CLIP {
             ])?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(16)?
-            .with_model_from_file(image_model_path)?;
+            .commit_from_file(image_model_path)?;
 
         let text_model = Session::builder()?
             .with_execution_providers([
@@ -112,7 +112,7 @@ impl CLIP {
             ])?
             .with_optimization_level(GraphOptimizationLevel::Level3)?
             .with_intra_threads(16)?
-            .with_model_from_file(text_model_path)?;
+            .commit_from_file(text_model_path)?;
 
         let text_tokenizer = match Tokenizer::from_file(text_tokenizer_vocab_path) {
             Ok(mut tokenizer) => {
@@ -167,7 +167,7 @@ impl CLIP {
         let output = outputs
             .get("output")
             .ok_or(anyhow!("output not found"))?
-            .extract_tensor::<f32>()?
+            .try_extract_tensor::<f32>()?
             .view()
             .to_owned();
 
@@ -207,7 +207,7 @@ impl CLIP {
         let output = outputs
             .get("output")
             .ok_or(anyhow!("output not found"))?
-            .extract_tensor::<f32>()?
+            .try_extract_tensor::<f32>()?
             .view()
             .to_owned();
 
