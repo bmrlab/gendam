@@ -30,7 +30,7 @@ export default function ViewItem({ data, children, ...props }: ViewItemProps) {
 
   return (
     <ContextMenu.Root onOpenChange={handleContextMenuOpenChange}>
-      <ContextMenu.Trigger asChild>
+      <ContextMenu.Trigger>
         {children}
       </ContextMenu.Trigger>
       <ContextMenu.Portal>
