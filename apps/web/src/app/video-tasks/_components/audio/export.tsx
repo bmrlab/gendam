@@ -1,5 +1,5 @@
 import { SingleExportProps } from '../../_store/audio-dialog'
-import { MuseBadge } from '../Badge'
+import { RoundedBadge } from '../Badge'
 import MuseRadio from '../Radio'
 import Icon from '@/components/Icon'
 import { ScrollArea } from '@muse/ui/v1/scroll-area'
@@ -117,7 +117,7 @@ export default function AudioExport() {
               ))}
             </p>
           </ScrollArea>
-          <MuseBadge
+          <RoundedBadge
             className="absolute bottom-8 right-8"
             onClick={() => navigator.clipboard.writeText(currentContent ?? '')}
           >
@@ -125,7 +125,7 @@ export default function AudioExport() {
               <Icon.copy />
               <span className="select-none">复制</span>
             </div>
-          </MuseBadge>
+          </RoundedBadge>
         </div>
       </div>
       <div className="flex h-full w-60 flex-col justify-start px-6 pb-6 pt-4">

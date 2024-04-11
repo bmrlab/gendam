@@ -1,4 +1,4 @@
-import { MuseStatus } from '@/app/video-tasks/_components/Badge'
+import { TaskStatus } from './TaskStatus'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 
 // export const hasProcessing = (tasks: VideoWithTasksResult['tasks']) => {
@@ -6,12 +6,12 @@ import type { VideoWithTasksResult } from '@/lib/bindings'
 //   return tasks
 //     .filter((t) => dimension.includes(t.taskType))
 //     .map(getTaskStatus)
-//     .some((status) => status === MuseStatus.Processing)
+//     .some((status) => status === TaskStatus.Processing)
 // }
 
 export const isNotDone = (tasks: VideoWithTasksResult['tasks']) => {
   // 未开始和正在进行的
-  return !!tasks.find((task) => getTaskStatus(task) !== MuseStatus.Done)
+  return !!tasks.find((task) => getTaskStatus(task) !== TaskStatus.Done)
 }
 
 export const hasAudio = (tasks: VideoWithTasksResult['tasks']) => {
@@ -21,27 +21,27 @@ export const hasAudio = (tasks: VideoWithTasksResult['tasks']) => {
 export const getTaskStatus = (task: VideoWithTasksResult['tasks'][number]) => {
   const exitCode = task.exitCode ?? -1
   if (exitCode > 1) {
-    return MuseStatus.Failed
+    return TaskStatus.Failed
   }
   if (exitCode === 1) {
-    return MuseStatus.Cancelled
+    return TaskStatus.Cancelled
   }
   if (exitCode === 0) {
-    return MuseStatus.Done
+    return TaskStatus.Done
   }
   if (task.startsAt) {
-    return MuseStatus.Processing // 已经开始但还没结束
+    return TaskStatus.Processing // 已经开始但还没结束
   }
-  return MuseStatus.None
+  return TaskStatus.None
 }
 
-export const VIDEO_DIMENSION: Record<string, [string, number, boolean]> = {
+export const VIDEO_DIMENSION: Record<string, [string, number]> = {
   // 任务类型: [任务名称, 任务排序, 完成以后是否显示]
-  Frame: ['帧处理', 1, false],
-  FrameContentEmbedding: ['视频特征', 2, true],
-  FrameCaption: ['视频描述', 3, false],
-  FrameCaptionEmbedding: ['视频描述', 4, true],
-  Audio: ['音频处理', 5, false],
-  Transcript: ['视频语音', 6, true],
-  TranscriptEmbedding: ['视频语音', 7, false],
+  Frame: ['帧处理', 1],
+  FrameContentEmbedding: ['画面索引', 2],
+  FrameCaption: ['视频描述', 3],
+  FrameCaptionEmbedding: ['描述索引', 4],
+  Audio: ['音频提取', 5],
+  Transcript: ['语音转译', 6],
+  TranscriptEmbedding: ['语音索引', 7],
 }

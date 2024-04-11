@@ -1,6 +1,6 @@
 'use client'
-import { MuseStatus, MuseTaskBadge } from '@/app/video-tasks/_components/Badge'
-import TaskDropdownMenu, { DropdownMenuOptions } from '@/app/video-tasks/_components/TaskDropdownMenu'
+import { VideoTaskStatus } from './TaskStatus'
+import TaskDropdownMenu, { DropdownMenuOptions } from './TaskDropdownMenu'
 import Icon from '@/components/Icon'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
@@ -29,21 +29,11 @@ export default function VideoTaskItem({
   const { mutateAsync } = rspc.useMutation('video.tasks.cancel')
 
   const showTask = useMemo(() => {
-    const tasksWithIndex = tasks
-      .map((task) => {
-        const [taskName, index, showOnComplete] = VIDEO_DIMENSION[task.taskType] ?? []
-        const status = getTaskStatus(task)
-        return { task, taskName, index, showOnComplete, status }
-      })
-      .filter(({ task, taskName, index, showOnComplete, status }) => {
-        if (status === MuseStatus.Processing || status === MuseStatus.Failed) {
-          return true
-        }
-        if (status === MuseStatus.Done && showOnComplete) {
-          return true
-        }
-        return false
-      })
+    const tasksWithIndex = tasks.map((task) => {
+      const [taskName, index] = VIDEO_DIMENSION[task.taskType] ?? []
+      const status = getTaskStatus(task)
+      return { task, taskName, index, status }
+    })
     return tasksWithIndex.sort((a, b) => a.index - b.index)
   }, [tasks])
 
@@ -143,7 +133,7 @@ export default function VideoTaskItem({
           </div>
           <div className="flex flex-wrap items-end gap-1.5">
             {showTask.map(({ taskName, index, status }) => (
-              <MuseTaskBadge key={index} name={taskName} status={status} />
+              <VideoTaskStatus key={index} name={taskName} status={status} />
             ))}
             <TaskDropdownMenu
               triggerIcon={<Icon.moreVertical className="size-6 cursor-pointer" />}

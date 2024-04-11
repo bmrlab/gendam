@@ -10,7 +10,7 @@ import { useEffect, useMemo } from 'react'
 import AudioDialog from './_components/audio/AudioDialog'
 import TaskFooter from './_components/footer'
 import VideoTaskHeader from './_components/header'
-import VideoTasksList from './_components/task-list'
+import VideoTasksList from './_components/TaskList'
 import useTaskList, { type TaskListProps } from './useTaskList'
 
 export default function VideoTasksPage() {
