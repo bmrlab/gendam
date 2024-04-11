@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { TaskStatus, getTaskStatus } from './utils'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 import { Tooltip } from '@muse/ui/v2/tooltip'
-import { HTMLAttributes, useMemo } from 'react'
+import { forwardRef, HTMLAttributes, useMemo } from 'react'
 
 export const VIDEO_DIMENSION: Record<string, [string, number]> = {
   // 任务类型: [任务名称, 任务排序, 完成以后是否显示]
@@ -56,10 +56,10 @@ export function VideoTaskStatus({ tasks }: {
       index: number,
       status: TaskStatus,
     }[],
-    done: boolean,
+    status?: 'done' | 'processing',
   }
 
-  const tasksGroup = useMemo<GroupProps[]>(() => {
+  const tasksGroups = useMemo<GroupProps[]>(() => {
     const map: Record<typeof tasks[number]['taskType'], GroupProps["tasks"][number]> = {}
     tasks.forEach((task) => {
       const [name, index] = VIDEO_DIMENSION[task.taskType] ?? []
@@ -74,7 +74,6 @@ export function VideoTaskStatus({ tasks }: {
         map['FrameCaption'],
         map['FrameCaptionEmbedding'],
       ],
-      done: false
     }, {
       name: 'Transcript',
       tasks: [
@@ -82,34 +81,64 @@ export function VideoTaskStatus({ tasks }: {
         map['Transcript'],
         map['TranscriptEmbedding'],
       ],
-      done: false
     }]
     result.forEach((group) => {
       group.tasks = group.tasks.filter(Boolean)
       group.tasks.sort((a, b) => a.index - b.index)
-      group.done = group.tasks.every((task) => task.status === TaskStatus.Done)
+      if (group.tasks.some((task) => task.status === TaskStatus.Processing)) {
+        group.status = 'processing'
+      }
+      if (group.tasks.every((task) => task.status === TaskStatus.Done)) {
+        group.status = 'done'
+      }
     })
     return result
   }, [tasks])
 
+  const GroupBadge = forwardRef<HTMLDivElement, { group: GroupProps}>(function XXX({ group, ...props }, forwardRef) {
+    const [className, icon] = useMemo(() => {
+      switch (group.status) {
+        case 'done':
+          return [
+              "text-green-600 border-green-200 bg-green-100",
+              <Icon.Check key={group.name} className='w-3 h-3' />
+          ]
+        case 'processing':
+          return [
+              "text-orange-600 border-orange-200 bg-orange-100",
+              <Icon.Cycle key={group.name} className='w-3 h-3 animate-spin' />
+          ]
+        default:
+          return [
+              "text-neutral-600 border-neutral-200 bg-neutral-100",
+              <Icon.Clock key={group.name} className='w-3 h-3' />
+          ]
+      }
+    }, [group])
+
+    return (
+      <div ref={forwardRef} {...props} className={cn(
+        'flex gap-1 items-center justify-center rounded-full mr-2',
+        'border border-app-line px-3 text-xs',
+        className,
+      )}>
+        {icon}
+        {group.name}
+      </div>
+    )
+  })
+
   return (
     <div className="flex gap-2 items-center justify-end">
-      {tasksGroup.map(({ name, tasks, done }, _i) => (
+      {tasksGroups.map((group, _i) => (
         <Tooltip.Provider delayDuration={200} key={_i}>
           <Tooltip.Root>
             <Tooltip.Trigger asChild>
-              <div className={cn(
-                'flex gap-1 items-center justify-center rounded-full mr-2',
-                'border border-app-line px-3 text-xs text-neutral-600',
-                done ? 'border-green-200 bg-green-100' : 'border-orange-200 bg-orange-100'
-              )}>
-                {done ? <Icon.Check className='w-3 h-3' /> : <Icon.Clock className='w-3 h-3' />}
-                {name}
-              </div>
+              <GroupBadge group={group} />
             </Tooltip.Trigger>
             <Tooltip.Portal>
               <Tooltip.Content>
-                {tasks.map(({ name, index, status }) => (
+                {group.tasks.map(({ name, index, status }) => (
                   <TaskItemStatus key={index} name={name} status={status} />
                 ))}
               </Tooltip.Content>
