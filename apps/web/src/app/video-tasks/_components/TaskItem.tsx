@@ -8,7 +8,7 @@ import { rspc } from '@/lib/rspc'
 import { formatBytes, formatDuration } from '@/lib/utils'
 import Image from 'next/image'
 import { HTMLAttributes, useCallback, useMemo } from 'react'
-import { VIDEO_DIMENSION, getTaskStatus, isNotDone } from './utils'
+import { isNotDone } from './utils'
 import { toast } from 'sonner'
 import classNames from 'classnames'
 
@@ -27,15 +27,6 @@ export default function VideoTaskItem({
   const currentLibrary = useCurrentLibrary()
 
   const { mutateAsync } = rspc.useMutation('video.tasks.cancel')
-
-  const showTask = useMemo(() => {
-    const tasksWithIndex = tasks.map((task) => {
-      const [taskName, index] = VIDEO_DIMENSION[task.taskType] ?? []
-      const status = getTaskStatus(task)
-      return { task, taskName, index, status }
-    })
-    return tasksWithIndex.sort((a, b) => a.index - b.index)
-  }, [tasks])
 
   const _isNotDone = useMemo(() => isNotDone(tasks), [tasks])
   const _hasAudio = useMemo(() => mediaData?.hasAudio ?? false, [mediaData?.hasAudio])
@@ -128,13 +119,9 @@ export default function VideoTaskItem({
                 <NoAudio />
               </>
             )}
-            {/*<div className="mx-2">·</div>*/}
-            {/*<span>已取消</span>*/}
           </div>
           <div className="flex flex-wrap items-end gap-1.5">
-            {showTask.map(({ taskName, index, status }) => (
-              <VideoTaskStatus key={index} name={taskName} status={status} />
-            ))}
+            <VideoTaskStatus tasks={tasks} ></VideoTaskStatus>
             <TaskDropdownMenu
               triggerIcon={<Icon.moreVertical className="size-6 cursor-pointer" />}
               options={moreActionOptions()}

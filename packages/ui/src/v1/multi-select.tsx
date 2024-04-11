@@ -14,7 +14,7 @@ import {
   CommandList,
   CommandSeparator,
 } from './command'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip'
+import { Tooltip } from '../v2/tooltip'
 import { cn } from '@muse/tailwind/utils'
 import {
   ElementRef,
@@ -242,7 +242,7 @@ const MultiSelectValue = forwardRef<ElementRef<typeof Primitive.div>, MultiSelec
     }
 
     return (
-      <TooltipProvider delayDuration={300}>
+      <Tooltip.Provider delayDuration={300}>
         <div
           className={cn('flex flex-1 flex-wrap items-center gap-1.5 overflow-x-hidden', className)}
           {...props}
@@ -278,12 +278,12 @@ const MultiSelectValue = forwardRef<ElementRef<typeof Primitive.div>, MultiSelec
 
             if (child !== content) {
               return (
-                <Tooltip key={value}>
-                  <TooltipTrigger className="inline-flex">{el}</TooltipTrigger>
-                  <TooltipContent side="bottom" align="start" className="z-[51]">
+                <Tooltip.Root key={value}>
+                  <Tooltip.Trigger className="inline-flex">{el}</Tooltip.Trigger>
+                  <Tooltip.Content side="bottom" align="start" className="z-[51]">
                     {content}
-                  </TooltipContent>
-                </Tooltip>
+                  </Tooltip.Content>
+                </Tooltip.Root>
               )
             }
 
@@ -291,7 +291,7 @@ const MultiSelectValue = forwardRef<ElementRef<typeof Primitive.div>, MultiSelec
           })}
           {renderRemain ? <span className="py-.5 text-xs leading-4 text-muted-foreground">+{renderRemain}</span> : null}
         </div>
-      </TooltipProvider>
+      </Tooltip.Provider>
     )
   },
 )

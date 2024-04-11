@@ -1,4 +1,3 @@
-import { TaskStatus } from './TaskStatus'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 
 // export const hasProcessing = (tasks: VideoWithTasksResult['tasks']) => {
@@ -18,6 +17,14 @@ export const hasAudio = (tasks: VideoWithTasksResult['tasks']) => {
   return tasks.some((task) => task.taskType === 'Audio' && task.exitCode === 0)
 }
 
+export enum TaskStatus {
+  Failed,
+  Cancelled,
+  Done,
+  Processing,
+  None,
+}
+
 export const getTaskStatus = (task: VideoWithTasksResult['tasks'][number]) => {
   const exitCode = task.exitCode ?? -1
   if (exitCode > 1) {
@@ -33,15 +40,4 @@ export const getTaskStatus = (task: VideoWithTasksResult['tasks'][number]) => {
     return TaskStatus.Processing // 已经开始但还没结束
   }
   return TaskStatus.None
-}
-
-export const VIDEO_DIMENSION: Record<string, [string, number]> = {
-  // 任务类型: [任务名称, 任务排序, 完成以后是否显示]
-  Frame: ['帧处理', 1],
-  FrameContentEmbedding: ['画面索引', 2],
-  FrameCaption: ['视频描述', 3],
-  FrameCaptionEmbedding: ['描述索引', 4],
-  Audio: ['音频提取', 5],
-  Transcript: ['语音转译', 6],
-  TranscriptEmbedding: ['语音索引', 7],
 }
