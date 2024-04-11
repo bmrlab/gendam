@@ -77,6 +77,7 @@ const MediaItem: React.FC<ItemsWithSize & {
 
   return (
     <div
+      data-component-hint='ViewItem(MediaView,Media)'
       onClick={(e) => {
         e.stopPropagation()
         onSelect(e, data)

@@ -63,7 +63,7 @@ const FolderItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
 
   return (
     <div
-      className="flex cursor-default select-none flex-col items-center justify-start"
+      data-component-hint='ViewItem(MediaView,Folder)'
       onClick={(e) => {
         e.stopPropagation()
         onSelect(e, data)

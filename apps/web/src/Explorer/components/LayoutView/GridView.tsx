@@ -73,6 +73,7 @@ const GridItem: React.FC<{
 
   return (
     <div
+      data-component-hint='ViewItem(GridView)'
       onClick={(e) => {
         e.stopPropagation()
         onSelect(e, data)

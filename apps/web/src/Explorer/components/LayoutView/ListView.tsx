@@ -98,6 +98,7 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
 
   return (
     <div
+      data-component-hint='ViewItem(ListView)'
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
     >
