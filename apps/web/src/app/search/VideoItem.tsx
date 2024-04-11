@@ -1,4 +1,5 @@
 'use client'
+import Icon from '@muse/ui/icons'
 import type { SearchResultPayload } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { formatDuration } from '@/lib/utils'
@@ -16,7 +17,7 @@ const VideoItem: React.FC<{
     const video = videoRef.current
     if (!video) return
     let startTime = Math.max(0, item.startTime / 1e3 - 0.5)
-    let endTime = startTime + 2
+    let endTime = Math.max(startTime, item.endTime / 1e3 + 1.5)
     video.currentTime = startTime
     video.ontimeupdate = () => {
       if (video.currentTime >= endTime) {
@@ -56,7 +57,11 @@ const VideoItem: React.FC<{
           {item.materializedPath}
           {item.name}
         </div>
-        <div className="truncate text-xs">{formatDuration(item.startTime / 1000)}</div>
+        <div className='flex items-center justify-between text-xs'>
+          <div>{formatDuration(item.startTime / 1000)}</div>
+          <div>→</div>
+          <div>{formatDuration(item.endTime / 1000 + 1)}</div>
+        </div>
       </div>
     </div>
   )
