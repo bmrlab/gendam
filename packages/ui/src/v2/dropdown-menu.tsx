@@ -43,6 +43,18 @@ const Item = React.forwardRef<
 ))
 Item.displayName = DropdownMenuPrimitive.Item.displayName
 
+const Label = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Label>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label>
+>(({ className, ...props }, ref) => (
+  <DropdownMenuPrimitive.Label
+    ref={ref}
+    className={cn('text-ink/50 py-1', className)}
+    {...props}
+  />
+))
+Label.displayName = DropdownMenuPrimitive.Label.displayName
+
 const Separator = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
@@ -61,6 +73,7 @@ const DropdownMenu = {
   Portal: DropdownMenuPrimitive.Portal,
   Content,
   Item,
+  Label,
   Separator,
 }
 
