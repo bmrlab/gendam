@@ -1,4 +1,3 @@
-#[cfg(feature = "accelerate")]
 extern crate accelerate_src;
 
 use anyhow::anyhow;
@@ -10,6 +9,7 @@ use candle_transformers::{
 use std::path::Path;
 use tokenizers::Tokenizer;
 
+#[allow(dead_code)]
 pub struct Moondream {
     model: quantized_moondream::Model,
     device: Device,
@@ -19,6 +19,7 @@ pub struct Moondream {
     repeat_last_n: usize,
 }
 
+#[allow(dead_code)]
 impl Moondream {
     pub async fn new(resources_dir: impl AsRef<Path>) -> anyhow::Result<Self> {
         let (tokenizer_uri, model_uri) = ("moondream/tokenizer.json", "moondream/model-q4_0.gguf");

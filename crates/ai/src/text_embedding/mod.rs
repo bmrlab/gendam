@@ -1,11 +1,12 @@
 use crate::{
+    ort::load_onnx_model,
     utils::{self, normalize},
     Model,
 };
 use anyhow::{anyhow, bail};
 use async_trait::async_trait;
 use ndarray::{Array1, Axis};
-use ort::{CPUExecutionProvider, CoreMLExecutionProvider, GraphOptimizationLevel, Session};
+use ort::Session;
 use std::path::Path;
 use tokenizers::Tokenizer;
 
@@ -58,14 +59,7 @@ impl TextEmbedding {
             .download_if_not_exists("puff-base-v1/tokenizer.json")
             .await?;
 
-        let model = Session::builder()?
-            .with_execution_providers([
-                CPUExecutionProvider::default().build(),
-                CoreMLExecutionProvider::default().build(),
-            ])?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(16)?
-            .commit_from_file(model_path)?;
+        let model = load_onnx_model(model_path, None)?;
 
         let tokenizer = match Tokenizer::from_file(tokenizer_config_path) {
             Ok(mut tokenizer) => {

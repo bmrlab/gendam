@@ -84,7 +84,7 @@ dependencies = [
  "file-downloader",
  "futures",
  "half",
- "image 0.24.9",
+ "image 0.25.1",
  "ndarray",
  "num-traits",
  "ort",
@@ -3102,12 +3102,10 @@ dependencies = [
  "bytemuck",
  "byteorder",
  "color_quant",
- "exr",
  "gif",
  "jpeg-decoder",
  "num-traits",
  "png",
- "qoi",
  "tiff",
 ]
 
@@ -3356,9 +3354,6 @@ name = "jpeg-decoder"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5d4a7da358eff58addd2877a45865158f0d78c911d43a5784ceb7bbf52833b0"
-dependencies = [
- "rayon",
-]
 
 [[package]]
 name = "js-sys"

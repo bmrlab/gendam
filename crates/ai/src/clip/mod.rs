@@ -1,17 +1,18 @@
-use crate::Model;
+use crate::{ort::load_onnx_model, Model};
 
-use super::{preprocess, utils};
+use super::utils;
 use anyhow::{anyhow, bail};
 use async_trait::async_trait;
 use image::RgbImage;
 pub use model::*;
 use ndarray::{Array1, Axis};
-use ort::{CPUExecutionProvider, CoreMLExecutionProvider, GraphOptimizationLevel, Session};
+use ort::Session;
 use std::path::{Path, PathBuf};
 use tokenizers::tokenizer::Tokenizer;
 use utils::normalize;
 
 pub mod model;
+mod preprocess;
 
 pub struct CLIP {
     image_model: Option<Session>,
@@ -65,8 +66,8 @@ impl Model for CLIP {
 
 impl CLIP {
     pub async fn new(
-        model: model::CLIPModel,
         resources_dir: impl AsRef<Path>,
+        model: model::CLIPModel,
     ) -> anyhow::Result<Self> {
         let (image_model_uri, text_model_uri, text_tokenizer_vocab_uri) = model.model_uri();
         let dim = model.dim();
@@ -96,23 +97,8 @@ impl CLIP {
         text_tokenizer_vocab_path: impl AsRef<Path>,
         dim: usize,
     ) -> anyhow::Result<Self> {
-        let image_model = Session::builder()?
-            .with_execution_providers([
-                CPUExecutionProvider::default().build(),
-                CoreMLExecutionProvider::default().build(),
-            ])?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(16)?
-            .commit_from_file(image_model_path)?;
-
-        let text_model = Session::builder()?
-            .with_execution_providers([
-                CPUExecutionProvider::default().build(),
-                CoreMLExecutionProvider::default().build(),
-            ])?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(16)?
-            .commit_from_file(text_model_path)?;
+        let image_model = load_onnx_model(image_model_path, None)?;
+        let text_model = load_onnx_model(text_model_path, None)?;
 
         let text_tokenizer = match Tokenizer::from_file(text_tokenizer_vocab_path) {
             Ok(mut tokenizer) => {
@@ -190,12 +176,8 @@ impl CLIP {
 
         let ids = encoding.get_ids();
         let attention_mask = encoding.get_attention_mask();
-        let ids = ndarray::arr1(&ids).mapv(|x| x as i32);
-        let attention_mask = ndarray::arr1(&attention_mask).mapv(|x| x as i32);
-        // add padding
-        let ids = utils::pad_with_zeros(&ids, vec![[0, 77 - ids.len()]]);
-        let attention_mask =
-            utils::pad_with_zeros(&attention_mask, vec![[0, 77 - attention_mask.len()]]);
+        let ids = ndarray::arr1(&ids).mapv(|x| x as i64);
+        let attention_mask = ndarray::arr1(&attention_mask).mapv(|x| x as i64);
         // add axis
         let ids = ids.insert_axis(Axis(0)).clone();
         let attention_mask = attention_mask.insert_axis(Axis(0)).clone();
@@ -205,7 +187,7 @@ impl CLIP {
         )?;
 
         let output = outputs
-            .get("output")
+            .get("sentence_embedding")
             .ok_or(anyhow!("output not found"))?
             .try_extract_tensor::<f32>()?
             .view()
@@ -222,37 +204,26 @@ impl CLIP {
 }
 
 #[test_log::test(tokio::test)]
-async fn test_async_clip() {
-    let clip = CLIP::from_file(
-        "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources/CLIP-ViT-B-32-laion2B-s34B-b79K/visual.onnx",
-        "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources/CLIP-ViT-B-32-laion2B-s34B-b79K/textual.onnx",
-        "/Users/zhuo/dev/bmrlab/tauri-dam-test-playground/target/debug/resources/CLIP-ViT-B-32-laion2B-s34B-b79K/tokenizer.json",
-        512,
+async fn test_clip() {
+    let clip = CLIP::new(
+        "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
+        model::CLIPModel::MViTB32,
     )
-    .unwrap();
+    .await
+    .expect("failed to load model");
 
-    let clip = tokio::sync::RwLock::new(clip);
-    let clip = std::sync::Arc::new(clip);
+    let embed3 = clip.get_image_embedding_from_file("/Users/zhuo/Library/Application Support/cc.musedam.local/libraries/80e0ee08-613f-492b-8603-dc85fb1c92b2/artifacts/69f/69f8e47203029eb5/thumbnail.jpg").await.expect("");
+    tracing::info!("embed3: {:?}", embed3);
 
-    let paths = vec!["/Users/zhuo/Desktop/avatar.JPG"];
-
-    for path in paths {
-        let path = path.to_string();
-        let clip = std::sync::Arc::clone(&clip);
-        tokio::spawn(async move {
-            tracing::debug!("{:?}", path);
-            let embedding = clip.read().await.get_image_embedding_from_file(path).await;
-            match embedding {
-                Ok(vector) => {
-                    tracing::debug!("{:?}", vector);
-                    tracing::debug!("square sum: {:?}", vector.dot(&vector));
-                }
-                Err(e) => {
-                    tracing::error!("{:?}", e);
-                }
-            }
-        });
+    for text in [
+        "a photo of a robot",
+        "a photo of a yellow robot",
+        "a photo of a boy",
+        "一个男孩的照片",
+        "一个黄色机器人的照片",
+    ] {
+        let embed1 = clip.get_text_embedding(text).await.expect("");
+        let sim: f32 = embed1.iter().zip(embed3.iter()).map(|(x, y)| x * y).sum();
+        tracing::info!("{}: {:?}", text, sim);
     }
-
-    tokio::task::yield_now().await;
 }

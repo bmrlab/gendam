@@ -6,15 +6,15 @@ use std::{sync::Arc, time::Duration};
 use tokio::sync::{mpsc, oneshot, Mutex};
 use tracing::{debug, error, info};
 
+mod loader;
 pub mod blip;
 pub mod clip;
-mod loader;
-pub mod preprocess;
 pub mod text_embedding;
 pub mod utils;
 pub mod whisper;
 pub mod moondream;
 pub mod yolo;
+pub(crate) mod ort;
 
 enum HandlerPayload<T> {
     BatchData(T),

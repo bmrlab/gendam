@@ -17,6 +17,7 @@ pub enum SearchPayload {
         id: u64,
         file_identifier: String,
         timestamp: i64,
+        method: String
     },
     Transcript {
         id: u64,

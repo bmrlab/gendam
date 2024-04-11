@@ -1,12 +1,42 @@
-use anyhow::anyhow;
+use crate::{ort::load_onnx_model, Model};
+use anyhow::{anyhow, bail};
+use async_trait::async_trait;
 use candle_core::{IndexOp, Tensor};
 use candle_transformers::object_detection::{non_maximum_suppression, Bbox, KeyPoint};
 use image::GenericImageView;
 use ndarray::{s, Array3, Axis, Ix3};
-use ort::{CPUExecutionProvider, CoreMLExecutionProvider, GraphOptimizationLevel, Session};
-use std::path::Path;
+use ort::Session;
+use std::path::{Path, PathBuf};
 
 pub(self) mod coco_classes;
+
+#[async_trait]
+impl Model for YOLO {
+    type Item = PathBuf;
+    type Output = Vec<YOLODetectionResult>;
+
+    fn batch_size_limit(&self) -> usize {
+        1
+    }
+
+    async fn process(
+        &mut self,
+        items: Vec<Self::Item>,
+    ) -> anyhow::Result<Vec<anyhow::Result<Self::Output>>> {
+        if items.len() > self.batch_size_limit() {
+            bail!("too many items");
+        }
+
+        let mut results = vec![];
+
+        for item in items {
+            let res = self.detect(&item).await;
+            results.push(res);
+        }
+
+        Ok(results)
+    }
+}
 
 pub struct YOLO {
     model: Session,
@@ -19,6 +49,16 @@ pub struct YOLODetectionResult {
     bounding_box: Bbox<Vec<KeyPoint>>,
 }
 
+impl YOLODetectionResult {
+    pub fn get_class_name(&self) -> &str {
+        self.class_name.as_str()
+    }
+
+    pub fn get_confidence(&self) -> f32 {
+        self.bounding_box.confidence
+    }
+}
+
 impl YOLO {
     pub async fn new(resources_dir: impl AsRef<Path>) -> anyhow::Result<Self> {
         let model_uri = "yolo/yolov8x.onnx";
@@ -28,14 +68,7 @@ impl YOLO {
         });
 
         let model_path = download.download_if_not_exists(&model_uri).await?;
-        let model = Session::builder()?
-            .with_execution_providers([
-                CPUExecutionProvider::default().build(),
-                CoreMLExecutionProvider::default().build(),
-            ])?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(16)?
-            .commit_from_file(model_path)?;
+        let model = load_onnx_model(model_path, None)?;
 
         Ok(Self {
             model,

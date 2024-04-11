@@ -1,5 +1,8 @@
 pub use self::decoder::VideoMetadata;
-use ai::{blip::BLIP, clip::CLIP, text_embedding::TextEmbedding, whisper::Whisper, BatchHandler};
+use ai::{
+    blip::BLIP, clip::CLIP, text_embedding::TextEmbedding, whisper::Whisper, yolo::YOLO,
+    BatchHandler,
+};
 use anyhow::Ok;
 pub use constants::*;
 use content_library::Library;
@@ -47,32 +50,10 @@ mod utils;
 /// // get video metadata
 /// video_handler.get_video_metadata().await;
 ///
-/// // CLIP, BLIP, Whisper model should be initialized in advanced
+/// // CLIP, BLIP, Whisper, TextEmbedding and YOLO models should be initialized in advanced
 /// // in order to implement advanced information extraction
 /// // following examples shows how to use them
 /// // refer to `ai` crate for initialization of these models
-///
-/// // save frames into disk and prisma
-/// video_handler.save_frames().await;
-/// // save frames embedding into qdrant
-/// let video_handler = video_handler.with_clip(clip);
-/// video_handler.save_frame_content_embedding().await;
-///
-/// // save audio into disk
-/// video_handler.save_audio().await;
-/// // save transcript into disk and prisma
-/// let video_handler = video_handler.with_whisper(whisper);
-/// video_handler.save_transcript().await;
-/// // save transcript embedding into qdrant
-/// let video_handler = video_handler.with_clip(clip);
-/// video_handler.save_transcript_embedding().await;
-///
-/// // save frames' captions into disk and prisma
-/// let video_handler = video_handler.with_blip(blip);
-/// video_handler.save_frames_caption().await;
-/// // save frames' captions embedding into qdrant
-/// let video_handler = video_handler.with_whisper(whisper);
-/// video_handler.save_frame_caption_embedding().await;
 /// ```
 #[allow(dead_code)]
 #[derive(Clone)]
@@ -85,6 +66,7 @@ pub struct VideoHandler {
     blip: Option<BatchHandler<BLIP>>,
     whisper: Option<BatchHandler<Whisper>>,
     text_embedding: Option<BatchHandler<TextEmbedding>>,
+    yolo: Option<BatchHandler<YOLO>>,
 }
 
 #[derive(Clone, Debug, EnumDiscriminants, EnumString, PartialEq, Eq, Hash)]
@@ -94,6 +76,8 @@ pub enum VideoTaskType {
     FrameCaption,
     FrameContentEmbedding,
     FrameCaptionEmbedding,
+    FrameTags,
+    FrameTagsEmbedding,
     Audio,
     Transcript,
     TranscriptEmbedding,
@@ -129,6 +113,7 @@ impl VideoHandler {
             blip: None,
             whisper: None,
             text_embedding: None,
+            yolo: None,
         })
     }
 
@@ -141,25 +126,42 @@ impl VideoHandler {
             VideoTaskType::Audio => self.save_audio().await,
             VideoTaskType::Transcript => self.save_transcript().await,
             VideoTaskType::TranscriptEmbedding => self.save_transcript_embedding().await,
+            VideoTaskType::FrameTags => self.save_frames_tags().await,
+            VideoTaskType::FrameTagsEmbedding => self.save_frame_tags_embedding().await,
         }
     }
 
     pub fn get_supported_task_types(&self, with_audio: Option<bool>) -> Vec<VideoTaskType> {
-        let mut task_types = vec![
-            VideoTaskType::Frame,
-            VideoTaskType::FrameContentEmbedding,
-            VideoTaskType::FrameCaption,
-            VideoTaskType::FrameCaptionEmbedding,
-        ];
+        let mut task_types = vec![VideoTaskType::Frame];
+
+        if self.clip.is_some() {
+            task_types.push(VideoTaskType::FrameContentEmbedding);
+        }
+
+        if self.blip.is_some() {
+            task_types.push(VideoTaskType::FrameCaption);
+            if self.text_embedding.is_some() {
+                task_types.push(VideoTaskType::FrameCaptionEmbedding);
+            }
+        }
 
         if let Some(with_audio) = with_audio {
             if with_audio {
-                task_types.extend_from_slice(&[
-                    VideoTaskType::Audio,
-                    VideoTaskType::Transcript,
-                    VideoTaskType::TranscriptEmbedding,
-                ]);
+                task_types.push(VideoTaskType::Audio);
             }
+
+            if self.whisper.is_some() {
+                task_types.push(VideoTaskType::Transcript);
+                if self.text_embedding.is_some() {
+                    task_types.push(VideoTaskType::TranscriptEmbedding);
+                }
+            }
+        }
+
+        // make sure the order is behind audio related tasks
+        if self.yolo.is_some() {
+            task_types
+                .extend_from_slice(&[VideoTaskType::FrameTags, VideoTaskType::FrameTagsEmbedding]);
         }
 
         task_types
@@ -193,6 +195,12 @@ impl VideoHandler {
             .ok_or(anyhow::anyhow!("Text Embedding is not enabled"))
     }
 
+    fn yolo(&self) -> anyhow::Result<BatchHandler<YOLO>> {
+        self.yolo
+            .clone()
+            .ok_or(anyhow::anyhow!("YOLO is not enabled"))
+    }
+
     pub fn with_clip(self, clip: BatchHandler<CLIP>) -> Self {
         Self {
             clip: Some(clip),
@@ -221,6 +229,13 @@ impl VideoHandler {
         }
     }
 
+    pub fn with_yolo(self, yolo: BatchHandler<YOLO>) -> Self {
+        Self {
+            yolo: Some(yolo),
+            ..self
+        }
+    }
+
     pub async fn get_video_metadata(&self) -> anyhow::Result<VideoMetadata> {
         // TODO ffmpeg-dylib not implemented
         let video_decoder = decoder::VideoDecoder::new(&self.video_path).await?;
@@ -237,7 +252,7 @@ impl VideoHandler {
     /// Extract key frames from video and save results
     /// - Save into disk (a folder named by `library` and `video_file_hash`)
     /// - Save into prisma `VideoFrame` model
-    pub async fn save_frames(&self) -> anyhow::Result<()> {
+    async fn save_frames(&self) -> anyhow::Result<()> {
         let video_path = &self.video_path;
         let frames_dir = self.artifacts_dir.join(FRAME_DIR);
 
@@ -265,7 +280,7 @@ impl VideoHandler {
 
     /// Extract audio from video and save results
     /// - Save into disk (a folder named by `library` and `video_file_hash`)
-    pub async fn save_audio(&self) -> anyhow::Result<()> {
+    async fn save_audio(&self) -> anyhow::Result<()> {
         #[cfg(feature = "ffmpeg-binary")]
         {
             let video_decoder = decoder::VideoDecoder::new(&self.video_path).await?;
@@ -289,7 +304,7 @@ impl VideoHandler {
     /// This will also save results:
     /// - Save into disk (a folder named by `library` and `video_file_hash`)
     /// - Save into prisma `VideoTranscript` model
-    pub async fn save_transcript(&self) -> anyhow::Result<()> {
+    async fn save_transcript(&self) -> anyhow::Result<()> {
         utils::transcript::save_transcript(
             &self.artifacts_dir,
             self.file_identifier.clone(),
@@ -299,7 +314,7 @@ impl VideoHandler {
         .await
     }
 
-    pub async fn save_transcript_embedding(&self) -> anyhow::Result<()> {
+    async fn save_transcript_embedding(&self) -> anyhow::Result<()> {
         utils::transcript::save_transcript_embedding(
             self.file_identifier().into(),
             self.library.prisma_client(),
@@ -313,7 +328,7 @@ impl VideoHandler {
     }
 
     /// Save frame content embedding into qdrant
-    pub async fn save_frame_content_embedding(&self) -> anyhow::Result<()> {
+    async fn save_frame_content_embedding(&self) -> anyhow::Result<()> {
         utils::frame::save_frame_content_embedding(
             self.file_identifier.clone(),
             self.library.prisma_client(),
@@ -330,7 +345,7 @@ impl VideoHandler {
     /// The captions will be saved:
     /// - To disk: as `.caption` file in the same place with frame file
     /// - To prisma `VideoFrameCaption` model
-    pub async fn save_frames_caption(&self) -> anyhow::Result<()> {
+    async fn save_frames_caption(&self) -> anyhow::Result<()> {
         utils::caption::save_frames_caption(
             self.file_identifier().into(),
             self.artifacts_dir.join(FRAME_DIR),
@@ -342,11 +357,36 @@ impl VideoHandler {
 
     /// Save frame caption embedding into qdrant
     /// this requires extracting frames and get captions in advance
-    pub async fn save_frame_caption_embedding(&self) -> anyhow::Result<()> {
+    async fn save_frame_caption_embedding(&self) -> anyhow::Result<()> {
         utils::caption::save_frame_caption_embedding(
             self.file_identifier().into(),
             self.library.prisma_client(),
             self.artifacts_dir.join(FRAME_DIR),
+            utils::caption::CaptionMethod::BLIP,
+            self.text_embedding()?,
+            self.library.qdrant_client(),
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    async fn save_frames_tags(&self) -> anyhow::Result<()> {
+        utils::caption::save_frames_tags(
+            self.file_identifier().into(),
+            self.artifacts_dir.join(FRAME_DIR),
+            self.yolo()?,
+            self.library.prisma_client(),
+        )
+        .await
+    }
+
+    async fn save_frame_tags_embedding(&self) -> anyhow::Result<()> {
+        utils::caption::save_frame_caption_embedding(
+            self.file_identifier().into(),
+            self.library.prisma_client(),
+            self.artifacts_dir.join(FRAME_DIR),
+            utils::caption::CaptionMethod::YOLO,
             self.text_embedding()?,
             self.library.qdrant_client(),
         )
@@ -356,7 +396,8 @@ impl VideoHandler {
     }
 
     /// Split video into multiple clips
-    pub async fn save_video_clips(&self) -> anyhow::Result<()> {
+    #[allow(dead_code)]
+    async fn save_video_clips(&self) -> anyhow::Result<()> {
         utils::clip::save_video_clips(
             self.file_identifier.clone(),
             Some(self.artifacts_dir.join(TRANSCRIPT_FILE_NAME)),
@@ -366,7 +407,8 @@ impl VideoHandler {
         .await
     }
 
-    pub async fn save_video_clips_summarization(&self) -> anyhow::Result<()> {
+    #[allow(dead_code)]
+    async fn save_video_clips_summarization(&self) -> anyhow::Result<()> {
         todo!("implement video clips summarization")
         // utils::clip::get_video_clips_summarization(
         //     self.file_identifier.clone(),

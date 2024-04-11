@@ -92,7 +92,7 @@ model VideoFrame {
   fileIdentifier String
   timestamp      Int
 
-  caption VideoFrameCaption?
+  caption VideoFrameCaption[]
 
   videoClip   VideoClip? @relation(fields: [videoClipId], references: [id])
   videoClipId Int?
@@ -120,9 +120,12 @@ model VideoFrameCaption {
   updatedAt DateTime @updatedAt
 
   caption String
+  method  String
 
   frame        VideoFrame @relation(fields: [videoFrameId], references: [id], onDelete: Cascade)
-  videoFrameId Int        @unique
+  videoFrameId Int
+
+  @@unique([videoFrameId, method])
 }
 
 model VideoClip {

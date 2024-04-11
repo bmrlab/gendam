@@ -47,6 +47,8 @@ pub async fn create_video_task(
             .with_blip(ai_handler.blip)
             .with_whisper(ai_handler.whisper)
             .with_text_embedding(ai_handler.text_embedding),
+            // TODO now we just skip this
+            // .with_yolo(ai_handler.yolo),
         Err(e) => {
             error!("failed to initialize video handler: {}", e);
             return Err(());
@@ -96,6 +98,9 @@ pub async fn create_video_task(
         Ok(tx) => {
             for task_type in video_handler.get_supported_task_types(video_has_audio) {
                 let priority = match task_type {
+                    // it's better not to add default arm `_ => {}` here
+                    // if there are new task type in future, compiler will throw an error
+                    // this will force us to add priority manually
                     VideoTaskType::FrameCaption | VideoTaskType::FrameCaptionEmbedding => {
                         TaskPriority::new(TaskPriorityRaw::Low)
                     }
@@ -103,7 +108,9 @@ pub async fn create_video_task(
                     | VideoTaskType::FrameContentEmbedding
                     | VideoTaskType::Audio
                     | VideoTaskType::Transcript
-                    | VideoTaskType::TranscriptEmbedding => {
+                    | VideoTaskType::TranscriptEmbedding
+                    | VideoTaskType::FrameTags
+                    | VideoTaskType::FrameTagsEmbedding => {
                         TaskPriority::new(TaskPriorityRaw::Normal)
                     }
                 };

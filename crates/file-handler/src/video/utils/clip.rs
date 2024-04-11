@@ -4,12 +4,14 @@ use llm::LLMMessage;
 use prisma_lib::{
     video_clip,
     video_frame::{self, OrderByParam},
-    PrismaClient,
+    video_frame_caption, PrismaClient,
 };
 use qdrant_client::{client::QdrantClient, qdrant::vectors::VectorsOptions};
 use std::{fs::File, io::BufReader, sync::Arc};
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
+
+use super::caption::CaptionMethod;
 
 const BATCH_FRAME_COUNT: i64 = 1000;
 
@@ -182,7 +184,14 @@ pub async fn save_video_clips_summarization(
             .await?;
     let llm = Arc::new(RwLock::new(llm));
 
-    let video_frame_args = video_frame::ManyArgs::new(vec![]).with(video_frame::caption::fetch());
+    let video_frame_args =
+        video_frame::ManyArgs::new(vec![]).with(video_frame::caption::fetch(vec![
+            video_frame_caption::WhereParam::Method(
+                prisma_lib::read_filters::StringFilter::Equals(
+                    CaptionMethod::BLIP.as_ref().to_string(),
+                ),
+            ),
+        ]));
     let clips = client
         .video_clip()
         .find_many(vec![video_clip::WhereParam::FileIdentifier(
@@ -196,8 +205,11 @@ pub async fn save_video_clips_summarization(
         let frames = clip.frames()?;
         let mut captions: Vec<(String, i32)> = frames
             .iter()
-            .filter_map(|v| match v.caption().expect("failed to fetch caption") {
-                Some(caption) => Some((caption.caption.clone(), v.timestamp)),
+            .filter_map(|v| match v.caption() {
+                Ok(caption) => match caption.first() {
+                    Some(c) => Some((c.caption.to_string(), v.timestamp as i32)),
+                    None => None,
+                },
                 _ => None,
             })
             .collect();
@@ -311,7 +323,9 @@ async fn test_video_clip() {
     let library = content_library::load_library(
         &local_data_dir.into(),
         "98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797",
-    ).await.unwrap();
+    )
+    .await
+    .unwrap();
 
     let file_identifier =
         String::from("1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b");

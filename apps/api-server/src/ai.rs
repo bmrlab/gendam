@@ -1,4 +1,7 @@
-use ai::{blip::BLIP, clip::CLIP, text_embedding::TextEmbedding, whisper::Whisper, BatchHandler};
+use ai::{
+    blip::BLIP, clip::CLIP, text_embedding::TextEmbedding, whisper::Whisper, yolo::YOLO,
+    BatchHandler,
+};
 use std::{path::PathBuf, time::Duration};
 
 #[derive(Clone, Debug)]
@@ -7,6 +10,7 @@ pub struct AIHandler {
     pub blip: BatchHandler<BLIP>,
     pub whisper: BatchHandler<Whisper>,
     pub text_embedding: BatchHandler<TextEmbedding>,
+    pub yolo: BatchHandler<YOLO>,
 }
 
 pub fn init_ai_handlers(resources_dir: PathBuf) -> anyhow::Result<AIHandler> {
@@ -28,7 +32,7 @@ pub fn init_ai_handlers(resources_dir: PathBuf) -> anyhow::Result<AIHandler> {
         move || {
             let resources_dir_clone_clone = resources_dir_clone.clone();
             async move {
-                ai::clip::CLIP::new(ai::clip::CLIPModel::ViTB32, resources_dir_clone_clone).await
+                ai::clip::CLIP::new(resources_dir_clone_clone, ai::clip::CLIPModel::MViTB32).await
             }
         },
         Some(offload_duration.clone()),
@@ -52,10 +56,20 @@ pub fn init_ai_handlers(resources_dir: PathBuf) -> anyhow::Result<AIHandler> {
         Some(offload_duration.clone()),
     )?;
 
+    let resources_dir_clone = resources_dir.clone();
+    let yolo_handler = BatchHandler::new(
+        move || {
+            let resources_dir_clone_clone = resources_dir_clone.clone();
+            async move { YOLO::new(resources_dir_clone_clone).await }
+        },
+        Some(offload_duration.clone()),
+    )?;
+
     Ok(AIHandler {
         clip: clip_handler,
         blip: blip_handler,
         whisper: whisper_handler,
         text_embedding: text_embedding_handler,
+        yolo: yolo_handler,
     })
 }
