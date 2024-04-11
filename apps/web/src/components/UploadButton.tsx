@@ -1,12 +1,12 @@
 'use client'
 import { open } from '@tauri-apps/api/dialog'
-import { useCallback } from 'react'
+import { PropsWithChildren, useCallback } from 'react'
 
 type Props = {
   onSelectFiles: (fileFullPath: string[]) => void
 }
 
-const TauriUploadButton: React.FC<Props> = ({ onSelectFiles }) => {
+const TauriUploadButton: React.FC<PropsWithChildren<Props>> = ({ children, onSelectFiles }) => {
   let handleClick = useCallback(async () => {
     const results = await open({
       directory: false,
@@ -29,16 +29,16 @@ const TauriUploadButton: React.FC<Props> = ({ onSelectFiles }) => {
 
   return (
     <div>
-      <form className="ml-4">
-        <label htmlFor="file-input-select-new-asset" className="cursor-pointer text-sm" onClick={() => handleClick()}>
-          上传文件
+      <form>
+        <label htmlFor="file-input-select-new-asset" className="cursor-default text-sm" onClick={() => handleClick()}>
+          {children ? children : <div className='text-xs'>Upload</div>}
         </label>
       </form>
     </div>
   )
 }
 
-const WebUploadButton: React.FC<Props> = ({ onSelectFiles }) => {
+const WebUploadButton: React.FC<PropsWithChildren<Props>> = ({ children, onSelectFiles }) => {
   /**
    * 浏览器里选择的文件拿不到全路径，只能拿到文件内容
    * 所以用了这个方法，选择一个 .list 文件，里面包含要上传的视频的路径，一行一个，比如
@@ -65,9 +65,9 @@ const WebUploadButton: React.FC<Props> = ({ onSelectFiles }) => {
 
   return (
     <div>
-      <form className="ml-4">
-        <label htmlFor="file-input-select-new-asset" className="cursor-pointer text-sm">
-          上传文件
+      <form>
+        <label htmlFor="file-input-select-new-asset" className="cursor-default">
+          {children ? children : <div className='text-xs'>Upload</div>}
         </label>
         <input
           type="file"
@@ -83,10 +83,10 @@ const WebUploadButton: React.FC<Props> = ({ onSelectFiles }) => {
   )
 }
 
-export default function UploadButton({ onSelectFiles }: Props) {
+export default function UploadButton({ children, onSelectFiles }: PropsWithChildren<Props>) {
   if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-    return <TauriUploadButton onSelectFiles={onSelectFiles} />
+    return <TauriUploadButton onSelectFiles={onSelectFiles}>{children}</TauriUploadButton>
   } else {
-    return <WebUploadButton onSelectFiles={onSelectFiles} />
+    return <WebUploadButton onSelectFiles={onSelectFiles}>{children}</WebUploadButton>
   }
 }

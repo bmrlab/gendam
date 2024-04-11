@@ -1,16 +1,16 @@
 'use client'
 import { useExplorerContext } from '@/Explorer/hooks'
-import Icon from '@/components/Icon'
+import PageNav from '@/components/PageNav'
 import UploadButton from '@/components/UploadButton'
+import Viewport from '@/components/Viewport'
 import { rspc } from '@/lib/rspc'
+import { useUploadQueueStore } from '@/store/uploadQueue'
+import Icon from '@muse/ui/icons'
+import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
-import TitleDialog from './TitleDialog'
-import { useUploadQueueStore } from '@/store/uploadQueue'
-import Viewport from '@/components/Viewport'
-import PageNav from '@/components/PageNav'
 import { useInspector } from './Inspector'
-import classNames from 'classnames'
+import TitleDialog from './TitleDialog'
 
 export default function Header() {
   const router = useRouter()
@@ -19,22 +19,6 @@ export default function Header() {
 
   const inspector = useInspector()
   const createPathMut = rspc.useMutation(['assets.create_file_path'])
-
-  // const goToDir = useCallback(
-  //   (dirName: string) => {
-  //     if (!explorer.parentPath) {
-  //       return
-  //     }
-  //     let newPath = explorer.parentPath
-  //     if (dirName === '-1') {
-  //       newPath = newPath.replace(/(.*\/)[^/]+\/$/, '$1')
-  //     } else {
-  //       newPath += dirName + '/'
-  //     }
-  //     router.push('/explorer?dir=' + newPath)
-  //   },
-  //   [explorer, router],
-  // )
 
   let handleSelectFiles = useCallback(
     (fileFullPaths: string[]) => {
@@ -79,56 +63,82 @@ export default function Header() {
       <Viewport.Toolbar>
         <PageNav title={explorer.parentPath === '/' ? '全部' : explorer.parentPath} />
         <div className="ml-auto" />
-        <div className="mr-8 flex select-none items-center">
+        {/* <div className="mr-8 flex select-none items-center">
           <div className="cursor-pointer px-2 py-1 text-sm" onClick={() => handleCreateDir()}>
             添加文件夹
           </div>
-          <UploadButton onSelectFiles={handleSelectFiles} />
-        </div>
-        <div className="flex items-center gap-0.5 justify-self-end text-ink/50">
+          <UploadButton onSelectFiles={handleSelectFiles}>上传文件</UploadButton>
+        </div> */}
+        <div className="text-ink/70 flex items-center gap-1 justify-self-end">
+          <div className='hover:bg-toolbar-hover h-6 w-6 rounded p-1' onClick={() => handleCreateDir()}>
+            <Icon.FolderOpen className="size-4" />
+          </div>
+          <div className='hover:bg-toolbar-hover h-6 w-6 rounded p-1'>
+            <UploadButton onSelectFiles={handleSelectFiles}>
+              <Icon.Upload className="size-4" />
+            </UploadButton>
+          </div>
+
+          <div className="bg-toolbar-line mx-1 h-4 w-px"></div>
+
           <div
             className={classNames(
-              "h-6 w-6 cursor-pointer rounded p-1 hover:bg-toolbar-hover",
-              explorer.settings.layout === 'grid' && 'bg-toolbar-hover'
+              'hover:bg-toolbar-hover h-6 w-6 rounded p-1',
+              explorer.settings.layout === 'grid' && 'bg-toolbar-hover',
             )}
             onClick={() => explorer.settings.update({ layout: 'grid' })}
           >
-            <Icon.grid className="size-4" />
+            <Icon.Grid className="size-4" />
           </div>
           <div
             className={classNames(
-              "h-6 w-6 cursor-pointer rounded p-1 hover:bg-toolbar-hover",
-              explorer.settings.layout === 'list' && 'bg-toolbar-hover'
+              'hover:bg-toolbar-hover h-6 w-6 rounded p-1',
+              explorer.settings.layout === 'list' && 'bg-toolbar-hover',
             )}
             onClick={() => explorer.settings.update({ layout: 'list' })}
           >
-            <Icon.list className="size-4" />
+            <Icon.List className="size-4" />
           </div>
           <div
             className={classNames(
-              "h-6 w-6 cursor-pointer rounded p-1 hover:bg-toolbar-hover",
-              explorer.settings.layout === 'media' && 'bg-toolbar-hover'
+              'hover:bg-toolbar-hover h-6 w-6 rounded p-1',
+              explorer.settings.layout === 'media' && 'bg-toolbar-hover',
             )}
             onClick={() => explorer.settings.update({ layout: 'media' })}
           >
-            <Icon.image className="size-4" />
+            <Icon.Gallery className="size-4" />
           </div>
-          <div className="w-px h-4 mx-1 bg-toolbar-line"></div>
+
+          <div className="bg-toolbar-line mx-1 h-4 w-px"></div>
+
           <div
             className={classNames(
-              "h-6 w-6 cursor-pointer rounded p-1 hover:bg-toolbar-hover",
-              inspector.show && 'bg-toolbar-hover'
+              'hover:bg-toolbar-hover h-6 w-6 rounded p-1',
+              inspector.show && 'bg-toolbar-hover',
             )}
             onClick={() => inspector.setShow(!inspector.show)}
           >
-            <Icon.viewVertical className="size-4" />
+            <Icon.Column className="size-4" />
           </div>
-          {/* <div className="h-6 w-[28px] cursor-pointer rounded px-1.5 py-1 hover:bg-toolbar-hover">
-            <Icon.column className="size-4" />
-          </div> */}
         </div>
       </Viewport.Toolbar>
       {titleInputDialogVisible && <TitleDialog onConfirm={onConfirmTitleInput} onCancel={onCancelTitleInput} />}
     </>
   )
 }
+
+// const goToDir = useCallback(
+//   (dirName: string) => {
+//     if (!explorer.parentPath) {
+//       return
+//     }
+//     let newPath = explorer.parentPath
+//     if (dirName === '-1') {
+//       newPath = newPath.replace(/(.*\/)[^/]+\/$/, '$1')
+//     } else {
+//       newPath += dirName + '/'
+//     }
+//     router.push('/explorer?dir=' + newPath)
+//   },
+//   [explorer, router],
+// )
