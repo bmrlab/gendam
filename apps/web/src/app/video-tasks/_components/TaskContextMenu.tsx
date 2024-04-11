@@ -18,6 +18,7 @@ export default function TaskContextMenu({ video, fileHash, isNotDone, children }
     Array<
       | 'Separator'
       | {
+          disabled?: boolean
           variant?: 'accent' | 'destructive'
           label: string
           icon: ReactNode
@@ -49,6 +50,7 @@ export default function TaskContextMenu({ video, fileHash, isNotDone, children }
       },
       'Separator',
       {
+        disabled: true,
         variant: 'destructive',
         label: '删除任务',
         icon: <Icon.Trash className="size-4" />,
@@ -66,7 +68,7 @@ export default function TaskContextMenu({ video, fileHash, isNotDone, children }
             o === 'Separator' ? (
               <ContextMenu.Separator key={index} />
             ) : (
-              <ContextMenu.Item key={index} onClick={o.handleClick} variant={o.variant}>
+              <ContextMenu.Item key={index} onClick={o.handleClick} variant={o.variant} disabled={o.disabled}>
                 {o.icon}
                 <span>{o.label}</span>
               </ContextMenu.Item>

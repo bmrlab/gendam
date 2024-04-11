@@ -1,7 +1,7 @@
 'use client'
 import { VideoTaskStatus } from './TaskStatus'
 import TaskDropdownMenu, { DropdownMenuOptions } from './TaskDropdownMenu'
-import Icon from '@/components/Icon'
+import Icon from '@muse/ui/icons'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
@@ -37,7 +37,7 @@ export default function VideoTaskItem({
           {
             label: (
               <div className="flex items-center gap-1.5">
-                <Icon.crossCircled />
+                <Icon.CloseRounded />
                 <span>取消任务</span>
               </div>
             ),
@@ -58,9 +58,11 @@ export default function VideoTaskItem({
     return [
       ...processItem,
       {
+        disabled: true,
+        variant: 'destructive',
         label: (
           <div className="flex items-center gap-1.5">
-            <Icon.trash />
+            <Icon.Trash />
             <span>删除任务</span>
           </div>
         ),
@@ -78,10 +80,10 @@ export default function VideoTaskItem({
       )}
     >
       <div
-        className="relative flex size-9 cursor-pointer bg-app-overlay"
+        className="relative flex size-9 cursor-default bg-app-overlay"
         onClick={(e) => {
           handleClick()
-          e.stopPropagation()
+          // e.stopPropagation()
         }}
       >
         {/* <video controls={false} autoPlay={false} muted loop className="size-full object-contain">
@@ -123,7 +125,7 @@ export default function VideoTaskItem({
           <div className="flex flex-wrap items-end gap-1.5">
             <VideoTaskStatus tasks={tasks} ></VideoTaskStatus>
             <TaskDropdownMenu
-              triggerIcon={<Icon.moreVertical className="size-6 cursor-pointer" />}
+              triggerIcon={<Icon.MoreVertical className="size-3" />}
               options={moreActionOptions()}
               contentClassName="w-48"
             >
@@ -134,7 +136,7 @@ export default function VideoTaskItem({
                 )}
               >
                 <span className="sr-only">Open menu</span>
-                <Icon.moreVertical className="size-6 cursor-pointer" />
+                <Icon.MoreVertical className="size-3" />
               </div>
             </TaskDropdownMenu>
           </div>
@@ -148,7 +150,7 @@ export default function VideoTaskItem({
 const NoAudio = () => {
   return (
     <div className="flex items-center gap-1 text-ink/50">
-      <Icon.audio />
+      <Icon.SpeakerSimpleX />
       <span className="text-xs font-normal leading-4">无音轨</span>
     </div>
   )

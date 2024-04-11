@@ -1,15 +1,13 @@
 'use client'
 import Viewport from '@/components/Viewport'
 import { TaskListRequestFilter } from '@/lib/bindings'
-import { Label } from '@muse/ui/v1/label'
-import { RadioGroup, RadioGroupItem } from '@muse/ui/v1/radio-group'
+import PageNav from '@/components/PageNav'
 import { ScrollArea } from '@muse/ui/v1/scroll-area'
 import classNames from 'classnames'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
 import AudioDialog from './_components/audio/AudioDialog'
 import TaskFooter from './_components/footer'
-import VideoTaskHeader from './_components/header'
 import VideoTasksList from './_components/TaskList'
 import useTaskList, { type TaskListProps } from './useTaskList'
 
@@ -45,7 +43,7 @@ export default function VideoTasksPage() {
     return (
       <RadioGroup
         defaultValue={filter as string}
-        className="flex px-8 py-4 mb-2 border-b border-app-line"
+        className="flex px-8 py-4"
         value={filter as string}
         onValueChange={(filter) => setFilter(filter as TaskListRequestFilter)}
       >
@@ -86,9 +84,12 @@ export default function VideoTasksPage() {
 
   return (
     <Viewport.Page>
-      <VideoTaskHeader />
-      <Viewport.Content>
+      {/* <VideoTaskHeader /> */}
+      <Viewport.Toolbar className="items-center justify-between">
+        <PageNav title="任务列表" />
         <ListFilter />
+      </Viewport.Toolbar>
+      <Viewport.Content>
         <ScrollArea className="flex-1 rounded-[6px]">
           <VideoTasksList data={videos} isLoading={isLoading} />
           {maxPage > 1 ? <Pagination /> : null}

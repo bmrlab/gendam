@@ -1,6 +1,6 @@
 'use client'
 import type { VideoWithTasksResult } from '@/lib/bindings'
-import { rspc } from '@/lib/rspc'
+// import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 import { HTMLAttributes, useMemo } from 'react'
@@ -16,17 +16,17 @@ export type VideoTasksListProps = HTMLAttributes<HTMLDivElement> & {
 }
 
 export default function VideoTasksList({ data, isLoading, className }: VideoTasksListProps) {
-  const revealMut = rspc.useMutation('files.reveal')
+  // const revealMut = rspc.useMutation('files.reveal')
 
-  const searchKey = useBoundStore.use.searchKey()
   const taskSelected = useBoundStore.use.videoSelected()
-
-  const filterVideos = useMemo(() => {
-    return data.filter((videoFile) => {
-      // TODO: 等加入更多视频信息后，需要修改搜索条件
-      return videoFile?.name.includes(searchKey)
-    })
-  }, [data, searchKey])
+  const filterVideos = data
+  // const searchKey = useBoundStore.use.searchKey()
+  // const filterVideos = useMemo(() => {
+  //   return data.filter((videoFile) => {
+  //     // TODO: 等加入更多视频信息后，需要修改搜索条件
+  //     return videoFile?.name.includes(searchKey)
+  //   })
+  // }, [data, searchKey])
 
   if (isLoading) {
     return (
