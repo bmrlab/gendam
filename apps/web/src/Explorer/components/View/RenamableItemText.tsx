@@ -46,10 +46,13 @@ export default function RenamableItemText({
   )
 
   return (
-    <form className={classNames("w-full", className)} onSubmit={handleInputSubmit}>
+    <form className={classNames("w-full")} onSubmit={handleInputSubmit}>
       <input
         ref={inputRef}
-        className="block w-full rounded-md outline-none text-ink bg-app border-2 border-blue-600 px-2 py-1 text-xs"
+        className={classNames(
+          "block w-full rounded-md outline-none text-ink bg-app border-2 border-blue-600 px-2 py-1 text-xs",
+          className
+        )}
         type="text"
         onClick={(e) => e.stopPropagation()}
         onDoubleClick={(e) => e.stopPropagation()}

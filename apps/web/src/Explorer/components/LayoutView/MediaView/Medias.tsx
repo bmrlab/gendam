@@ -9,11 +9,20 @@ import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import classNames from 'classnames'
-import { useCallback, useMemo, useState } from 'react'
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
+type ItemsWithSize = {
+  data: ExplorerItem
+  width: number
+  height: number
+}
+
+const DroppableInner: React.FC<ItemsWithSize> = ({ data, width, height }) => {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
+
+  width = Math.floor(width)
+  height = Math.floor(height)
 
   const { isDroppable } = useExplorerDroppableContext()
   const highlight = useMemo(() => {
@@ -22,15 +31,24 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
 
   return (
     <>
-      <div className={classNames('mb-1 h-28 w-28 rounded-lg p-2', highlight ? 'bg-app-hover' : null)}>
+      <div
+        className={classNames(
+          'mb-1 overflow-hidden',
+          highlight ? 'bg-app-hover' : null
+        )}
+        style={{ width: `${width}px`, height: `${height}px` }}
+      >
         <FileThumb data={data} className="h-full w-full" />
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
-        <div className="w-28">
+        <div style={{ width: `${width}px` }}>
           <RenamableItemText data={data} className="text-center" />
         </div>
       ) : (
-        <div className={classNames('text-ink w-28 rounded-lg p-1', highlight ? 'bg-accent text-white' : null)}>
+        <div
+          style={{ width: `${width}px` }}
+          className={classNames('text-ink rounded p-1', highlight ? 'bg-accent text-white' : null)}
+        >
           <div className="line-clamp-2 max-h-[2.8em] break-all text-center text-xs leading-[1.4em]">{data.name}</div>
         </div>
       )}
@@ -38,10 +56,9 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
   )
 }
 
-const MediaItem: React.FC<{
-  data: ExplorerItem
+const MediaItem: React.FC<ItemsWithSize & {
   onSelect: (e: React.MouseEvent, data: ExplorerItem) => void
-}> = ({ data, onSelect }) => {
+}> = ({ data, width, height, onSelect }) => {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const quickViewStore = useQuickViewStore()
@@ -60,7 +77,6 @@ const MediaItem: React.FC<{
 
   return (
     <div
-      className="flex cursor-default select-none flex-col items-center justify-start"
       onClick={(e) => {
         e.stopPropagation()
         onSelect(e, data)
@@ -70,7 +86,7 @@ const MediaItem: React.FC<{
       <ViewItem data={data}>
         <ExplorerDroppable droppable={{ data: data }}>
           <ExplorerDraggable draggable={{ data: data }}>
-            <DroppableInner data={data} />
+            <DroppableInner data={data} width={width} height={height} />
           </ExplorerDraggable>
         </ExplorerDroppable>
       </ViewItem>
@@ -82,6 +98,48 @@ export default function Medias({ items }: { items: ExplorerItem[] }) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
+
+  const ref = useRef<HTMLDivElement>(null)
+  const gap = 10
+  const padding = 30  // container 左右 padding
+  const containerWidth = Math.max(0, (ref.current?.clientWidth || 0) - padding * 2)
+  // useEffect(() => {
+  //   console.log(containerWidth)
+  // }, [containerWidth])
+
+  const itemsWithSize = useMemo<ItemsWithSize[]>(() => {
+    if (!containerWidth) {
+      return []
+    }
+    let itemsTotalWidth = 0
+    let itemsWithSize: ItemsWithSize[] = []
+    let queue: ItemsWithSize[] = []
+    for (let data of items) {
+      const mediaWidth = data.assetObject?.mediaData?.width || 100  // px
+      const mediaHeight = data.assetObject?.mediaData?.height || 100  // px
+      /* 高度 100px, 宽度 100 ~ 300 px */
+      const height = 150
+      const width = Math.min(
+        Math.min(450, containerWidth),
+        Math.max(100, height * mediaWidth / mediaHeight)
+      )
+      const maxTotalWidth = containerWidth - (gap * (queue.length - 1))
+      if (itemsTotalWidth + width > maxTotalWidth) {
+        const scale = maxTotalWidth / itemsTotalWidth
+        queue.forEach((item) => {
+          item.width *= scale
+          item.height *= scale
+        })
+        itemsWithSize = itemsWithSize.concat(queue)
+        itemsTotalWidth = 0
+        queue.length = 0
+      }
+      itemsTotalWidth += width
+      queue.push({ data, width, height })
+    }
+    itemsWithSize = itemsWithSize.concat(queue)
+    return itemsWithSize
+  }, [containerWidth, items])
 
   const onSelect = useCallback(
     (e: React.MouseEvent, data: ExplorerItem) => {
@@ -111,9 +169,13 @@ export default function Medias({ items }: { items: ExplorerItem[] }) {
   )
 
   return (
-    <div className="flex flex-wrap content-start items-start justify-start gap-6 p-8">
-      {items.map((item) => (
-        <MediaItem key={item.id} data={item} onSelect={onSelect} />
+    <div
+      ref={ref}
+      className="w-full flex flex-wrap content-start items-start justify-start"
+      style={{ columnGap: `${gap}px`, rowGap: '30px', padding: `${padding}px` }}
+    >
+      {itemsWithSize.map(({ data, width, height }) => (
+        <MediaItem key={data.id} data={data} width={width} height={height} onSelect={onSelect} />
       ))}
     </div>
   )
