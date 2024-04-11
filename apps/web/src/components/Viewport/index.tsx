@@ -16,7 +16,7 @@ import Sidebar from './Sidebar'
 
 const Viewport = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
-    <main className={classNames('flex flex-row', className)} {...props}>
+    <main className={classNames('flex flex-row overflow-hidden', className)} {...props}>
       {children}
     </main>
   )
@@ -24,7 +24,7 @@ const Viewport = ({ className, children, ...props }: HTMLAttributes<HTMLDivEleme
 
 const Page = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
-    <div className={classNames('flex h-screen flex-1 flex-col', className)} {...props}>
+    <div className={classNames('flex h-screen flex-1 flex-col overflow-hidden', className)} {...props}>
       {children}
     </div>
   )
