@@ -152,8 +152,8 @@ export default function VideoTaskItem({
             >
               <div
                 className={classNames(
-                  'inline-flex items-center justify-center size-6 rounded border',
-                  'cursor-default data-[state=open]:bg-app-hover'
+                  'inline-flex items-center justify-center size-6 rounded border cursor-default',
+                  !isSelect && 'data-[state=open]:bg-app-hover',
                 )}
               >
                 <span className="sr-only">Open menu</span>
