@@ -17,6 +17,7 @@ export default function Sidebar() {
   const [selectPanelOpen, setSelectPanelOpen] = useState(false)
   const pathname = usePathname()
   const currentLibrary = useCurrentLibrary()
+  const { data: version } = rspc.useQuery(['version'])
 
   const switchLibrary = useCallback(
     async (library: Library) => {
@@ -92,16 +93,24 @@ export default function Sidebar() {
           <Icon.Briefcase className="h-4 w-4 text-ink/70 mr-2" />
           视频任务
         </Link>
-        <Link href="/debug/ui" className={menuClassNames('/debug/ui')}>
+        {/* <Link href="/debug/ui" className={menuClassNames('/debug/ui')}>
           <span className="font-light text-neutral-400">Debug</span>
-        </Link>
+        </Link> */}
       </div>
-      <div className='absolute bottom-3 lett-3 text-sm'>
-        <button
-          onClick={() => {
-            document.documentElement.classList.toggle('dark')
-          }}
-        >dark/light test</button>
+      <div className='absolute bottom-3 left-2'>
+        <div className='text-sm flex items-center justify-start gap-1 mb-2'>
+          <Link href="/settings"
+            className='block cursor-default w-7 h-7 p-1 hover:bg-sidebar-hover rounded'>
+            <Icon.Gear className="h-5 w-5 text-ink/70 mr-2" />
+          </Link>
+          <div className='w-7 h-7 p-1 hover:bg-sidebar-hover rounded'>
+            <div
+              className="h-5 w-5 text-ink/70"
+              onClick={() => document.documentElement.classList.toggle('dark')}
+            >Aa</div>
+          </div>
+        </div>
+        <div className='text-xs text-neutral-400 px-1'>v{version}</div>
       </div>
     </div>
   )

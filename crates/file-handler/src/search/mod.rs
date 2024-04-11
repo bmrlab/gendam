@@ -8,7 +8,7 @@ use ai::{
     BatchHandler,
 };
 use payload::{SearchPayload, SearchRecordType};
-use prisma_lib::{video_frame, video_frame_caption, video_transcript, PrismaClient};
+use prisma_lib::{video_transcript, PrismaClient};
 use qdrant_client::{
     client::QdrantClient,
     qdrant::{Condition, Filter, SearchPoints},
