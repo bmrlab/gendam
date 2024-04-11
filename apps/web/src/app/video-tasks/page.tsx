@@ -1,8 +1,9 @@
 'use client'
 import Viewport from '@/components/Viewport'
-import { TaskListRequestFilter } from '@/lib/bindings'
+import { type TaskListRequestFilter } from '@/lib/bindings'
 import PageNav from '@/components/PageNav'
 import { ScrollArea } from '@muse/ui/v1/scroll-area'
+import { Checkbox } from '@muse/ui/v2/checkbox'
 import classNames from 'classnames'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
@@ -41,21 +42,18 @@ export default function VideoTasksPage() {
 
   const ListFilter = () => {
     return (
-      <RadioGroup
-        defaultValue={filter as string}
-        className="flex px-8 py-4"
-        value={filter as string}
-        onValueChange={(filter) => setFilter(filter as TaskListRequestFilter)}
-      >
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="all" id="task-filter-all" />
-          <Label htmlFor="task-filter-all">全部</Label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="excludeCompleted" id="task-filter-excludeCompleted" />
-          <Label htmlFor="task-filter-excludeCompleted">未完成</Label>
-        </div>
-      </RadioGroup>
+      <form className='flex items-center gap-2 mr-3'>
+        <Checkbox.Root
+          id="task-filter" className=""
+          checked={filter === 'all'}
+          onCheckedChange={(checked) => setFilter(checked ? 'all' : 'excludeCompleted')}
+        >
+          <Checkbox.Indicator />
+        </Checkbox.Root>
+        <label className="text-xs" htmlFor="task-filter">
+          Show completed tasks
+        </label>
+      </form>
     )
   }
 
@@ -100,41 +98,3 @@ export default function VideoTasksPage() {
     </Viewport.Page>
   )
 }
-
-// const bottomRef = useRef(null)
-// useEffect(() => {
-//   // 防止初次加载
-//   const timer = setTimeout(() => {
-//     const observer = new IntersectionObserver(
-//       ([entry]) => {
-//         if (entry.isIntersecting) {
-//           if (hasNextPage) {
-//             fetchNextPage()
-//           }
-//         }
-//       },
-//       {
-//         root: null,
-//         threshold: 0.1,
-//       },
-//     )
-//     if (bottomRef.current) {
-//       observer.observe(bottomRef.current)
-//     }
-//   }, 500)
-
-//   return () => {
-//     clearTimeout(timer)
-//   }
-// }, [fetchNextPage, hasNextPage])
-
-// <div className="flex items-center justify-center p-4">
-//   {hasNextPage ? (
-//     <>
-//       <div className="text-xs text-slate-400">滚动加载更多</div>
-//       <div ref={bottomRef}></div>
-//     </>
-//   ) : (
-//     <div className="text-xs text-slate-400">没有更多了</div>
-//   )}
-// </div>
