@@ -1,4 +1,4 @@
-use crate::search_payload::SearchPayload;
+use crate::search::payload::SearchPayload;
 use ai::{text_embedding::TextEmbedding, BatchHandler};
 use qdrant_client::{client::QdrantClient, qdrant::PointStruct};
 use serde_json::json;

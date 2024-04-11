@@ -39,6 +39,14 @@ impl SearchPayload {
     pub fn get_uuid(&self) -> Uuid {
         Uuid::new_v5(&Uuid::NAMESPACE_OID, json!(self).to_string().as_bytes())
     }
+
+    pub fn get_file_identifier(&self) -> &str {
+        match self {
+            SearchPayload::Frame { file_identifier, .. } => file_identifier,
+            SearchPayload::FrameCaption { file_identifier, .. } => file_identifier,
+            SearchPayload::Transcript { file_identifier, .. } => file_identifier,
+        }
+    }
 }
 
 impl SearchRecordType {

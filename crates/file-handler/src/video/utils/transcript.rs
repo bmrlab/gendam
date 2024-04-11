@@ -1,6 +1,6 @@
 use super::save_text_embedding;
 use crate::{
-    search_payload::SearchPayload,
+    search::payload::SearchPayload,
     video::{AUDIO_FILE_NAME, TRANSCRIPT_FILE_NAME},
 };
 use ai::{

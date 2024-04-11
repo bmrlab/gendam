@@ -50,7 +50,7 @@ export type Pagination = { pageSize: number; pageIndex: number }
 
 export type AssetObjectCreatePayload = { materializedPath: string; localFullPath: string }
 
-export type SearchResultPayload = { name: string; materializedPath: string; assetObjectId: number; assetObjectHash: string; startTime: number; recordType: string; score: number }
+export type SearchResultPayload = { name: string; materializedPath: string; assetObjectId: number; assetObjectHash: string; startTime: number; endTime: number; score: number }
 
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
 

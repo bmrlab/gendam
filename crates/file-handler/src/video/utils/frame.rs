@@ -1,4 +1,4 @@
-use crate::{search_payload::SearchPayload, video::FRAME_FILE_EXTENSION};
+use crate::{search::payload::SearchPayload, video::FRAME_FILE_EXTENSION};
 use ai::{
     clip::{CLIPInput, CLIP},
     BatchHandler,

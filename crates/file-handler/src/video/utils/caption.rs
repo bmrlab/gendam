@@ -1,6 +1,6 @@
 use super::save_text_embedding;
 use crate::{
-    search_payload::SearchPayload,
+    search::payload::SearchPayload,
     video::{utils::get_frame_timestamp_from_path, CAPTION_FILE_EXTENSION, FRAME_FILE_EXTENSION},
 };
 use ai::{blip::BLIP, text_embedding::TextEmbedding, yolo::YOLO, BatchHandler};

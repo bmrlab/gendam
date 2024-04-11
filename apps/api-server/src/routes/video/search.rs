@@ -7,7 +7,7 @@ use prisma_lib::asset_object;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use tracing::error;
+use tracing::{debug, error};
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -29,7 +29,7 @@ where
             pub asset_object_hash: String,
             // #[serde(rename = "startTime")]
             pub start_time: i32,
-            pub record_type: String,
+            pub end_time: i32,
             pub score: f32,
         }
         t(move |ctx: TCtx, input: SearchRequestPayload| async move {
@@ -53,8 +53,6 @@ where
                 SearchRequest {
                     text,
                     record_type: Some(record_types),
-                    limit: None,
-                    skip: None,
                 },
                 library.prisma_client(),
                 library.qdrant_client(),
@@ -62,6 +60,8 @@ where
                 ctx.get_ai_handler().text_embedding,
             )
             .await;
+
+            debug!("search result: {:?}", res);
 
             let search_results = match res {
                 Ok(res) => res,
@@ -112,8 +112,8 @@ where
                     |SearchResult {
                          file_identifier,
                          start_timestamp,
+                         end_timestamp,
                          score,
-                         record_type,
                          ..
                      }| {
                         let asset_object_data = match tasks_hash_map.get(file_identifier) {
@@ -129,7 +129,7 @@ where
                                     asset_object_id: 0,
                                     asset_object_hash: "".to_string(),
                                     start_time: 0,
-                                    record_type: record_type.to_string(),
+                                    end_time: 0,
                                     score: *score,
                                 };
                             }
@@ -153,12 +153,12 @@ where
                             asset_object_id,
                             asset_object_hash,
                             start_time: (*start_timestamp).clone(),
-                            record_type: record_type.to_string(),
+                            end_time: (*end_timestamp).clone(),
                             score: *score,
                         }
                     },
                 )
-                .collect::<Vec<SearchResultPayload>>();
+                .collect::<Vec<_>>();
             Ok(search_result)
         })
     })
