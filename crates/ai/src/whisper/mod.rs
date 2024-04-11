@@ -4,6 +4,7 @@ use async_trait::async_trait;
 pub use language::*;
 use serde::{Deserialize, Serialize};
 use std::convert::AsRef;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use tracing::warn;
@@ -189,7 +190,14 @@ impl Whisper {
             }
         }
 
-        let transcript = std::fs::read_to_string(output_file_path.with_extension("json"))?;
+        // result may contain invalid utf-8
+        // TODO maybe we should also remove replacement character?
+        let mut buf: Vec<u8> = vec![];
+        let mut file = std::fs::File::open(output_file_path.with_extension("json"))?;
+        file.read_to_end(&mut buf)?;
+        let transcript = String::from_utf8_lossy(&buf);
+        let transcript = transcript.to_string();
+
         let mut transcript: serde_json::Value = serde_json::from_str(&transcript)?;
         let language = transcript["result"]["language"].take();
         let language = WhisperLanguage::from_str(language.as_str().unwrap_or("en"))?;
@@ -257,4 +265,28 @@ async fn test_whisper() {
             error!("failed to transcribe: {}", e);
         }
     }
+}
+
+#[test_log::test]
+fn test_with_invalid_utf8() {
+    let mut buf: Vec<u8> = vec![];
+    let mut file =
+        std::fs::File::open("/Users/zhuo/Downloads/291c9bcabe0f410f/transcript.json").expect("");
+    file.read_to_end(&mut buf).expect("");
+
+    let transcript = String::from_utf8_lossy(&buf);
+    let transcript = transcript.to_string();
+
+    let mut transcript: serde_json::Value = serde_json::from_str(&transcript).expect("");
+    let language = transcript["result"]["language"].take();
+    let language = WhisperLanguage::from_str(language.as_str().unwrap_or("en")).expect("");
+    let transcription = transcript["transcription"].take();
+    let transcription: Vec<WhisperTranscription> = serde_json::from_value(transcription).expect("");
+
+    let result = WhisperResult {
+        language,
+        transcription,
+    };
+
+    tracing::info!("result: {:?}", result);
 }
