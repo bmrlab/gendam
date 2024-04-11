@@ -13,7 +13,7 @@ mod store;
 use store::Store;
 
 fn validate_app_version(app_handle: tauri::AppHandle, local_data_root: &PathBuf) {
-    const VERSION_SHOULD_GTE: usize = 1;
+    const VERSION_SHOULD_GTE: usize = 2;
     let mut tauri_store =
         tauri_plugin_store::StoreBuilder::new(app_handle, "settings.json".parse().unwrap()).build();
     tauri_store.load().unwrap_or_else(|e| {
@@ -31,13 +31,20 @@ fn validate_app_version(app_handle: tauri::AppHandle, local_data_root: &PathBuf)
         if libraries_dir.exists() {
             let archived_dir = local_data_root.join("archived");
             std::fs::create_dir_all(&archived_dir).unwrap();
-            std::fs::rename(&libraries_dir, archived_dir.join("libraries")).unwrap();
+            std::fs::rename(
+                &libraries_dir,
+                archived_dir.join(format!("libraries-{}", chrono::Utc::now().timestamp())),
+            ).unwrap();
         }
         tauri_store.delete("current-library-id").unwrap();
         tauri_store
             .insert("version".to_string(), VERSION_SHOULD_GTE.to_string().into())
-            .unwrap();
-        tauri_store.save().unwrap();
+            .unwrap_or_else(|e| {
+                tracing::warn!("Failed to insert version to tauri store: {:?}", e)
+            });
+        tauri_store.save().unwrap_or_else(|e| {
+            tracing::warn!("Failed to save tauri store: {:?}", e);
+        });
     }
 }
 
