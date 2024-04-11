@@ -47,7 +47,7 @@ const ExplorerDroppable = ({
   return (
     // 把 isDroppable (即 Droppable 的 isOver 等信息带到子元素中去)
     <ExplorerDroppableContext.Provider value={context}>
-      <div ref={setNodeRef} data-component='ExplorerDroppable'>{children}</div>
+      <div ref={setNodeRef} data-component-hint='ExplorerDroppable'>{children}</div>
     </ExplorerDroppableContext.Provider>
   )
 }

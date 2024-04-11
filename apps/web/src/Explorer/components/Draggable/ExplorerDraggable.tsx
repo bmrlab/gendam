@@ -40,7 +40,10 @@ const ExplorerDraggable = ({
   // }
 
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes} data-component='ExplorerDraggable'>
+    <div
+      ref={setNodeRef} style={style} {...listeners} {...attributes}
+      data-component-hint='ExplorerDraggable'
+    >
       {children}
     </div>
   )

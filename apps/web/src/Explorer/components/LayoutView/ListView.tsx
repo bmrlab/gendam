@@ -98,8 +98,8 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
 
   return (
     <div
-      className="cursor-default select-none rounded-md overflow-hidden"
-      onClick={handleClick} onDoubleClick={handleDoubleClick}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
     >
       <ViewItem data={data}>
         <ExplorerDroppable droppable={{ data: data }}>
