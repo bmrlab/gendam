@@ -148,12 +148,12 @@ impl VideoHandler {
         if let Some(with_audio) = with_audio {
             if with_audio {
                 task_types.push(VideoTaskType::Audio);
-            }
 
-            if self.whisper.is_some() {
-                task_types.push(VideoTaskType::Transcript);
-                if self.text_embedding.is_some() {
-                    task_types.push(VideoTaskType::TranscriptEmbedding);
+                if self.whisper.is_some() {
+                    task_types.push(VideoTaskType::Transcript);
+                    if self.text_embedding.is_some() {
+                        task_types.push(VideoTaskType::TranscriptEmbedding);
+                    }
                 }
             }
         }
