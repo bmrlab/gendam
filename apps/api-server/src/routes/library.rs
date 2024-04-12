@@ -1,11 +1,11 @@
 use crate::CtxWithLibrary;
-use content_library::{create_library_with_title, list_libraries, get_library_settings};
+use content_library::{create_library_with_title, list_libraries, get_library_settings, set_library_settings};
 use rspc::{Router, RouterBuilder};
 use serde_json::json;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use specta::Type;
 
-#[derive(Serialize, Type)]
+#[derive(Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LibrarySettings {
     pub title: String
@@ -48,6 +48,18 @@ where
                     "id": library.id,
                     "dir": library.dir,
                 })
+            })
+        })
+        .mutation("update_library_settings", |t| {
+            t(|ctx, input: LibrarySettings| async move {
+                let library = ctx.library()?;
+                set_library_settings(
+                    &library.dir,
+                    json!({
+                        "title": input.title
+                    })
+                );
+                Ok(())
             })
         })
         .mutation("set_current_library", |t| {

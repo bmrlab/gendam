@@ -26,6 +26,7 @@ export type Procedures = {
         { key: "files.reveal", input: string, result: null } | 
         { key: "libraries.create", input: string, result: any } | 
         { key: "libraries.set_current_library", input: string, result: any } | 
+        { key: "libraries.update_library_settings", input: LibrarySettings, result: null } | 
         { key: "video.tasks.cancel", input: TaskCancelRequestPayload, result: null } | 
         { key: "video.tasks.create", input: string, result: null } | 
         { key: "video.tasks.regenerate", input: TaskRedoRequestPayload, result: null },
@@ -44,6 +45,8 @@ export type MediaData = { id: number; width: number | null; height: number | nul
 
 export type AssetObject = { id: number; note: string | null; hash: string; createdAt: string; updatedAt: string }
 
+export type LibrarySettings = { title: string }
+
 export type TaskRedoRequestPayload = { assetObjectId: number }
 
 export type Pagination = { pageSize: number; pageIndex: number }
@@ -61,8 +64,6 @@ export type AudioResp = { type: AudioType; content: string }
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
 export type Library = { id: string; dir: string; settings: LibrarySettings }
-
-export type LibrarySettings = { title: string }
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 

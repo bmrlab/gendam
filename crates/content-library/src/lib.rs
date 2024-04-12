@@ -185,6 +185,20 @@ pub fn get_library_settings(library_dir: &PathBuf) -> serde_json::Value {
     }
 }
 
+pub fn set_library_settings(library_dir: &PathBuf, settings: serde_json::Value) {
+    // create or update to library_dir.join("settings.json")
+    match std::fs::File::create(library_dir.join("settings.json")) {
+        Ok(file) => {
+            if let Err(e) = serde_json::to_writer(file, &settings) {
+                tracing::error!("Failed to write file: {}", e);
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to create file: {}", e);
+        }
+    };
+}
+
 fn get_shard_hex(hash: &str) -> &str {
     &hash[0..3]
 }

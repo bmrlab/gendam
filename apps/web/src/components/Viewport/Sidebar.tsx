@@ -54,26 +54,28 @@ export default function Sidebar() {
         <div className="flex cursor-default items-center justify-start" onClick={() => setSelectPanelOpen(true)}>
           <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>
           <div className="mx-2 w-32 truncate text-xs font-semibold">
-            {currentLibrary.settings?.title ?? "Untitled"} ({currentLibrary.id})
+            {currentLibrary.settings?.title ?? "Untitled"}
+            {/* ({currentLibrary.id}) */}
           </div>
           <Icon.UpAndDownArrow className="h-4 w-4"></Icon.UpAndDownArrow>
         </div>
         {selectPanelOpen && (
           <div
             ref={panelRef}
-            className="absolute left-32 top-3 z-10 w-60 rounded-md
+            className="absolute left-32 top-3 z-10 w-72 rounded-md
               border border-app-line bg-app-box text-ink p-1 shadow-sm"
           >
             {libraries.map((library, index: number) => {
               return (
                 <div
                   key={library.id}
-                  className="flex cursor-default items-center justify-start rounded-md px-3 py-2 hover:bg-app-hover/50"
+                  className="flex gap-2 cursor-default items-center justify-start rounded-md px-3 py-2 hover:bg-app-hover/50"
                   onClick={() => switchLibrary(library)}
                 >
-                  <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>
-                  <div className="mx-2 w-48 truncate text-xs font-semibold">
-                    {library.settings?.title ?? 'Untitled'} ({library.id})
+                  <Image src={Muse_Logo} alt="Muse" className="h-9 w-9"></Image>
+                  <div className="flex-1 overflow-hidden">
+                    <div className="truncate text-xs font-semibold">{library.settings?.title ?? 'Untitled'}</div>
+                    <div className="truncate text-[0.6rem] text-ink/50">{library.id}</div>
                   </div>
                 </div>
               )
