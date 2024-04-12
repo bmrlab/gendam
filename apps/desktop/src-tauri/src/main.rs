@@ -3,7 +3,9 @@
 use api_server::ctx::default::Ctx;
 use content_library::{load_library, Library};
 use dotenvy::dotenv;
+use serde_json::json;
 use std::{
+    net::{Ipv4Addr, SocketAddr},
     path::PathBuf,
     sync::{Arc, Mutex},
 };
@@ -34,14 +36,13 @@ fn validate_app_version(app_handle: tauri::AppHandle, local_data_root: &PathBuf)
             std::fs::rename(
                 &libraries_dir,
                 archived_dir.join(format!("libraries-{}", chrono::Utc::now().timestamp())),
-            ).unwrap();
+            )
+            .unwrap();
         }
         tauri_store.delete("current-library-id").unwrap();
         tauri_store
             .insert("version".to_string(), VERSION_SHOULD_GTE.to_string().into())
-            .unwrap_or_else(|e| {
-                tracing::warn!("Failed to insert version to tauri store: {:?}", e)
-            });
+            .unwrap_or_else(|e| tracing::warn!("Failed to insert version to tauri store: {:?}", e));
         tauri_store.save().unwrap_or_else(|e| {
             tracing::warn!("Failed to save tauri store: {:?}", e);
         });
@@ -74,9 +75,9 @@ async fn main() {
     #[cfg(not(debug_assertions))]
     {
         /*
-        * macos log dir
-        * ~/Library/Logs/cc.musedam.local/app.log
-        */
+         * macos log dir
+         * ~/Library/Logs/cc.musedam.local/app.log
+         */
         let log_dir = app.path_resolver().app_log_dir().unwrap();
         analytics_tracing::init_tracing_to_file(log_dir);
     }
@@ -118,16 +119,56 @@ async fn main() {
     let mut tauri_store = tauri_plugin_store::StoreBuilder::new(
         window.app_handle(),
         "settings.json".parse().unwrap(),
-    ).build();
+    )
+    .build();
     tauri_store.load().unwrap_or_else(|e| {
         tracing::warn!("Failed to load tauri store: {:?}", e);
     });
+
+    // try to kill current qdrant server, if any
+    match (
+        tauri_store.get("current-qdrant-pid"),
+        tauri_store.get("current-qdrant-http-port"),
+    ) {
+        (Some(pid), Some(port)) => {
+            match (pid.as_u64(), port.as_u64()) {
+                (Some(pid), Some(port)) => {
+                    tracing::info!("try to kill qdrant on pid: {}, port: {}", pid, port);
+
+                    if vector_db::kill_qdrant_server(
+                        pid as usize,
+                        SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::LOCALHOST), port as u16),
+                    )
+                    .is_err()
+                    {
+                        tracing::warn!("Failed to kill qdrant server according to store");
+                    };
+
+                    tracing::info!("killed!");
+                }
+                _ => {
+                    tracing::warn!("invalid qdrant config, skipping killing qdrant server");
+                }
+            }
+            let _ = tauri_store.delete("current-qdrant-pid");
+            let _ = tauri_store.delete("current-qdrant-http-port");
+            let _ = tauri_store.delete("current-qdrant-grpc-port");
+        }
+        _ => {}
+    }
 
     if let Some(value) = tauri_store.get("current-library-id") {
         let library_id = value.as_str().unwrap().to_owned();
         match load_library(&local_data_root, &library_id).await {
             Ok(library) => {
+                let (pid, http_port, grpc_port) = library.qdrant_server_info();
                 current_library.lock().unwrap().replace(library);
+                let _ = tauri_store.insert("current-qdrant-pid".into(), json!(pid));
+                let _ = tauri_store.insert("current-qdrant-http-port".into(), json!(http_port));
+                let _ = tauri_store.insert("current-qdrant-grpc-port".into(), json!(grpc_port));
+                if tauri_store.save().is_err() {
+                    tracing::warn!("Failed to save store");
+                }
             }
             Err(e) => {
                 tracing::error!("Failed to load library: {:?}", e);
@@ -138,18 +179,27 @@ async fn main() {
         };
     }
 
+    let store = Arc::new(Mutex::new(Store::new(tauri_store)));
+    let store_clone = store.clone();
+
     window.on_window_event({
         let current_library = current_library.clone();
         move |e| {
             if let tauri::WindowEvent::Destroyed = e {
-                let library = current_library.lock().unwrap().take().unwrap();
-                // drop(library.qdrant_server);  // drop library 的时候会同时 drop qdrant_server
-                drop(library);
+                if let Some(library) = current_library.lock().unwrap().take() {
+                    drop(library);
+                    // 如果这里顺利执行了，qdrant已经被正确 kill 了
+                    // 所以清空 tauri_store 里的 qdrant 信息
+                    let mut store = store_clone.lock().unwrap();
+                    let _ = store.store.delete("current-qdrant-pid");
+                    let _ = store.store.delete("current-qdrant-http-port");
+                    let _ = store.store.delete("current-qdrant-grpc-port");
+                    let _ = store.store.save();
+                }
             }
         }
     });
 
-    let store = Arc::new(Mutex::new(Store::new(tauri_store)));
     let router = api_server::get_routes::<Ctx<Store>>();
     let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store, current_library);
 

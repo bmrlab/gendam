@@ -8,10 +8,12 @@ use content_library::{load_library, Library};
 use file_handler::video::{VideoHandler, VideoTaskType};
 use std::{
     boxed::Box,
+    net::{Ipv4Addr, SocketAddr},
     path::PathBuf,
     pin::Pin,
     sync::{mpsc::Sender, Arc, Mutex},
 };
+use tracing::warn;
 
 /**
  * default impl of a store for rspc Ctx
@@ -153,7 +155,41 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
 
         let mut store = self.store.lock().unwrap();
         let _ = store.insert("current-library-id", library_id);
-        let _ = store.save();
+
+        // try to kill current qdrant server, if any
+        match (
+            store.get("current-qdrant-pid"),
+            store.get("current-qdrant-http-port"),
+        ) {
+            (Some(pid), Some(port)) => {
+                match (pid.parse::<usize>(), port.parse::<u16>()) {
+                    (Ok(pid), Ok(port)) => {
+                        if vector_db::kill_qdrant_server(
+                            pid,
+                            SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::LOCALHOST), port as u16),
+                        )
+                        .is_err()
+                        {
+                            warn!("Failed to kill qdrant server according to store");
+                        };
+                    }
+                    _ => {
+                        warn!("invalid qdrant config, skipping killing qdrant server");
+                    }
+                }
+                let _ = store.delete("current-qdrant-pid");
+                let _ = store.delete("current-qdrant-http-port");
+                let _ = store.delete("current-qdrant-grpc-port");
+            }
+            _ => {
+                warn!("invalid qdrant config, skipping killing qdrant server");
+            }
+        }
+
+        if store.save().is_err() {
+            tracing::warn!("Failed to save store");
+        }
+
         // try to load library, but this is not necessary
         let _ = store.load();
         if let Some(library_id) = store.get("current-library-id") {
@@ -162,7 +198,18 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
                 let library = load_library(&self.local_data_root, &library_id)
                     .await
                     .unwrap();
+
+                let (pid, http_port, grpc_port) = library.qdrant_server_info();
                 self.current_library.lock().unwrap().replace(library);
+
+                let mut store = self.store.lock().unwrap();
+                let _ = store.insert("current-qdrant-pid", &pid.to_string());
+                let _ = store.insert("current-qdrant-http-port", &http_port.to_string());
+                let _ = store.insert("current-qdrant-grpc-port", &grpc_port.to_string());
+                if store.save().is_err() {
+                    tracing::warn!("Failed to save store");
+                }
+
                 tracing::info!("Current library switched to {}", library_id);
             });
         } else {

@@ -5,15 +5,19 @@ use qdrant_client::{
         VectorsConfig,
     },
 };
-use std::{path::PathBuf, sync::Arc};
+use std::{path::Path, sync::Arc};
 use vector_db::{QdrantParams, QdrantServer};
 
-pub async fn create_qdrant_server(qdrant_dir: PathBuf) -> Result<QdrantServer, ()> {
+use crate::port::get_available_port;
+
+pub async fn create_qdrant_server(qdrant_dir: impl AsRef<Path>) -> Result<QdrantServer, ()> {
+    let http_port = get_available_port(6333, 8000).ok_or(())?;
+    let grpc_port = get_available_port(http_port + 1, 8000).ok_or(())?;
+
     let qdrant_server = QdrantServer::new(QdrantParams {
-        dir: qdrant_dir,
-        // TODO we should specify the port to avoid conflicts with other apps
-        http_port: None,
-        grpc_port: None,
+        dir: qdrant_dir.as_ref().to_path_buf(),
+        http_port: Some(http_port),
+        grpc_port: Some(grpc_port),
     })
     .await
     .map_err(|e| {

@@ -1,30 +1,26 @@
 use anyhow::bail;
+use nix::sys::signal::{self, Signal};
+use nix::unistd::Pid;
 pub use qdrant_client::client::QdrantClient;
-use std::{
-    path::PathBuf,
-    sync::{
-        mpsc::{self, Sender},
-        Arc,
-    },
-};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::sync::mpsc::channel;
+use std::{path::PathBuf, sync::Arc};
 use tokio::sync::oneshot;
-use tracing::{debug, error, info, warn};
-
-enum QdrantServerPayload {
-    Kill,
-}
+use tracing::{debug, error, info};
 
 #[derive(Debug)]
 pub struct QdrantParams {
     pub dir: PathBuf,
-    pub http_port: Option<usize>,
-    pub grpc_port: Option<usize>,
+    pub http_port: Option<u16>,
+    pub grpc_port: Option<u16>,
 }
 
 #[derive(Clone)]
 pub struct QdrantServer {
-    tx: Sender<QdrantServerPayload>,
     client: Arc<QdrantClient>,
+    pid: u32,
+    http_port: u16,
+    grpc_port: u16,
 }
 
 impl std::fmt::Debug for QdrantServer {
@@ -35,7 +31,8 @@ impl std::fmt::Debug for QdrantServer {
 
 impl QdrantServer {
     pub async fn new(params: QdrantParams) -> anyhow::Result<Self> {
-        let host = "127.0.0.1";
+        debug!("qdrant params: {:?}", params);
+
         let http_port = params.http_port.unwrap_or(6333);
         let grpc_port = params.grpc_port.unwrap_or(6334);
 
@@ -53,6 +50,8 @@ impl QdrantServer {
             std::fs::create_dir_all(&storage_path)?;
             std::fs::create_dir_all(&snapshots_path)?;
 
+            // port info will be overwritten by environment variables
+            // it's ok to just write default ones here
             let yaml = format!(
                 r#"log_level: INFO
 service:
@@ -76,81 +75,118 @@ storage:
 
         debug!("qdrant reading config from {}", config_path.display());
 
-        let (tx, rx) = mpsc::channel::<QdrantServerPayload>();
-
         let current_exe_path = std::env::current_exe().expect("failed to get current executable");
         let current_dir = current_exe_path
             .parent()
             .expect("failed to get parent directory");
         let sidecar_path = current_dir.join("qdrant");
-        match std::process::Command::new(sidecar_path)
+        let process = std::process::Command::new(sidecar_path)
             .env("QDRANT__SERVICE__HTTP_PORT", http_port.to_string())
             .env("QDRANT__SERVICE__GRPC_PORT", grpc_port.to_string())
             .args(["--config-path", config_path.to_str().expect("invalid path")])
-            .spawn()
-        {
-            Ok(mut process) => {
-                std::thread::spawn(move || loop {
-                    if let Ok(action) = rx.recv() {
-                        match action {
-                            QdrantServerPayload::Kill => {
-                                process.kill().unwrap();
-                            }
-                        }
-                    }
-                });
-            }
-            Err(e) => {
-                bail!("failed to spawn qdrant: {}", e);
-            }
-        }
+            .spawn()?;
 
-        let url = format!("http://{}:{}", host, grpc_port);
-        let probe = format!("http://{}:{}", host, http_port);
+        let pid = process.id();
 
-        // use channel and select to make sure server is started
-        let (tx1, rx1) = oneshot::channel();
-        tokio::spawn(async move {
-            loop {
-                let resp = reqwest::get(probe.clone()).await;
-                if let Ok(resp) = resp {
-                    if resp.status() == reqwest::StatusCode::OK {
-                        let _ = tx1.send(());
-                        break;
-                    }
-                }
-                // check for every 2s
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-            }
-        });
-        tokio::select! {
-            // timeout for 30s
-            _ = tokio::time::sleep(std::time::Duration::from_secs(30)) => {
-                bail!("qdrant start timeout");
-            }
-            _ = rx1 => {
-                info!("qdrant started");
-            }
+        let url = format!("http://{}:{}", Ipv4Addr::LOCALHOST, grpc_port);
+
+        let liveness =
+            check_liveness(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), http_port)).await;
+        if !liveness {
+            bail!("qdrant start timeout");
         }
 
         let client = QdrantClient::from_url(&url).build()?;
 
         Ok(Self {
-            tx,
             client: Arc::new(client),
+            pid,
+            http_port,
+            grpc_port,
         })
     }
 
     pub fn get_client(&self) -> Arc<QdrantClient> {
         self.client.clone()
     }
+
+    pub fn get_pid(&self) -> u32 {
+        self.pid
+    }
+
+    pub fn get_http_port(&self) -> u16 {
+        self.http_port
+    }
+
+    pub fn get_grpc_port(&self) -> u16 {
+        self.grpc_port
+    }
+}
+
+/// Check if qdrant is alive
+async fn check_liveness(addr: SocketAddr) -> bool {
+    let probe = format!("http://{}:{}", addr.ip(), addr.port());
+
+    let (tx1, rx1) = oneshot::channel();
+    tokio::spawn(async move {
+        loop {
+            let resp = reqwest::get(probe.clone()).await;
+            if let Ok(resp) = resp {
+                if resp.status() == reqwest::StatusCode::OK {
+                    let _ = tx1.send(());
+                    break;
+                }
+            }
+            // check for every 2s
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        }
+    });
+    tokio::select! {
+        // timeout for 30s
+        _ = tokio::time::sleep(std::time::Duration::from_secs(30)) => {
+            false
+        }
+        _ = rx1 => {
+            info!("qdrant started");
+            true
+        }
+    }
+}
+
+fn kill_by_sig_term(pid: u32) -> Result<(), nix::Error> {
+    signal::kill(Pid::from_raw(pid as i32), Signal::SIGTERM)
+}
+
+/// Kill qdrant server using pid, if liveness check pass with provided host and http_port.
+pub fn kill(pid: usize, addr: SocketAddr) -> anyhow::Result<()> {
+    let probe = format!("http://{}:{}", addr.ip(), addr.port());
+
+    let (tx, rx) = channel();
+
+    tokio::task::spawn(async move {
+        let resp = reqwest::get(probe.clone()).await;
+        if let Ok(resp) = resp {
+            if resp.status() == reqwest::StatusCode::OK {
+                if let Err(e) = kill_by_sig_term(pid as u32) {
+                    error!("failed to kill qdrant: {}", e);
+                }
+            }
+        }
+
+        // everything done
+        if tx.send(()).is_err() {
+            error!("failed to send result");
+        }
+    });
+
+    rx.recv()
+        .map_err(|e| anyhow::anyhow!("failed to receive result: {}", e))
 }
 
 impl Drop for QdrantServer {
     fn drop(&mut self) {
-        warn!("qdrant server dropped");
-
-        match self.tx.send(QdrantServerPayload::Kill) {
+        info!("qdrant server dropped");
+        match kill_by_sig_term(self.pid) {
             Ok(_) => {
                 info!("qdrant successfully killed");
             }

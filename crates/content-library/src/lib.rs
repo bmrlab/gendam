@@ -1,9 +1,11 @@
 use prisma_lib::{new_client_with_url, PrismaClient};
+use qdrant::create_qdrant_server;
 use qdrant_client::client::QdrantClient;
 use std::{path::PathBuf, sync::Arc};
 use vector_db::QdrantServer;
+
+mod port;
 mod qdrant;
-use qdrant::create_qdrant_server;
 
 #[derive(Clone, Debug)]
 pub struct Library {
@@ -25,6 +27,14 @@ impl Library {
 
     pub fn qdrant_client(&self) -> Arc<QdrantClient> {
         self.qdrant_server.get_client().clone()
+    }
+
+    pub fn qdrant_server_info(&self) -> (u32, u16, u16) {
+        (
+            self.qdrant_server.get_pid(),
+            self.qdrant_server.get_http_port(),
+            self.qdrant_server.get_grpc_port(),
+        )
     }
 
     /// Get the artifact directory for a given file hash.
