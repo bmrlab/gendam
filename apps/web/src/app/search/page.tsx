@@ -10,22 +10,36 @@ import { useCallback, useMemo, useState } from 'react'
 import SearchForm from './SearchForm'
 import VideoItem from './VideoItem'
 
-export default function Search() {
+const useSearchPayloadInURL: () => [
+  SearchRequestPayload | null,
+  (payload: SearchRequestPayload) => void,
+] = () => {
   const searchParams = useSearchParams()
-  const searchPayloadInSearchParams = useMemo<SearchRequestPayload | null>(() => {
+  const searchPayloadInURL = useMemo<SearchRequestPayload | null>(() => {
     try {
-      const q = searchParams.get('q')
-      if (q) {
-        return JSON.parse(q)
-      } else {
-        return null
+      const text = searchParams.get('text')
+      const recordType = searchParams.get('recordType')
+      if (text && recordType) {
+        return { text, recordType }
       }
-    } catch (e) {
-      return null
-    }
+    } catch (e) {}
+    return null
   }, [searchParams])
 
-  const [searchPayload, setSearchPayload] = useState<SearchRequestPayload | null>(searchPayloadInSearchParams)
+  const updateSearchPayloadInURL = useCallback((payload: SearchRequestPayload) => {
+    const search = new URLSearchParams()
+    search.set('text', payload.text)
+    search.set('recordType', payload.recordType)
+    window.history.replaceState({}, '', `${window.location.pathname}?${search}`)
+  }, [])
+
+  return [searchPayloadInURL, updateSearchPayloadInURL]
+}
+
+export default function Search() {
+  const [searchPayloadInURL, updateSearchPayloadInURL] = useSearchPayloadInURL()
+
+  const [searchPayload, setSearchPayload] = useState<SearchRequestPayload | null>(searchPayloadInURL)
   const queryRes = rspc.useQuery(['video.search.all', searchPayload!], {
     enabled: !!searchPayload,
   })
@@ -53,12 +67,10 @@ export default function Search() {
       if (text && recordType) {
         const payload = { text, recordType }
         setSearchPayload(payload)
-        const search = new URLSearchParams()
-        search.set('q', JSON.stringify(payload))
-        window.history.replaceState({}, '', `${window.location.pathname}?${search}`)
+        updateSearchPayloadInURL(payload)
       }
     },
-    [setSearchPayload],
+    [setSearchPayload, updateSearchPayloadInURL],
   )
 
   return (
@@ -67,7 +79,7 @@ export default function Search() {
         <PageNav title="搜索" />
         <div className="mr-auto"></div>
         <SearchForm
-          searchPayloadInSearchParams={searchPayloadInSearchParams}
+          initialSearchPayload={searchPayloadInURL}
           onSubmit={(text: string, recordType: string) => handleSearch(text, recordType)}
         />
         <div className="ml-auto"></div>

@@ -6,14 +6,14 @@ import { CommandPrimitive } from '@muse/ui/v2/command'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 export default function SearchForm({
-  searchPayloadInSearchParams,
+  initialSearchPayload,
   onSubmit,
 }: {
-  searchPayloadInSearchParams: SearchRequestPayload | null
+  initialSearchPayload: SearchRequestPayload | null
   onSubmit: (text: string, recordType: string) => void
 }) {
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const [keyword, setKeyword] = useState(searchPayloadInSearchParams?.text || '')
+  const [keyword, setKeyword] = useState(initialSearchPayload?.text || '')
   const [typing, setTyping] = useState(false)
 
   const onSelectCommandItem = useCallback((recordType: string) => {

@@ -6,39 +6,73 @@ import { ScrollArea } from '@muse/ui/v1/scroll-area'
 import { Checkbox } from '@muse/ui/v2/checkbox'
 import classNames from 'classnames'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import AudioDialog from './_components/audio/AudioDialog'
 import TaskFooter from './_components/footer'
 import VideoTasksList from './_components/TaskList'
 import useTaskList, { type TaskListProps } from './useTaskList'
 
-export default function VideoTasksPage() {
+type SearchPayloadInURL = {
+  filter: string,
+  pageIndex: string,
+  pageSize: string,
+}
+
+const useSearchPayloadInURL: () => [
+  SearchPayloadInURL | null,
+  (payload: TaskListProps) => void,
+] = () => {
   const searchParams = useSearchParams()
-  const filterInSearchParams = useMemo<TaskListProps | undefined>(() => {
+  const searchPayloadInURL = useMemo<SearchPayloadInURL | null>(() => {
     try {
-      const q = searchParams.get('q')
-      if (q) {
-        return JSON.parse(q)
-      } else {
-        return undefined
+      const filter = searchParams.get('filter')
+      const pageIndex = searchParams.get('pageIndex')
+      const pageSize = searchParams.get('pageSize')
+      if (filter && pageIndex && pageSize) {
+        return { filter, pageIndex, pageSize }
       }
-    } catch (e) {
-      return undefined
-    }
+    } catch (e) {}
+    return null
   }, [searchParams])
+
+  const updateSearchPayloadInURL = useCallback((payload: TaskListProps) => {
+    const search = new URLSearchParams()
+    search.set('filter', payload.filter.toString())
+    search.set('pageIndex', payload.pageIndex.toString())
+    search.set('pageSize', payload.pageSize.toString())
+    window.history.replaceState({}, '', `${window.location.pathname}?${search}`)
+  }, [])
+
+  return [searchPayloadInURL, updateSearchPayloadInURL]
+}
+
+function validateSearchPayload(searchPayloadInURL: SearchPayloadInURL | null): TaskListProps {
+  if (!searchPayloadInURL) {
+    return { pageSize: 10, pageIndex: 1, filter: 'excludeCompleted'}
+  }
+  const pageSize = Math.max(10, parseInt(''+searchPayloadInURL.pageSize) || 10)
+  const pageIndex = Math.max(1, parseInt(''+searchPayloadInURL.pageIndex) || 1)
+  let filter = 'excludeCompleted' as TaskListRequestFilter
+  if (searchPayloadInURL.filter === 'all' || searchPayloadInURL.filter === 'excludeCompleted') {
+    filter = searchPayloadInURL.filter
+  }
+  return { pageSize, pageIndex, filter }
+}
+
+export default function VideoTasksPage() {
+  const [searchPayloadInURL, updateSearchPayloadInURL] = useSearchPayloadInURL()
 
   const {
     videos, isLoading,
     maxPage, pageSize, pageIndex, setPageIndex, filter, setFilter,
     // hasNextPage, fetchNextPage,
-  } = useTaskList(filterInSearchParams)
+  } = useTaskList(validateSearchPayload(searchPayloadInURL))
 
   useEffect(() => {
     const payload: TaskListProps = { pageSize, pageIndex, filter }
     const search = new URLSearchParams()
-    search.set('q', JSON.stringify(payload))
-    window.history.replaceState({}, '', `${window.location.pathname}?${search}`)
-  }, [filter, pageIndex, pageSize])
+    updateSearchPayloadInURL(payload)
+  }, [filter, pageIndex, pageSize, updateSearchPayloadInURL])
 
   const ListFilter = () => {
     return (

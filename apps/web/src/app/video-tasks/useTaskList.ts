@@ -9,21 +9,7 @@ export type TaskListProps = {
   filter: TaskListRequestFilter
 }
 
-const validateProps = ({ pageSize, pageIndex, filter }: TaskListProps) => {
-  pageSize = Math.max(10, parseInt(''+pageSize) || 10)
-  pageIndex = Math.max(1, parseInt(''+pageIndex) || 1)
-  if (filter !== 'all' && filter !== 'excludeCompleted') {
-    filter = 'excludeCompleted'
-  }
-  return { pageSize, pageIndex, filter }
-}
-
-export default function useTaskList(props: TaskListProps = {
-  pageSize: 10,
-  pageIndex: 1,
-  filter: 'excludeCompleted',
-}) {
-  props = validateProps(props)
+export default function useTaskList(props: TaskListProps) {
   const pageSize = props.pageSize
   const [pageIndex, setPageIndex] = useState(props.pageIndex)
   const [filter, setFilter] = useState<TaskListRequestFilter>(props.filter)
