@@ -75,9 +75,8 @@ export default function Search() {
 
   return (
     <Viewport.Page>
-      <Viewport.Toolbar className="justify-center">
-        <PageNav title="搜索" />
-        <div className="mr-auto"></div>
+      <Viewport.Toolbar className="justify-start">
+        <PageNav title="搜索" className="w-1/3" />
         <SearchForm
           initialSearchPayload={searchPayloadInURL}
           onSubmit={(text: string, recordType: string) => handleSearch(text, recordType)}

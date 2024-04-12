@@ -9,6 +9,7 @@ import Icon from '@muse/ui/icons'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
+import SearchForm from '../../search/SearchForm'  // TODO: 这样不大好，应该是一个公共组件
 import { useInspector } from './Inspector'
 import TitleDialog from './TitleDialog'
 
@@ -36,7 +37,7 @@ export default function Header() {
 
   const [titleInputDialogVisible, setTitleInputDialogVisible] = useState(false)
 
-  let handleCreateDir = useCallback(() => {
+  const handleCreateDir = useCallback(() => {
     setTitleInputDialogVisible(true)
   }, [setTitleInputDialogVisible])
 
@@ -58,11 +59,25 @@ export default function Header() {
     setTitleInputDialogVisible(false)
   }, [setTitleInputDialogVisible])
 
+  const handleSearch = useCallback((text: string, recordType: string) => {
+    const search = new URLSearchParams()
+    search.set('text', text)
+    search.set('recordType', recordType)
+    router.push(`/search?${search}`)
+  }, [router])
+
   return (
     <>
-      <Viewport.Toolbar>
-        <PageNav title={explorer.parentPath === '/' ? '全部' : explorer.parentPath} />
-        <div className="ml-auto" />
+      <Viewport.Toolbar className="justify-start">
+        <PageNav
+          title={explorer.parentPath === '/' ? '全部' : explorer.parentPath}
+          className="w-1/3"
+        />
+        <SearchForm
+          initialSearchPayload={null}
+          onSubmit={(text: string, recordType: string) => handleSearch(text, recordType)}
+        />
+        <div className="ml-auto"></div>
         {/* <div className="mr-8 flex select-none items-center">
           <div className="cursor-pointer px-2 py-1 text-sm" onClick={() => handleCreateDir()}>
             添加文件夹
