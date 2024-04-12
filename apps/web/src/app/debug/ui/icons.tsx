@@ -1,3 +1,4 @@
+'use client'
 import Icon from '@muse/ui/icons'
 
 export default function Icons() {

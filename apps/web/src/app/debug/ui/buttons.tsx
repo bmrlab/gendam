@@ -1,6 +1,7 @@
+'use client'
 import { Button } from '@muse/ui/v2/button'
 
-export default function Icons() {
+export default function Buttons() {
   const buttons = []
   for (const variant of ['ghost', 'outline', 'accent', 'destructive']) {
     for (const size of ['xs', 'sm', 'md', 'lg']) {

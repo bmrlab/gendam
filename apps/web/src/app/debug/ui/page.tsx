@@ -1,5 +1,6 @@
 import Icons from './icons'
 import Buttons from './buttons'
+import Forms from './forms'
 
 export default function Debug() {
   return (
@@ -7,6 +8,8 @@ export default function Debug() {
       <Icons />
       <div className='my-8'></div>
       <Buttons />
+      <div className='my-8'></div>
+      <Forms />
     </div>
   )
 }
