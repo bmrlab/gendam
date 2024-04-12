@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Icon from '@muse/ui/icons'
+import { Button } from '@muse/ui/v2/button'
 
 export default function Sidebar() {
   const librariesQuery = rspc.useQuery(['libraries.list'])
@@ -83,15 +84,15 @@ export default function Sidebar() {
       <div className="text-sm">
         <Link href="/explorer" className={menuClassNames('/explorer')}>
           <Icon.File className="h-4 w-4 text-ink/70 mr-2" />
-          素材库
+          <span>素材库</span>
         </Link>
         <Link href="/search" className={menuClassNames('/search')}>
           <Icon.MagnifyingGlass className="h-4 w-4 text-ink/70 mr-2" />
-          搜索
+          <span>搜索</span>
         </Link>
         <Link href="/video-tasks" className={menuClassNames('/video-tasks')}>
           <Icon.Briefcase className="h-4 w-4 text-ink/70 mr-2" />
-          视频任务
+          <span>视频任务</span>
         </Link>
         {/* <Link href="/debug/ui" className={menuClassNames('/debug/ui')}>
           <span className="font-light text-neutral-400">Debug</span>
@@ -99,16 +100,17 @@ export default function Sidebar() {
       </div>
       <div className='absolute bottom-3 left-2'>
         <div className='text-sm flex items-center justify-start gap-1 mb-2'>
-          <Link href="/settings"
-            className='block cursor-default w-7 h-7 p-1 hover:bg-sidebar-hover rounded'>
-            <Icon.Gear className="h-5 w-5 text-ink/70 mr-2" />
+          <Link href="/settings" className='block'>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-1">
+              <Icon.Gear className="h-full w-full" />
+            </Button>
           </Link>
-          <div className='w-7 h-7 p-1 hover:bg-sidebar-hover rounded'>
-            <div
-              className="h-5 w-5 text-ink/70"
-              onClick={() => document.documentElement.classList.toggle('dark')}
-            >Aa</div>
-          </div>
+          <Button
+            variant="ghost" size="sm" className="h-7 w-7 p-1"
+            onClick={() => document.documentElement.classList.toggle('dark')}
+          >
+            <span>Aa</span>
+          </Button>
         </div>
         <div className='text-xs text-neutral-400 px-1'>v{version}</div>
       </div>

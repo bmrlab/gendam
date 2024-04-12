@@ -1,12 +1,15 @@
 'use client'
 import { open } from '@tauri-apps/api/dialog'
-import { PropsWithChildren, useCallback } from 'react'
+import { HTMLAttributes, PropsWithChildren, useCallback } from 'react'
+import { cn } from '@/lib/utils'
 
 type Props = {
   onSelectFiles: (fileFullPath: string[]) => void
 }
 
-const TauriUploadButton: React.FC<PropsWithChildren<Props>> = ({ children, onSelectFiles }) => {
+const TauriUploadButton: React.FC<
+  PropsWithChildren<Props> & HTMLAttributes<HTMLLabelElement>
+> = ({ onSelectFiles, children, className, ...props }) => {
   let handleClick = useCallback(async () => {
     const results = await open({
       directory: false,
@@ -28,17 +31,17 @@ const TauriUploadButton: React.FC<PropsWithChildren<Props>> = ({ children, onSel
   }, [onSelectFiles])
 
   return (
-    <div>
-      <form>
-        <label htmlFor="file-input-select-new-asset" className="cursor-default text-sm" onClick={() => handleClick()}>
-          {children ? children : <div className='text-xs'>Upload</div>}
-        </label>
-      </form>
-    </div>
+    <form className="block appearance-none">
+      <label htmlFor="file-input-select-new-asset" className={cn("cursor-default", className)} onClick={() => handleClick()}>
+        {children ? children : <div className='text-xs'>Upload</div>}
+      </label>
+    </form>
   )
 }
 
-const WebUploadButton: React.FC<PropsWithChildren<Props>> = ({ children, onSelectFiles }) => {
+const WebUploadButton: React.FC<
+  PropsWithChildren<Props> & HTMLAttributes<HTMLLabelElement>
+> = ({ onSelectFiles, children, className, ...props }) => {
   /**
    * 浏览器里选择的文件拿不到全路径，只能拿到文件内容
    * 所以用了这个方法，选择一个 .list 文件，里面包含要上传的视频的路径，一行一个，比如
@@ -64,29 +67,29 @@ const WebUploadButton: React.FC<PropsWithChildren<Props>> = ({ children, onSelec
   }, [onSelectFiles])
 
   return (
-    <div>
-      <form>
-        <label htmlFor="file-input-select-new-asset" className="cursor-default">
-          {children ? children : <div className='text-xs'>Upload</div>}
-        </label>
-        <input
-          type="file"
-          id="file-input-select-new-asset"
-          className="hidden"
-          multiple={false}
-          accept=".list"
-          onInput={onFileInput}
-        />
-        {/* <button type="submit">上传文件</button> */}
-      </form>
-    </div>
+    <form className="block appearance-none">
+      <label htmlFor="file-input-select-new-asset" className={cn("cursor-default", className)}>
+        {children ? children : <div className='text-xs'>Upload</div>}
+      </label>
+      <input
+        type="file"
+        id="file-input-select-new-asset"
+        className="hidden"
+        multiple={false}
+        accept=".list"
+        onInput={onFileInput}
+      />
+      {/* <button type="submit">上传文件</button> */}
+    </form>
   )
 }
 
-export default function UploadButton({ children, onSelectFiles }: PropsWithChildren<Props>) {
+export default function UploadButton({
+  children, onSelectFiles, ...props
+}: PropsWithChildren<Props> & HTMLAttributes<HTMLLabelElement>) {
   if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-    return <TauriUploadButton onSelectFiles={onSelectFiles}>{children}</TauriUploadButton>
+    return <TauriUploadButton onSelectFiles={onSelectFiles} {...props}>{children}</TauriUploadButton>
   } else {
-    return <WebUploadButton onSelectFiles={onSelectFiles}>{children}</WebUploadButton>
+    return <WebUploadButton onSelectFiles={onSelectFiles} {...props}>{children}</WebUploadButton>
   }
 }
