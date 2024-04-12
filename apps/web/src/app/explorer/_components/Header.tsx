@@ -87,7 +87,7 @@ export default function Header() {
         </div> */}
         <div className="text-ink/70 flex items-center gap-1 justify-self-end">
           <Button variant="ghost" size="sm" className="h-7 w-7 p-1" onClick={() => handleCreateDir()}>
-            <Icon.FolderOpen className="size-4" />
+            <Icon.FolderAdd className="size-4" />
           </Button>
           <Button variant="ghost" size="sm" className="h-7 w-7 p-1" asChild>
             {/* 加上 asChild 不使用 native button, 因为里面是个 form, native button 可能会触发 form submit */}
@@ -117,7 +117,7 @@ export default function Header() {
             className={classNames('h-7 w-7 p-1', explorer.settings.layout === 'media' && 'bg-toolbar-hover')}
             onClick={() => explorer.settings.update({ layout: 'media' })}
           >
-            <Icon.Gallery className="size-4" />
+            <Icon.SelfAdapting className="size-4" />
           </Button>
 
           <div className="bg-toolbar-line mx-1 h-4 w-px"></div>
@@ -127,7 +127,7 @@ export default function Header() {
             className={classNames('h-7 w-7 p-1', inspector.show && 'bg-toolbar-hover')}
             onClick={() => inspector.setShow(!inspector.show)}
           >
-            <Icon.Column className="size-4" />
+            <Icon.Sidebar className="size-4" />
           </Button>
         </div>
       </Viewport.Toolbar>
