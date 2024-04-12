@@ -68,6 +68,8 @@ export default function ClientLayout({
       setPending(true)
       try {
         await client.mutation(['libraries.set_current_library', library.id])
+        // 这里就不 await 了
+        client.mutation(['video.tasks.trigger_unfinished'])
         // setPending(false);
         // 最后 reload 一下，用新的 library 请求数据过程中，页面上还残留着上个 library 已请求的数据
         // 既然要 reload，就不设置 setPending(false) 了

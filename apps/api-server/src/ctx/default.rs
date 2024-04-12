@@ -2,7 +2,7 @@
 use super::traits::{CtxStore, CtxWithLibrary, StoreError};
 use crate::{
     ai::{init_ai_handlers, AIHandler},
-    task_queue::{init_task_pool, TaskPayload},
+    task_queue::{init_task_pool, trigger_unfinished, TaskPayload},
 };
 use content_library::{load_library, Library};
 use file_handler::video::{VideoHandler, VideoTaskType};
@@ -211,6 +211,11 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
                 }
 
                 tracing::info!("Current library switched to {}", library_id);
+
+                // 这里本来应该触发一下未完成的任务
+                // 但是不await的话，没有特别好的写法
+                // 把这里的触发放到前端，前端切换完成后再触发一下接口
+                // 这样用户操作也不会被 block
             });
         } else {
             // 这里实际上不可能被执行，除非 settings.json 数据有问题
@@ -227,5 +232,22 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
 
     fn get_ai_handler(&self) -> AIHandler {
         self.ai_handler.clone()
+    }
+
+    fn trigger_unfinished_tasks<'async_trait>(
+        &'async_trait self,
+    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
+    where
+        Self: Sync + 'async_trait,
+    {
+        if let Ok(library) = self.library() {
+            Box::pin(async move {
+                if let Err(e) = trigger_unfinished(&library, self).await {
+                    tracing::warn!("Failed to trigger unfinished tasks: {}", e);
+                }
+            })
+        } else {
+            Box::pin(async move {})
+        }
     }
 }

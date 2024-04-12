@@ -34,4 +34,10 @@ pub trait CtxWithLibrary {
 
     fn get_task_tx(&self) -> Arc<Mutex<Sender<TaskPayload<VideoHandler, VideoTaskType>>>>;
     fn get_ai_handler(&self) -> AIHandler;
+
+    fn trigger_unfinished_tasks<'async_trait>(
+        &'async_trait self,
+    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
+    where
+        Self: Sync + 'async_trait;
 }

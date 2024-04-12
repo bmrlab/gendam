@@ -213,7 +213,7 @@ impl VideoTaskHandler {
             .exec()
             .await?;
         if let Some(asset_object_data) = asset_object_data {
-            create_video_task(&asset_object_data, ctx)
+            create_video_task(&asset_object_data, ctx, None)
                 .await
                 .map_err(|e| anyhow::anyhow!("failed to create video task: {e:?}"))?;
         }
@@ -290,6 +290,12 @@ where
                             format!("task cancel failed: {}", e),
                         )
                     })?;
+                Ok(())
+            })
+        })
+        .mutation("trigger_unfinished", |t| {
+            t(|ctx: TCtx, _: ()| async move {
+                ctx.trigger_unfinished_tasks().await;
                 Ok(())
             })
         })

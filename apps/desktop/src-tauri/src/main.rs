@@ -1,6 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use api_server::ctx::default::Ctx;
+use api_server::{ctx::default::Ctx, CtxWithLibrary};
 use content_library::{load_library, Library};
 use dotenvy::dotenv;
 use serde_json::json;
@@ -202,6 +202,11 @@ async fn main() {
 
     let router = api_server::get_routes::<Ctx<Store>>();
     let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store, current_library);
+
+    let ctx_clone = ctx.clone();
+    tokio::spawn(async move {
+        ctx_clone.trigger_unfinished_tasks().await;
+    });
 
     window
         .app_handle()

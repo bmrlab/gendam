@@ -29,7 +29,8 @@ export type Procedures = {
         { key: "libraries.update_library_settings", input: LibrarySettings, result: null } | 
         { key: "video.tasks.cancel", input: TaskCancelRequestPayload, result: null } | 
         { key: "video.tasks.create", input: string, result: null } | 
-        { key: "video.tasks.regenerate", input: TaskRedoRequestPayload, result: null },
+        { key: "video.tasks.regenerate", input: TaskRedoRequestPayload, result: null } | 
+        { key: "video.tasks.trigger_unfinished", input: never, result: null },
     subscriptions: never
 };
 

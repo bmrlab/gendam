@@ -1,7 +1,7 @@
 extern crate api_server; // 引入 lib.rs 里面的内容
 use api_server::{
     ctx::default::{Ctx, Store},
-    CtxStore,
+    CtxStore, CtxWithLibrary,
 };
 use axum::{http::request::Parts, routing::get};
 use content_library::{load_library, Library};
@@ -113,6 +113,11 @@ async fn main() {
     let store = Arc::new(Mutex::new(default_store));
     let router = api_server::get_routes::<Ctx<Store>>().arced();
     let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store, current_library);
+
+    let ctx_clone = ctx.clone();
+    tokio::spawn(async move {
+        ctx_clone.trigger_unfinished_tasks().await;
+    });
 
     let app: axum::Router = axum::Router::new()
         .route("/", get(|| async { "Hello 'rspc'!" }))

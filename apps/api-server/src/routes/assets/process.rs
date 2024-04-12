@@ -58,7 +58,7 @@ pub async fn process_video_asset(
             )
         })?;
 
-    match create_video_task(&asset_object_data, ctx).await {
+    match create_video_task(&asset_object_data, ctx, None).await {
         Ok(_) => Ok(()),
         Err(_) => Err(rspc::Error::new(
             rspc::ErrorCode::InternalServerError,

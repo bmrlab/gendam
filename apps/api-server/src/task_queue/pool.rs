@@ -238,6 +238,17 @@ async fn handle_task_payload_input<THandler, Type>(
                     let asset_object_id = task.asset_object_id;
                     let task_type = task.task_type.clone();
                     info!("Task received: {} {}", asset_object_id, task_type);
+
+                    // if task exists, ignore it
+                    // 这里 task_queue 是所有未执行的任务
+                    // task_mapping 还包括了正在执行的任务，所以用它
+                    if let Some(tasks) = task_mapping.read().await.get(&asset_object_id) {
+                        if let Some(_) = tasks.get(&task_type.to_string()) {
+                            continue;
+                        }
+                    }
+
+                    // record task in hash map
                     {
                         let current_cancel_token = CancellationToken::new();
                         let mut task_mapping = task_mapping.write().await;

@@ -5,10 +5,14 @@ use crate::{
     task_queue::priority::{TaskPriority, TaskPriorityRaw},
     CtxWithLibrary,
 };
+use content_library::Library;
 use file_handler::video::{VideoHandler, VideoTaskType};
 pub use pool::*;
-use prisma_lib::{asset_object, file_handler_task};
-use std::str::FromStr;
+use prisma_lib::{
+    asset_object::{self, media_data},
+    file_handler_task,
+};
+use std::{collections::HashMap, str::FromStr};
 use tracing::{error, info};
 
 pub trait Handler {
@@ -22,9 +26,14 @@ impl Handler for VideoHandler {
     }
 }
 
+/// 创建视频任务
+///
+/// `asset_object_data` 需要包含 `media_data` 字段，否则无法正确处理音频
+/// `task_types` 不传则会默认采用所有支持的任务类型
 pub async fn create_video_task(
     asset_object_data: &asset_object::Data,
     ctx: &impl CtxWithLibrary,
+    task_types: Option<Vec<VideoTaskType>>,
 ) -> Result<(), ()> {
     let library = &ctx.library().map_err(|e| {
         error!(
@@ -47,8 +56,6 @@ pub async fn create_video_task(
             .with_blip(ai_handler.blip)
             .with_whisper(ai_handler.whisper)
             .with_text_embedding(ai_handler.text_embedding),
-            // TODO now we just skip this
-            // .with_yolo(ai_handler.yolo),
         Err(e) => {
             error!("failed to initialize video handler: {}", e);
             return Err(());
@@ -62,7 +69,17 @@ pub async fn create_video_task(
         _ => None,
     };
 
-    for task_type in video_handler.get_supported_task_types(video_has_audio) {
+    let valid_task_types = video_handler.get_supported_task_types(video_has_audio);
+    let task_types = match task_types {
+        // 这里做一下过滤，防止传入的任务类型不支持或者顺序不正确
+        Some(task_types) => valid_task_types
+            .into_iter()
+            .filter(|v| task_types.contains(v))
+            .collect(),
+        None => valid_task_types,
+    };
+
+    for task_type in task_types.clone() {
         let x = library
             .prisma_client()
             .file_handler_task()
@@ -96,7 +113,7 @@ pub async fn create_video_task(
 
     match tx.lock() {
         Ok(tx) => {
-            for task_type in video_handler.get_supported_task_types(video_has_audio) {
+            for task_type in task_types {
                 let priority = match task_type {
                     // it's better not to add default arm `_ => {}` here
                     // if there are new task type in future, compiler will throw an error
@@ -141,6 +158,53 @@ pub async fn create_video_task(
         }
         Err(e) => {
             error!("Failed to lock mutex: {}", e);
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn trigger_unfinished(
+    library: &Library,
+    ctx: &impl CtxWithLibrary,
+) -> anyhow::Result<()> {
+    let tasks = library
+        .prisma_client()
+        .file_handler_task()
+        .find_many(vec![file_handler_task::exit_code::equals(None)])
+        // 按照 id 做一下排序，保证任务下次执行的时候还是正确的顺序
+        .exec()
+        .await?;
+
+    // group tasks by asset_object_id
+    let mut asset_tasks: HashMap<i32, Vec<VideoTaskType>> = HashMap::new();
+    tasks.into_iter().for_each(|task| {
+        if let Ok(task_type) = VideoTaskType::from_str(&task.task_type) {
+            if let Some(tasks) = asset_tasks.get_mut(&task.asset_object_id) {
+                tasks.push(task_type);
+            } else {
+                asset_tasks.insert(task.asset_object_id, vec![task_type]);
+            }
+        }
+    });
+
+    // get all asset objects
+    let asset_objects = library
+        .prisma_client()
+        .asset_object()
+        .find_many(vec![asset_object::id::in_vec(
+            asset_tasks.keys().cloned().collect(),
+        )])
+        .with(media_data::fetch())
+        .exec()
+        .await?;
+
+    // trigger tasks
+    for asset_object in asset_objects {
+        if let Some(tasks) = asset_tasks.get(&asset_object.id).cloned() {
+            create_video_task(&asset_object, ctx, Some(tasks))
+                .await
+                .map_err(|e| anyhow::anyhow!("failed to create video task: {e:?}"))?;
         }
     }
 
