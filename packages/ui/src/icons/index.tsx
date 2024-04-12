@@ -47,6 +47,13 @@ import Tag from './jsx/Tag'
 import Trash from './jsx/Trash'
 import UpAndDownArrow from './jsx/UpAndDownArrow'
 import Upload from './jsx/Upload'
+import BulletList from './jsx/BulletList'
+import FolderAdd from './jsx/FolderAdd'
+import Moon from './jsx/Moon'
+import Pinterest from './jsx/Pinterest'
+import SelfAdapting from './jsx/SelfAdapting'
+import Sidebar from './jsx/Sidebar'
+import Sun from './jsx/Sun'
 
 export type SvgIconProps = React.SVGProps<SVGSVGElement>
 
@@ -99,4 +106,11 @@ export default {
   Trash,
   UpAndDownArrow,
   Upload,
+  BulletList,
+  FolderAdd,
+  Moon,
+  Pinterest,
+  SelfAdapting,
+  Sidebar,
+  Sun,
 }

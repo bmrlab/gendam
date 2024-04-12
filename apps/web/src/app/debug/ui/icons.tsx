@@ -196,6 +196,35 @@ export default function Icons() {
         <div className="text-xs">EditPen</div>
         <Icon.EditPen className="h-4 w-4 inline-block" />
       </div>
+
+      <div className="w-32 text-center">
+        <div className="text-xs">BulletList</div>
+        <Icon.BulletList className="h-4 w-4 inline-block" />
+      </div>
+      <div className="w-32 text-center">
+        <div className="text-xs">FolderAdd</div>
+        <Icon.FolderAdd className="h-4 w-4 inline-block" />
+      </div>
+      <div className="w-32 text-center">
+        <div className="text-xs">Moon</div>
+        <Icon.Moon className="h-4 w-4 inline-block" />
+      </div>
+      <div className="w-32 text-center">
+        <div className="text-xs">Pinterest</div>
+        <Icon.Pinterest className="h-4 w-4 inline-block" />
+      </div>
+      <div className="w-32 text-center">
+        <div className="text-xs">SelfAdapting</div>
+        <Icon.SelfAdapting className="h-4 w-4 inline-block" />
+      </div>
+      <div className="w-32 text-center">
+        <div className="text-xs">Sidebar</div>
+        <Icon.Sidebar className="h-4 w-4 inline-block" />
+      </div>
+      <div className="w-32 text-center">
+        <div className="text-xs">Sun</div>
+        <Icon.Sun className="h-4 w-4 inline-block" />
+      </div>
     </div>
   )
 }
