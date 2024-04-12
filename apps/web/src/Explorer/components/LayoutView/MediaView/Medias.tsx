@@ -169,6 +169,13 @@ export default function Medias({ items }: { items: ExplorerItem[] }) {
     [explorer, explorerStore, items, lastSelectIndex],
   )
 
+  useEffect(() => {
+    // 右键点开以后重置 shift 批量选择的状态，因为右键菜单打开的时候会选中对应的条目
+    if (explorerStore.isContextMenuOpen && lastSelectIndex) {
+      setLastSelectedIndex(-1)
+    }
+  }, [explorerStore.isContextMenuOpen, lastSelectIndex])
+
   return (
     <div
       ref={ref}

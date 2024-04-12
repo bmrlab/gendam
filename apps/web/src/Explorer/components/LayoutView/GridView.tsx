@@ -11,7 +11,7 @@ import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 // import { useCurrentLibrary } from '@/lib/library'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 // import styles from './GridView.module.css'
 
 const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
@@ -118,6 +118,13 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
     }
     explorerStore.reset()
   }, [explorer, explorerStore, items, lastSelectIndex])
+
+  useEffect(() => {
+    // 右键点开以后重置 shift 批量选择的状态，因为右键菜单打开的时候会选中对应的条目
+    if (explorerStore.isContextMenuOpen && lastSelectIndex) {
+      setLastSelectedIndex(-1)
+    }
+  }, [explorerStore.isContextMenuOpen, lastSelectIndex])
 
   return (
     <div className="flex flex-wrap content-start items-start justify-start gap-6 p-8">

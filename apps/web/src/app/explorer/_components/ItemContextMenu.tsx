@@ -107,7 +107,9 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
         <div>预览</div>
       </ContextMenu.Item> */}
       <ContextMenu.Separator className='h-px bg-app-line my-1' />
-      <ContextMenu.Item onSelect={handleProcessMetadata}>
+      <ContextMenu.Item onSelect={handleProcessMetadata} disabled={
+        Array.from(explorer.selectedItems).some((item) => !item.assetObject)
+      }>
         <div>刷新视频信息</div>
       </ContextMenu.Item>
       <ContextMenu.Item onSelect={() => foldersDialog.setOpen(true)}>
