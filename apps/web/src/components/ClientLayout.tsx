@@ -1,6 +1,6 @@
 'use client'
 import LibrariesSelect from '@/components/LibrariesSelect'
-import Shared from "@/components/Shared"
+import Shared from '@/components/Shared'
 import { useToast } from '@/components/Toast/use-toast'
 import { CurrentLibrary, type Library } from '@/lib/library'
 import { client, rspc } from '@/lib/rspc'
@@ -33,7 +33,11 @@ export default function ClientLayout({
   }, [])
 
   useEffect(() => {
-    blockCmdQ()
+    // blockCmdQ()
+    const disableContextMenu = (event: MouseEvent) => event.preventDefault()
+    if (typeof window !== 'undefined') {
+      window.addEventListener('contextmenu', disableContextMenu)
+    }
 
     const p1 = client
       .query(['libraries.get_current_library'])
@@ -50,7 +54,13 @@ export default function ClientLayout({
     // });
     // Promise.all([p1, p2]).then(() => setPending(false));
     p1.then(() => setPending(false))
-  }, [setLibrary, setPending, blockCmdQ])
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('contextmenu', disableContextMenu)
+      }
+    }
+  }, [setLibrary, setPending])
 
   const setCurrentLibraryContext = useCallback(
     async (library: Library) => {
@@ -149,7 +159,9 @@ export default function ClientLayout({
             {children}
             <Shared />
           </>
-         ) : <LibrariesSelect />}
+        ) : (
+          <LibrariesSelect />
+        )}
       </rspc.Provider>
     </CurrentLibrary.Provider>
   )
