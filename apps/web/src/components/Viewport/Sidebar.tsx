@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Icon from '@muse/ui/icons'
 import { Button } from '@muse/ui/v2/button'
+import FoldersTree from '@/Explorer/components/FoldersTree'
 
 export default function Sidebar() {
   const librariesQuery = rspc.useQuery(['libraries.list'])
@@ -49,13 +50,15 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="h-screen w-60 color-ink bg-sidebar p-3 relative">
-      <div className="relative my-4">
-        <div className="flex cursor-default items-center justify-start" onClick={() => setSelectPanelOpen(true)}>
+    <div className="h-screen w-60 color-ink bg-sidebar p-3 relative flex flex-col items-stretch justify-start">
+      <section className="relative my-4">
+        <div className="flex cursor-default items-center px-2" onClick={() => setSelectPanelOpen(true)}>
           <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>
-          <div className="mx-2 w-32 truncate text-xs font-semibold">
-            {currentLibrary.settings?.title ?? "Untitled"}
-            {/* ({currentLibrary.id}) */}
+          <div className="mx-2 flex-1 overflow-hidden">
+            <div className="truncate text-xs font-semibold">
+              {currentLibrary.settings?.title ?? "Untitled"}
+              {/* ({currentLibrary.id}) */}
+            </div>
           </div>
           <Icon.UpAndDownArrow className="h-4 w-4"></Icon.UpAndDownArrow>
         </div>
@@ -82,8 +85,9 @@ export default function Sidebar() {
             })}
           </div>
         )}
-      </div>
-      <div className="text-sm">
+      </section>
+
+      <section className="text-sm">
         <Link href="/explorer" className={menuClassNames('/explorer')}>
           <Icon.File className="h-4 w-4 text-ink/70 mr-2" />
           <span>素材库</span>
@@ -99,8 +103,11 @@ export default function Sidebar() {
         {/* <Link href="/debug/ui" className={menuClassNames('/debug/ui')}>
           <span className="font-light text-neutral-400">Debug</span>
         </Link> */}
-      </div>
-      <div className='absolute bottom-3 left-2'>
+      </section>
+
+      <FoldersTree className="flex-1 my-4 -mx-3" />
+
+      <section>
         <div className='text-sm flex items-center justify-start gap-1 mb-2'>
           <Link href="/settings" className='block'>
             <Button variant="ghost" size="sm" className="h-7 w-7 p-1">
@@ -115,7 +122,7 @@ export default function Sidebar() {
           </Button>
         </div>
         <div className='text-xs text-neutral-400 px-1'>v{version}</div>
-      </div>
+      </section>
     </div>
   )
 }
