@@ -21,7 +21,8 @@ export default function MediaView({ items }: { items: ExplorerItem[] }) {
 
   return (
     <>
-      {folders.length > 0 && (
+      {/* 暂时隐藏 folders */}
+      {false && folders.length > 0 && (
         <>
           <Folders items={folders} />
           <div className="bg-app-line my-2 h-px"></div>

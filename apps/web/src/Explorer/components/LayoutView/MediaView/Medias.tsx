@@ -9,7 +9,7 @@ import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import classNames from 'classnames'
-import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 type ItemsWithSize = {
   data: ExplorerItem
@@ -103,10 +103,29 @@ export default function Medias({ items }: { items: ExplorerItem[] }) {
   const ref = useRef<HTMLDivElement>(null)
   const gap = 10
   const padding = 30  // container 左右 padding
-  const containerWidth = Math.max(0, (ref.current?.clientWidth || 0) - padding * 2)
-  // useEffect(() => {
-  //   console.log(containerWidth)
-  // }, [containerWidth])
+  const [containerWidth, setContainerWidth] = useState<number>(0)
+
+  useEffect(() => {
+    const $el = ref.current;
+    if (!$el) {
+      return
+    }
+    // ref.current 必须在 useEffect 里面用, 不然还没有 mount, 它还是 undefined
+    const containerWidth = Math.max(0, ($el.clientWidth || 0) - padding * 2)
+    setContainerWidth(containerWidth)
+    const resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        if (entry.target === $el) {
+          const containerWidth = Math.max(0, ($el.clientWidth || 0) - padding * 2)
+          setContainerWidth(containerWidth)
+        }
+      }
+    });
+    resizeObserver.observe($el);
+    return () => {
+      resizeObserver.unobserve($el);
+    };
+  }, [])
 
   const itemsWithSize = useMemo<ItemsWithSize[]>(() => {
     if (!containerWidth) {
@@ -138,7 +157,7 @@ export default function Medias({ items }: { items: ExplorerItem[] }) {
       itemsTotalWidth += width
       queue.push({ data, width, height })
     }
-    itemsWithSize = itemsWithSize.concat(queue)
+    itemsWithSize = [ ...itemsWithSize, ...queue]
     return itemsWithSize
   }, [containerWidth, items])
 
