@@ -89,12 +89,17 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   )
 
   const handleProcessMetadata = useCallback(
-    (e: Event) => {
+    async (e: Event) => {
       for (let item of Array.from(explorer.selectedItems)) {
         if (!item.assetObject) {
           return
         }
-        metadataMut.mutate(item.assetObject.id)
+        try {
+          await metadataMut.mutateAsync(item.assetObject.id)
+        } catch (error) {}
+        queryClient.invalidateQueries({
+          queryKey: ['assets.list', { materializedPath: item.materializedPath }]
+        })
       }
     },
     [metadataMut, explorer],
