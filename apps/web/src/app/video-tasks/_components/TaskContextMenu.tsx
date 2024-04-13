@@ -29,7 +29,7 @@ export default function TaskContextMenu({ video, fileHash, isNotDone, children }
     const processingItem = isNotDone
       ? [
           {
-            label: '取消任务',
+            label: 'Cancel job',
             icon: <Icon.CloseRounded className="size-4" />,
             handleClick: () => handleCancel(),
           },
@@ -38,13 +38,13 @@ export default function TaskContextMenu({ video, fileHash, isNotDone, children }
 
     return [
       {
-        label: '重新触发任务',
+        label: 'Re-process job ',
         icon: <Icon.Cycle className="size-4" />,
         handleClick: () => handleRegenerate(),
       },
       ...processingItem,
       {
-        label: '导出语音转译',
+        label: 'Export transcript',
         icon: <Icon.Download className="size-4" />,
         handleClick: () => handleExport(),
       },
@@ -52,9 +52,9 @@ export default function TaskContextMenu({ video, fileHash, isNotDone, children }
       {
         disabled: true,
         variant: 'destructive',
-        label: '删除任务',
+        label: 'Delete job',
         icon: <Icon.Trash className="size-4" />,
-        handleClick: () => console.log('删除任务'),
+        handleClick: () => console.log('Delete job'),
       },
     ]
   }, [handleCancel, handleExport, handleRegenerate, isNotDone])

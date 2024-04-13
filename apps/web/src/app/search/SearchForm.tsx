@@ -23,7 +23,7 @@ export default function SearchForm({
   }, [onSubmit, keyword, setTyping])
 
   return (
-    <div className="relative w-80 block mx-auto">
+    <div className="relative w-96 block mx-auto">
       <CommandPrimitive shouldFilter={false}>
         <div cmdk-input-wrapper="" className="relative">
           <CommandPrimitive.Input
@@ -40,27 +40,31 @@ export default function SearchForm({
         </div>
         {typing && (
           <div className="border-app-line bg-app-box absolute top-full z-10 w-full rounded-md border p-1 text-sm shadow-md">
-            <div className="text-ink/50 px-2 py-1">搜索类型</div>
+            <div className="text-ink/50 px-2 py-1">Search types</div>
             <CommandPrimitive.List>
               <CommandPrimitive.Item
-                className="text-ink hover:bg-app-hover data-[selected]:bg-app-hover flex items-center justify-start rounded-md px-2 py-2"
+                className="text-ink hover:bg-app-hover data-[selected]:bg-app-hover flex items-center justify-start rounded-md px-2 py-2 overflow-hidden"
                 onSelect={(e) => onSelectCommandItem('Frame')}
               >
-                <span className="text-ink/50">
+                <div className="text-ink/50">
                   <Icon.image className="w-4" />
-                </span>
-                <span className="mx-2">搜索视频内容</span>
-                <strong>{keyword}</strong>
+                </div>
+                <div className='mx-2 flex-1 break-all'>
+                  <span>Visual search for </span>
+                  <strong>{keyword}</strong>
+                </div>
               </CommandPrimitive.Item>
               <CommandPrimitive.Item
-                className="text-ink hover:bg-app-hover data-[selected]:bg-app-hover flex items-center justify-start rounded-md px-2 py-2"
+                className="text-ink hover:bg-app-hover data-[selected]:bg-app-hover flex items-center justify-start rounded-md px-2 py-2 overflow-hidden"
                 onSelect={(e) => onSelectCommandItem('Transcript')}
               >
-                <span className="text-ink/50">
+                <div className="text-ink/50">
                   <Icon.microphone className="w-4" />
-                </span>
-                <span className="mx-2">搜索视频语音</span>
-                <strong>{keyword}</strong>
+                </div>
+                <div className='mx-2 flex-1 break-all'>
+                  <span>Transcript search for </span>
+                  <strong>{keyword}</strong>
+                </div>
               </CommandPrimitive.Item>
             </CommandPrimitive.List>
           </div>

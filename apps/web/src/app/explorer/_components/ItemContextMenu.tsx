@@ -98,32 +98,32 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   return (
     <ContextMenu.Content ref={forwardedRef as any} {...prpos} onClick={(e) => e.stopPropagation()}>
       <ContextMenu.Item onSelect={handleOpen} disabled={explorer.selectedItems.size > 1 }>
-        <div>打开</div>
+        <div>Open</div>
       </ContextMenu.Item>
       <ContextMenu.Item onSelect={handleShowInspector} disabled={explorer.selectedItems.size > 1 }>
-        <div>查看详情</div>
+        <div>Details</div>
       </ContextMenu.Item>
       {/* <ContextMenu.Item onSelect={() => {}} disabled={explorer.selectedItems.size > 1 }>
-        <div>预览</div>
+        <div>Quick view</div>
       </ContextMenu.Item> */}
       <ContextMenu.Separator className='h-px bg-app-line my-1' />
       <ContextMenu.Item onSelect={handleProcessMetadata} disabled={
         Array.from(explorer.selectedItems).some((item) => !item.assetObject)
       }>
-        <div>刷新视频信息</div>
+        <div>Regen Thumbnail</div>
       </ContextMenu.Item>
       <ContextMenu.Item onSelect={() => foldersDialog.setOpen(true)}>
-        <div>移动</div>
+        <div>Move</div>
       </ContextMenu.Item>
       <ContextMenu.Item onSelect={handleRename} disabled={explorer.selectedItems.size > 1 }>
-        <div>重命名</div>
+        <div>Rename</div>
       </ContextMenu.Item>
       <ContextMenu.Separator className='h-px bg-app-line my-1' />
       <ContextMenu.Item
         variant='destructive'
         onSelect={handleDelete}
       >
-        <div>删除</div>
+        <div>Delete</div>
       </ContextMenu.Item>
     </ContextMenu.Content>
   )

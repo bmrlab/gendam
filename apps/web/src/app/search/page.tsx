@@ -94,7 +94,7 @@ export default function Search() {
   return (
     <Viewport.Page>
       <Viewport.Toolbar className="justify-start">
-        <PageNav title="搜索" className="w-1/3" />
+        <PageNav title="Search" className="w-1/3" />
         <div className="w-1/3">
           <SearchForm
             initialSearchPayload={searchPayloadInURL}
@@ -110,17 +110,13 @@ export default function Search() {
               <div
                 className={classNames('px-4 py-2', searchPayload.recordType === 'Frame' && 'bg-app-hover')}
                 onClick={() => handleSearch(searchPayload.text, 'Frame')}
-              >
-                视频内容
-              </div>
+              >Visual</div>
               <div
                 className={classNames('px-4 py-2', searchPayload.recordType === 'Transcript' && 'bg-app-hover')}
                 onClick={() => handleSearch(searchPayload.text, 'Transcript')}
-              >
-                视频语音
-              </div>
+              >Transcript</div>
             </div>
-            <div className="text-ink/50 ml-4 text-sm">{searchPayload.text}</div>
+            <div className="text-ink/50 ml-4 text-sm flex-1 truncate">{searchPayload.text}</div>
           </div>
         ) : null}
         <div className="flex-1 overflow-auto p-8">
@@ -130,7 +126,7 @@ export default function Search() {
               <div className="my-4 text-sm">Search for visual objects or processed transcripts</div>
             </div>
           ) : queryRes.isLoading ? (
-            <div className="text-ink/50 flex items-center justify-center px-2 py-8 text-sm">正在搜索...</div>
+            <div className="text-ink/50 flex items-center justify-center px-2 py-8 text-sm">Searching...</div>
           ) : queryRes.isSuccess && queryRes.data.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center">
               <Image src={Video_Files} alt="video files" priority className="w-60 h-60"></Image>

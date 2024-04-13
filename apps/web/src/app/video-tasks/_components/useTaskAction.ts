@@ -30,7 +30,7 @@ export default function useTaskAction({ fileHash, video }: TaskActionProps) {
   const handleSingleExport = useCallback(() => {
     setAudioDialogProps({
       type: AudioDialogEnum.single,
-      title: '导出语音转译',
+      title: 'Export Transcript',
       params: {
         fileHash,
       },
@@ -43,7 +43,7 @@ export default function useTaskAction({ fileHash, video }: TaskActionProps) {
     orderVideoSelected.sort((a, b) => a.assetObject.id - b.assetObject.id)
     setAudioDialogProps({
       type: AudioDialogEnum.batch,
-      title: '批量导出语音转译',
+      title: 'Bulk Transcript Export',
       params: orderVideoSelected.map((item) => ({
         id: item.assetObject.hash, // TODO: 这里回头要改成 assetObjectId, 但是对 audio export 功能改动较大
         label: item.name,
@@ -61,7 +61,7 @@ export default function useTaskAction({ fileHash, video }: TaskActionProps) {
           assetObjectId: param?.id ?? assetObjectId,
         })
         await taskListRefetch()
-        toast.success('重新触发任务成功', {
+        toast.success('Successfully re-process job', {
           action: {
             label: 'Dismiss',
             onClick: () => {},
@@ -69,7 +69,7 @@ export default function useTaskAction({ fileHash, video }: TaskActionProps) {
         })
       } catch (e) {
         console.error(e)
-        toast.error('重新触发任务失败', {
+        toast.error('Failed re-process job', {
           action: {
             label: 'Retry',
             onClick: () => handleRegenerate(param),
@@ -95,7 +95,7 @@ export default function useTaskAction({ fileHash, video }: TaskActionProps) {
         assetObjectId: id ?? assetObjectId,
       })
       await taskListRefetch()
-      toast.success('取消任务成功', {
+      toast.success('Job cancelled', {
         action: {
           label: 'Dismiss',
           onClick: () => {},

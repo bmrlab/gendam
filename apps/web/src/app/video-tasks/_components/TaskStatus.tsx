@@ -8,13 +8,13 @@ import { TaskStatus, getTaskStatus } from './utils'
 
 export const VIDEO_DIMENSION: Record<string, [string, number]> = {
   // 任务类型: [任务名称, 任务排序, 完成以后是否显示]
-  Frame: ['帧处理', 1],
-  FrameContentEmbedding: ['画面索引', 2],
-  FrameCaption: ['视频描述', 3],
-  FrameCaptionEmbedding: ['描述索引', 4],
-  Audio: ['音频提取', 5],
-  Transcript: ['语音转译', 6],
-  TranscriptEmbedding: ['语音索引', 7],
+  Frame: ['Frame Processing', 1],                      // 帧处理
+  FrameContentEmbedding: ['Visual Indexing', 2],       // 画面索引
+  FrameCaption: ['Video Recognition', 3],              // 视频描述
+  FrameCaptionEmbedding: ['Description Indexing', 4],  // 描述索引
+  Audio: ['Audio Processing', 5],                      // 音频提取
+  Transcript: ['Speech Recognition', 6],               // 语音转译
+  TranscriptEmbedding: ['Transcript Indexing', 7],     // 语音索引
 }
 
 type Props = {

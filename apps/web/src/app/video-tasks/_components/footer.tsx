@@ -8,7 +8,7 @@ export default function TaskFooter({ total }: { total: number }) {
   return (
     <Viewport.StatusBar className="justify-center">
       <div className="text-xs text-neutral-500">
-        已选中 {selected.length ?? 0}/{total} 个视频
+        {selected.length ?? 0} of {total} jobs selected
       </div>
     </Viewport.StatusBar>
   )

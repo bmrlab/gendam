@@ -76,12 +76,12 @@ export default function AudioExport() {
     })
     if (errorList.length > 0) {
       toast({
-        title: `${errorList.join('、')}，格式导出失败`,
+        title: `${errorList.join('、')}, export failed`,
         variant: 'error',
       })
     } else {
       toast({
-        title: '导出成功',
+        title: 'Export successfully',
       })
     }
     setIsOpenAudioDialog(false)
@@ -123,14 +123,14 @@ export default function AudioExport() {
           >
             <div className="flex gap-0.5">
               <Icon.copy />
-              <span className="select-none">复制</span>
+              <span className="select-none">Copy</span>
             </div>
           </RoundedBadge>
         </div>
       </div>
-      <div className="flex h-full w-60 flex-col justify-start px-6 pb-6 pt-4">
+      <div className="h-auto overflow-scroll w-60 px-6 pb-6 pt-4">
         <div className="flex flex-col gap-3">
-          <p className="text-sm font-medium leading-5">文件格式</p>
+          <p className="text-ink/50 text-xs font-medium leading-3">FILE FORMATS</p>
           {
             // @ts-ignore
             Object.entries(FileTypeEnum).map(([key, value], index) => {
@@ -145,14 +145,14 @@ export default function AudioExport() {
             })
           }
         </div>
-        <div className="mt-2.5 flex flex-col gap-3">
-          <p className="text-sm font-medium leading-5">导出选项</p>
-          <MuseRadio label="显示时间戳" />
-          <MuseRadio label="显示发言者" />
+        <div className="mt-5 flex flex-col gap-3">
+          <p className="text-ink/50 text-xs font-medium leading-3">EXPORT OPTIONS</p>
+          <MuseRadio label="Show Timecodes" />
+          <MuseRadio label="Show Speakers" />
         </div>
         <div className="flex w-full flex-1 items-end">
           <WithDownloadDialogButton className="mt-4 w-full" onSelection={handleDownload}>
-            导出
+            Export
           </WithDownloadDialogButton>
         </div>
       </div>

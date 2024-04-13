@@ -49,7 +49,7 @@ export default function Header() {
     <>
       <Viewport.Toolbar className="justify-start">
         <PageNav
-          title={explorer.parentPath === '/' ? '全部' : explorer.parentPath}
+          title={explorer.parentPath === '/' ? 'All' : explorer.parentPath}
           className="w-1/3"
         />
         <div className="w-1/3">

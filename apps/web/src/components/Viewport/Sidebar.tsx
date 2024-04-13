@@ -51,7 +51,7 @@ export default function Sidebar() {
 
   return (
     <div className="h-screen w-60 color-ink bg-sidebar p-3 relative flex flex-col items-stretch justify-start">
-      <section className="relative my-4">
+      <section className="relative mt-4 mb-6">
         <div className="flex cursor-default items-center px-2" onClick={() => setSelectPanelOpen(true)}>
           <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>
           <div className="mx-2 flex-1 overflow-hidden">
@@ -90,15 +90,15 @@ export default function Sidebar() {
       <section className="text-sm">
         <Link href="/explorer" className={menuClassNames('/explorer')}>
           <Icon.File className="h-4 w-4 text-ink/70 mr-2" />
-          <span>素材库</span>
+          <span>Library</span>
         </Link>
         <Link href="/search" className={menuClassNames('/search')}>
           <Icon.MagnifyingGlass className="h-4 w-4 text-ink/70 mr-2" />
-          <span>搜索</span>
+          <span>Search</span>
         </Link>
         <Link href="/video-tasks" className={menuClassNames('/video-tasks')}>
           <Icon.Briefcase className="h-4 w-4 text-ink/70 mr-2" />
-          <span>视频任务</span>
+          <span>All jobs</span>
         </Link>
         {/* <Link href="/debug/ui" className={menuClassNames('/debug/ui')}>
           <span className="font-light text-neutral-400">Debug</span>

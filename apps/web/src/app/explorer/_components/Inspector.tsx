@@ -32,13 +32,13 @@ const FolderDetail = ({ data }: { data: ExplorerItem }) => {
       </div>
       <div className="mb-3 mt-6 h-px bg-app-line"></div>
       <div className="text-xs">
-        <div className="text-md font-medium">基本信息</div>
+        <div className="text-md font-medium">Information</div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">创建时间</div>
+          <div className="text-ink/50">Created</div>
           <div>{formatDateTime(data.createdAt)}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">更新时间</div>
+          <div className="text-ink/50">Modified</div>
           <div>{formatDateTime(data.updatedAt)}</div>
         </div>
       </div>
@@ -77,13 +77,13 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
       </div>
       <div className="mt-3 overflow-hidden">
         <div className="line-clamp-2 break-all text-sm font-medium text-ink">{data.name}</div>
-        <div className="mt-1 line-clamp-2 text-xs text-ink/50">目录 {data.materializedPath}</div>
+        <div className="mt-1 line-clamp-2 text-xs text-ink/50">Location {data.materializedPath}</div>
       </div>
       <div className="mb-3 mt-6 h-px bg-app-line"></div>
       <div className="text-xs">
-        <div className="text-md font-medium">基本信息</div>
+        <div className="text-md font-medium">Information</div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">大小</div>
+          <div className="text-ink/50">Size</div>
           <div>{formatBytes(mediaData?.size ?? 0)}</div>
         </div>
         {/* <div className="mt-2 flex justify-between">
@@ -91,23 +91,23 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
           <div>{mediaData.mimeType}</div>
         </div> */}
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">长度</div>
+          <div className="text-ink/50">Duration</div>
           <div>{formatDuration(mediaData?.duration ?? 0)}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">尺寸</div>
+          <div className="text-ink/50">Dimensions</div>
           <div>{`${mediaData?.width ?? 0} x ${mediaData?.height ?? 0}`}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">音频</div>
-          <div>{mediaData.hasAudio ? '有' : '无'}</div>
+          <div className="text-ink/50">Audio</div>
+          <div>{mediaData.hasAudio ? 'Yes' : 'No'}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">创建时间</div>
+          <div className="text-ink/50">Created</div>
           <div>{formatDateTime(data.createdAt)}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">更新时间</div>
+          <div className="text-ink/50">Modified</div>
           <div>{formatDateTime(data.updatedAt)}</div>
         </div>
       </div>

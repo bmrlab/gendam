@@ -121,7 +121,7 @@ export default function VideoTasksPage() {
     <Viewport.Page>
       {/* <VideoTaskHeader /> */}
       <Viewport.Toolbar className="items-center justify-between">
-        <PageNav title="任务列表" />
+        <PageNav title="All jobs" />
         <ListFilter />
       </Viewport.Toolbar>
       <Viewport.Content>

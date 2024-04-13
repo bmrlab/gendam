@@ -55,7 +55,7 @@ export default function BatchExport() {
           label: (
             <div className="flex items-center gap-1.5">
               <Icon.regenerate />
-              <span>把导出格式应用到全部</span>
+              <span>Apply export formats to all</span>
             </div>
           ),
           handleClick: () => {
@@ -67,7 +67,7 @@ export default function BatchExport() {
           label: (
             <div className="flex items-center gap-1.5">
               <Icon.arrowUpLeft />
-              <span>重设导出格式</span>
+              <span>Reset export options</span>
             </div>
           ),
           handleClick: () => updateItemTypes(id, []),
@@ -88,12 +88,12 @@ export default function BatchExport() {
     setIsOpenAudioDialog(false)
     if (errorList.length > 0) {
       toast({
-        title: `${errorList.join('、')}，格式导出失败`,
+        title: `${errorList.join('、')}, export failed`,
         variant: 'error',
       })
     } else {
       toast({
-        title: '导出成功',
+        title: 'Export successfully',
       })
     }
   }
@@ -101,9 +101,9 @@ export default function BatchExport() {
   return (
     <div className="flex flex-col">
       <div className="grid grid-cols-10 border-b border-app-line px-6 py-2 text-xs font-normal leading-4">
-        <p className="col-span-5">文件</p>
-        <p className="col-span-3">格式</p>
-        <p className="col-span-1">数量</p>
+        <p className="col-span-5">File</p>
+        <p className="col-span-3">Formats</p>
+        <p className="col-span-1">Quantity</p>
         <div className="col-span-1"></div>
       </div>
       <ScrollArea className="h-[30rem]">
@@ -135,7 +135,7 @@ export default function BatchExport() {
                 value={multiValues.find((v) => v.id === id)?.types || []}
                 onValueChange={(value) => updateItemTypes(id, value)}
                 showValue
-                placeholder="选择格式"
+                placeholder="Select formats"
                 options={Object.keys(FileTypeEnum).map((type) => ({
                   label: FileTypeEnum[type as keyof typeof FileTypeEnum],
                   value: type,
@@ -146,17 +146,17 @@ export default function BatchExport() {
               {(multiValues.find((v) => v.id === id)?.types || []).length}
             </div>
             <div className="col-span-1 cursor-pointer">
-              <TaskDropdownMenu options={moreActionOptions(id)} contentClassName='w-48' />
+              <TaskDropdownMenu options={moreActionOptions(id)} />
             </div>
           </div>
         ))}
       </ScrollArea>
       <div className="flex flex-1 justify-end gap-2 border-t border-app-line px-6 py-2.5">
         <Button variant="outline" size="md" onClick={() => setIsOpenAudioDialog(false)}>
-          取消
+          Cancel
         </Button>
         <WithDownloadDialogButton variant="accent" size="md" onSelection={handleExport}>
-          导出
+          Export
         </WithDownloadDialogButton>
       </div>
     </div>

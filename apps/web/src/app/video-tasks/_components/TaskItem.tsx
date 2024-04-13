@@ -38,13 +38,13 @@ export default function VideoTaskItem({
             label: (
               <div className="flex items-center gap-1.5">
                 <Icon.CloseRounded />
-                <span>取消任务</span>
+                <span>Cancel job</span>
               </div>
             ),
             handleClick: async () => {
               // console.log('cancel task', assetObject.id)
               await mutateAsync({ assetObjectId: assetObject.id })
-              toast.success('取消任务成功', {
+              toast.success('Job cancelled', {
                 action: {
                   label: 'Dismiss',
                   onClick: () => {},
@@ -63,7 +63,7 @@ export default function VideoTaskItem({
         label: (
           <div className="flex items-center gap-1.5">
             <Icon.Trash />
-            <span>删除任务</span>
+            <span>Delete job</span>
           </div>
         ),
         handleClick: () => {},
@@ -105,7 +105,7 @@ export default function VideoTaskItem({
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <span className="truncate text-xs font-normal leading-4 opacity-60">已删除</span>
+            <span className="truncate text-xs font-normal leading-4 opacity-60">Deleted</span>
           </div>
         )}
         <div className="flex w-full items-center justify-between">
@@ -127,7 +127,6 @@ export default function VideoTaskItem({
             <TaskDropdownMenu
               triggerIcon={<Icon.MoreVertical className="size-3" />}
               options={moreActionOptions()}
-              contentClassName="w-48"
             >
               <div
                 className={classNames(
@@ -151,7 +150,7 @@ const NoAudio = () => {
   return (
     <div className="flex items-center gap-1 text-ink/50">
       <Icon.SpeakerSimpleX />
-      <span className="text-xs font-normal leading-4">无音轨</span>
+      <span className="text-xs font-normal leading-4">No Audio</span>
     </div>
   )
 }

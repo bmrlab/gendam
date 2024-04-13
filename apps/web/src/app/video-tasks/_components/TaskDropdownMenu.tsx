@@ -16,13 +16,11 @@ export type DropdownMenuOptions =
 type _DropdownMenuProps = {
   triggerIcon?: ReactNode
   options: Array<DropdownMenuOptions>
-  contentClassName?: string
 }
 
 export default function TaskDropdownMenu({
   options,
   triggerIcon,
-  contentClassName,
   children,
 }: PropsWithChildren<_DropdownMenuProps>) {
   return (
@@ -40,17 +38,15 @@ export default function TaskDropdownMenu({
           </div>
         )}
       </DropdownMenu.Trigger>
-      <DropdownMenu.Content align="end" className={cn('', contentClassName)}>
+      <DropdownMenu.Content align="end">
         {options.map((o, index) => (
-          <div key={index}>
-            {o === 'Separator' ? (
-              <DropdownMenu.Separator className="bg-app-line h-px my-1" />
-            ) : (
-              <DropdownMenu.Item key={index} onClick={o.handleClick} variant={o.variant} disabled={o.disabled}>
-                {o.label}
-              </DropdownMenu.Item>
-            )}
-          </div>
+          o === 'Separator' ? (
+            <DropdownMenu.Separator key={index} className="bg-app-line h-px my-1" />
+          ) : (
+            <DropdownMenu.Item key={index} onClick={o.handleClick} variant={o.variant} disabled={o.disabled}>
+              {o.label}
+            </DropdownMenu.Item>
+          )
         ))}
       </DropdownMenu.Content>
     </DropdownMenu.Root>
