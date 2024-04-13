@@ -38,9 +38,13 @@ export const queryClient: QueryClient = new QueryClient({
       onError: (error) => {
         console.error(error)
         if (error instanceof RSPCError) {
-          toast.error(`Request Error (code: ${error.code}): ${error.message}`)
+          toast.error(`Request Error (code: ${error.code})`, {
+            description: error.message,
+          })
         } else {
-          toast.error(`Request Error: ${error.message}`)
+          toast.error(`Request Error`, {
+            description: error.message,
+          })
         }
       },
     },
