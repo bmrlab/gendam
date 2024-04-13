@@ -65,7 +65,7 @@ export default function useTaskList(props: TaskListProps) {
     hasNextPage,
     fetchNextPage,
 
-    isLoading,
+    // isLoading,
     refetch,
   }
 }

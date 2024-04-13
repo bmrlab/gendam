@@ -5,8 +5,12 @@
 
 import Document_Light from "./Document_Light.png";
 import Folder_Light from "./Folder_Light.png";
+import Drop_To_Folder from "./Drop_To_Folder.png";
+import Video_Files from "./Video_Files.png";
 
 export {
-	Document_Light,
-	Folder_Light,
+  Document_Light,
+  Folder_Light,
+  Drop_To_Folder,
+  Video_Files,
 };

@@ -2,20 +2,18 @@
 import type { VideoWithTasksResult } from '@/lib/bindings'
 // import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
-import Image from 'next/image'
 import { HTMLAttributes, useMemo } from 'react'
 import { isNotDone } from './utils'
 import { useBoundStore } from '../_store'
 import TaskContextMenu from './TaskContextMenu'
 import { WithSelectVideoItem } from './withSelect'
-import EmptyList from '/public/svg/empty-list.svg'
 
 export type VideoTasksListProps = HTMLAttributes<HTMLDivElement> & {
   data: VideoWithTasksResult[]
-  isLoading: boolean
+  // isLoading: boolean
 }
 
-export default function VideoTasksList({ data, isLoading, className }: VideoTasksListProps) {
+export default function VideoTasksList({ data, className }: VideoTasksListProps) {
   // const revealMut = rspc.useMutation('files.reveal')
 
   const taskSelected = useBoundStore.use.videoSelected()
@@ -27,18 +25,6 @@ export default function VideoTasksList({ data, isLoading, className }: VideoTask
   //     return videoFile?.name.includes(searchKey)
   //   })
   // }, [data, searchKey])
-
-  if (isLoading) {
-    return (
-      <div className="relative h-full">
-        <div className="absolute left-1/2 top-1/2 grid translate-x-[-50%] translate-y-[-50%]">
-          <Image src={EmptyList} width={250} height={250} alt="empty-list" />
-          <p className="mt-6 text-center text-[20px] font-medium leading-6 text-[#262626]">拖放或粘贴视频到此区域</p>
-          <p className="mt-2 text-center text-[14px] leading-5 text-[#AAADB2]">多个视频/视频文件夹</p>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className={cn('h-full px-4', className)}>

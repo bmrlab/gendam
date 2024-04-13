@@ -1,6 +1,9 @@
 'use client'
 import Viewport from '@/components/Viewport'
 import { type TaskListRequestFilter } from '@/lib/bindings'
+import { Drop_To_Folder } from '@muse/assets/images'
+import Image from 'next/image'
+import Link from 'next/link'
 import PageNav from '@/components/PageNav'
 import { ScrollArea } from '@muse/ui/v1/scroll-area'
 import { Checkbox } from '@muse/ui/v2/checkbox'
@@ -63,7 +66,7 @@ export default function VideoTasksPage() {
   const [searchPayloadInURL, updateSearchPayloadInURL] = useSearchPayloadInURL()
 
   const {
-    videos, isLoading,
+    videos,
     maxPage, pageSize, pageIndex, setPageIndex, filter, setFilter,
     // hasNextPage, fetchNextPage,
   } = useTaskList(validateSearchPayload(searchPayloadInURL))
@@ -122,10 +125,19 @@ export default function VideoTasksPage() {
         <ListFilter />
       </Viewport.Toolbar>
       <Viewport.Content>
-        <ScrollArea className="flex-1 rounded-[6px]">
-          <VideoTasksList data={videos} isLoading={isLoading} />
-          {maxPage > 1 ? <Pagination /> : null}
-        </ScrollArea>
+        {videos.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center">
+            <Link href="/explorer" className="cursor-default">
+              <Image src={Drop_To_Folder} alt="drop to folder" priority className="w-60 h-60"></Image>
+              <div className="my-4 text-sm">Go to the <span className="underline">explorer</span> to add videos</div>
+            </Link>
+          </div>
+        ) : (
+          <ScrollArea className="flex-1 rounded-[6px]">
+            <VideoTasksList data={videos} />
+            {maxPage > 1 ? <Pagination /> : null}
+          </ScrollArea>
+        )}
       </Viewport.Content>
       <TaskFooter total={videos.length} />
       <AudioDialog />

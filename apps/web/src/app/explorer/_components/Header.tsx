@@ -76,10 +76,12 @@ export default function Header() {
           title={explorer.parentPath === '/' ? '全部' : explorer.parentPath}
           className="w-1/3"
         />
-        <SearchForm
-          initialSearchPayload={null}
-          onSubmit={(text: string, recordType: string) => handleSearch(text, recordType)}
-        />
+        <div className="w-1/3">
+          <SearchForm
+            initialSearchPayload={null}
+            onSubmit={(text: string, recordType: string) => handleSearch(text, recordType)}
+          />
+        </div>
         <div className="ml-auto"></div>
         {/* <div className="mr-8 flex select-none items-center">
           <div className="cursor-pointer px-2 py-1 text-sm" onClick={() => handleCreateDir()}>

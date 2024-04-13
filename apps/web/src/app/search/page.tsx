@@ -3,12 +3,48 @@ import PageNav from '@/components/PageNav'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import Viewport from '@/components/Viewport'
 import type { SearchRequestPayload, SearchResultPayload } from '@/lib/bindings'
+import { Video_Files } from '@muse/assets/images'
+import Image from 'next/image'
 import { rspc } from '@/lib/rspc'
 import classNames from 'classnames'
 import { useSearchParams } from 'next/navigation'
-import { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import SearchForm from './SearchForm'
 import VideoItem from './VideoItem'
+
+const Results: React.FC<{ items: SearchResultPayload[] }> = ({ items }) => {
+  const quickViewStore = useQuickViewStore()
+
+  const handleVideoClick = useCallback(
+    (item: SearchResultPayload) => {
+      quickViewStore.open({
+        name: item.name,
+        assetObject: {
+          id: item.assetObjectId,
+          hash: item.assetObjectHash,
+        },
+        video: {
+          currentTime: item.startTime / 1e3,
+        },
+      })
+    },
+    [quickViewStore],
+  )
+
+  return (
+    <div className="h-full flex flex-wrap gap-4">
+      {items.map((item: SearchResultPayload, index: number) => {
+        return (
+          <VideoItem
+            key={`${item.assetObjectId}-${index}`}
+            item={item}
+            handleVideoClick={handleVideoClick}
+          ></VideoItem>
+        )
+      })}
+    </div>
+  )
+}
 
 const useSearchPayloadInURL: () => [
   SearchRequestPayload | null,
@@ -44,24 +80,6 @@ export default function Search() {
     enabled: !!searchPayload,
   })
 
-  const quickViewStore = useQuickViewStore()
-
-  const handleVideoClick = useCallback(
-    (item: SearchResultPayload) => {
-      quickViewStore.open({
-        name: item.name,
-        assetObject: {
-          id: item.assetObjectId,
-          hash: item.assetObjectHash,
-        },
-        video: {
-          currentTime: item.startTime / 1e3,
-        },
-      })
-    },
-    [quickViewStore],
-  )
-
   const handleSearch = useCallback(
     (text: string, recordType: string) => {
       if (text && recordType) {
@@ -77,13 +95,15 @@ export default function Search() {
     <Viewport.Page>
       <Viewport.Toolbar className="justify-start">
         <PageNav title="搜索" className="w-1/3" />
-        <SearchForm
-          initialSearchPayload={searchPayloadInURL}
-          onSubmit={(text: string, recordType: string) => handleSearch(text, recordType)}
-        />
+        <div className="w-1/3">
+          <SearchForm
+            initialSearchPayload={searchPayloadInURL}
+            onSubmit={(text: string, recordType: string) => handleSearch(text, recordType)}
+          />
+        </div>
         <div className="ml-auto"></div>
       </Viewport.Toolbar>
-      <Viewport.Content>
+      <Viewport.Content className="overflow-hidden flex flex-col items-stretch">
         {searchPayload ? (
           <div className="border-app-line flex items-center justify-start border-b px-8 py-2">
             <div className="border-app-line flex items-center overflow-hidden rounded-lg border text-xs">
@@ -103,21 +123,25 @@ export default function Search() {
             <div className="text-ink/50 ml-4 text-sm">{searchPayload.text}</div>
           </div>
         ) : null}
-        <div className="p-8">
-          {queryRes.isLoading ? (
-            <div className="text-ink/50 flex items-center justify-center px-2 py-8 text-sm">正在搜索...</div>
-          ) : (
-            <div className="flex flex-wrap gap-4">
-              {queryRes.data?.map((item: SearchResultPayload, index: number) => {
-                return (
-                  <VideoItem
-                    key={`${item.assetObjectId}-${index}`}
-                    item={item}
-                    handleVideoClick={handleVideoClick}
-                  ></VideoItem>
-                )
-              })}
+        <div className="flex-1 overflow-auto p-8">
+          {!searchPayload ? (
+            <div className="h-full flex flex-col items-center justify-center">
+              <Image src={Video_Files} alt="video files" priority className="w-60 h-60"></Image>
+              <div className="my-4 text-sm">Search for visual objects or processed transcripts</div>
             </div>
+          ) : queryRes.isLoading ? (
+            <div className="text-ink/50 flex items-center justify-center px-2 py-8 text-sm">正在搜索...</div>
+          ) : queryRes.isSuccess && queryRes.data.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center">
+              <Image src={Video_Files} alt="video files" priority className="w-60 h-60"></Image>
+              <div className="my-4 text-sm">
+                No results found for <span className="font-medium">{searchPayload.text}</span>
+              </div>
+            </div>
+          ) : queryRes.isSuccess && queryRes.data.length > 0 ? (
+            <Results items={queryRes.data} />
+          ) : (
+            <div>Something went wrong</div>
           )}
         </div>
       </Viewport.Content>

@@ -4,6 +4,8 @@ import { ExplorerContextProvider, ExplorerViewContextProvider, useExplorer } fro
 // import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
 import Viewport from '@/components/Viewport'
+import { Drop_To_Folder } from '@muse/assets/images'
+import Image from 'next/image'
 import { rspc } from '@/lib/rspc'
 import { RSPCError } from '@rspc/client'
 import { useSearchParams } from 'next/navigation'
@@ -104,12 +106,19 @@ export default function ExplorerPage() {
         <Viewport.Page>
           <Header />
 
-          <div className="flex-1 w-full flex flex-row overflow-hidden">
-            <Viewport.Content className="w-auto" onClick={() => explorer.resetSelectedItems()}>
-              <ExplorerLayout></ExplorerLayout>
+          {assetsQuery.isSuccess && assetsQuery.data.length === 0 ? (
+            <Viewport.Content className="flex flex-col items-center justify-center">
+              <Image src={Drop_To_Folder} alt="drop to folder" priority className="w-60 h-60"></Image>
+              <div className="my-4 text-sm">Drag or paste videos here</div>
             </Viewport.Content>
-            <Inspector />
-          </div>
+          ) : (
+            <div className="flex-1 w-full flex flex-row overflow-hidden">
+              <Viewport.Content className="w-auto" onClick={() => explorer.resetSelectedItems()}>
+                <ExplorerLayout></ExplorerLayout>
+              </Viewport.Content>
+              <Inspector />
+            </div>
+          )}
 
           <Footer />
           <FoldersDialog onConfirm={onMoveTargetSelected} />

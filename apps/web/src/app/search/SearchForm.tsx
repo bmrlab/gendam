@@ -23,7 +23,7 @@ export default function SearchForm({
   }, [onSubmit, keyword, setTyping])
 
   return (
-    <div className="relative w-80">
+    <div className="relative w-80 block mx-auto">
       <CommandPrimitive shouldFilter={false}>
         <div cmdk-input-wrapper="" className="relative">
           <CommandPrimitive.Input
