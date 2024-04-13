@@ -5,7 +5,6 @@ use content_library::{load_library, Library};
 use dotenvy::dotenv;
 use serde_json::json;
 use std::{
-    net::{Ipv4Addr, SocketAddr},
     path::PathBuf,
     sync::{Arc, Mutex},
 };
@@ -126,33 +125,15 @@ async fn main() {
     });
 
     // try to kill current qdrant server, if any
-    match (
-        tauri_store.get("current-qdrant-pid"),
-        tauri_store.get("current-qdrant-http-port"),
-    ) {
-        (Some(pid), Some(port)) => {
-            match (pid.as_u64(), port.as_u64()) {
-                (Some(pid), Some(port)) => {
-                    tracing::info!("try to kill qdrant on pid: {}, port: {}", pid, port);
-
-                    if vector_db::kill_qdrant_server(
-                        pid as usize,
-                        SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::LOCALHOST), port as u16),
-                    )
-                    .is_err()
-                    {
-                        tracing::warn!("Failed to kill qdrant server according to store");
-                    };
-
-                    tracing::info!("killed!");
-                }
-                _ => {
-                    tracing::warn!("invalid qdrant config, skipping killing qdrant server");
-                }
+    match tauri_store.get("current-qdrant-pid") {
+        Some(pid) => {
+            if let Some(pid) = pid.as_str() {
+                if vector_db::kill_qdrant_server(pid.parse().unwrap()).is_err() {
+                    tracing::warn!("Failed to kill qdrant server according to store");
+                };
             }
             let _ = tauri_store.delete("current-qdrant-pid");
-            let _ = tauri_store.delete("current-qdrant-http-port");
-            let _ = tauri_store.delete("current-qdrant-grpc-port");
+            let _ = tauri_store.save();
         }
         _ => {}
     }
@@ -161,11 +142,10 @@ async fn main() {
         let library_id = value.as_str().unwrap().to_owned();
         match load_library(&local_data_root, &library_id).await {
             Ok(library) => {
-                let (pid, http_port, grpc_port) = library.qdrant_server_info();
+                let pid = library.qdrant_server_info();
                 current_library.lock().unwrap().replace(library);
-                let _ = tauri_store.insert("current-qdrant-pid".into(), json!(pid));
-                let _ = tauri_store.insert("current-qdrant-http-port".into(), json!(http_port));
-                let _ = tauri_store.insert("current-qdrant-grpc-port".into(), json!(grpc_port));
+                // 注意这里要插入字符串类型的 pid
+                let _ = tauri_store.insert("current-qdrant-pid".into(), json!(pid.to_string()));
                 if tauri_store.save().is_err() {
                     tracing::warn!("Failed to save store");
                 }
@@ -179,27 +159,18 @@ async fn main() {
         };
     }
 
-    let store = Arc::new(Mutex::new(Store::new(tauri_store)));
-    let store_clone = store.clone();
-
     window.on_window_event({
         let current_library = current_library.clone();
         move |e| {
             if let tauri::WindowEvent::Destroyed = e {
                 if let Some(library) = current_library.lock().unwrap().take() {
                     drop(library);
-                    // 如果这里顺利执行了，qdrant已经被正确 kill 了
-                    // 所以清空 tauri_store 里的 qdrant 信息
-                    let mut store = store_clone.lock().unwrap();
-                    let _ = store.store.delete("current-qdrant-pid");
-                    let _ = store.store.delete("current-qdrant-http-port");
-                    let _ = store.store.delete("current-qdrant-grpc-port");
-                    let _ = store.store.save();
                 }
             }
         }
     });
 
+    let store = Arc::new(Mutex::new(Store::new(tauri_store)));
     let router = api_server::get_routes::<Ctx<Store>>();
     let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store, current_library);
 

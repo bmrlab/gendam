@@ -1,12 +1,13 @@
-use anyhow::bail;
-use nix::sys::signal::{self, Signal};
-use nix::unistd::Pid;
+use anyhow::{anyhow, bail};
 pub use qdrant_client::client::QdrantClient;
+use rustix::process::{kill_process, Pid, Signal};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::num::NonZeroI32;
 use std::sync::mpsc::channel;
+use std::thread::sleep;
 use std::{path::PathBuf, sync::Arc};
 use tokio::sync::oneshot;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 #[derive(Debug)]
 pub struct QdrantParams {
@@ -18,9 +19,7 @@ pub struct QdrantParams {
 #[derive(Clone)]
 pub struct QdrantServer {
     client: Arc<QdrantClient>,
-    pid: u32,
-    http_port: u16,
-    grpc_port: u16,
+    pid: Pid,
 }
 
 impl std::fmt::Debug for QdrantServer {
@@ -76,17 +75,14 @@ storage:
         debug!("qdrant reading config from {}", config_path.display());
 
         let current_exe_path = std::env::current_exe().expect("failed to get current executable");
-        let current_dir = current_exe_path
-            .parent()
-            .expect("failed to get parent directory");
-        let sidecar_path = current_dir.join("qdrant");
+        let sidecar_path = current_exe_path.with_file_name("qdrant");
         let process = std::process::Command::new(sidecar_path)
             .env("QDRANT__SERVICE__HTTP_PORT", http_port.to_string())
             .env("QDRANT__SERVICE__GRPC_PORT", grpc_port.to_string())
             .args(["--config-path", config_path.to_str().expect("invalid path")])
             .spawn()?;
 
-        let pid = process.id();
+        let pid = Pid::from_child(&process);
 
         let url = format!("http://{}:{}", Ipv4Addr::LOCALHOST, grpc_port);
 
@@ -101,8 +97,6 @@ storage:
         Ok(Self {
             client: Arc::new(client),
             pid,
-            http_port,
-            grpc_port,
         })
     }
 
@@ -110,16 +104,8 @@ storage:
         self.client.clone()
     }
 
-    pub fn get_pid(&self) -> u32 {
-        self.pid
-    }
-
-    pub fn get_http_port(&self) -> u16 {
-        self.http_port
-    }
-
-    pub fn get_grpc_port(&self) -> u16 {
-        self.grpc_port
+    pub fn get_pid(&self) -> NonZeroI32 {
+        self.pid.as_raw_nonzero()
     }
 }
 
@@ -153,40 +139,44 @@ async fn check_liveness(addr: SocketAddr) -> bool {
     }
 }
 
-fn kill_by_sig_term(pid: u32) -> Result<(), nix::Error> {
-    signal::kill(Pid::from_raw(pid as i32), Signal::SIGTERM)
-}
+/// Kill qdrant server using pid, if the executable path of pid is qdrant.
+///
+/// This function will block until the process is killed.
+pub fn kill(pid: i32) -> anyhow::Result<()> {
+    let pidpath =
+        libproc::proc_pid::pidpath(pid).map_err(|e| anyhow!("failed to get pidpath: {}", e))?;
+    let current_exe_path = std::env::current_exe().expect("failed to get current executable");
+    let sidecar_path = current_exe_path.with_file_name("qdrant");
 
-/// Kill qdrant server using pid, if liveness check pass with provided host and http_port.
-pub fn kill(pid: usize, addr: SocketAddr) -> anyhow::Result<()> {
-    let probe = format!("http://{}:{}", addr.ip(), addr.port());
+    if pidpath == sidecar_path.to_string_lossy().to_string() {
+        info!("pid {} is qdrant started using sidecar, killing it", pid);
+        let pid = Pid::from_raw(pid).ok_or(anyhow!("invalid pid"))?;
+        if let Err(e) = kill_process(pid, Signal::Term) {
+            bail!("failed to send SIGTERM: {}", e);
+        }
 
-    let (tx, rx) = channel();
-
-    tokio::task::spawn(async move {
-        let resp = reqwest::get(probe.clone()).await;
-        if let Ok(resp) = resp {
-            if resp.status() == reqwest::StatusCode::OK {
-                if let Err(e) = kill_by_sig_term(pid as u32) {
-                    error!("failed to kill qdrant: {}", e);
+        // waiting the process to exit
+        let (tx, rx) = channel();
+        std::thread::spawn(move || {
+            loop {
+                if libproc::proc_pid::pidpath(pid.as_raw_nonzero().into()).is_err() {
+                    let _ = tx.send(());
                 }
+                sleep(std::time::Duration::from_millis(100));
             }
-        }
+        });
 
-        // everything done
-        if tx.send(()).is_err() {
-            error!("failed to send result");
-        }
-    });
-
-    rx.recv()
-        .map_err(|e| anyhow::anyhow!("failed to receive result: {}", e))
+        rx.recv().map_err(|e| anyhow!("failed to kill qdrant: {}", e))
+    } else {
+        warn!("pid {} is not qdrant started using sidecar, ignore it", pid);
+        Ok(())
+    }
 }
 
 impl Drop for QdrantServer {
     fn drop(&mut self) {
         info!("qdrant server dropped");
-        match kill_by_sig_term(self.pid) {
+        match kill_process(self.pid, Signal::Term) {
             Ok(_) => {
                 info!("qdrant successfully killed");
             }

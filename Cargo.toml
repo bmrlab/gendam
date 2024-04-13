@@ -35,7 +35,7 @@ qdrant-client = { version = "1.8.0" }
 image = "0.25.0"
 strum = "0.26"
 strum_macros = "0.26"
-nix = "0.28.0"
+rustix = "0.38"
 # tracing
 tracing = "0.1.40"
 # Set the settings for build scripts and proc-macros.

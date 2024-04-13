@@ -8,7 +8,6 @@ use content_library::{load_library, Library};
 use dotenvy::dotenv;
 use std::{
     env,
-    net::{Ipv4Addr, SocketAddr},
     path::Path,
     sync::{Arc, Mutex},
 };
@@ -58,41 +57,28 @@ async fn main() {
     });
 
     // try to kill current qdrant server, if any
-    match (
-        default_store.get("current-qdrant-pid"),
-        default_store.get("current-qdrant-http-port"),
-    ) {
-        (Some(pid), Some(port)) => {
-            match (pid.parse(), port.parse::<u16>()) {
-                (Ok(pid), Ok(port)) => {
-                    if vector_db::kill_qdrant_server(
-                        pid,
-                        SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::LOCALHOST), port),
-                    )
-                    .is_err()
-                    {
-                        tracing::warn!("Failed to kill qdrant server according to store");
-                    };
-                }
-                _ => {
-                    tracing::warn!("invalid qdrant config, skipping killing qdrant server");
-                }
+    match default_store.get("current-qdrant-pid") {
+        Some(pid) => {
+            if let Ok(pid) = pid.parse::<i32>() {
+                if vector_db::kill_qdrant_server(pid).is_err() {
+                    tracing::warn!("Failed to kill qdrant server according to store");
+                };
             }
             let _ = default_store.delete("current-qdrant-pid");
-            let _ = default_store.delete("current-qdrant-http-port");
-            let _ = default_store.delete("current-qdrant-grpc-port");
         }
         _ => {}
+    }
+
+    if default_store.save().is_err() {
+        tracing::warn!("Failed to save store");
     }
 
     if let Some(library_id) = default_store.get("current-library-id") {
         match load_library(&local_data_root, &library_id).await {
             Ok(library) => {
-                let (pid, http_port, grpc_port) = library.qdrant_server_info();
+                let pid = library.qdrant_server_info();
                 current_library.lock().unwrap().replace(library);
                 let _ = default_store.insert("current-qdrant-pid", &pid.to_string());
-                let _ = default_store.insert("current-qdrant-http-port", &http_port.to_string());
-                let _ = default_store.insert("current-qdrant-grpc-port", &grpc_port.to_string());
                 if default_store.save().is_err() {
                     tracing::warn!("Failed to save store");
                 }
