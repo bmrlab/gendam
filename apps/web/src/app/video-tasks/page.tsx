@@ -83,7 +83,10 @@ export default function VideoTasksPage() {
         <Checkbox.Root
           id="task-filter" className=""
           checked={filter === 'all'}
-          onCheckedChange={(checked) => setFilter(checked ? 'all' : 'excludeCompleted')}
+          onCheckedChange={(checked) => {
+            setFilter(checked ? 'all' : 'excludeCompleted')
+            setPageIndex(1)
+          }}
         >
           <Checkbox.Indicator />
         </Checkbox.Root>
