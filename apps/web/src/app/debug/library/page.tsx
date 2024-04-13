@@ -5,14 +5,14 @@ import Files from "./Files";
 
 export default function Library() {
   const { data: homeDir } = rspc.useQuery(["files.home_dir"]);
-  const assetsMutation = rspc.useMutation(["assets.create_file_path"]);
+  const dirMutation = rspc.useMutation(["assets.create_dir"]);
   const assetsQuery = rspc.useQuery(["assets.list", {
     materializedPath: "/"
   }]);
 
   const test = useCallback(() => {
-    assetsMutation.mutate({ materializedPath: "/", name: "level1" });
-  }, [assetsMutation]);
+    dirMutation.mutate({ materializedPath: "/", name: "level1" });
+  }, [dirMutation]);
 
   const test2 = useCallback(() => {
     assetsQuery.refetch();

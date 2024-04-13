@@ -4,7 +4,7 @@ import { rspc } from '@/lib/rspc'
 import { FileItem, useUploadQueueStore } from '@/store/uploadQueue'
 import { Document_Light } from '@muse/assets/images'
 import Image from 'next/image'
-import { PropsWithChildren, useEffect, useMemo, useState } from 'react'
+import { PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react'
 
 // import { twx } from '@/lib/utils'
 // const UploadingItem = twx.div`flex items-center justify-start pl-2 pr-4 py-2`
@@ -37,17 +37,10 @@ export default function UploadQueue() {
     // useUploadQueueStore.subscribe((e) => {})
     const uploading = uploadQueueStore.nextUploading()
     if (uploading) {
-      uploadMut.mutate({
-        materializedPath: uploading.path,
-        localFullPath: uploading.localFullPath,
-      }, {
-        onSuccess: () => {
-          uploadQueueStore.completeUploading()
-          // refetch()
-        },
-        onError: () => {
-          uploadQueueStore.failedUploading()
-        }
+      const { materializedPath, name, localFullPath } = uploading
+      uploadMut.mutate({ materializedPath, name, localFullPath }, {
+        onSuccess: () => uploadQueueStore.completeUploading(),
+        onError: () => uploadQueueStore.failedUploading(),
       })
     }
   }, [uploadQueueStore, uploadMut])

@@ -20,14 +20,16 @@ export default function Header() {
   const uploadQueueStore = useUploadQueueStore()
 
   const inspector = useInspector()
-  const createPathMut = rspc.useMutation(['assets.create_file_path'])
+  const createDirMut = rspc.useMutation(['assets.create_dir'])
 
   let handleSelectFiles = useCallback(
     (fileFullPaths: string[]) => {
       if (explorer.parentPath) {
         for (let fileFullPath of fileFullPaths) {
+          const name = fileFullPath.split('/').slice(-1).join('')
           uploadQueueStore.enqueue({
-            path: explorer.parentPath,
+            materializedPath: explorer.parentPath,
+            name: name,
             localFullPath: fileFullPath,
           })
         }
@@ -47,13 +49,13 @@ export default function Header() {
       if (!title || !explorer.parentPath) {
         return
       }
-      createPathMut.mutate({
+      createDirMut.mutate({
         materializedPath: explorer.parentPath,
         name: title,
       })
       setTitleInputDialogVisible(false)
     },
-    [createPathMut, explorer],
+    [createDirMut, explorer],
   )
 
   const onCancelTitleInput = useCallback(() => {

@@ -3,7 +3,8 @@
 import { create } from 'zustand'
 
 export type FileItem = {
-  path: string
+  materializedPath: string
+  name: string
   localFullPath: string
 }
 

@@ -3,7 +3,7 @@ use content_library::Library;
 use prisma_client_rust::QueryError;
 use prisma_lib::{asset_object, file_path};
 
-pub async fn create_file_path(
+pub async fn create_dir(
     library: &Library,
     materialized_path: &str,
     name: &str,
@@ -35,11 +35,9 @@ pub async fn create_file_path(
 pub async fn create_asset_object(
     library: &Library,
     materialized_path: &str,
+    name: &str,
     local_full_path: &str,
 ) -> Result<(file_path::Data, asset_object::Data, bool), rspc::Error> {
-    // copy file and rename to asset object id
-    let file_name = local_full_path.split("/").last().unwrap().to_owned();
-
     let start_time = std::time::Instant::now();
     // let bytes = std::fs::read(&local_full_path).unwrap();
     // let file_sha256 = sha256::digest(&bytes);
@@ -77,41 +75,33 @@ pub async fn create_asset_object(
         .prisma_client()
         ._transaction()
         .run(|client| async move {
-            let asset_object_data = client
+            let mut asset_object_existed = false;
+            let asset_object_data = match client
                 .asset_object()
                 .find_unique(asset_object::hash::equals(file_hash.clone()))
                 .exec()
-                .await?;
-            let mut asset_object_existed = false;
-
-            let asset_object_data = match asset_object_data {
+                .await?
+            {
                 Some(asset_object_data) => {
                     asset_object_existed = true;
                     asset_object_data
                 }
-                None => client
-                    .asset_object()
-                    .upsert(
-                        asset_object::hash::equals(file_hash.clone()),
-                        asset_object::create(file_hash.clone(), vec![]),
-                        vec![],
-                    )
-                    .exec()
-                    .await
-                    .map_err(|e| {
-                        tracing::error!("failed to create asset_object: {}", e);
-                        e
-                    })?,
+                None => {
+                    client
+                        .asset_object()
+                        .create(file_hash.clone(), vec![])
+                        .exec()
+                        .await?
+                }
             };
-
-            let mut new_file_name = file_name.clone();
+            let mut new_name = name.to_string();
             let file_path_data = loop {
                 let res = client
                     .file_path()
                     .create(
                         false,
                         materialized_path.to_string(),
-                        new_file_name.clone(),
+                        new_name.clone(),
                         vec![file_path::asset_object_id::set(Some(asset_object_data.id))],
                     )
                     .exec()
@@ -125,7 +115,7 @@ pub async fn create_asset_object(
                             .next()
                             .unwrap()
                             .to_string();
-                        new_file_name = format!("{} ({})", file_name, suffix);
+                        new_name = format!("{} ({})", name, suffix);
                         continue;
                     } else {
                         tracing::error!("failed to create file_path: {}", e);

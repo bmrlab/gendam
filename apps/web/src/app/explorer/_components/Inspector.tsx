@@ -86,6 +86,10 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
           <div className="text-ink/50">大小</div>
           <div>{formatBytes(mediaData?.size ?? 0)}</div>
         </div>
+        {/* <div className="mt-2 flex justify-between">
+          <div className="text-ink/50">Type</div>
+          <div>{mediaData.mimeType}</div>
+        </div> */}
         <div className="mt-2 flex justify-between">
           <div className="text-ink/50">长度</div>
           <div>{formatDuration(mediaData?.duration ?? 0)}</div>

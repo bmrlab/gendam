@@ -13,7 +13,7 @@ use specta::Type;
 use tracing::info;
 
 use crate::validators;
-use create::{create_asset_object, create_file_path};
+use create::{create_asset_object, create_dir};
 use delete::delete_file_path;
 use process::{process_video_asset, process_video_metadata};
 use read::{get_file_path, list_file_path};
@@ -25,7 +25,7 @@ where
     TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
     Router::<TCtx>::new()
-        .mutation("create_file_path", |t| {
+        .mutation("create_dir", |t| {
             t({
                 #[derive(Deserialize, Type, Debug)]
                 #[serde(rename_all = "camelCase")]
@@ -37,7 +37,7 @@ where
                 }
                 |ctx, input: FilePathCreatePayload| async move {
                     let library = ctx.library()?;
-                    create_file_path(&library, &input.materialized_path, &input.name).await?;
+                    create_dir(&library, &input.materialized_path, &input.name).await?;
                     Ok(())
                 }
             })
@@ -49,6 +49,7 @@ where
                 struct AssetObjectCreatePayload {
                     #[serde(deserialize_with = "validators::materialized_path_string")]
                     materialized_path: String,
+                    name: String,
                     local_full_path: String,
                 }
                 |ctx: TCtx, input: AssetObjectCreatePayload| async move {
@@ -58,6 +59,7 @@ where
                         create_asset_object(
                             &library,
                             &input.materialized_path,
+                            &input.name,
                             &input.local_full_path,
                         )
                         .await?;

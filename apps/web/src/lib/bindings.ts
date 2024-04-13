@@ -15,7 +15,7 @@ export type Procedures = {
         { key: "video.tasks.list", input: TaskListRequestPayload, result: VideoWithTasksPageResult },
     mutations: 
         { key: "assets.create_asset_object", input: AssetObjectCreatePayload, result: null } | 
-        { key: "assets.create_file_path", input: FilePathCreatePayload, result: null } | 
+        { key: "assets.create_dir", input: FilePathCreatePayload, result: null } | 
         { key: "assets.delete_file_path", input: FilePathDeletePayload, result: null } | 
         { key: "assets.move_file_path", input: FilePathMovePayload, result: null } | 
         { key: "assets.process_video_asset", input: number, result: null } | 
@@ -38,9 +38,11 @@ export type FilePathCreatePayload = { materializedPath: string; name: string }
 
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
-export type FilePathGetPayload = { materializedPath: string; name: string }
-
 export type TaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
+
+export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPath: string; oldName: string; newName: string }
+
+export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; size: number | null; mimeType: string | null; hasAudio: boolean | null; description: string | null; assetObjectId: number; createdAt: string; updatedAt: string }
 
@@ -52,11 +54,11 @@ export type TaskRedoRequestPayload = { assetObjectId: number }
 
 export type Pagination = { pageSize: number; pageIndex: number }
 
-export type AssetObjectCreatePayload = { materializedPath: string; localFullPath: string }
+export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
 
 export type SearchResultPayload = { name: string; materializedPath: string; assetObjectId: number; assetObjectHash: string; startTime: number; endTime: number; score: number }
 
-export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
+export type FilePathGetPayload = { materializedPath: string; name: string }
 
 export type TaskCancelRequestPayload = { assetObjectId: number }
 
@@ -68,15 +70,13 @@ export type Library = { id: string; dir: string; settings: LibrarySettings }
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
-export type FilePathDeletePayload = { materializedPath: string; name: string }
-
-export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPath: string; oldName: string; newName: string }
-
 export type VideoWithTasksPageResult = { data: VideoWithTasksResult[]; pagination: Pagination; maxPage: number }
 
 export type VideoWithTasksResult = { name: string; materializedPath: string; assetObject: AssetObject; tasks: FileHandlerTask[]; mediaData: MediaData | null }
 
 export type TaskListRequestPayload = { pagination: Pagination; filter: TaskListRequestFilter }
+
+export type FilePathDeletePayload = { materializedPath: string; name: string }
 
 export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; assetObjectId: number | null; createdAt: string; updatedAt: string }
 
