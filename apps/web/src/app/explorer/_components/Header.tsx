@@ -60,10 +60,10 @@ export default function Header() {
         </div>
         <div className="ml-auto"></div>
         <div className="text-ink/70 flex items-center gap-1 justify-self-end">
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-1" onClick={() => titleDialog.setOpen(true)}>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-1 transition-none" onClick={() => titleDialog.setOpen(true)}>
             <Icon.FolderAdd className="size-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-1" asChild>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-1 transition-none" asChild>
             {/* 加上 asChild 不使用 native button, 因为里面是个 form, native button 可能会触发 form submit */}
             <UploadButton onSelectFiles={handleSelectFiles}>
               <Icon.Upload className="size-4" />
@@ -74,21 +74,21 @@ export default function Header() {
 
           <Button
             variant="ghost" size="sm"
-            className={classNames('h-7 w-7 p-1', explorer.settings.layout === 'grid' && 'bg-toolbar-hover')}
+            className={classNames('h-7 w-7 p-1 transition-none', explorer.settings.layout === 'grid' && 'bg-toolbar-hover')}
             onClick={() => explorer.settings.update({ layout: 'grid' })}
           >
             <Icon.Grid className="size-4" />
           </Button>
           <Button
             variant="ghost" size="sm"
-            className={classNames('h-7 w-7 p-1', explorer.settings.layout === 'list' && 'bg-toolbar-hover')}
+            className={classNames('h-7 w-7 p-1 transition-none', explorer.settings.layout === 'list' && 'bg-toolbar-hover')}
             onClick={() => explorer.settings.update({ layout: 'list' })}
           >
             <Icon.List className="size-4" />
           </Button>
           <Button
             variant="ghost" size="sm"
-            className={classNames('h-7 w-7 p-1', explorer.settings.layout === 'media' && 'bg-toolbar-hover')}
+            className={classNames('h-7 w-7 p-1 transition-none', explorer.settings.layout === 'media' && 'bg-toolbar-hover')}
             onClick={() => explorer.settings.update({ layout: 'media' })}
           >
             <Icon.SelfAdapting className="size-4" />
@@ -98,7 +98,7 @@ export default function Header() {
 
           <Button
             variant="ghost" size="sm"
-            className={classNames('h-7 w-7 p-1', inspector.show && 'bg-toolbar-hover')}
+            className={classNames('h-7 w-7 p-1 transition-none', inspector.show && 'bg-toolbar-hover')}
             onClick={() => inspector.setShow(!inspector.show)}
           >
             <Icon.Sidebar className="size-4" />

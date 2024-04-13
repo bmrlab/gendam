@@ -110,7 +110,7 @@ export default function Sidebar() {
       <section>
         <div className='text-sm flex items-center justify-start gap-1 mb-2'>
           <Link href="/settings" className='block'>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-1 hover:bg-sidebar-hover">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-1 transition-none hover:bg-sidebar-hover">
               <Icon.Gear className="h-full w-full" />
             </Button>
           </Link>
