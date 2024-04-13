@@ -2,7 +2,7 @@ use prisma_lib::{new_client_with_url, PrismaClient};
 use qdrant::create_qdrant_server;
 use qdrant_client::client::QdrantClient;
 use std::{num::NonZeroI32, path::PathBuf, sync::Arc};
-use vector_db::QdrantServer;
+use vector_db::{kill_qdrant_server_async, QdrantServer};
 
 mod port;
 mod qdrant;
@@ -203,6 +203,10 @@ pub fn set_library_settings(library_dir: &PathBuf, settings: serde_json::Value) 
             tracing::error!("Failed to create file: {}", e);
         }
     };
+}
+
+pub async fn quit_library(qdrant_server_pid: i32) -> Result<(), String> {
+    kill_qdrant_server_async(qdrant_server_pid).await.map_err(|e| e.to_string())
 }
 
 fn get_shard_hex(hash: &str) -> &str {

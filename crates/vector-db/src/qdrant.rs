@@ -157,16 +157,48 @@ pub fn kill(pid: i32) -> anyhow::Result<()> {
 
         // waiting the process to exit
         let (tx, rx) = channel();
-        std::thread::spawn(move || {
-            loop {
-                if libproc::proc_pid::pidpath(pid.as_raw_nonzero().into()).is_err() {
-                    let _ = tx.send(());
-                }
-                sleep(std::time::Duration::from_millis(100));
+        std::thread::spawn(move || loop {
+            if libproc::proc_pid::pidpath(pid.as_raw_nonzero().into()).is_err() {
+                let _ = tx.send(());
             }
+            sleep(std::time::Duration::from_millis(100));
         });
 
-        rx.recv().map_err(|e| anyhow!("failed to kill qdrant: {}", e))
+        rx.recv()
+            .map_err(|e| anyhow!("failed to kill qdrant: {}", e))
+    } else {
+        warn!("pid {} is not qdrant started using sidecar, ignore it", pid);
+        Ok(())
+    }
+}
+
+/// Kill qdrant server async using pid, if the executable path of pid is qdrant.
+///
+/// When this function returns, the process has been killed.
+pub async fn kill_async(pid: i32) -> anyhow::Result<()> {
+    let pidpath =
+        libproc::proc_pid::pidpath(pid).map_err(|e| anyhow!("failed to get pidpath: {}", e))?;
+    let current_exe_path = std::env::current_exe().expect("failed to get current executable");
+    let sidecar_path = current_exe_path.with_file_name("qdrant");
+
+    if pidpath == sidecar_path.to_string_lossy().to_string() {
+        info!("pid {} is qdrant started using sidecar, killing it", pid);
+        let pid = Pid::from_raw(pid).ok_or(anyhow!("invalid pid"))?;
+        if let Err(e) = kill_process(pid, Signal::Term) {
+            bail!("failed to send SIGTERM: {}", e);
+        }
+
+        // waiting the process to exit
+        let (tx, rx) = oneshot::channel();
+        tokio::spawn(async move {
+            if libproc::proc_pid::pidpath(pid.as_raw_nonzero().into()).is_err() {
+                let _ = tx.send(());
+            }
+            sleep(std::time::Duration::from_millis(100));
+        });
+
+        rx.await
+            .map_err(|e| anyhow!("failed to kill qdrant: {}", e))
     } else {
         warn!("pid {} is not qdrant started using sidecar, ignore it", pid);
         Ok(())

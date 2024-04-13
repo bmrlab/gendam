@@ -30,6 +30,17 @@ pub trait CtxWithLibrary {
     where
         Self: Sync + 'async_trait;
 
+    fn load_library<'async_trait>(
+        &'async_trait self,
+        library_id: &'async_trait str,
+    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
+    where
+        Self: Sync + 'async_trait;
+
+    fn quit_current_library<'async_trait>(
+        &'async_trait self,
+    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>;
+
     fn library(&self) -> Result<Library, rspc::Error>;
 
     fn get_task_tx(&self) -> Arc<Mutex<Sender<TaskPayload<VideoHandler, VideoTaskType>>>>;
