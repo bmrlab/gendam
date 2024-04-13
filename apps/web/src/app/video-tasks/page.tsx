@@ -81,7 +81,7 @@ export default function VideoTasksPage() {
     return (
       <form className='flex items-center gap-2 mr-3'>
         <Checkbox.Root
-          id="task-filter" className=""
+          id="--show-completed-tasks" className=""
           checked={filter === 'all'}
           onCheckedChange={(checked) => {
             setFilter(checked ? 'all' : 'excludeCompleted')
@@ -90,9 +90,7 @@ export default function VideoTasksPage() {
         >
           <Checkbox.Indicator />
         </Checkbox.Root>
-        <label className="text-xs" htmlFor="task-filter">
-          Show completed tasks
-        </label>
+        <label className="text-xs" htmlFor="--show-completed-tasks">Show completed tasks</label>
       </form>
     )
   }

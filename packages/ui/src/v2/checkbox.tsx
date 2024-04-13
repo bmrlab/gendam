@@ -11,9 +11,10 @@ const Root = React.forwardRef<
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(
-      'h-4 w-4 appearance-none outline-none',
-      'flex items-center justify-center rounded-md',
-      'bg-app border border-current',
+      'h-4 w-4 appearance-none outline-none cursor-default',
+      'flex items-center justify-center rounded',
+      'bg-app text-ink border border-ink/30',
+      'data-[state="checked"]:bg-accent data-[state="checked"]:text-white data-[state="checked"]:border-transparent',
       className,
     )}
     {...props}
@@ -25,7 +26,7 @@ const Indicator = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Indicator>,
   React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Indicator>
 >(({ className, ...props }, ref) => (
-  <CheckboxPrimitive.Indicator ref={ref} className={cn('p-[2px]', className)} {...props}>
+  <CheckboxPrimitive.Indicator ref={ref} className={cn('p-px', className)} {...props}>
     <Icon.Check className="w-full h-full" />
   </CheckboxPrimitive.Indicator>
 ))

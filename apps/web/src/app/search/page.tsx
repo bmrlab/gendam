@@ -1,6 +1,5 @@
 'use client'
 import PageNav from '@/components/PageNav'
-import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import Viewport from '@/components/Viewport'
 import type { SearchRequestPayload, SearchResultPayload } from '@/lib/bindings'
 import { Video_Files } from '@muse/assets/images'
@@ -11,40 +10,7 @@ import { useSearchParams } from 'next/navigation'
 import React, { useCallback, useMemo, useState } from 'react'
 import SearchForm from './SearchForm'
 import VideoItem from './VideoItem'
-
-const Results: React.FC<{ items: SearchResultPayload[] }> = ({ items }) => {
-  const quickViewStore = useQuickViewStore()
-
-  const handleVideoClick = useCallback(
-    (item: SearchResultPayload) => {
-      quickViewStore.open({
-        name: item.name,
-        assetObject: {
-          id: item.assetObjectId,
-          hash: item.assetObjectHash,
-        },
-        video: {
-          currentTime: item.startTime / 1e3,
-        },
-      })
-    },
-    [quickViewStore],
-  )
-
-  return (
-    <div className="min-h-full pb-8 flex flex-wrap gap-4 content-start">
-      {items.map((item: SearchResultPayload, index: number) => {
-        return (
-          <VideoItem
-            key={`${item.assetObjectId}-${index}`}
-            item={item}
-            handleVideoClick={handleVideoClick}
-          ></VideoItem>
-        )
-      })}
-    </div>
-  )
-}
+import { Checkbox } from '@muse/ui/v2/checkbox'
 
 const useSearchPayloadInURL: () => [
   SearchRequestPayload | null,
@@ -74,11 +40,11 @@ const useSearchPayloadInURL: () => [
 
 export default function Search() {
   const [searchPayloadInURL, updateSearchPayloadInURL] = useSearchPayloadInURL()
-
   const [searchPayload, setSearchPayload] = useState<SearchRequestPayload | null>(searchPayloadInURL)
   const queryRes = rspc.useQuery(['video.search.all', searchPayload!], {
     enabled: !!searchPayload,
   })
+  const [groupFrames, setGroupFrames] = useState(false)
 
   const handleSearch = useCallback(
     (text: string, recordType: string) => {
@@ -117,6 +83,17 @@ export default function Search() {
               >Transcript</div>
             </div>
             <div className="text-ink/50 ml-4 text-sm flex-1 truncate">{searchPayload.text}</div>
+            <form className='flex items-center gap-2 mr-3'>
+            <Checkbox.Root
+              id="--group-frames" checked={groupFrames}
+              onCheckedChange={(checked: boolean | 'indeterminate') => {
+                setGroupFrames(checked === true ? true : false)
+              }}
+            >
+              <Checkbox.Indicator />
+            </Checkbox.Root>
+            <label className="text-xs" htmlFor="--group-frames">Expand video frames</label>
+          </form>
           </div>
         ) : null}
         <div className="flex-1 overflow-auto p-8">
@@ -135,7 +112,14 @@ export default function Search() {
               </div>
             </div>
           ) : queryRes.isSuccess && queryRes.data.length > 0 ? (
-            <Results items={queryRes.data} />
+            <div className="min-h-full pb-8 flex flex-wrap gap-4 content-start">
+              {queryRes.data.map((item: SearchResultPayload, index: number) => (
+                <VideoItem
+                  key={`${item.assetObjectId}-${index}`}
+                  item={item} groupFrames={groupFrames}
+                ></VideoItem>
+              ))}
+            </div>
           ) : (
             <div>Something went wrong</div>
           )}
