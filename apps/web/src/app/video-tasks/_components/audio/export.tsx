@@ -3,7 +3,7 @@ import { RoundedBadge } from '../Badge'
 import MuseRadio from '../Radio'
 import Icon from '@/components/Icon'
 import { ScrollArea } from '@muse/ui/v1/scroll-area'
-import { useToast } from '@/components/Toast/use-toast'
+import { toast } from 'sonner'
 import { WithDownloadDialogButton } from '../withDownloadDialog'
 import { AudioType } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
@@ -22,8 +22,6 @@ export enum FileTypeEnum {
 }
 
 export default function AudioExport() {
-  const { toast } = useToast()
-
   const audioDialogProps = useBoundStore.use.audioDialogProps()
   const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
   const fileHash = useMemo(() => (audioDialogProps.params as SingleExportProps)?.fileHash, [audioDialogProps])
@@ -75,14 +73,9 @@ export default function AudioExport() {
       path: dir,
     })
     if (errorList.length > 0) {
-      toast({
-        title: `${errorList.join('、')}, export failed`,
-        variant: 'error',
-      })
+      toast.error(`${errorList.join(', ')}, export failed`)
     } else {
-      toast({
-        title: 'Export successfully',
-      })
+      toast.success('Export successfully')
     }
     setIsOpenAudioDialog(false)
   }

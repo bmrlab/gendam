@@ -1,5 +1,5 @@
 'use client'
-import { useToast } from '@/components/Toast/use-toast'
+import { toast } from 'sonner'
 import PageNav from '@/components/PageNav'
 import Viewport from '@/components/Viewport'
 import { useCurrentLibrary } from '@/lib/library'
@@ -9,7 +9,6 @@ import { Form } from '@muse/ui/v2/form'
 import { useCallback, useState } from 'react'
 
 const LibrarySettings: React.FC = () => {
-  const { toast } = useToast()
   const currentLibrary = useCurrentLibrary()
   const [title, setTitle] = useState(currentLibrary.settings?.title ?? '')
   const [isPending, setIsPending] = useState(false)
@@ -23,7 +22,7 @@ const LibrarySettings: React.FC = () => {
           title: title,
         }, {
           onSuccess: () => {
-            toast({ title: 'Library settings updated' })
+            toast.success('Library settings updated')
           }
         })
       } catch (error) {
@@ -34,7 +33,7 @@ const LibrarySettings: React.FC = () => {
         window.location.reload()
       }, 500)
     },
-    [mutateAsync, title, toast],
+    [mutateAsync, title],
   )
 
   return (

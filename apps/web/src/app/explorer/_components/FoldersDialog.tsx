@@ -1,8 +1,8 @@
 import FileThumb from '@/Explorer/components/View/FileThumb'
 import Icon from '@/components/Icon'
 import { create } from 'zustand'
-import { useToast } from '@/components/Toast/use-toast'
 import { client, rspc } from '@/lib/rspc'
+import { toast } from 'sonner'
 import { Folder_Light } from '@muse/assets/images'
 import { Button } from '@muse/ui/v2/button'
 import { Dialog } from '@muse/ui/v2/dialog'
@@ -23,7 +23,6 @@ export const useFoldersDialog = create<FoldersDialogState>((set) => ({
 }))
 
 export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | null) => void }) {
-  const { toast } = useToast()
   const foldersDialog = useFoldersDialog()
   const [currentPath, setCurrentPath] = useState<string>('/')
 
@@ -46,14 +45,11 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
 
   useEffect(() => {
     if (assetsListFailed) {
-      toast({
-        title: `Error get folders`,
-        description: currentPath,
-        variant: 'error',
+      toast.error(`Error get folders: ${currentPath}`, {
         duration: 5000,
       })
     }
-  }, [assetsListFailed, toast, currentPath])
+  }, [assetsListFailed, currentPath])
 
   const [currentExplorerItem, setCurrentExplorerItem] = useState<ExplorerItem | null>(null)
 
@@ -68,12 +64,14 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
           setCurrentExplorerItem(data)
         })
         .catch((error) => {
-          toast({ title: `Error fetch folder ${currentPath}`, description: error.message, variant: 'error' })
+          toast.error(`Error fetch folder ${currentPath}`, {
+            description: error.message
+          })
         })
     } else {
       setCurrentExplorerItem(null)
     }
-  }, [setCurrentExplorerItem, currentPath, toast])
+  }, [setCurrentExplorerItem, currentPath])
 
   const goto = useCallback(
     (data: ExplorerItem | '-1') => {

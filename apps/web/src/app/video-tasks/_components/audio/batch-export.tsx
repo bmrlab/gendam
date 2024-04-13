@@ -1,7 +1,7 @@
 import TaskDropdownMenu from '../TaskDropdownMenu'
 import Icon from '@/components/Icon'
 import MuseMultiSelect from '@/app/video-tasks/_components/MultiSelect'
-import { useToast } from '@/components/Toast/use-toast'
+import { toast } from 'sonner'
 import { AudioType, ExportInput } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
@@ -24,7 +24,6 @@ export type BatchExportProps = {
 
 export default function BatchExport() {
   const currentLibrary = useCurrentLibrary()
-  const { toast } = useToast()
 
   const audioDialogProps = useBoundStore.use.audioDialogProps()
   const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
@@ -87,14 +86,9 @@ export default function BatchExport() {
     const errorList = await batchExport(input)
     setIsOpenAudioDialog(false)
     if (errorList.length > 0) {
-      toast({
-        title: `${errorList.join('、')}, export failed`,
-        variant: 'error',
-      })
+      toast.error(`${errorList.join(', ')}, export failed`)
     } else {
-      toast({
-        title: 'Export successfully',
-      })
+      toast.success('Export successfully')
     }
   }
 
