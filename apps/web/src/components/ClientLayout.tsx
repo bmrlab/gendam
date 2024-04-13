@@ -1,7 +1,7 @@
 'use client'
 import LibrariesSelect from '@/components/LibrariesSelect'
 import Shared from '@/components/Shared'
-import { useToast } from '@/components/Toast/use-toast'
+import { toast } from 'sonner'
 import { CurrentLibrary, type Library } from '@/lib/library'
 import { client, queryClient, rspc } from '@/lib/rspc'
 import { convertFileSrc } from '@tauri-apps/api/tauri'
@@ -12,7 +12,6 @@ export default function ClientLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const { toast } = useToast()
   const [pending, setPending] = useState(true)
   const [library, setLibrary] = useState<Library | null>(null)
   // const [homeDir, setHomeDir] = useState<string|null>(null);

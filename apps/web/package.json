@@ -23,7 +23,6 @@
     "classnames": "^2.5.1",
     "immer": "^10.0.3",
     "next": "14.1.0",
-    "next-themes": "^0.3.0",
     "react": "^18",
     "react-dom": "^18",
     "sonner": "^1.4.41",

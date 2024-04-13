@@ -1,5 +1,4 @@
-import { Toaster } from '@/components/Toast/toaster'
-import { Toaster as SonnerToaster } from '@/components/Toast/sonner'
+import SonnerToaster from '@/components/Shared/SonnerToaster'
 import UploadQueue from './UploadQueue'
 import QuickView from './QuickView'
 
@@ -8,7 +7,6 @@ export default function Shared() {
     <>
       <UploadQueue />
       <QuickView />
-      <Toaster />
       <SonnerToaster />
     </>
   )
