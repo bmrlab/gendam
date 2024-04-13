@@ -94,7 +94,7 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
     >
       <Dialog.Portal>
         <Dialog.Overlay onClick={(e) => e.stopPropagation()} />
-        <Dialog.Content onClick={(e) => e.stopPropagation()}>
+        <Dialog.Content onClick={(e) => e.stopPropagation()} className="w-[40rem]">
           <div className="flex items-center justify-start border-b border-app-line px-4 py-3">
             <div className="text-sm">选择文件夹</div>
             <div className="ml-2 flex items-center gap-1 text-xs text-ink/50" onClick={() => goto('-1')}>

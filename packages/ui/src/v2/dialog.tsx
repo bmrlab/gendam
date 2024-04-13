@@ -30,7 +30,7 @@ const Content = React.forwardRef<
     ref={ref}
     className={cn(
       'fixed z-50 left-[50%] top-[47%] translate-x-[-50%] translate-y-[-50%] overflow-auto',
-      'min-w-[40rem] max-w-[90%] min-h-[20rem] max-h-[90%]',
+      'min-w-[20rem] max-w-[90%] min-h-[10rem] max-h-[90%]',
       'rounded-lg border border-app-line bg-app-box text-ink shadow-lg',
       'data-[state=open]:animate-in data-[state=closed]:animate-out',
       'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',

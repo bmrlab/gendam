@@ -11,21 +11,21 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import SearchForm from '../../search/SearchForm'  // TODO: 这样不大好，应该是一个公共组件
 import { useInspector } from './Inspector'
-import TitleDialog from './TitleDialog'
+import TitleDialog, { useTitleDialog } from './TitleDialog'
 import { Button } from '@muse/ui/v2/button'
 
 export default function Header() {
+  const titleDialog = useTitleDialog()
   const router = useRouter()
   const explorer = useExplorerContext()
   const uploadQueueStore = useUploadQueueStore()
 
   const inspector = useInspector()
-  const createDirMut = rspc.useMutation(['assets.create_dir'])
 
-  let handleSelectFiles = useCallback(
+  const handleSelectFiles = useCallback(
     (fileFullPaths: string[]) => {
       if (explorer.parentPath) {
-        for (let fileFullPath of fileFullPaths) {
+        for (const fileFullPath of fileFullPaths) {
           const name = fileFullPath.split('/').slice(-1).join('')
           uploadQueueStore.enqueue({
             materializedPath: explorer.parentPath,
@@ -37,30 +37,6 @@ export default function Header() {
     },
     [explorer.parentPath, uploadQueueStore],
   )
-
-  const [titleInputDialogVisible, setTitleInputDialogVisible] = useState(false)
-
-  const handleCreateDir = useCallback(() => {
-    setTitleInputDialogVisible(true)
-  }, [setTitleInputDialogVisible])
-
-  const onConfirmTitleInput = useCallback(
-    (title: string) => {
-      if (!title || !explorer.parentPath) {
-        return
-      }
-      createDirMut.mutate({
-        materializedPath: explorer.parentPath,
-        name: title,
-      })
-      setTitleInputDialogVisible(false)
-    },
-    [createDirMut, explorer],
-  )
-
-  const onCancelTitleInput = useCallback(() => {
-    setTitleInputDialogVisible(false)
-  }, [setTitleInputDialogVisible])
 
   const handleSearch = useCallback((text: string, recordType: string) => {
     const search = new URLSearchParams()
@@ -83,14 +59,8 @@ export default function Header() {
           />
         </div>
         <div className="ml-auto"></div>
-        {/* <div className="mr-8 flex select-none items-center">
-          <div className="cursor-pointer px-2 py-1 text-sm" onClick={() => handleCreateDir()}>
-            添加文件夹
-          </div>
-          <UploadButton onSelectFiles={handleSelectFiles}>上传文件</UploadButton>
-        </div> */}
         <div className="text-ink/70 flex items-center gap-1 justify-self-end">
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-1" onClick={() => handleCreateDir()}>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-1" onClick={() => titleDialog.setOpen(true)}>
             <Icon.FolderAdd className="size-4" />
           </Button>
           <Button variant="ghost" size="sm" className="h-7 w-7 p-1" asChild>
@@ -135,23 +105,7 @@ export default function Header() {
           </Button>
         </div>
       </Viewport.Toolbar>
-      {titleInputDialogVisible && <TitleDialog onConfirm={onConfirmTitleInput} onCancel={onCancelTitleInput} />}
+      <TitleDialog />
     </>
   )
 }
-
-// const goToDir = useCallback(
-//   (dirName: string) => {
-//     if (!explorer.parentPath) {
-//       return
-//     }
-//     let newPath = explorer.parentPath
-//     if (dirName === '-1') {
-//       newPath = newPath.replace(/(.*\/)[^/]+\/$/, '$1')
-//     } else {
-//       newPath += dirName + '/'
-//     }
-//     router.push('/explorer?dir=' + newPath)
-//   },
-//   [explorer, router],
-// )

@@ -1,40 +1,63 @@
-import { useCallback, useRef } from 'react'
+import { useExplorerContext } from '@/Explorer/hooks'
+import { rspc } from '@/lib/rspc'
+import { Button } from '@muse/ui/v2/button'
+import { Dialog } from '@muse/ui/v2/dialog'
+import { Form } from '@muse/ui/v2/form'
+import { useCallback, useState } from 'react'
+import { create } from 'zustand'
 
-const TitleDialog: React.FC<{
-  onConfirm: (title: string) => void
-  onCancel: () => void
-}> = ({ onConfirm, onCancel }) => {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const handleSearch = useCallback(
-    (e: React.FormEvent<HTMLFormElement>) => {
+interface TitleDialogState {
+  open: boolean
+  setOpen: (open: boolean) => void
+}
+
+export const useTitleDialog = create<TitleDialogState>((set) => ({
+  open: false,
+  setOpen: (open) => set({ open }),
+}))
+
+const TitleDialog: React.FC = () => {
+  const titleDialog = useTitleDialog()
+  const explorer = useExplorerContext()
+  const createDirMut = rspc.useMutation(['assets.create_dir'])
+  const [title, setTitle] = useState('')
+
+  const onSubmit = useCallback(
+    async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
-      const keyword = inputRef.current?.value
-      if (!keyword) return
-      onConfirm(keyword)
+      if (!title || !explorer.parentPath) {
+        return
+      }
+      try {
+        await createDirMut.mutateAsync({
+          materializedPath: explorer.parentPath,
+          name: title,
+        })
+        titleDialog.setOpen(false)
+      } catch (error) {
+        //
+      }
     },
-    [onConfirm],
+    [createDirMut, explorer.parentPath, title, titleDialog],
   )
+
   return (
-    <div
-      className="fixed left-0 top-0 z-20 flex h-full w-full items-center justify-center bg-neutral-50/50"
-      onClick={() => onCancel()}
-    >
-      <form
-        className="block w-96 rounded-md border border-neutral-100 bg-white/90 p-6 shadow"
-        onSubmit={handleSearch}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div>输入名称</div>
-        <input
-          ref={inputRef}
-          type="text"
-          className="my-4 block w-full rounded-md bg-neutral-100 px-4 py-2 text-sm text-black"
-        />
-        <button className="block w-full rounded-md bg-blue-500 p-2 text-center text-sm text-white" type="submit">
-          确认
-        </button>
-      </form>
-    </div>
+    <Dialog.Root open={titleDialog.open} onOpenChange={(open) => titleDialog.setOpen(open)}>
+      <Dialog.Portal>
+        <Dialog.Overlay onClick={(e) => e.stopPropagation()} />
+        <Dialog.Content onClick={(e) => e.stopPropagation()} className="w-96 px-4 pb-6 pt-4">
+          <Form.Root onSubmit={onSubmit}>
+            <Form.Field name="title" className="flex flex-col items-stretch justify-center gap-5">
+              <Form.Label>Folder Name</Form.Label>
+              <Form.Input size="md" value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
+              <Button type="submit" variant="accent" disabled={createDirMut.isPending}>
+                Create
+              </Button>
+            </Form.Field>
+          </Form.Root>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 
