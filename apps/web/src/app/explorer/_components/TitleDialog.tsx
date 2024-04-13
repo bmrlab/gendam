@@ -1,5 +1,5 @@
 import { useExplorerContext } from '@/Explorer/hooks'
-import { rspc } from '@/lib/rspc'
+import { rspc, queryClient } from '@/lib/rspc'
 import { Button } from '@muse/ui/v2/button'
 import { Dialog } from '@muse/ui/v2/dialog'
 import { Form } from '@muse/ui/v2/form'
@@ -34,9 +34,10 @@ const TitleDialog: React.FC = () => {
           name: title,
         })
         titleDialog.setOpen(false)
-      } catch (error) {
-        //
-      }
+      } catch (error) {}
+      queryClient.invalidateQueries({
+        queryKey: ['assets.list', { materializedPath: explorer.materializedPath }],
+      })
     },
     [createDirMut, explorer.materializedPath, title, titleDialog],
   )

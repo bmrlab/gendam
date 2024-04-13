@@ -1,14 +1,14 @@
 'use client'
 import { DndContext } from '@/Explorer/components/Draggable/DndContext'
+import DragOverlay from '@/Explorer/components/Draggable/DragOverlay'
 import GridView from '@/Explorer/components/LayoutView/GridView'
 import ListView from '@/Explorer/components/LayoutView/ListView'
 import MediaView from '@/Explorer/components/LayoutView/MediaView'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
-import { rspc } from '@/lib/rspc'
-import DragOverlay from '@/Explorer/components/Draggable/DragOverlay'
-import { DragEndEvent, DragStartEvent, DragCancelEvent } from '@dnd-kit/core'
-import { useCallback, useState } from 'react'
+import { queryClient, rspc } from '@/lib/rspc'
+import { DragCancelEvent, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import { useCallback } from 'react'
 import { ExplorerItem } from '../types'
 
 export default function Explorer() {
@@ -16,22 +16,40 @@ export default function Explorer() {
   const explorerStore = useExplorerStore()
   const moveMut = rspc.useMutation(['assets.move_file_path'])
 
-  const handleMoveRequest = useCallback((active: ExplorerItem, over: ExplorerItem|null) => {
-    moveMut.mutate({
-      active: {
-        id: active.id,
-        materializedPath: active.materializedPath,
-        isDir: active.isDir,
-        name: active.name,
-      },
-      target: over ? {
-        id: over.id,
-        materializedPath: over.materializedPath,
-        isDir: over.isDir,
-        name: over.name,
-      } : null,
-    })
-  }, [moveMut])
+  const handleMoveRequest = useCallback(
+    async (active: ExplorerItem, target: ExplorerItem | null) => {
+      try {
+        await moveMut.mutateAsync({
+          active: {
+            id: active.id,
+            materializedPath: active.materializedPath,
+            isDir: active.isDir,
+            name: active.name,
+          },
+          target: target
+            ? {
+                id: target.id,
+                materializedPath: target.materializedPath,
+                isDir: target.isDir,
+                name: target.name,
+              }
+            : null,
+        })
+      } catch (error) {}
+      queryClient.invalidateQueries({
+        queryKey: ['assets.list', { materializedPath: explorer.materializedPath }],
+      })
+      queryClient.invalidateQueries({
+        queryKey: [
+          'assets.list',
+          {
+            materializedPath: target ? target.materializedPath + target.name + '/' : '/',
+          },
+        ],
+      })
+    },
+    [explorer.materializedPath, moveMut],
+  )
 
   const onDragStart = useCallback(
     (e: DragStartEvent) => {
@@ -90,15 +108,11 @@ export default function Explorer() {
   }
 
   return (
-    <DndContext
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      onDragCancel={onDragCancel}
-    >
+    <DndContext onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
       {/* <GridView items={explorer.items}></GridView> */}
       {/* <ListView items={explorer.items}></ListView> */}
 
-      {function renderLayout() {
+      {(function renderLayout() {
         switch (explorer.settings.layout) {
           case 'grid':
             return <GridView items={explorer.items} />
@@ -109,10 +123,9 @@ export default function Explorer() {
           default:
             return null
         }
-      }()}
+      })()}
 
       <DragOverlay />
-
     </DndContext>
   )
 }

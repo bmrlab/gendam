@@ -1,13 +1,18 @@
 'use client'
 import ExplorerLayout from '@/Explorer/components/ExplorerLayout'
-import { ExplorerContextProvider, ExplorerViewContextProvider, useExplorerValue } from '@/Explorer/hooks'
+import {
+  ExplorerContextProvider,
+  ExplorerViewContextProvider,
+  useExplorerValue,
+  type ExplorerValue,
+} from '@/Explorer/hooks'
 // import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
 import Viewport from '@/components/Viewport'
+import { queryClient, rspc } from '@/lib/rspc'
 import { Drop_To_Folder } from '@muse/assets/images'
-import Image from 'next/image'
-import { rspc } from '@/lib/rspc'
 import { RSPCError } from '@rspc/client'
+import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FoldersDialog } from './_components/FoldersDialog'
@@ -28,28 +33,17 @@ export default function ExplorerPage() {
   const materializedPath = useMemo(() => dirInSearchParams, [dirInSearchParams])
   const moveMut = rspc.useMutation(['assets.move_file_path'])
   const [items, setItems] = useState<ExplorerItem[] | null>(null)
-
-  const explorer = useExplorerValue({
-    items: items,
-    materializedPath: materializedPath,
-    settings: {
-      layout: 'grid',
-    },
-  })
+  const [layout, setLayout] = useState<ExplorerValue['settings']['layout']>('grid')
 
   const assetsQuery = rspc.useQuery(
     [
       'assets.list',
       {
         materializedPath: materializedPath,
-        includeSubDirs: explorer.settings.layout === 'media' ? true : false,
+        includeSubDirs: layout === 'media' ? true : false,
       },
     ],
     {
-      /**
-       * 这样可以在删除/重命名/刷新metadata等操作执行以后自动刷新
-       * 但现在看起来虽然全局设置了 refetchOnWindowFocus: false, 还是会自动刷新的
-       */
       // refetchOnWindowFocus: true,
       throwOnError: (e: RSPCError) => {
         console.log(e)
@@ -58,23 +52,38 @@ export default function ExplorerPage() {
     },
   )
 
-  const resetSelectedItems = explorer.resetSelectedItems;
+  const explorer = useExplorerValue({
+    items: items,
+    materializedPath: materializedPath,
+    settings: {
+      layout,
+    },
+  })
+
+  const resetSelectedItems = explorer.resetSelectedItems
   useEffect(() => {
     if (assetsQuery.isSuccess) {
-      setItems([ ...assetsQuery.data ])
+      setItems([...assetsQuery.data])
       // 重新获取数据要清空选中的项目，以免出现不在列表中但是还被选中的情况
       resetSelectedItems()
     }
   }, [assetsQuery.isLoading, assetsQuery.isSuccess, assetsQuery.data, resetSelectedItems])
 
+  useEffect(() => {
+    setLayout(explorer.settings.layout)
+  }, [explorer.settings.layout])
+
   const contextMenu = (data: ExplorerItem) => <ItemContextMenu data={data} />
 
   const onMoveTargetSelected = useCallback(
-    (target: ExplorerItem | null) => {
+    async (target: ExplorerItem | null) => {
       for (let active of Array.from(explorer.selectedItems)) {
         // target 可以为空，为空就是根目录，这时候不需要检查 target.id !== active.id，因为根目录本身不会被移动
-        if (!target || target.id !== active.id) {
-          moveMut.mutate({
+        if (target && target.id === active.id) {
+          continue
+        }
+        try {
+          await moveMut.mutateAsync({
             active: {
               id: active.id,
               materializedPath: active.materializedPath,
@@ -90,14 +99,25 @@ export default function ExplorerPage() {
                 }
               : null,
           })
-        }
+        } catch (error) {}
+        queryClient.invalidateQueries({
+          queryKey: ['assets.list', { materializedPath: materializedPath }],
+        })
+        queryClient.invalidateQueries({
+          queryKey: [
+            'assets.list',
+            {
+              materializedPath: target ? target.materializedPath + target.name + '/' : '/',
+            },
+          ],
+        })
       }
     },
-    [explorer, moveMut],
+    [explorer.selectedItems, materializedPath, moveMut],
   )
 
   if (assetsQuery.isError) {
-    return <Viewport.Page className="flex items-center justify-center text-ink/50">Failed to load assets</Viewport.Page>
+    return <Viewport.Page className="text-ink/50 flex items-center justify-center">Failed to load assets</Viewport.Page>
   }
 
   return (
@@ -108,11 +128,11 @@ export default function ExplorerPage() {
 
           {assetsQuery.isSuccess && assetsQuery.data.length === 0 ? (
             <Viewport.Content className="flex flex-col items-center justify-center">
-              <Image src={Drop_To_Folder} alt="drop to folder" priority className="w-60 h-60"></Image>
+              <Image src={Drop_To_Folder} alt="drop to folder" priority className="h-60 w-60"></Image>
               <div className="my-4 text-sm">Drag or paste videos here</div>
             </Viewport.Content>
           ) : (
-            <div className="flex-1 w-full flex flex-row overflow-hidden">
+            <div className="flex w-full flex-1 flex-row overflow-hidden">
               <Viewport.Content className="w-auto" onClick={() => explorer.resetSelectedItems()}>
                 <ExplorerLayout></ExplorerLayout>
               </Viewport.Content>

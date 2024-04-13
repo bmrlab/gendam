@@ -1,6 +1,6 @@
 'use client'
 import Icon from '@/components/Icon'
-import { rspc } from '@/lib/rspc'
+import { rspc, queryClient } from '@/lib/rspc'
 import { FileItem, useUploadQueueStore } from '@/store/uploadQueue'
 import { Document_Light } from '@muse/assets/images'
 import Image from 'next/image'
@@ -41,6 +41,9 @@ export default function UploadQueue() {
       uploadMut.mutate({ materializedPath, name, localFullPath }, {
         onSuccess: () => uploadQueueStore.completeUploading(),
         onError: () => uploadQueueStore.failedUploading(),
+        onSettled: () => queryClient.invalidateQueries({
+          queryKey: ['assets.list', { materializedPath: materializedPath }]
+        })
       })
     }
   }, [uploadQueueStore, uploadMut])

@@ -3,9 +3,7 @@ import LibrariesSelect from '@/components/LibrariesSelect'
 import Shared from '@/components/Shared'
 import { useToast } from '@/components/Toast/use-toast'
 import { CurrentLibrary, type Library } from '@/lib/library'
-import { client, rspc } from '@/lib/rspc'
-import { RSPCError } from '@rspc/client'
-import { QueryClient } from '@tanstack/react-query'
+import { client, queryClient, rspc } from '@/lib/rspc'
 import { convertFileSrc } from '@tauri-apps/api/tauri'
 import { useCallback, useEffect, useState } from 'react'
 
@@ -120,29 +118,6 @@ export default function ClientLayout({
     },
     [library],
   )
-
-  /**
-   * 这个配置只对 useQuery 和 useMutation 有效, 对使用 client.query 和 client.mutation 调用的请求无效
-   */
-  const queryClient: QueryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        refetchOnWindowFocus: false,
-      },
-      mutations: {
-        onSuccess: () => queryClient.invalidateQueries(),
-        onError: (error) => {
-          console.error(error)
-          if (error instanceof RSPCError) {
-            toast({ title: `请求出错 ${error.code}`, description: error.message, variant: 'error' })
-          } else {
-            toast({ title: '未知错误', description: error.message, variant: 'error' })
-          }
-        },
-      },
-    },
-  })
 
   return pending ? (
     <></>

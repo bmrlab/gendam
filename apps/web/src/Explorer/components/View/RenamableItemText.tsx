@@ -1,18 +1,18 @@
 'use client'
-import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
+// import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
-import { rspc } from '@/lib/rspc'
-import { HTMLAttributes, useCallback, useEffect, createRef } from 'react'
+import { rspc, queryClient } from '@/lib/rspc'
+import { HTMLAttributes, useCallback, useEffect, useRef } from 'react'
 import classNames from 'classnames'
 
 export default function RenamableItemText({
   data, className
 }: HTMLAttributes<HTMLDivElement> & { data: ExplorerItem }) {
   const explorerStore = useExplorerStore()
-  const explorer = useExplorerContext()
+  // const explorer = useExplorerContext()
   const renameMut = rspc.useMutation(['assets.rename_file_path'])
-  const inputRef = createRef<HTMLInputElement>()
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (inputRef.current) {
@@ -27,22 +27,31 @@ export default function RenamableItemText({
   }, [inputRef, data.name])
 
   const handleInputSubmit = useCallback(
-    (e: React.FormEvent) => {
+    async (e: React.FormEvent) => {
       e.preventDefault()
       if (!inputRef.current?.value) {
         return
       }
       explorerStore.setIsRenaming(false)
       // explorerStore.reset()
-      renameMut.mutate({
-        id: data.id,
-        materializedPath: data.materializedPath,
-        isDir: data.isDir,
-        oldName: data.name,
-        newName: inputRef.current.value,
+      /**
+       * @todo 这里 mutate({}, { onSuccess }) 里面的 onSuccess 不会被触发,
+       * 但是 uploadqueue 里面可以, 太奇怪了
+       */
+      try {
+        await renameMut.mutateAsync({
+          id: data.id,
+          materializedPath: data.materializedPath,
+          isDir: data.isDir,
+          oldName: data.name,
+          newName: inputRef.current.value,
+        })
+      } catch (error) {}
+      queryClient.invalidateQueries({
+        queryKey: ['assets.list', { materializedPath: data.materializedPath }]
       })
     },
-    [inputRef, explorerStore, renameMut, data],
+    [explorerStore, renameMut, data],
   )
 
   return (

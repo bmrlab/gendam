@@ -1,12 +1,12 @@
 import { useExplorerContext } from '@/Explorer/hooks'
 import { ExplorerItem } from '@/Explorer/types'
 import { useExplorerStore } from '@/Explorer/store'
-import { rspc } from '@/lib/rspc'
+import { rspc, queryClient } from '@/lib/rspc'
 import { ContextMenu } from '@muse/ui/v2/context-menu'
-import classNames from 'classnames'
+// import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback } from 'react'
-import { twx } from '@/lib/utils'
+// import { twx } from '@/lib/utils'
 import { useInspector } from './Inspector'
 import { useFoldersDialog } from './FoldersDialog'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
@@ -64,11 +64,16 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   )
 
   const handleDelete = useCallback(
-    (e: Event) => {
+    async (e: Event) => {
       for (let item of Array.from(explorer.selectedItems)) {
-        deleteMut.mutate({
-          materializedPath: item.materializedPath,
-          name: item.name,
+        try {
+          await deleteMut.mutateAsync({
+            materializedPath: item.materializedPath,
+            name: item.name,
+          })
+        } catch (error) {}
+        queryClient.invalidateQueries({
+          queryKey: ['assets.list', { materializedPath: item.materializedPath }]
         })
       }
       explorer.resetSelectedItems()
