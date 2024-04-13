@@ -1,8 +1,8 @@
 // TODO: Move to hooks folder
 import { ContextType, createContext, PropsWithChildren, useContext } from 'react'
-import type { UseExplorer } from './useExplorer'
+import { type ExplorerValue } from './useExplorerValue'
 
-const ExplorerContext = createContext<UseExplorer | null>(null)
+const ExplorerContext = createContext<ExplorerValue | null>(null)
 type ExplorerContext = NonNullable<ContextType<typeof ExplorerContext>>
 
 export const useExplorerContext = () => {
@@ -10,7 +10,7 @@ export const useExplorerContext = () => {
   return ctx as ExplorerContext
 }
 
-export function ExplorerContextProvider<TExplorer extends UseExplorer>({
+export function ExplorerContextProvider<TExplorer extends ExplorerValue>({
   explorer,
   children,
 }: PropsWithChildren<{ explorer: TExplorer }>) {

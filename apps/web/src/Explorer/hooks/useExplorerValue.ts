@@ -83,13 +83,14 @@ type UseExplorerProps = {
   settings: UseExplorerSettings
 }
 
-export function useExplorer({ settings, ...props }: UseExplorerProps) {
+export function useExplorerValue({ settings, items, count, parentPath }: UseExplorerProps) {
   return {
-    count: props.items?.length ?? 0,
-    ...props,
-    ...useSelectedItems(props.items),
+    count: count ? count : (items?.length ?? 0),
+    items,
+    parentPath,
+    ...useSelectedItems(items),
     settings: useSettings(settings),
   }
 }
 
-export type UseExplorer = ReturnType<typeof useExplorer>
+export type ExplorerValue = ReturnType<typeof useExplorerValue>

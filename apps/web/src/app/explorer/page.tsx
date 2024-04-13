@@ -1,6 +1,6 @@
 'use client'
 import ExplorerLayout from '@/Explorer/components/ExplorerLayout'
-import { ExplorerContextProvider, ExplorerViewContextProvider, useExplorer } from '@/Explorer/hooks'
+import { ExplorerContextProvider, ExplorerViewContextProvider, useExplorerValue } from '@/Explorer/hooks'
 // import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
 import Viewport from '@/components/Viewport'
@@ -29,7 +29,7 @@ export default function ExplorerPage() {
   const moveMut = rspc.useMutation(['assets.move_file_path'])
   const [items, setItems] = useState<ExplorerItem[] | null>(null)
 
-  const explorer = useExplorer({
+  const explorer = useExplorerValue({
     items: items,
     parentPath: parentPath,
     settings: {
