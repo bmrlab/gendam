@@ -32,7 +32,7 @@ const Results: React.FC<{ items: SearchResultPayload[] }> = ({ items }) => {
   )
 
   return (
-    <div className="h-full flex flex-wrap gap-4">
+    <div className="min-h-full pb-8 flex flex-wrap gap-4 content-start">
       {items.map((item: SearchResultPayload, index: number) => {
         return (
           <VideoItem

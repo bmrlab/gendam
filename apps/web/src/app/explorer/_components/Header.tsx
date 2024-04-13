@@ -49,7 +49,7 @@ export default function Header() {
     <>
       <Viewport.Toolbar className="justify-start">
         <PageNav
-          title={explorer.materializedPath === '/' ? 'All' : explorer.materializedPath}
+          title={explorer.materializedPath === '/' ? 'Home' : explorer.materializedPath}
           className="w-1/3"
         />
         <div className="w-1/3">

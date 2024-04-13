@@ -5,24 +5,30 @@ import Image from 'next/image'
 import { rspc } from '@/lib/rspc'
 import Icon from '@muse/ui/icons'
 import { cn } from '@/lib/utils'
-import { HTMLAttributes, useCallback, useState } from 'react'
+import { HTMLAttributes, useCallback, useMemo, useState } from 'react'
 import { FilePath } from '@/lib/bindings'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import path from 'path'
 
-interface SelectionState {
-  id: number | null
-  set: (id: number | null) => void
-}
+// interface SelectionState {
+//   id: number | null
+//   set: (id: number | null) => void
+// }
 
-export const useSelectionState = create<SelectionState>((set) => ({
-  id: null,
-  set: (id) => set({ id }),
-}))
+// export const useSelectionState = create<SelectionState>((set) => ({
+//   id: null,
+//   set: (id) => set({ id }),
+// }))
 
 const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
-  const selectionState = useSelectionState()
+  // const selectionState = useSelectionState()
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const highlight = useMemo(() => {
+    return pathname === '/explorer' && filePath.materializedPath + filePath.name + '/' === searchParams.get('dir')
+  }, [filePath.materializedPath, filePath.name, pathname, searchParams])
 
   const { data: subDirs } = rspc.useQuery([
     'assets.list',
@@ -43,13 +49,13 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
     [filePath.materializedPath, filePath.name, router],
   )
 
-  const onClick = useCallback(
-    (e: React.FormEvent<HTMLDivElement>) => {
-      e.stopPropagation()
-      selectionState.set(filePath.id)
-    },
-    [filePath.id, selectionState],
-  )
+  // const onClick = useCallback(
+  //   (e: React.FormEvent<HTMLDivElement>) => {
+  //     e.stopPropagation()
+  //     selectionState.set(filePath.id)
+  //   },
+  //   [filePath.id, selectionState],
+  // )
 
   return (
     <div className="-ml-2.5 mr-2">
@@ -72,10 +78,12 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
         <div
           className={cn(
             "my-1 pl-1 py-1 pr-2 rounded flex gap-2 items-center justify-start overflow-hidden",
-            selectionState.id === filePath.id ? "bg-sidebar-hover" : ""
+            // selectionState.id === filePath.id ? "bg-sidebar-hover" : ""
+            highlight ? "bg-sidebar-hover" : "hover:bg-sidebar-hover"
           )}
-          onDoubleClick={(e) => onDoubleClick(e)}
-          onClick={(e) => onClick(e)}
+          // onDoubleClick={(e) => onDoubleClick(e)}
+          // onClick={(e) => onClick(e)}
+          onClick={(e) => onDoubleClick(e)}
         >
           <Image src={Folder_Light} alt="folder" priority className="w-5 h-auto"></Image>
           <div className="truncate text-xs">{filePath.name}</div>
@@ -94,7 +102,7 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
 }
 
 export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement>) {
-  const selectionState = useSelectionState()
+  // const selectionState = useSelectionState()
   const router = useRouter()
   const { data: dirs } = rspc.useQuery([
     'assets.list',
@@ -107,16 +115,20 @@ export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement
   return (
     <div
       className={cn('bg-sidebar py-2 overflow-auto', className)}
-      onClick={() => selectionState.set(null)}
+      // onClick={() => selectionState.set(null)}
     >
       <div className="ml-5 text-xs font-medium text-ink/50 mb-2">Folders</div>
-      <div className="ml-6 flex items-center justify-start">
+      <div className="ml-5 flex items-center justify-start">
         <div
-          className="py-2 pr-2 flex items-center justify-start gap-2"
-          onDoubleClick={(e) => router.push('/explorer')}
+          className={cn(
+            "my-1 pl-1 py-1 pr-2 flex items-center justify-start gap-2",
+            "hover:bg-sidebar-hover",
+          )}
+          // onDoubleClick={(e) => router.push('/explorer')}
+          onClick={(e) => router.push('/explorer')}
         >
           <Image src={Folder_Light} alt="folder" priority className="w-5 h-auto"></Image>
-          <div className="text-xs">All</div>
+          <div className="text-xs">Home</div>
         </div>
       </div>
       <div className="ml-3.5">
