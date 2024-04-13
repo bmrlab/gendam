@@ -79,15 +79,15 @@ function useSelectedItems(items: ExplorerItem[] | null) {
 type UseExplorerProps = {
   items: ExplorerItem[] | null
   count?: number
-  parentPath?: string
+  materializedPath?: string
   settings: UseExplorerSettings
 }
 
-export function useExplorerValue({ settings, items, count, parentPath }: UseExplorerProps) {
+export function useExplorerValue({ settings, items, count, materializedPath }: UseExplorerProps) {
   return {
     count: count ? count : (items?.length ?? 0),
     items,
-    parentPath,
+    materializedPath,
     ...useSelectedItems(items),
     settings: useSettings(settings),
   }

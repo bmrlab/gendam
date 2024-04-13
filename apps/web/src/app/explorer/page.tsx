@@ -24,14 +24,14 @@ export default function ExplorerPage() {
     dirInSearchParams = '/'
   }
   // currentPath 必须以 / 结尾, 调用 setCurrentPath 的地方自行确保格式正确
-  // const [parentPath, setParentPath] = useState<string>(dirInSearchParams)
-  const parentPath = useMemo(() => dirInSearchParams, [dirInSearchParams])
+  // const [materializedPath, setMaterializedPath] = useState<string>(dirInSearchParams)
+  const materializedPath = useMemo(() => dirInSearchParams, [dirInSearchParams])
   const moveMut = rspc.useMutation(['assets.move_file_path'])
   const [items, setItems] = useState<ExplorerItem[] | null>(null)
 
   const explorer = useExplorerValue({
     items: items,
-    parentPath: parentPath,
+    materializedPath: materializedPath,
     settings: {
       layout: 'grid',
     },
@@ -41,7 +41,7 @@ export default function ExplorerPage() {
     [
       'assets.list',
       {
-        materializedPath: parentPath,
+        materializedPath: materializedPath,
         includeSubDirs: explorer.settings.layout === 'media' ? true : false,
       },
     ],

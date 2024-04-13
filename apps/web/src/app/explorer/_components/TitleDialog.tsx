@@ -25,12 +25,12 @@ const TitleDialog: React.FC = () => {
   const onSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
-      if (!title || !explorer.parentPath) {
+      if (!title || !explorer.materializedPath) {
         return
       }
       try {
         await createDirMut.mutateAsync({
-          materializedPath: explorer.parentPath,
+          materializedPath: explorer.materializedPath,
           name: title,
         })
         titleDialog.setOpen(false)
@@ -38,7 +38,7 @@ const TitleDialog: React.FC = () => {
         //
       }
     },
-    [createDirMut, explorer.parentPath, title, titleDialog],
+    [createDirMut, explorer.materializedPath, title, titleDialog],
   )
 
   return (

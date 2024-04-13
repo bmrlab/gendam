@@ -12,10 +12,10 @@ export default function Footer() {
   const router = useRouter()
   const explorer = useExplorerContext()
   const folders = useMemo(() => {
-    const list = (explorer.parentPath ?? '/').split('/').filter(Boolean)
+    const list = (explorer.materializedPath ?? '/').split('/').filter(Boolean)
     list.unshift('home')
     return list
-  }, [explorer.parentPath])
+  }, [explorer.materializedPath])
 
   const theFirstSelectedItem = useMemo<ExplorerItem|null>(() => {
     let arr = Array.from(explorer.selectedItems)

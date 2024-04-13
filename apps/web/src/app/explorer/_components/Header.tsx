@@ -24,18 +24,18 @@ export default function Header() {
 
   const handleSelectFiles = useCallback(
     (fileFullPaths: string[]) => {
-      if (explorer.parentPath) {
+      if (explorer.materializedPath) {
         for (const fileFullPath of fileFullPaths) {
           const name = fileFullPath.split('/').slice(-1).join('')
           uploadQueueStore.enqueue({
-            materializedPath: explorer.parentPath,
+            materializedPath: explorer.materializedPath,
             name: name,
             localFullPath: fileFullPath,
           })
         }
       }
     },
-    [explorer.parentPath, uploadQueueStore],
+    [explorer.materializedPath, uploadQueueStore],
   )
 
   const handleSearch = useCallback((text: string, recordType: string) => {
@@ -49,7 +49,7 @@ export default function Header() {
     <>
       <Viewport.Toolbar className="justify-start">
         <PageNav
-          title={explorer.parentPath === '/' ? 'All' : explorer.parentPath}
+          title={explorer.materializedPath === '/' ? 'All' : explorer.materializedPath}
           className="w-1/3"
         />
         <div className="w-1/3">
