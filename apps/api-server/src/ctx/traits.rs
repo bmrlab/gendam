@@ -39,7 +39,9 @@ pub trait CtxWithLibrary {
 
     fn quit_current_library<'async_trait>(
         &'async_trait self,
-    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>;
+    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
+    where
+        Self: Sync + 'async_trait;
 
     fn library(&self) -> Result<Library, rspc::Error>;
 

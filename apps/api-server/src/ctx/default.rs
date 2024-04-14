@@ -259,7 +259,10 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
 
     fn quit_current_library<'async_trait>(
         &'async_trait self,
-    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>> {
+    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
+    where
+        Self: Sync + 'async_trait,
+    {
         // cancel all tasks
         let current_tx = self.tx.lock().unwrap();
         if let Err(e) = current_tx.send(TaskPayload::CancelAll) {
@@ -283,6 +286,7 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
                         if quit_library(pid).await.is_err() {
                             warn!("Failed to kill qdrant server according to store");
                         };
+                        self.current_library.lock().unwrap().take();
                     });
                 }
             }
@@ -291,7 +295,9 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
             }
         }
 
-        Box::pin(async move {})
+        Box::pin(async move {
+            self.current_library.lock().unwrap().take();
+        })
     }
 
     fn get_task_tx(&self) -> Arc<Mutex<Sender<TaskPayload<VideoHandler, VideoTaskType>>>> {
