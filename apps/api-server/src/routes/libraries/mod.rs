@@ -69,7 +69,6 @@ where
             })
         })
         .query("get_current_library", |t| {
-
             t(|ctx, _input: ()| async move {
                 let library = ctx.library()?;
                 let settings = get_library_settings(&library.dir);

@@ -36,6 +36,8 @@ export type Procedures = {
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
 
+export type Library = { id: string; dir: string; settings: LibrarySettings }
+
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
 export type TaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
@@ -45,8 +47,6 @@ export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPa
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
 
 export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
-
-export type LibrarySettings = { title: string }
 
 export type TaskRedoRequestPayload = { assetObjectId: number }
 
@@ -58,6 +58,8 @@ export type SearchResultPayload = { name: string; materializedPath: string; asse
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
+export type LibrarySettings = { title: string }
+
 export type FilePathGetPayload = { materializedPath: string; name: string }
 
 export type TaskCancelRequestPayload = { assetObjectId: number }
@@ -65,8 +67,6 @@ export type TaskCancelRequestPayload = { assetObjectId: number }
 export type AudioResp = { type: AudioType; content: string }
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
-
-export type Library = { id: string; dir: string; settings: LibrarySettings }
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
 

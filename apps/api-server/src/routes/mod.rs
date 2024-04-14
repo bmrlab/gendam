@@ -2,10 +2,9 @@ mod users;
 mod files;
 mod assets;
 mod video;
-mod library;
+mod libraries;
 mod audio;
 
-use crate::routes;
 use rspc::Router;
 use crate::CtxWithLibrary;
 
@@ -21,12 +20,12 @@ where
         //         Ok(mw.with_ctx(ctx))
         //     })
         // })
-        .merge("users.", routes::users::get_routes::<TCtx>())
-        .merge("files.", routes::files::get_routes::<TCtx>())
-        .merge("assets.", routes::assets::get_routes::<TCtx>())
-        .merge("video.", routes::video::get_routes::<TCtx>())
-        .merge("audio.", routes::audio::get_routes::<TCtx>())
-        .merge("libraries.", routes::library::get_routes::<TCtx>())
+        .merge("users.", users::get_routes::<TCtx>())
+        .merge("files.", files::get_routes::<TCtx>())
+        .merge("assets.", assets::get_routes::<TCtx>())
+        .merge("video.", video::get_routes::<TCtx>())
+        .merge("audio.", audio::get_routes::<TCtx>())
+        .merge("libraries.", libraries::get_routes::<TCtx>())
         .query("version", |t| {
             t(|_ctx, _input: ()| env!("CARGO_PKG_VERSION"))
         })
