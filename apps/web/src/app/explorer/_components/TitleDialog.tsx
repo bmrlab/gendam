@@ -34,6 +34,7 @@ const TitleDialog: React.FC = () => {
           name: title,
         })
         titleDialog.setOpen(false)
+        setTitle('')
       } catch (error) {}
       queryClient.invalidateQueries({
         queryKey: ['assets.list', { materializedPath: explorer.materializedPath }],
@@ -43,7 +44,10 @@ const TitleDialog: React.FC = () => {
   )
 
   return (
-    <Dialog.Root open={titleDialog.open} onOpenChange={(open) => titleDialog.setOpen(open)}>
+    <Dialog.Root open={titleDialog.open} onOpenChange={(open) => {
+      titleDialog.setOpen(open)
+      if (!open) setTitle('')
+    }}>
       <Dialog.Portal>
         <Dialog.Overlay onClick={(e) => e.stopPropagation()} />
         <Dialog.Content onClick={(e) => e.stopPropagation()} className="w-96 px-4 pb-6 pt-4">
