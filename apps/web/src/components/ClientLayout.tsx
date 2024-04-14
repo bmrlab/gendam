@@ -103,27 +103,6 @@ export default function ClientLayout({
     [librarySettings],
   )
 
-  const setCurrentLibraryContext = useCallback(
-    async (library: Library) => {
-      setLibrary(library)
-      setPending(true)
-      try {
-        await client.mutation(['libraries.set_current_library', library.id])
-        // 这里就不 await 了
-        client.mutation(['video.tasks.trigger_unfinished'])
-        // 重新获取 currentLibrary 和 librarySettings
-        await initLibraryData()
-        // setPending(false);
-        // 最后 reload 一下，用新的 library 请求数据过程中，页面上还残留着上个 library 已请求的数据
-        // 既然要 reload，就不设置 setPending(false) 了
-        location.reload()
-      } catch (err) {
-        console.error('CurrentLibraryStorage.set() error:', err)
-      }
-    },
-    [setLibrary, initLibraryData],
-  )
-
   const getFileSrc = useCallback(
     (assetObjectHash: string) => {
       if (!library) {
@@ -177,7 +156,6 @@ export default function ClientLayout({
         dir: library.dir,
         librarySettings: librarySettings,
         updateLibrarySettings: updateLibrarySettings,
-        set: setCurrentLibraryContext,
         getFileSrc,
         getThumbnailSrc,
       }}

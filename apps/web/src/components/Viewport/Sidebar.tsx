@@ -6,13 +6,15 @@ import { Muse_Logo } from '@muse/assets/svgs'
 import classNames from 'classnames'
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Icon from '@muse/ui/icons'
 import { Button } from '@muse/ui/v2/button'
 import FoldersTree from '@/Explorer/components/FoldersTree'
+import { toast } from 'sonner'
 
 export default function Sidebar() {
+  const router = useRouter()
   const librariesQuery = rspc.useQuery(['libraries.list'])
 
   const panelRef = useRef<HTMLDivElement>(null)
@@ -27,17 +29,19 @@ export default function Sidebar() {
     }
   }, [currentLibrary.id, librariesQuery.data, librariesQuery.isSuccess])
 
+  const { mutateAsync: quitCurrentLibrary } = rspc.useMutation('libraries.quit_current_library')
   const switchLibrary = useCallback(
     async (library: LibrariesListResult) => {
-      /**
-       * @todo 改成先 quit_library 然后 set_current_library
-       */
-      await currentLibrary.set({
-        id: library.id,
-        dir: library.dir,
-      })
+      try {
+        await quitCurrentLibrary(currentLibrary.id)
+        location.href = `/?setlibrary=${library.id}`
+      } catch (error) {
+        toast.error('Failed to quit current library', {
+          description: `${error}`
+        })
+      }
     },
-    [currentLibrary],
+    [currentLibrary.id, quitCurrentLibrary],
   )
 
   useEffect(() => {

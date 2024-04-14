@@ -23,18 +23,21 @@ export type Procedures = {
         { key: "audio.batch_export", input: ExportInput[], result: AudioType[] } | 
         { key: "audio.export", input: ExportInput, result: AudioType[] } | 
         { key: "libraries.create", input: string, result: null } | 
+        { key: "libraries.quit_current_library", input: string, result: any } | 
         { key: "libraries.set_current_library", input: string, result: any } | 
         { key: "libraries.update_library_settings", input: LibrarySettings, result: null } | 
         { key: "video.tasks.cancel", input: TaskCancelRequestPayload, result: null } | 
         { key: "video.tasks.create", input: string, result: null } | 
         { key: "video.tasks.regenerate", input: TaskRedoRequestPayload, result: null } | 
-        { key: "video.tasks.trigger_unfinished", input: never, result: null },
+        { key: "video.tasks.trigger_unfinished", input: string, result: null },
     subscriptions: never
 };
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
 
 export type LibrariesListResult = { id: string; dir: string; title: string }
+
+export type CurrentLibraryResult = { id: string; dir: string }
 
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
@@ -81,8 +84,6 @@ export type TaskListRequestPayload = { pagination: Pagination; filter: TaskListR
 export type FilePathDeletePayload = { materializedPath: string; name: string }
 
 export type AssetObject = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string }
-
-export type CurrentLibraryResult = { id: string; dir: string }
 
 export type ExportInput = { types: AudioType[]; hash: string; path: string; fileName?: string | null }
 

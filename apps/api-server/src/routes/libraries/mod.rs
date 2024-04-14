@@ -77,9 +77,31 @@ where
             })
         })
         .mutation("set_current_library", |t| {
+            /*
+             * TODO: 这里要改成先校验一下 ctx.library 是否为 None, 如果是, 直接 load 而不是 switch
+             * 并且删除 switch 方法
+             */
             t(|ctx, library_id: String| async move {
                 ctx.switch_current_library(&library_id).await;
                 json!({ "status": "ok" })
+            })
+        })
+        .mutation("quit_current_library", |t| {
+            t(|ctx, library_id: String| async move {
+                /*
+                 * TODO 如果这里不加一个参数直接用 _input: (), 会因参数校验失败而返回错误,
+                 * 因为前端会发一个 payload: `{}`, 而不是空, 这个 issue 需要排查一下
+                 * 现在就索性校验一下 library_id, 实际没啥用
+                 */
+                let library = ctx.library()?;
+                if library.id != library_id {
+                    return Err(rspc::Error::new(
+                        rspc::ErrorCode::BadRequest,
+                        String::from("The library is not the current library"),
+                    ));
+                }
+                ctx.quit_current_library().await;
+                Ok(json!({ "status": "ok" }))
             })
         })
         .query("get_current_library", {
