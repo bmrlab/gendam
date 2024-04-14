@@ -14,8 +14,6 @@ export type VideoTasksListProps = HTMLAttributes<HTMLDivElement> & {
 }
 
 export default function VideoTasksList({ data, className }: VideoTasksListProps) {
-  // const revealMut = rspc.useMutation('files.reveal')
-
   const taskSelected = useBoundStore.use.videoSelected()
   const filterVideos = data
   // const searchKey = useBoundStore.use.searchKey()
@@ -42,7 +40,6 @@ export default function VideoTasksList({ data, className }: VideoTasksListProps)
               isSelect={taskSelected.some((item) => item.assetObject.hash === videoFile.assetObject.hash)}
               handleClick={() => {
                 // console.log(videoFile.assetObject.id, videoFile.assetObject.hash)
-                // revealMut.mutate(video.videoPath)
               }}
             />
           </TaskContextMenu>

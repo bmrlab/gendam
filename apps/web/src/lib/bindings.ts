@@ -5,8 +5,6 @@ export type Procedures = {
         { key: "assets.get", input: FilePathGetPayload, result: FilePath } | 
         { key: "assets.list", input: FilePathQueryPayload, result: FilePath[] } | 
         { key: "audio.find_by_hash", input: string, result: AudioResp[] } | 
-        { key: "files.home_dir", input: never, result: string } | 
-        { key: "files.ls", input: string, result: any } | 
         { key: "libraries.get_current_library", input: never, result: CurrentLibraryResult } | 
         { key: "libraries.get_library_settings", input: never, result: LibrarySettings } | 
         { key: "libraries.list", input: never, result: LibrariesListResult[] } | 
@@ -24,7 +22,6 @@ export type Procedures = {
         { key: "assets.rename_file_path", input: FilePathRenamePayload, result: null } | 
         { key: "audio.batch_export", input: ExportInput[], result: AudioType[] } | 
         { key: "audio.export", input: ExportInput, result: AudioType[] } | 
-        { key: "files.reveal", input: string, result: null } | 
         { key: "libraries.create", input: string, result: null } | 
         { key: "libraries.set_current_library", input: string, result: any } | 
         { key: "libraries.update_library_settings", input: LibrarySettings, result: null } | 

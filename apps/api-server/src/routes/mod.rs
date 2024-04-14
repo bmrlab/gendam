@@ -1,5 +1,4 @@
 mod users;
-mod files;
 mod assets;
 mod video;
 mod libraries;
@@ -21,7 +20,6 @@ where
         //     })
         // })
         .merge("users.", users::get_routes::<TCtx>())
-        .merge("files.", files::get_routes::<TCtx>())
         .merge("assets.", assets::get_routes::<TCtx>())
         .merge("video.", video::get_routes::<TCtx>())
         .merge("audio.", audio::get_routes::<TCtx>())

@@ -11,9 +11,7 @@ mod qdrant;
 pub struct Library {
     pub id: String,
     pub dir: PathBuf,
-    // TODO files_dir can be set to private, for now it is used
-    // in `apps/api-server/src/routes/files.rs` for debug
-    pub files_dir: PathBuf, // for content files
+    files_dir: PathBuf, // for content files
     artifacts_dir: PathBuf,
     // db_url: String,
     prisma_client: Arc<PrismaClient>,
