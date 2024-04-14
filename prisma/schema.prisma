@@ -19,6 +19,7 @@ model FilePath {
 
   materializedPath String
   name             String
+  description      String?
 
   assetObjectId Int?
   assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: SetNull)
@@ -33,8 +34,9 @@ model FilePath {
 model AssetObject {
   id Int @id @default(autoincrement())
 
-  note String?
-  hash String  @unique
+  hash     String  @unique
+  size     Int // file size in bytes
+  mimeType String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -52,11 +54,7 @@ model MediaData {
   height   Int?
   duration Int?
   bitRate  Int?
-  size     Int?
-  mimeType String?
   hasAudio Boolean?
-
-  description String?
 
   assetObjectId Int          @unique
   assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: Cascade)
