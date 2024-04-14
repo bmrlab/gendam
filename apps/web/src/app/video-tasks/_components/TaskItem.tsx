@@ -112,7 +112,7 @@ export default function VideoTaskItem({
           <div className="flex items-center text-xs font-normal leading-4 opacity-60">
             <span>{formatDuration(mediaData?.duration ?? 0)}</span>
             <div className="mx-2">·</div>
-            <span>{formatBytes(mediaData?.size ?? 0)}</span>
+            <span>{formatBytes(assetObject.size)}</span>
             <div className="mx-2">·</div>
             <span>{`${mediaData?.width ?? 0} x ${mediaData?.height ?? 0}`}</span>
             {_hasAudio ? null : (
