@@ -76,7 +76,7 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Result
     let db_url = format!(
         // "file:{}?socket_timeout=1&connection_limit=10",
         "file:{}?socket_timeout=15&connection_limit=1",
-        db_dir.join("muse-v2.db").to_str().unwrap()
+        db_dir.join("library.db").to_str().unwrap()
     );
     let client = new_client_with_url(db_url.as_str()).await.map_err(|_e| {
         tracing::error!("failed to create prisma client");

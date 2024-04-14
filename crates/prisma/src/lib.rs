@@ -24,7 +24,8 @@ mod prisma_tests {
             .asset_object()
             .create(
                 i.to_string(),
-                vec![asset_object::note::set(Some(i.to_string()))]
+                0,
+                vec![]
             )
             .exec()
             .await;

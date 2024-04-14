@@ -236,6 +236,7 @@ dependencies = [
  "docx-rs",
  "dotenvy",
  "file-handler",
+ "mime_guess",
  "priority-queue",
  "prisma-client-rust",
  "prisma-lib",

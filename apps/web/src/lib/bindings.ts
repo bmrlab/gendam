@@ -44,9 +44,7 @@ export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPa
 
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
 
-export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; size: number | null; mimeType: string | null; hasAudio: boolean | null; description: string | null; assetObjectId: number; createdAt: string; updatedAt: string }
-
-export type AssetObject = { id: number; note: string | null; hash: string; createdAt: string; updatedAt: string }
+export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
 
 export type LibrarySettings = { title: string }
 
@@ -58,6 +56,8 @@ export type AssetObjectCreatePayload = { materializedPath: string; name: string;
 
 export type SearchResultPayload = { name: string; materializedPath: string; assetObjectId: number; assetObjectHash: string; startTime: number; endTime: number; score: number }
 
+export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
+
 export type FilePathGetPayload = { materializedPath: string; name: string }
 
 export type TaskCancelRequestPayload = { assetObjectId: number }
@@ -68,7 +68,7 @@ export type FilePathRequestPayload = { id: number; isDir: boolean; materializedP
 
 export type Library = { id: string; dir: string; settings: LibrarySettings }
 
-export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
+export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
 
 export type VideoWithTasksPageResult = { data: VideoWithTasksResult[]; pagination: Pagination; maxPage: number }
 
@@ -78,7 +78,7 @@ export type TaskListRequestPayload = { pagination: Pagination; filter: TaskListR
 
 export type FilePathDeletePayload = { materializedPath: string; name: string }
 
-export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; assetObjectId: number | null; createdAt: string; updatedAt: string }
+export type AssetObject = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string }
 
 export type ExportInput = { types: AudioType[]; hash: string; path: string; fileName?: string | null }
 

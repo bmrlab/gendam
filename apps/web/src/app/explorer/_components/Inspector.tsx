@@ -84,12 +84,12 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
         <div className="text-md font-medium">Information</div>
         <div className="mt-2 flex justify-between">
           <div className="text-ink/50">Size</div>
-          <div>{formatBytes(mediaData?.size ?? 0)}</div>
+          <div>{formatBytes(assetObject.size)}</div>
         </div>
-        {/* <div className="mt-2 flex justify-between">
+        <div className="mt-2 flex justify-between">
           <div className="text-ink/50">Type</div>
-          <div>{mediaData.mimeType}</div>
-        </div> */}
+          <div>{assetObject.mimeType}</div>
+        </div>
         <div className="mt-2 flex justify-between">
           <div className="text-ink/50">Duration</div>
           <div>{formatDuration(mediaData?.duration ?? 0)}</div>
@@ -116,6 +116,10 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
         <div className="mt-2 flex justify-between">
           <div className="text-ink/50">Content Hash</div>
           <div>{assetObject.hash}</div>
+        </div>
+        <div className="mt-2 flex justify-between">
+          <div className="text-ink/50">Asset Object ID</div>
+          <div>{assetObject.id}</div>
         </div>
       </div>
     </div>

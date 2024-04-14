@@ -47,6 +47,12 @@ pub async fn create_asset_object(
             format!("failed to get video metadata: {}", e),
         )
     })?;
+    let guess = mime_guess::from_path(&local_full_path);
+    let file_mime_type = match guess.first() {
+        Some(mime) => Some(mime.to_string()),
+        None => None,
+    };
+    let file_size_in_bytes = fs_metadata.len() as i32;
     let file_hash = generate_file_hash(&local_full_path, fs_metadata.len() as u64)
         .await
         .map_err(|e| {
@@ -89,7 +95,11 @@ pub async fn create_asset_object(
                 None => {
                     client
                         .asset_object()
-                        .create(file_hash.clone(), vec![])
+                        .create(
+                            file_hash.clone(),
+                            file_size_in_bytes,
+                            vec![asset_object::mime_type::set(file_mime_type)]
+                        )
                         .exec()
                         .await?
                 }

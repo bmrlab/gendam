@@ -6,13 +6,13 @@ export type ExplorerItem = {
   assetObject?: {
     id: number;
     hash: string;
+    size: number;
+    mimeType?: string;
     mediaData?: {
       width: number;
       height: number;
       duration: number;
       bitRate: number;
-      size: number;
-      mimeType: string;
       hasAudio: boolean;
     } | null;
     note: string | null;
