@@ -1,19 +1,19 @@
 'use client'
-import { useCurrentLibrary, type Library } from '@/lib/library'
+import { useCurrentLibrary } from '@/lib/library'
+import { LibrariesListResult } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { Muse_Logo } from '@muse/assets/svgs'
 import classNames from 'classnames'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Icon from '@muse/ui/icons'
 import { Button } from '@muse/ui/v2/button'
 import FoldersTree from '@/Explorer/components/FoldersTree'
 
 export default function Sidebar() {
   const librariesQuery = rspc.useQuery(['libraries.list'])
-  const libraries = (librariesQuery.data ?? []) as Library[]
 
   const panelRef = useRef<HTMLDivElement>(null)
   const [selectPanelOpen, setSelectPanelOpen] = useState(false)
@@ -21,10 +21,21 @@ export default function Sidebar() {
   const currentLibrary = useCurrentLibrary()
   const { data: version } = rspc.useQuery(['version'])
 
+  const selected = useMemo<LibrariesListResult|undefined>(() => {
+    if (currentLibrary.id && librariesQuery.isSuccess) {
+      return librariesQuery.data.find((library) => library.id === currentLibrary.id)
+    }
+  }, [currentLibrary.id, librariesQuery.data, librariesQuery.isSuccess])
+
   const switchLibrary = useCallback(
-    async (library: Library) => {
-      // console.log("switchLibrary");
-      await currentLibrary.set(library)
+    async (library: LibrariesListResult) => {
+      /**
+       * @todo 改成先 quit_library 然后 set_current_library
+       */
+      await currentLibrary.set({
+        id: library.id,
+        dir: library.dir,
+      })
     },
     [currentLibrary],
   )
@@ -56,19 +67,18 @@ export default function Sidebar() {
           <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>
           <div className="mx-2 flex-1 overflow-hidden">
             <div className="truncate text-xs font-semibold">
-              {currentLibrary.settings?.title ?? "Untitled"}
-              {/* ({currentLibrary.id}) */}
+              {selected?.title ?? "Untitled"}
             </div>
           </div>
           <Icon.UpAndDownArrow className="h-4 w-4"></Icon.UpAndDownArrow>
         </div>
-        {selectPanelOpen && (
+        {selectPanelOpen && librariesQuery.isSuccess ? (
           <div
             ref={panelRef}
             className="absolute left-32 top-3 z-10 w-72 rounded-md
               border border-app-line bg-app-box text-ink p-1 shadow-sm"
           >
-            {libraries.map((library, index: number) => {
+            {librariesQuery.data.map((library, index: number) => {
               return (
                 <div
                   key={library.id}
@@ -77,14 +87,14 @@ export default function Sidebar() {
                 >
                   <Image src={Muse_Logo} alt="Muse" className="h-9 w-9"></Image>
                   <div className="flex-1 overflow-hidden">
-                    <div className="truncate text-xs font-semibold">{library.settings?.title ?? 'Untitled'}</div>
+                    <div className="truncate text-xs font-semibold">{library.title}</div>
                     <div className="truncate text-[0.6rem] text-ink/50">{library.id}</div>
                   </div>
                 </div>
               )
             })}
           </div>
-        )}
+        ) : null}
       </section>
 
       <section className="text-sm">

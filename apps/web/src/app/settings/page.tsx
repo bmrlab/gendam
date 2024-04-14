@@ -1,40 +1,48 @@
 'use client'
-import { toast } from 'sonner'
 import PageNav from '@/components/PageNav'
 import Viewport from '@/components/Viewport'
-import { useCurrentLibrary } from '@/lib/library'
-import { rspc } from '@/lib/rspc'
+import { rspc, queryClient } from '@/lib/rspc'
 import { Button } from '@muse/ui/v2/button'
 import { Form } from '@muse/ui/v2/form'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 const LibrarySettings: React.FC = () => {
-  const currentLibrary = useCurrentLibrary()
-  const [title, setTitle] = useState(currentLibrary.settings?.title ?? '')
+  const { data: librarySettings } = rspc.useQuery(['libraries.get_library_settings'])
+  const [title, setTitle] = useState('')
   const [isPending, setIsPending] = useState(false)
   const { mutateAsync } = rspc.useMutation(['libraries.update_library_settings'])
+
   const onSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
       setIsPending(true)
       try {
-        await mutateAsync({
-          title: title,
-        }, {
-          onSuccess: () => {
-            toast.success('Library settings updated')
-          }
-        })
+        await mutateAsync(
+          { title },
+          {
+            onSuccess: () => toast.success('Library settings updated'),
+          },
+        )
       } catch (error) {
         console.error(error)
       }
       setIsPending(false)
+      queryClient.invalidateQueries({
+        queryKey: ['libraries.get_library_settings'],
+      })
       setTimeout(() => {
         window.location.reload()
       }, 500)
     },
     [mutateAsync, title],
   )
+
+  useEffect(() => {
+    if (librarySettings) {
+      setTitle(librarySettings.title)
+    }
+  }, [librarySettings])
 
   return (
     <div>
@@ -63,7 +71,7 @@ export default function Settings() {
         <div className="bg-app-line my-4 h-px"></div>
         <LibrarySettings />
         <div className="bg-app-line my-4 h-px"></div>
-        <div className="h-10">模型设置</div>
+        <div className="h-10">Model Settings</div>
       </Viewport.Content>
     </Viewport.Page>
   )

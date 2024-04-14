@@ -7,8 +7,9 @@ export type Procedures = {
         { key: "audio.find_by_hash", input: string, result: AudioResp[] } | 
         { key: "files.home_dir", input: never, result: string } | 
         { key: "files.ls", input: string, result: any } | 
-        { key: "libraries.get_current_library", input: never, result: Library } | 
-        { key: "libraries.list", input: never, result: Library[] } | 
+        { key: "libraries.get_current_library", input: never, result: CurrentLibraryResult } | 
+        { key: "libraries.get_library_settings", input: never, result: LibrarySettings } | 
+        { key: "libraries.list", input: never, result: LibrariesListResult[] } | 
         { key: "users.list", input: never, result: any } | 
         { key: "version", input: never, result: string } | 
         { key: "video.search.all", input: SearchRequestPayload, result: SearchResultPayload[] } | 
@@ -24,7 +25,7 @@ export type Procedures = {
         { key: "audio.batch_export", input: ExportInput[], result: AudioType[] } | 
         { key: "audio.export", input: ExportInput, result: AudioType[] } | 
         { key: "files.reveal", input: string, result: null } | 
-        { key: "libraries.create", input: string, result: any } | 
+        { key: "libraries.create", input: string, result: null } | 
         { key: "libraries.set_current_library", input: string, result: any } | 
         { key: "libraries.update_library_settings", input: LibrarySettings, result: null } | 
         { key: "video.tasks.cancel", input: TaskCancelRequestPayload, result: null } | 
@@ -34,11 +35,13 @@ export type Procedures = {
     subscriptions: never
 };
 
+export type LibrariesListResult = { id: string; dir: string; title: string }
+
 export type FilePathCreatePayload = { materializedPath: string; name: string }
 
-export type Library = { id: string; dir: string; settings: LibrarySettings }
-
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
+
+export type LibrarySettings = { title: string }
 
 export type TaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
 
@@ -58,8 +61,6 @@ export type SearchResultPayload = { name: string; materializedPath: string; asse
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
-export type LibrarySettings = { title: string }
-
 export type FilePathGetPayload = { materializedPath: string; name: string }
 
 export type TaskCancelRequestPayload = { assetObjectId: number }
@@ -67,6 +68,8 @@ export type TaskCancelRequestPayload = { assetObjectId: number }
 export type AudioResp = { type: AudioType; content: string }
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
+
+export type CurrentLibraryResult = { id: string; dir: string }
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
 

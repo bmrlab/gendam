@@ -1,12 +1,13 @@
 import { createContext, useContext } from 'react'
-import { Library as _Library } from '@/lib/bindings'
 
-export type Library = _Library
+export type Library = {
+  id: string
+  dir: string
+}
 
 type CurrentLibraryContext = {
   id?: string
   dir?: string
-  settings?: _Library["settings"],
   set: (library: Library) => Promise<void>
   getFileSrc: (assetObjectId: string) => string
   getThumbnailSrc: (assetObjectId: string, timestampInSecond?: number) => string

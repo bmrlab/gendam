@@ -105,7 +105,7 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Result
     Ok(library)
 }
 
-pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -> Library {
+pub async fn create_library(local_data_root: &PathBuf) -> PathBuf {
     let library_id = uuid::Uuid::new_v4().to_string();
     let library_dir = local_data_root.join("libraries").join(&library_id);
     let db_dir = library_dir.join("databases");
@@ -116,21 +116,10 @@ pub async fn create_library_with_title(local_data_root: &PathBuf, title: &str) -
     std::fs::create_dir_all(&qdrant_dir).unwrap();
     std::fs::create_dir_all(&artifacts_dir).unwrap();
     std::fs::create_dir_all(&files_dir).unwrap();
-    match std::fs::File::create(library_dir.join("settings.json")) {
-        Ok(file) => {
-            let value = serde_json::json!({ "title": title });
-            if let Err(e) = serde_json::to_writer(file, &value) {
-                tracing::error!("Failed to write file: {}", e);
-            }
-        }
-        Err(e) => {
-            tracing::error!("Failed to create file: {}", e);
-        }
-    };
-    load_library(local_data_root, &library_id).await.unwrap()
+    library_dir
 }
 
-pub fn list_libraries(local_data_root: &PathBuf) -> Vec<serde_json::Value> {
+pub fn list_library_dirs(local_data_root: &PathBuf) -> Vec<(String, String)> {
     let libraries_dir = local_data_root.join("libraries");
     if !libraries_dir.exists() {
         return vec![];
@@ -142,69 +131,32 @@ pub fn list_libraries(local_data_root: &PathBuf) -> Vec<serde_json::Value> {
             return vec![];
         }
     };
-    let mut res: Vec<serde_json::Value> = vec![];
+    let mut res: Vec<(String, String)> = vec![];
     for entry in entries {
-        let (library_dir, library_id) = match entry.as_ref() {
+        let library_dir = match entry.as_ref() {
             Ok(entry) => {
                 let path = entry.path();
                 if !path.is_dir() {
                     continue;
                 }
-                let file_name = match entry.file_name().to_str() {
-                    Some(file_name) => file_name.to_string(),
-                    None => {
-                        tracing::error!("Failed to convert file name to string");
-                        continue;
-                    }
+                let path_str = match path.into_os_string().into_string() {
+                    Ok(path_str) => path_str,
+                    Err(_e) => continue,
                 };
-                (path, file_name)
+                let file_name_str = match entry.file_name().into_string() {
+                    Ok(file_name_str) => file_name_str,
+                    Err(_e) => continue,
+                };
+                (path_str, file_name_str)
             }
             Err(e) => {
-                tracing::error!("Failed to read library dir: {}", e);
+                tracing::error!("Failed to read entry: {}", e);
                 continue;
             }
         };
-        let settings = get_library_settings(&library_dir);
-        res.push(serde_json::json!({
-            "id": library_id,
-            "dir": library_dir,
-            "settings": settings,
-        }));
+        res.push(library_dir);
     }
     res
-}
-
-pub fn get_library_settings(library_dir: &PathBuf) -> serde_json::Value {
-    match std::fs::File::open(library_dir.join("settings.json")) {
-        Ok(file) => {
-            let reader = std::io::BufReader::new(file);
-            match serde_json::from_reader(reader) {
-                Ok(values) => values,
-                Err(e) => {
-                    tracing::error!("Failed to read file: {}", e);
-                    serde_json::json!({ "title": "Untitled" })
-                }
-            }
-        }
-        Err(e) => {
-            tracing::error!("Failed to open library's settings.json, {}", e);
-            serde_json::json!({ "title": "Untitled" })
-        }
-    }
-}
-
-pub fn set_library_settings(library_dir: &PathBuf, settings: serde_json::Value) {
-    // create or update to library_dir.join("settings.json")
-    match std::fs::File::create(library_dir.join("settings.json")) {
-        Ok(file) => {
-            if let Err(e) = serde_json::to_writer(file, &settings) {
-                tracing::error!("Failed to write file: {}", e);
-            }
-        }
-        Err(e) => {
-            tracing::error!("Failed to create file: {}", e);
-        }
-    };
 }
 
 pub async fn quit_library(qdrant_server_pid: i32) -> Result<(), String> {
