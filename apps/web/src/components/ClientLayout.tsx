@@ -2,6 +2,7 @@
 import LibrariesSelect from '@/components/LibrariesSelect'
 import Shared from '@/components/Shared'
 import { toast } from 'sonner'
+import { LibrarySettings } from '@/lib/bindings'
 import { CurrentLibrary, type Library } from '@/lib/library'
 import { client, queryClient, rspc } from '@/lib/rspc'
 import { convertFileSrc } from '@tauri-apps/api/tauri'
@@ -14,7 +15,7 @@ export default function ClientLayout({
 }>) {
   const [pending, setPending] = useState(true)
   const [library, setLibrary] = useState<Library | null>(null)
-  // const [homeDir, setHomeDir] = useState<string|null>(null);
+  const [librarySettings, setLibrarySettings] = useState<LibrarySettings | null>(null)
 
   const blockCmdQ = useCallback(() => {
     document.addEventListener('keydown', (event) => {
@@ -29,6 +30,36 @@ export default function ClientLayout({
     })
   }, [])
 
+  const initLibraryData = useCallback(async () => {
+    setPending(true)
+    const p1 = client
+      .query(['libraries.get_current_library'])
+      .then((library: Library) => setLibrary(library))
+      .catch((error) => {
+        toast.error('libraries.get_current_library error:', {
+          description: `${error}`
+        })
+        setLibrary(null)
+      })
+    const p2 = client
+      .query(['libraries.get_library_settings'])
+      .then((librarySettings: LibrarySettings) => setLibrarySettings(librarySettings))
+      .catch((error) => {
+        toast.error('libraries.get_library_settings error:', {
+          description: `${error}`
+        })
+        setLibrarySettings(null)
+      })
+    try {
+      await Promise.all([p1, p2])
+      setPending(false)
+    } catch (error) {
+      toast.error('Something went wrong getting library data, application will not start', {
+        description: `${error}`
+      })
+    }
+  }, [setLibrarySettings, setLibrary, setPending])
+
   useEffect(() => {
     // blockCmdQ()
     const disableContextMenu = (event: MouseEvent) => event.preventDefault()
@@ -36,28 +67,41 @@ export default function ClientLayout({
       window.addEventListener('contextmenu', disableContextMenu)
     }
 
-    const p1 = client
-      .query(['libraries.get_current_library'])
-      .then((library: Library) => setLibrary(library))
-      .catch((error) => {
-        console.log('libraries.get_current_library error:', error)
-        setLibrary(null)
-      })
-    // const p2 = client.query(["files.home_dir"]).then((homeDir) => {
-    //   setHomeDir(homeDir);
-    // }).catch(error => {
-    //   console.log('files.home_dir error:', error);
-    //   setHomeDir(null);
-    // });
-    // Promise.all([p1, p2]).then(() => setPending(false));
-    p1.then(() => setPending(false))
+    initLibraryData()
 
     return () => {
       if (typeof window !== 'undefined') {
         window.removeEventListener('contextmenu', disableContextMenu)
       }
     }
-  }, [setLibrary, setPending])
+  }, [initLibraryData])
+
+  useEffect(() => {
+    const theme = librarySettings?.appearanceTheme
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [librarySettings?.appearanceTheme])
+
+  const updateLibrarySettings = useCallback(
+    async (partialSettings: Partial<LibrarySettings>) => {
+      if (!librarySettings) {
+        return
+      }
+      const newSettings = { ...librarySettings, ...partialSettings }
+      try {
+        await client.mutation(['libraries.update_library_settings', newSettings])
+        setLibrarySettings(newSettings)
+      } catch (error) {
+        toast.error('Failed to update library settings', {
+          description: `${error}`
+        })
+      }
+    },
+    [librarySettings],
+  )
 
   const setCurrentLibraryContext = useCallback(
     async (library: Library) => {
@@ -67,6 +111,8 @@ export default function ClientLayout({
         await client.mutation(['libraries.set_current_library', library.id])
         // 这里就不 await 了
         client.mutation(['video.tasks.trigger_unfinished'])
+        // 重新获取 currentLibrary 和 librarySettings
+        await initLibraryData()
         // setPending(false);
         // 最后 reload 一下，用新的 library 请求数据过程中，页面上还残留着上个 library 已请求的数据
         // 既然要 reload，就不设置 setPending(false) 了
@@ -75,7 +121,7 @@ export default function ClientLayout({
         console.error('CurrentLibraryStorage.set() error:', err)
       }
     },
-    [setLibrary],
+    [setLibrary, initLibraryData],
   )
 
   const getFileSrc = useCallback(
@@ -119,25 +165,28 @@ export default function ClientLayout({
   )
 
   return pending ? (
-    <></>
+    <div className="w-full h-full flex items-center justify-center text-ink/50">Loading...</div>
+  ) : !library || !librarySettings ? (
+    <rspc.Provider client={client} queryClient={queryClient}>
+      <LibrariesSelect />
+    </rspc.Provider>
   ) : (
     <CurrentLibrary.Provider
       value={{
-        ...(library ? library : {}),
+        id: library.id,
+        dir: library.dir,
+        librarySettings: librarySettings,
+        updateLibrarySettings: updateLibrarySettings,
         set: setCurrentLibraryContext,
         getFileSrc,
         getThumbnailSrc,
       }}
     >
       <rspc.Provider client={client} queryClient={queryClient}>
-        {library?.id ? (
-          <>
-            {children}
-            <Shared />
-          </>
-        ) : (
-          <LibrariesSelect />
-        )}
+        <>
+          {children}
+          <Shared />
+        </>
       </rspc.Provider>
     </CurrentLibrary.Provider>
   )

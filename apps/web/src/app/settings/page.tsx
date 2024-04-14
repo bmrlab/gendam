@@ -1,48 +1,38 @@
 'use client'
 import PageNav from '@/components/PageNav'
 import Viewport from '@/components/Viewport'
-import { rspc, queryClient } from '@/lib/rspc'
 import { Button } from '@muse/ui/v2/button'
 import { Form } from '@muse/ui/v2/form'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { useCurrentLibrary } from '@/lib/library'
 
 const LibrarySettings: React.FC = () => {
-  const { data: librarySettings } = rspc.useQuery(['libraries.get_library_settings'])
+  const currentLibrary = useCurrentLibrary()
   const [title, setTitle] = useState('')
   const [isPending, setIsPending] = useState(false)
-  const { mutateAsync } = rspc.useMutation(['libraries.update_library_settings'])
 
   const onSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
       setIsPending(true)
       try {
-        await mutateAsync(
-          { title },
-          {
-            onSuccess: () => toast.success('Library settings updated'),
-          },
-        )
+        await currentLibrary.updateLibrarySettings({ title })
+        toast.success('Library settings updated')
       } catch (error) {
         console.error(error)
       }
       setIsPending(false)
-      queryClient.invalidateQueries({
-        queryKey: ['libraries.get_library_settings'],
-      })
       // setTimeout(() => {
       //   window.location.reload()
       // }, 500)
     },
-    [mutateAsync, title],
+    [currentLibrary, title],
   )
 
   useEffect(() => {
-    if (librarySettings) {
-      setTitle(librarySettings?.title ?? "")
-    }
-  }, [librarySettings])
+    setTitle(currentLibrary.librarySettings.title)
+  }, [currentLibrary.librarySettings.title])
 
   return (
     <div>

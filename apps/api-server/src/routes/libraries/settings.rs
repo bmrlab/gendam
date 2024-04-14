@@ -43,7 +43,7 @@ impl<'de> Deserialize<'de> for LibrarySettings {
         let settings = LibrarySettings {
             title: value["title"].as_str().unwrap_or("Untitled").to_string(),
             appearance_theme: value["appearanceTheme"].as_str().unwrap_or_default().parse().unwrap_or(LibrarySettingsThemeEnum::Light),
-            explorer_layout: value["explorerLayout"].as_str().unwrap_or_default().parse().unwrap_or(LibrarySettingsLayoutEnum::List),
+            explorer_layout: value["explorerLayout"].as_str().unwrap_or_default().parse().unwrap_or(LibrarySettingsLayoutEnum::Grid),
         };
         Ok(settings)
     }

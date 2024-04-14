@@ -8,7 +8,6 @@ import { useCallback } from 'react'
 
 export default function LibrariesSelect() {
   const librariesQuery = rspc.useQuery(['libraries.list'])
-
   const libraryMut = rspc.useMutation('libraries.create')
 
   const createLibrary = useCallback(() => {

@@ -22,7 +22,7 @@ export default function Sidebar() {
   const { data: version } = rspc.useQuery(['version'])
 
   const selected = useMemo<LibrariesListResult|undefined>(() => {
-    if (currentLibrary.id && librariesQuery.isSuccess) {
+    if (librariesQuery.isSuccess) {
       return librariesQuery.data.find((library) => library.id === currentLibrary.id)
     }
   }, [currentLibrary.id, librariesQuery.data, librariesQuery.isSuccess])
@@ -126,7 +126,12 @@ export default function Sidebar() {
           </Link>
           <Button
             variant="ghost" size="sm" className="h-7 w-7 p-1 hover:bg-sidebar-hover transition-none"
-            onClick={() => document.documentElement.classList.toggle('dark')}
+            onClick={() => {
+              const theme = currentLibrary.librarySettings.appearanceTheme === 'dark' ? 'light' : 'dark'
+              currentLibrary.updateLibrarySettings({
+                appearanceTheme: theme
+              })
+            }}
           >
             <Icon.Sun className="h-full w-full block dark:hidden" />
             <Icon.Moon className="h-full w-full hidden dark:block" />
