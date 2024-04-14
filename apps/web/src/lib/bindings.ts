@@ -35,13 +35,11 @@ export type Procedures = {
     subscriptions: never
 };
 
-export type LibrariesListResult = { id: string; dir: string; title: string }
-
 export type FilePathCreatePayload = { materializedPath: string; name: string }
 
-export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
+export type LibrariesListResult = { id: string; dir: string; title: string }
 
-export type LibrarySettings = { title: string }
+export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
 export type TaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
 
@@ -50,6 +48,8 @@ export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPa
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
 
 export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
+
+export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type TaskRedoRequestPayload = { assetObjectId: number }
 
@@ -61,6 +61,8 @@ export type SearchResultPayload = { name: string; materializedPath: string; asse
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
+export type LibrarySettingsThemeEnum = "light" | "dark"
+
 export type FilePathGetPayload = { materializedPath: string; name: string }
 
 export type TaskCancelRequestPayload = { assetObjectId: number }
@@ -69,7 +71,7 @@ export type AudioResp = { type: AudioType; content: string }
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
-export type CurrentLibraryResult = { id: string; dir: string }
+export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum }
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
 
@@ -82,6 +84,8 @@ export type TaskListRequestPayload = { pagination: Pagination; filter: TaskListR
 export type FilePathDeletePayload = { materializedPath: string; name: string }
 
 export type AssetObject = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string }
+
+export type CurrentLibraryResult = { id: string; dir: string }
 
 export type ExportInput = { types: AudioType[]; hash: string; path: string; fileName?: string | null }
 

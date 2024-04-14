@@ -31,16 +31,16 @@ const LibrarySettings: React.FC = () => {
       queryClient.invalidateQueries({
         queryKey: ['libraries.get_library_settings'],
       })
-      setTimeout(() => {
-        window.location.reload()
-      }, 500)
+      // setTimeout(() => {
+      //   window.location.reload()
+      // }, 500)
     },
     [mutateAsync, title],
   )
 
   useEffect(() => {
     if (librarySettings) {
-      setTitle(librarySettings.title)
+      setTitle(librarySettings?.title ?? "")
     }
   }, [librarySettings])
 
@@ -67,7 +67,7 @@ export default function Settings() {
         <PageNav title="Settings" />
       </Viewport.Toolbar>
       <Viewport.Content className="p-6">
-        <div className="h-10">用户 / login / logout</div>
+        <div className="h-10">User / login / logout</div>
         <div className="bg-app-line my-4 h-px"></div>
         <LibrarySettings />
         <div className="bg-app-line my-4 h-px"></div>

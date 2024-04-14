@@ -1,19 +1,12 @@
+mod settings;
+use settings::{get_library_settings, set_library_settings, LIBRARY_SETTINGS_FILE_NAME, LibrarySettings};
 use std::path::PathBuf;
 use crate::CtxWithLibrary;
 use content_library::{create_library, list_library_dirs};
 use rspc::{Router, RouterBuilder};
 use serde_json::json;
-use serde::{Serialize, Deserialize};
+use serde::Serialize;
 use specta::Type;
-
-// libraries/[uuid as library id]/settings.json
-const LIBRARY_SETTINGS_FILE_NAME: &str = "settings.json";
-
-#[derive(Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct LibrarySettings {
-    pub title: String
-}
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -70,9 +63,7 @@ where
             t(|ctx, _input: ()| async move {
                 let library = ctx.library()?;
                 let settings = get_library_settings(&library.dir);
-                Ok(LibrarySettings {
-                    title: settings["title"].as_str().unwrap_or("Untitled").to_string(),
-                })
+                Ok(settings)
             })
         })
         .mutation("update_library_settings", |t| {
@@ -80,9 +71,7 @@ where
                 let library = ctx.library()?;
                 set_library_settings(
                     &library.dir,
-                    json!({
-                        "title": input.title
-                    })
+                    input
                 );
                 Ok(())
             })
@@ -110,37 +99,4 @@ where
                 })
             }
         })
-}
-
-pub fn get_library_settings(library_dir: &PathBuf) -> serde_json::Value {
-    match std::fs::File::open(library_dir.join(LIBRARY_SETTINGS_FILE_NAME)) {
-        Ok(file) => {
-            let reader = std::io::BufReader::new(file);
-            match serde_json::from_reader(reader) {
-                Ok(values) => values,
-                Err(e) => {
-                    tracing::error!("Failed to read file: {}", e);
-                    serde_json::json!({ "title": "Untitled" })
-                }
-            }
-        }
-        Err(e) => {
-            tracing::error!("Failed to open library's settings.json, {}", e);
-            serde_json::json!({ "title": "Untitled" })
-        }
-    }
-}
-
-pub fn set_library_settings(library_dir: &PathBuf, settings: serde_json::Value) {
-    // create or update to library_dir.join(LIBRARY_SETTINGS_FILE_NAME)
-    match std::fs::File::create(library_dir.join(LIBRARY_SETTINGS_FILE_NAME)) {
-        Ok(file) => {
-            if let Err(e) = serde_json::to_writer(file, &settings) {
-                tracing::error!("Failed to write file: {}", e);
-            }
-        }
-        Err(e) => {
-            tracing::error!("Failed to create file: {}", e);
-        }
-    };
 }
