@@ -13,7 +13,9 @@ use tauri::Manager;
 mod store;
 use store::Store;
 
+#[allow(dead_code)]
 fn validate_app_version(app_handle: tauri::AppHandle, local_data_root: &PathBuf) {
+    // 目前先不需要调用这个, 这一次 release 不会用到旧的数据库
     const VERSION_SHOULD_GTE: usize = 2;
     let mut tauri_store =
         tauri_plugin_store::StoreBuilder::new(app_handle, "settings.json".parse().unwrap()).build();
@@ -111,7 +113,7 @@ async fn main() {
         .expect("failed to add store plugin");
     // TODO: 需要确认下 tauri_plugin_store 这个 plugin 是不是需要，如果网页上不用，应该不需要
 
-    validate_app_version(window.app_handle(), &local_data_root);
+    // validate_app_version(window.app_handle(), &local_data_root);
 
     let current_library = Arc::new(Mutex::<Option<Library>>::new(None));
 
