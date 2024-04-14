@@ -83,6 +83,8 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Result
     })?;
     client
         ._db_push()
+        .accept_data_loss() // --accept-data-loss in CLI
+        // .force_reset()      // --force-reset in CLI
         .await // apply migrations
         .map_err(|e| {
             tracing::error!("failed to push db: {}", e);
