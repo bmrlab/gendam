@@ -1,5 +1,5 @@
 'use client'
-// import Link from "next/link";
+import Icon from '@muse/ui/icons'
 import { client, rspc, queryClient } from '@/lib/rspc'
 import { Muse_Logo } from '@muse/assets/svgs'
 import { useSearchParams } from 'next/navigation'
@@ -71,7 +71,10 @@ export default function LibrariesSelect() {
           </div>
         </div>
       ) : (
-        <div className="text-ink/50 text-sm my-8">Loading ...</div>
+        <div className="text-ink/50 text-sm my-8 text-center">
+          <Icon.Loading className="w-8 h-8 animate-spin inline-block" />
+          <div className="mt-8">Loading library</div>
+        </div>
       )}
     </div>
   )

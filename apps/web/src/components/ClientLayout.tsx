@@ -1,6 +1,7 @@
 'use client'
 import LibrariesSelect from '@/components/LibrariesSelect'
 import Shared from '@/components/Shared'
+import Icon from '@muse/ui/icons'
 import { toast } from 'sonner'
 import { LibrarySettings } from '@/lib/bindings'
 import { CurrentLibrary, type Library } from '@/lib/library'
@@ -144,7 +145,10 @@ export default function ClientLayout({
   )
 
   return pending ? (
-    <div className="w-full h-full flex items-center justify-center text-ink/50">Loading...</div>
+    <div className="w-full h-full flex flex-col items-center justify-center text-ink/50">
+      <Icon.Loading className="w-8 h-8 animate-spin" />
+      <div className="text-sm mt-8">Checking library data</div>
+    </div>
   ) : !library || !librarySettings ? (
     <rspc.Provider client={client} queryClient={queryClient}>
       <LibrariesSelect />
