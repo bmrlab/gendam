@@ -129,6 +129,7 @@ pub async fn delete_file_path(
             .iter()
             .map(|v| v.to_string())
             .collect(),
+        true,
     )
     .await
     .map_err(|e| {

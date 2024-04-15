@@ -113,7 +113,7 @@ pub async fn create_video_task(
 
     match tx.lock() {
         Ok(tx) => {
-            for task_type in task_types {
+            for (idx, task_type) in task_types.iter().enumerate() {
                 let priority = match task_type {
                     // it's better not to add default arm `_ => {}` here
                     // if there are new task type in future, compiler will throw an error
@@ -140,6 +140,7 @@ pub async fn create_video_task(
                         prisma_client: library.prisma_client(),
                     },
                     priority,
+                    idx,
                 ))) {
                     Ok(_) => {
                         info!(

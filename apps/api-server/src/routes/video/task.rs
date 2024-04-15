@@ -236,7 +236,8 @@ impl VideoTaskHandler {
 
         if let Some(asset_object_data) = asset_object_data {
             if !payload.preserve_artifacts {
-                handle_delete_artifacts(&library, vec![(&asset_object_data.hash).into()]).await?;
+                handle_delete_artifacts(&library, vec![(&asset_object_data.hash).into()], false)
+                    .await?;
             }
 
             create_video_task(&asset_object_data, ctx, None)

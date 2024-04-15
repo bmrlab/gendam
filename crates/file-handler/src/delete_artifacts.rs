@@ -6,9 +6,12 @@ use qdrant_client::qdrant::{
 };
 use vector_db::{DEFAULT_LANGUAGE_COLLECTION_NAME, DEFAULT_VISION_COLLECTION_NAME};
 
+use crate::video::{AUDIO_FILE_NAME, FRAME_DIR, TRANSCRIPT_FILE_NAME};
+
 pub async fn handle_delete_artifacts(
     library: &Library,
     file_hashes: Vec<String>,
+    delete_asset: bool,
 ) -> anyhow::Result<()> {
     let file_hashes_clone = file_hashes.clone();
 
@@ -77,11 +80,26 @@ pub async fn handle_delete_artifacts(
 
     // delete artifacts on file system
     for file_hash in file_hashes_clone.iter() {
-        let path = library.artifacts_dir(&file_hash);
-        std::fs::remove_dir_all(path).map_err(|e| {
-            tracing::error!("failed to delete artifacts: {}", e);
-            e
-        })?;
+        if delete_asset {
+            // 直接删掉所有东西
+            let path = library.artifacts_dir(&file_hash);
+            std::fs::remove_dir_all(path).map_err(|e| {
+                tracing::error!("failed to delete artifacts: {}", e);
+                e
+            })?;
+        } else {
+            // 仅删除生成结果
+            let path = library.artifacts_dir(&file_hash);
+            if let Err(e) = std::fs::remove_dir_all(path.join(FRAME_DIR)) {
+                tracing::error!("failed to delete artifacts: {}", e);
+            }
+            if let Err(e) = std::fs::remove_file(path.join(TRANSCRIPT_FILE_NAME)) {
+                tracing::error!("failed to delete artifacts: {}", e);
+            };
+            if let Err(e) = std::fs::remove_file(path.join(AUDIO_FILE_NAME)) {
+                tracing::error!("failed to delete artifacts: {}", e);
+            }
+        }
     }
 
     Ok(())

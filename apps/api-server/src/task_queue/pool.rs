@@ -131,7 +131,7 @@ where
     THandler: Handler + Clone + Send + Sync + 'static,
     Type: Display + Clone + Send + Sync + 'static,
 {
-    Task((Task<THandler, Type>, TaskPriority)),
+    Task((Task<THandler, Type>, TaskPriority, usize)),
     #[allow(dead_code)]
     CancelByAssetAndType(i32, String),
     CancelByAssetId(i32),
@@ -234,7 +234,7 @@ async fn handle_task_payload_input<THandler, Type>(
     loop {
         match rx.recv() {
             Ok(payload) => match payload {
-                TaskPayload::Task((task, priority)) => {
+                TaskPayload::Task((task, priority, order)) => {
                     let asset_object_id = task.asset_object_id;
                     let task_type = task.task_type.clone();
                     info!("Task received: {} {}", asset_object_id, task_type);
@@ -266,8 +266,8 @@ async fn handle_task_payload_input<THandler, Type>(
 
                     {
                         let mut task_queue = task_queue.write().await;
-                        // 通过 insert_order 确保在相同优先级和时间戳的情况下，先加入的任务优先级相对更高
-                        let priority = priority.with_insert_order(task_queue.len());
+                        // 通过 order 确保在相同优先级和时间戳的情况下，先加入的任务优先级相对更高
+                        let priority = priority.with_insert_order(order);
                         task_queue.push(task, priority);
 
                         let current_priority = current_task_priority.read().await;
