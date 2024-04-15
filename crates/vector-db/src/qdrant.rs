@@ -1,6 +1,7 @@
 use anyhow::{anyhow, bail};
 pub use qdrant_client::client::QdrantClient;
 use rustix::process::{kill_process, Pid, Signal};
+use std::io::BufRead;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::num::NonZeroI32;
 use std::sync::mpsc::channel;
@@ -80,9 +81,22 @@ storage:
             .env("QDRANT__SERVICE__HTTP_PORT", http_port.to_string())
             .env("QDRANT__SERVICE__GRPC_PORT", grpc_port.to_string())
             .args(["--config-path", config_path.to_str().expect("invalid path")])
+            .stdout(std::process::Stdio::piped())
             .spawn()?;
 
         let pid = Pid::from_child(&process);
+
+        if let Some(stdout) = process.stdout {
+            let reader = std::io::BufReader::new(stdout);
+            tokio::spawn(async move {
+                let mut lines = reader.lines();
+                while let Some(line) = lines.next() {
+                    if let Ok(line) = line {
+                        tracing::debug!("[qdrant bin] {}", line);
+                    }
+                }
+            });
+        }
 
         let url = format!("http://{}:{}", Ipv4Addr::LOCALHOST, grpc_port);
 
