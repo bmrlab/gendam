@@ -29,6 +29,8 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
   const { mutateAsync: regenerateTask } = rspc.useMutation(['video.tasks.regenerate'])
   const { mutateAsync: cancelTask } = rspc.useMutation(['video.tasks.cancel'])
 
+  const isBatchSelected = useMemo(() => videos.length > 1, [videos])
+
   const handleSingleExport = useCallback(() => {
     setAudioDialogProps({
       type: AudioDialogEnum.single,
@@ -122,9 +124,9 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
   }, [handleCancel, videos])
 
   return {
-    handleExport: handleBatchExport,
-    handleRegenerate: handleBatchRegenerate,
-    handleCancel: handleBatchCancel,
+    handleExport: isBatchSelected ? handleBatchExport : handleSingleExport,
+    handleRegenerate: isBatchSelected ? handleBatchRegenerate : handleRegenerate,
+    handleCancel: isBatchSelected ? handleBatchCancel : handleCancel,
   }
 }
 
