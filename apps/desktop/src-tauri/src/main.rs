@@ -1,9 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use api_server::{ctx::default::Ctx, CtxWithLibrary};
-use content_library::{load_library, Library};
+use content_library::Library;
 use dotenvy::dotenv;
-use serde_json::json;
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
@@ -126,40 +125,40 @@ async fn main() {
         tracing::warn!("Failed to load tauri store: {:?}", e);
     });
 
-    // try to kill current qdrant server, if any
-    match tauri_store.get("current-qdrant-pid") {
-        Some(pid) => {
-            if let Some(pid) = pid.as_str() {
-                if vector_db::kill_qdrant_server(pid.parse().unwrap()).is_err() {
-                    tracing::warn!("Failed to kill qdrant server according to store");
-                };
-            }
-            let _ = tauri_store.delete("current-qdrant-pid");
-            let _ = tauri_store.save();
-        }
-        _ => {}
-    }
+    // // try to kill current qdrant server, if any
+    // match tauri_store.get("current-qdrant-pid") {
+    //     Some(pid) => {
+    //         if let Some(pid) = pid.as_str() {
+    //             if vector_db::kill_qdrant_server(pid.parse().unwrap()).is_err() {
+    //                 tracing::warn!("Failed to kill qdrant server according to store");
+    //             };
+    //         }
+    //         let _ = tauri_store.delete("current-qdrant-pid");
+    //         let _ = tauri_store.save();
+    //     }
+    //     _ => {}
+    // }
 
-    if let Some(value) = tauri_store.get("current-library-id") {
-        let library_id = value.as_str().unwrap().to_owned();
-        match load_library(&local_data_root, &library_id).await {
-            Ok(library) => {
-                let pid = library.qdrant_server_info();
-                current_library.lock().unwrap().replace(library);
-                // 注意这里要插入字符串类型的 pid
-                let _ = tauri_store.insert("current-qdrant-pid".into(), json!(pid.to_string()));
-                if tauri_store.save().is_err() {
-                    tracing::warn!("Failed to save store");
-                }
-            }
-            Err(e) => {
-                tracing::error!("Failed to load library: {:?}", e);
-                let _ = tauri_store.delete("current-library-id");
-                let _ = tauri_store.save();
-                // return;
-            }
-        };
-    }
+    // if let Some(value) = tauri_store.get("current-library-id") {
+    //     let library_id = value.as_str().unwrap().to_owned();
+    //     match load_library(&local_data_root, &library_id).await {
+    //         Ok(library) => {
+    //             let pid = library.qdrant_server_info();
+    //             current_library.lock().unwrap().replace(library);
+    //             // 注意这里要插入字符串类型的 pid
+    //             let _ = tauri_store.insert("current-qdrant-pid".into(), json!(pid.to_string()));
+    //             if tauri_store.save().is_err() {
+    //                 tracing::warn!("Failed to save store");
+    //             }
+    //         }
+    //         Err(e) => {
+    //             tracing::error!("Failed to load library: {:?}", e);
+    //             let _ = tauri_store.delete("current-library-id");
+    //             let _ = tauri_store.save();
+    //             // return;
+    //         }
+    //     };
+    // }
 
     window.on_window_event({
         let current_library = current_library.clone();

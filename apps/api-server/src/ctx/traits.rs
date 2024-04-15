@@ -23,25 +23,15 @@ pub trait CtxWithLibrary {
     fn get_local_data_root(&self) -> PathBuf;
     fn get_resources_dir(&self) -> PathBuf;
 
-    fn switch_current_library<'async_trait>(
-        &'async_trait self,
-        library_id: &'async_trait str,
-    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
-    where
-        Self: Sync + 'async_trait;
-
     fn load_library<'async_trait>(
         &'async_trait self,
         library_id: &'async_trait str,
-    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
+    ) -> Pin<Box<dyn std::future::Future<Output = Result<(), rspc::Error>> + Send + 'async_trait>>
     where
         Self: Sync + 'async_trait;
 
-    fn quit_current_library<'async_trait>(
-        &'async_trait self,
-    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
-    where
-        Self: Sync + 'async_trait;
+    fn quit_library_in_store(&self) -> Result<(), rspc::Error>;
+    fn library_id_in_store(&self) -> Option<String>;
 
     fn library(&self) -> Result<Library, rspc::Error>;
 

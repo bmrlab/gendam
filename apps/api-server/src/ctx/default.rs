@@ -4,15 +4,15 @@ use crate::{
     ai::{init_ai_handlers, AIHandler},
     task_queue::{init_task_pool, trigger_unfinished, TaskPayload},
 };
-use content_library::{load_library, quit_library, Library};
+use content_library::{load_library, Library};
 use file_handler::video::{VideoHandler, VideoTaskType};
 use std::{
     boxed::Box,
     path::PathBuf,
     pin::Pin,
-    sync::{mpsc::Sender, Arc, Mutex},
+    sync::{atomic::AtomicBool, mpsc::Sender, Arc, Mutex},
 };
-use tracing::warn;
+use vector_db::kill_qdrant_server;
 
 /**
  * default impl of a store for rspc Ctx
@@ -76,6 +76,7 @@ pub struct Ctx<S: CtxStore> {
     current_library: Arc<Mutex<Option<Library>>>,
     tx: Arc<Mutex<Sender<TaskPayload<VideoHandler, VideoTaskType>>>>,
     ai_handler: AIHandler,
+    library_loading: Arc<Mutex<AtomicBool>>,
 }
 
 impl<S: CtxStore> Clone for Ctx<S> {
@@ -87,6 +88,7 @@ impl<S: CtxStore> Clone for Ctx<S> {
             current_library: Arc::clone(&self.current_library),
             tx: Arc::clone(&self.tx),
             ai_handler: self.ai_handler.clone(),
+            library_loading: self.library_loading.clone(),
         }
     }
 }
@@ -114,6 +116,7 @@ impl<S: CtxStore> Ctx<S> {
             current_library,
             tx,
             ai_handler,
+            library_loading: Arc::new(Mutex::new(AtomicBool::new(false))),
         }
     }
 }
@@ -137,167 +140,106 @@ impl<S: CtxStore> CtxWithLibrary for Ctx<S> {
         }
     }
 
-    fn switch_current_library<'async_trait>(
-        &'async_trait self,
-        library_id: &'async_trait str,
-    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
-    where
-        Self: Sync + 'async_trait,
-    {
-        // cancel all tasks
-        let mut current_tx = self.tx.lock().unwrap();
-        if let Err(e) = current_tx.send(TaskPayload::CancelAll) {
-            tracing::warn!("Failed to send CancelAll task: {}", e);
-        }
-
-        let tx = init_task_pool().expect("Failed to init task pool");
-        *current_tx = tx;
-
+    fn quit_library_in_store<'async_trait>(&self) -> Result<(), rspc::Error> {
         let mut store = self.store.lock().unwrap();
-        let _ = store.insert("current-library-id", library_id);
+        let qdrant_pid = store.get("current-qdrant-pid");
 
-        // try to kill current qdrant server, if any
-        match store.get("current-qdrant-pid") {
+        match qdrant_pid {
             Some(pid) => {
-                if let Ok(pid) = pid.parse::<i32>() {
-                    if vector_db::kill_qdrant_server(pid).is_err() {
-                        warn!("Failed to kill qdrant server according to store");
-                    };
+                if let Ok(pid) = pid.parse() {
+                    kill_qdrant_server(pid).map_err(|e| {
+                        rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string())
+                    })?;
                 }
                 let _ = store.delete("current-qdrant-pid");
             }
-            _ => {
-                warn!("invalid qdrant config, skipping killing qdrant server");
-            }
+            _ => {}
         }
 
         if store.save().is_err() {
             tracing::warn!("Failed to save store");
         }
 
-        // try to load library, but this is not necessary
-        let _ = store.load();
-        if let Some(library_id) = store.get("current-library-id") {
-            let library_id = library_id.clone();
-            return Box::pin(async move {
-                let library = load_library(&self.local_data_root, &library_id)
-                    .await
-                    .unwrap();
+        Ok(())
+    }
 
-                let pid = library.qdrant_server_info();
-                self.current_library.lock().unwrap().replace(library);
-
-                let mut store = self.store.lock().unwrap();
-                let _ = store.insert("current-qdrant-pid", &pid.to_string());
-                if store.save().is_err() {
-                    tracing::warn!("Failed to save store");
-                }
-
-                tracing::info!("Current library switched to {}", library_id);
-
-                // 这里本来应该触发一下未完成的任务
-                // 但是不await的话，没有特别好的写法
-                // 把这里的触发放到前端，前端切换完成后再触发一下接口
-                // 这样用户操作也不会被 block
-            });
-        } else {
-            // 这里实际上不可能被执行，除非 settings.json 数据有问题
-            return Box::pin(async move {
-                self.current_library.lock().unwrap().take();
-                tracing::info!("Current library is unset");
-            });
-        }
+    fn library_id_in_store(&self) -> Option<String> {
+        let store = self.store.lock().unwrap();
+        store.get("current-library-id")
     }
 
     fn load_library<'async_trait>(
         &'async_trait self,
         library_id: &'async_trait str,
-    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
+    ) -> Pin<Box<dyn std::future::Future<Output = Result<(), rspc::Error>> + Send + 'async_trait>>
     where
         Self: Sync + 'async_trait,
     {
+        tracing::info!("try to load library: {}", library_id);
+
+        let mut library_loading = self.library_loading.lock().unwrap();
+        let is_loading = library_loading.get_mut();
+        if *is_loading {
+            // if library is already loading, just return
+            // FIXME it's better to wait until library is loaded
+            return Box::pin(async {
+                Err(rspc::Error::new(
+                    // FIXME should use 429 too many requests error code
+                    rspc::ErrorCode::Conflict,
+                    "too many requests".into(),
+                ))
+            });
+        }
+
+        library_loading.store(true, std::sync::atomic::Ordering::Relaxed);
+
+        if let Err(e) = self.quit_library_in_store() {
+            tracing::warn!("Failed to quit current library: {}", e);
+        }
+
+        tracing::info!("finished quit");
+
         let mut current_tx = self.tx.lock().unwrap();
+        if let Err(e) = current_tx.send(TaskPayload::CancelAll) {
+            tracing::warn!("Failed to send task cancel: {}", e);
+        }
         let tx = init_task_pool().expect("Failed to init task pool");
         *current_tx = tx;
 
         let mut store = self.store.lock().unwrap();
         let _ = store.insert("current-library-id", library_id);
-
-        // try to load library, but this is not necessary
-        let _ = store.load();
-        if let Some(library_id) = store.get("current-library-id") {
-            let library_id = library_id.clone();
-            return Box::pin(async move {
-                let library = load_library(&self.local_data_root, &library_id)
-                    .await
-                    .unwrap();
-
-                let pid = library.qdrant_server_info();
-                self.current_library.lock().unwrap().replace(library);
-
-                let mut store = self.store.lock().unwrap();
-                let _ = store.insert("current-qdrant-pid", &pid.to_string());
-                if store.save().is_err() {
-                    tracing::warn!("Failed to save store");
-                }
-
-                tracing::info!("Current library switched to {}", library_id);
-
-                // 这里本来应该触发一下未完成的任务
-                // 但是不await的话，没有特别好的写法
-                // 把这里的触发放到前端，前端切换完成后再触发一下接口
-                // 这样用户操作也不会被 block
-            });
-        } else {
-            // 这里实际上不可能被执行，除非 settings.json 数据有问题
-            return Box::pin(async move {
-                self.current_library.lock().unwrap().take();
-                tracing::info!("Current library is unset");
-            });
-        }
-    }
-
-    fn quit_current_library<'async_trait>(
-        &'async_trait self,
-    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
-    where
-        Self: Sync + 'async_trait,
-    {
-        // cancel all tasks
-        let current_tx = self.tx.lock().unwrap();
-        if let Err(e) = current_tx.send(TaskPayload::CancelAll) {
-            tracing::warn!("Failed to send CancelAll task: {}", e);
-        }
-
-        let mut store = self.store.lock().unwrap();
-        let _ = store.delete("current-library-id");
-        let _ = store.delete("current-qdrant-pid");
         if store.save().is_err() {
             tracing::warn!("Failed to save store");
         }
 
-        let qdrant_pid = store.get("current-qdrant-pid");
+        // try to load library, but this is not necessary
+        return Box::pin(async move {
+            tracing::info!("start async loading library");
+            let library = load_library(&self.local_data_root, &library_id)
+                .await
+                .unwrap();
 
-        // get necessary information from store and quit library
-        match qdrant_pid {
-            Some(pid) => {
-                if let Ok(pid) = pid.parse::<i32>() {
-                    return Box::pin(async move {
-                        if quit_library(pid).await.is_err() {
-                            warn!("Failed to kill qdrant server according to store");
-                        };
-                        self.current_library.lock().unwrap().take();
-                    });
-                }
-            }
-            _ => {
-                warn!("invalid qdrant config, skipping killing qdrant server");
-            }
-        }
+            let pid = library.qdrant_server_info();
+            self.current_library.lock().unwrap().replace(library);
 
-        Box::pin(async move {
-            self.current_library.lock().unwrap().take();
-        })
+            let mut store = self.store.lock().unwrap();
+            let _ = store.insert("current-qdrant-pid", &pid.to_string());
+            if store.save().is_err() {
+                tracing::warn!("Failed to save store");
+            }
+
+            tracing::info!("Current library switched to {}", library_id);
+
+            let library_loading = self.library_loading.lock().unwrap();
+            library_loading.store(false, std::sync::atomic::Ordering::Relaxed);
+
+            Ok(())
+
+            // 这里本来应该触发一下未完成的任务
+            // 但是不await的话，没有特别好的写法
+            // 把这里的触发放到前端，前端切换完成后再触发一下接口
+            // 这样用户操作也不会被 block
+        });
     }
 
     fn get_task_tx(&self) -> Arc<Mutex<Sender<TaskPayload<VideoHandler, VideoTaskType>>>> {

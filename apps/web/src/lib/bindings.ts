@@ -35,10 +35,6 @@ export type Procedures = {
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
 
-export type LibrariesListResult = { id: string; dir: string; title: string }
-
-export type CurrentLibraryResult = { id: string; dir: string }
-
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
 export type TaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
@@ -73,7 +69,11 @@ export type FilePathRequestPayload = { id: number; isDir: boolean; materializedP
 
 export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum }
 
+export type CurrentLibraryResult = { id: string; dir: string }
+
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
+
+export type LibrariesListResult = { id: string; dir: string; title: string }
 
 export type VideoWithTasksPageResult = { data: VideoWithTasksResult[]; pagination: Pagination; maxPage: number }
 

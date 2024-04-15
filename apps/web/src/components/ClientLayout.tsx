@@ -1,13 +1,13 @@
 'use client'
 import LibrariesSelect from '@/components/LibrariesSelect'
 import Shared from '@/components/Shared'
-import Icon from '@muse/ui/icons'
-import { toast } from 'sonner'
 import { LibrarySettings } from '@/lib/bindings'
 import { CurrentLibrary, type Library } from '@/lib/library'
 import { client, queryClient, rspc } from '@/lib/rspc'
+import Icon from '@muse/ui/icons'
 import { convertFileSrc } from '@tauri-apps/api/tauri'
 import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 export default function ClientLayout({
   children,
@@ -33,31 +33,31 @@ export default function ClientLayout({
 
   const initLibraryData = useCallback(async () => {
     setPending(true)
-    const p1 = client
-      .query(['libraries.get_current_library'])
-      .then((library: Library) => setLibrary(library))
-      .catch((error) => {
-        toast.error('libraries.get_current_library error:', {
-          description: `${error}`
-        })
-        setLibrary(null)
-      })
-    const p2 = client
-      .query(['libraries.get_library_settings'])
-      .then((librarySettings: LibrarySettings) => setLibrarySettings(librarySettings))
-      .catch((error) => {
-        toast.error('libraries.get_library_settings error:', {
-          description: `${error}`
-        })
-        setLibrarySettings(null)
-      })
+
     try {
-      await Promise.all([p1, p2])
+      // get_current_library will load the library from store
+      const library = await client.query(['libraries.get_current_library'])
+      setLibrary(library)
+      const librarySettings = await client.query(['libraries.get_library_settings'])
+      setLibrarySettings(librarySettings)
       setPending(false)
-    } catch (error) {
-      toast.error('Something went wrong getting library data, application will not start', {
-        description: `${error}`
-      })
+
+      // 触发未完成的任务
+      await client.mutation(['video.tasks.trigger_unfinished', library.id])
+    } catch (error: any) {
+      /**
+       * 现在 libraries.get_current_library 有两种情况会报错
+       * - 当前 library 为空
+       * - 当前 library 正在 loading, 此时 error.message === "too many requests"
+       *
+       * 对于第二种情况，可以直接忽略请求，一般是因为 useEffect 二次执行造成的
+       */
+      if (error.message !== 'too many requests') {
+        setPending(false)
+        toast.error('Something went wrong getting library data, application will not start', {
+          description: `${error}`,
+        })
+      }
     }
   }, [setLibrarySettings, setLibrary, setPending])
 
@@ -86,6 +86,16 @@ export default function ClientLayout({
     }
   }, [librarySettings?.appearanceTheme])
 
+  const setCurrentLibrary = useCallback(
+    async (libraryId: string) => {
+      setLibrary(null)
+      setPending(true)
+      await client.mutation(['libraries.set_current_library', libraryId])
+      initLibraryData()
+    },
+    [initLibraryData],
+  )
+
   const updateLibrarySettings = useCallback(
     async (partialSettings: Partial<LibrarySettings>) => {
       if (!librarySettings) {
@@ -97,7 +107,7 @@ export default function ClientLayout({
         setLibrarySettings(newSettings)
       } catch (error) {
         toast.error('Failed to update library settings', {
-          description: `${error}`
+          description: `${error}`,
         })
       }
     },
@@ -145,13 +155,13 @@ export default function ClientLayout({
   )
 
   return pending ? (
-    <div className="w-full h-full flex flex-col items-center justify-center text-ink/50">
-      <Icon.Loading className="w-8 h-8 animate-spin" />
-      <div className="text-sm mt-8">Checking library data</div>
+    <div className="text-ink/50 flex h-full w-full flex-col items-center justify-center">
+      <Icon.Loading className="h-8 w-8 animate-spin" />
+      <div className="mt-8 text-sm">Checking library data</div>
     </div>
   ) : !library || !librarySettings ? (
     <rspc.Provider client={client} queryClient={queryClient}>
-      <LibrariesSelect />
+      <LibrariesSelect setCurrentLibrary={setCurrentLibrary} />
     </rspc.Provider>
   ) : (
     <CurrentLibrary.Provider
@@ -160,6 +170,7 @@ export default function ClientLayout({
         dir: library.dir,
         librarySettings: librarySettings,
         updateLibrarySettings: updateLibrarySettings,
+        set: setCurrentLibrary,
         getFileSrc,
         getThumbnailSrc,
       }}

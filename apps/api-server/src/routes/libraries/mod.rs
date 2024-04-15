@@ -1,12 +1,14 @@
 mod settings;
-use settings::{get_library_settings, set_library_settings, LIBRARY_SETTINGS_FILE_NAME, LibrarySettings};
-use std::path::PathBuf;
 use crate::CtxWithLibrary;
 use content_library::{create_library, list_library_dirs};
 use rspc::{Router, RouterBuilder};
-use serde_json::json;
 use serde::Serialize;
+use serde_json::json;
+use settings::{
+    get_library_settings, set_library_settings, LibrarySettings, LIBRARY_SETTINGS_FILE_NAME,
+};
 use specta::Type;
+use std::path::PathBuf;
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -24,21 +26,27 @@ where
             |t| {
                 t(|ctx, _input: ()| async move {
                     let library_dirs = list_library_dirs(&ctx.get_local_data_root());
-                    library_dirs.into_iter().map(|(dir, id)| {
-                        let title = match std::fs::File::open(
-                            PathBuf::from(&dir).join(LIBRARY_SETTINGS_FILE_NAME)
-                        ) {
-                            Ok(file) => {
-                                let reader = std::io::BufReader::new(file);
-                                match serde_json::from_reader::<_, serde_json::Value>(reader) {
-                                    Ok(values) => values["title"].as_str().unwrap_or("Untitled").to_string(),
-                                    Err(_) => "Untitled".to_string()
+                    library_dirs
+                        .into_iter()
+                        .map(|(dir, id)| {
+                            let title = match std::fs::File::open(
+                                PathBuf::from(&dir).join(LIBRARY_SETTINGS_FILE_NAME),
+                            ) {
+                                Ok(file) => {
+                                    let reader = std::io::BufReader::new(file);
+                                    match serde_json::from_reader::<_, serde_json::Value>(reader) {
+                                        Ok(values) => values["title"]
+                                            .as_str()
+                                            .unwrap_or("Untitled")
+                                            .to_string(),
+                                        Err(_) => "Untitled".to_string(),
+                                    }
                                 }
-                            }
-                            Err(_) => "Untitled".to_string()
-                        };
-                        LibrariesListResult { id, dir, title }
-                    }).collect::<Vec<LibrariesListResult>>()
+                                Err(_) => "Untitled".to_string(),
+                            };
+                            LibrariesListResult { id, dir, title }
+                        })
+                        .collect::<Vec<LibrariesListResult>>()
                 })
             }
         })
@@ -69,20 +77,18 @@ where
         .mutation("update_library_settings", |t| {
             t(|ctx, input: LibrarySettings| async move {
                 let library = ctx.library()?;
-                set_library_settings(
-                    &library.dir,
-                    input
-                );
+                set_library_settings(&library.dir, input);
                 Ok(())
             })
         })
         .mutation("set_current_library", |t| {
             /*
-             * TODO: 这里要改成先校验一下 ctx.library 是否为 None, 如果是, 直接 load 而不是 switch
-             * 并且删除 switch 方法
+             * ctx.load_library 会负责进行当前 library 的卸载
              */
             t(|ctx, library_id: String| async move {
-                ctx.switch_current_library(&library_id).await;
+                if let Err(e) = ctx.load_library(&library_id).await {
+                    tracing::error!("Failed to load library: {}", e);
+                }
                 json!({ "status": "ok" })
             })
         })
@@ -100,25 +106,37 @@ where
                         String::from("The library is not the current library"),
                     ));
                 }
-                ctx.quit_current_library().await;
+                ctx.quit_library_in_store()?;
                 Ok(json!({ "status": "ok" }))
             })
         })
-        .query("get_current_library", {
-            #[derive(Serialize, Type)]
-            #[serde(rename_all = "camelCase")]
-            pub struct CurrentLibraryResult {
-                pub id: String,
-                pub dir: String,
-            }
-            |t| {
-                t(|ctx, _input: ()| async move {
-                    let library = ctx.library()?;
-                    Ok(CurrentLibraryResult {
-                        id: library.id.clone(),
-                        dir: library.dir.into_os_string().into_string().unwrap(),
-                    })
+        .query("get_current_library", |t| {
+            t(|ctx, _input: ()| async move {
+                #[derive(Serialize, Type)]
+                #[serde(rename_all = "camelCase")]
+                pub struct CurrentLibraryResult {
+                    pub id: String,
+                    pub dir: String,
+                }
+                let library = match ctx.library() {
+                    Ok(lib) => lib,
+                    // 如果当前 library不存在，需要从本地 store 中将其读取出来
+                    _ => {
+                        let library_id = ctx.library_id_in_store();
+                        // 如果本地 store 中也没有，说明没有设置，返回错误
+                        let library_id = library_id.ok_or(rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            "current library not set".into(),
+                        ))?;
+                        ctx.load_library(&library_id).await?;
+                        ctx.library()?
+                    }
+                };
+
+                Ok(CurrentLibraryResult {
+                    id: library.id.clone(),
+                    dir: library.dir.to_str().unwrap().to_string(),
                 })
-            }
+            })
         })
 }

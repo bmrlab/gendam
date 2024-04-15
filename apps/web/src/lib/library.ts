@@ -1,5 +1,5 @@
-import { ContextType, createContext, useContext } from 'react'
 import { LibrarySettings } from '@/lib/bindings'
+import { ContextType, createContext, useContext } from 'react'
 
 export type Library = {
   id: string
@@ -9,14 +9,15 @@ export type Library = {
 type CurrentLibraryContext = {
   id: string
   dir: string
-  librarySettings: LibrarySettings,
-  updateLibrarySettings: (partialSettingssettings: Partial<LibrarySettings>) => Promise<void>,
+  librarySettings: LibrarySettings
+  updateLibrarySettings: (partialSettingssettings: Partial<LibrarySettings>) => Promise<void>
+  set: (libraryId: string) => Promise<void>
   getFileSrc: (assetObjectId: string) => string
   getThumbnailSrc: (assetObjectId: string, timestampInSecond?: number) => string
 }
 
-export const CurrentLibrary = createContext<CurrentLibraryContext|null>(
-  null
+export const CurrentLibrary = createContext<CurrentLibraryContext | null>(
+  null,
   // {
   //   updateLibrarySettings: async () => {},
   //   set: async () => {},

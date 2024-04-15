@@ -2,7 +2,7 @@ use prisma_lib::{new_client_with_url, PrismaClient};
 use qdrant::create_qdrant_server;
 use qdrant_client::client::QdrantClient;
 use std::{num::NonZeroI32, path::PathBuf, sync::Arc};
-use vector_db::{kill_qdrant_server_async, QdrantServer};
+use vector_db::QdrantServer;
 
 mod port;
 mod qdrant;
@@ -157,8 +157,37 @@ pub fn list_library_dirs(local_data_root: &PathBuf) -> Vec<(String, String)> {
     res
 }
 
-pub async fn quit_library(qdrant_server_pid: i32) -> Result<(), String> {
-    kill_qdrant_server_async(qdrant_server_pid).await.map_err(|e| e.to_string())
+pub fn get_library_settings(library_dir: &PathBuf) -> serde_json::Value {
+    match std::fs::File::open(library_dir.join("settings.json")) {
+        Ok(file) => {
+            let reader = std::io::BufReader::new(file);
+            match serde_json::from_reader(reader) {
+                Ok(values) => values,
+                Err(e) => {
+                    tracing::error!("Failed to read file: {}", e);
+                    serde_json::json!({ "title": "Untitled" })
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to open library's settings.json, {}", e);
+            serde_json::json!({ "title": "Untitled" })
+        }
+    }
+}
+
+pub fn set_library_settings(library_dir: &PathBuf, settings: serde_json::Value) {
+    // create or update to library_dir.join("settings.json")
+    match std::fs::File::create(library_dir.join("settings.json")) {
+        Ok(file) => {
+            if let Err(e) = serde_json::to_writer(file, &settings) {
+                tracing::error!("Failed to write file: {}", e);
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to create file: {}", e);
+        }
+    };
 }
 
 fn get_shard_hex(hash: &str) -> &str {

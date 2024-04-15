@@ -4,7 +4,7 @@ use api_server::{
     CtxStore, CtxWithLibrary,
 };
 use axum::{http::request::Parts, routing::get};
-use content_library::{load_library, Library};
+use content_library::Library;
 use dotenvy::dotenv;
 use std::{
     env,
@@ -57,39 +57,39 @@ async fn main() {
     });
 
     // try to kill current qdrant server, if any
-    match default_store.get("current-qdrant-pid") {
-        Some(pid) => {
-            if let Ok(pid) = pid.parse::<i32>() {
-                if vector_db::kill_qdrant_server(pid).is_err() {
-                    tracing::warn!("Failed to kill qdrant server according to store");
-                };
-            }
-            let _ = default_store.delete("current-qdrant-pid");
-        }
-        _ => {}
-    }
+    // match default_store.get("current-qdrant-pid") {
+    //     Some(pid) => {
+    //         if let Ok(pid) = pid.parse::<i32>() {
+    //             if vector_db::kill_qdrant_server(pid).is_err() {
+    //                 tracing::warn!("Failed to kill qdrant server according to store");
+    //             };
+    //         }
+    //         let _ = default_store.delete("current-qdrant-pid");
+    //     }
+    //     _ => {}
+    // }
 
-    if default_store.save().is_err() {
-        tracing::warn!("Failed to save store");
-    }
+    // if default_store.save().is_err() {
+    //     tracing::warn!("Failed to save store");
+    // }
 
-    if let Some(library_id) = default_store.get("current-library-id") {
-        match load_library(&local_data_root, &library_id).await {
-            Ok(library) => {
-                let pid = library.qdrant_server_info();
-                current_library.lock().unwrap().replace(library);
-                let _ = default_store.insert("current-qdrant-pid", &pid.to_string());
-                if default_store.save().is_err() {
-                    tracing::warn!("Failed to save store");
-                }
-            }
-            Err(e) => {
-                tracing::error!("Failed to load library: {:?}", e);
-                let _ = default_store.delete("current-library-id");
-                let _ = default_store.save();
-            }
-        };
-    }
+    // if let Some(library_id) = default_store.get("current-library-id") {
+    //     match load_library(&local_data_root, &library_id).await {
+    //         Ok(library) => {
+    //             let pid = library.qdrant_server_info();
+    //             current_library.lock().unwrap().replace(library);
+    //             let _ = default_store.insert("current-qdrant-pid", &pid.to_string());
+    //             if default_store.save().is_err() {
+    //                 tracing::warn!("Failed to save store");
+    //             }
+    //         }
+    //         Err(e) => {
+    //             tracing::error!("Failed to load library: {:?}", e);
+    //             let _ = default_store.delete("current-library-id");
+    //             let _ = default_store.save();
+    //         }
+    //     };
+    // }
 
     let cors = CorsLayer::new()
         .allow_methods(Any)
