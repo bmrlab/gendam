@@ -9,8 +9,8 @@ use tracing_subscriber::{
     util::SubscriberInitExt,
 };
 
-mod open_telemetry;
-use open_telemetry::init_otel_layer;
+// mod open_telemetry;
+// use open_telemetry::init_otel_layer;
 
 
 fn init_env_layer() -> tracing_subscriber::EnvFilter {
@@ -32,19 +32,19 @@ pub fn init_tracing_to_stdout() {
     let stdout_layer = tracing_subscriber::fmt::layer()
         .with_ansi(true);
 
-    let telemetry_layer = init_otel_layer();
+    // let telemetry_layer = init_otel_layer();
 
     tracing_subscriber::registry()
         .with(env_layer)
         .with(stdout_layer)
-        .with(telemetry_layer)
+        // .with(telemetry_layer)
         .init();
 }
 
 pub fn init_tracing_to_file(log_dir: PathBuf) {
     let env_layer = init_env_layer();
 
-    let telemetry_layer = init_otel_layer();
+    // let telemetry_layer = init_otel_layer();
 
     /*
     * see logs with cmd:
@@ -75,6 +75,6 @@ pub fn init_tracing_to_file(log_dir: PathBuf) {
         .with(env_layer)
         .with(file_log_layer)
         // .with(os_logger)
-        .with(telemetry_layer)
+        // .with(telemetry_layer)
         .init();
 }
