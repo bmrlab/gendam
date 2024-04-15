@@ -100,7 +100,9 @@ impl From<&RawProbeStreamOutput> for VideoMetadata {
             height: stream.height.unwrap_or(0),
             duration: stream.duration.unwrap_or_default().parse().unwrap_or(0.0),
             bit_rate: stream.bit_rate.unwrap_or_default().parse().unwrap_or(0),
-            avg_frame_rate: VideoAvgFrameRate::from(stream.avg_frame_rate.unwrap_or_default().clone()),
+            avg_frame_rate: VideoAvgFrameRate::from(
+                stream.avg_frame_rate.unwrap_or_default().clone(),
+            ),
             audio: None,
         }
     }
@@ -242,6 +244,41 @@ impl VideoDecoder {
 
     pub async fn save_video_frames(&self, frames_dir: impl AsRef<Path>) -> anyhow::Result<()> {
         fs::create_dir_all(frames_dir.as_ref())?;
+
+        // 单独提取 timestamp 为 0 的帧
+        match std::process::Command::new(&self.binary_file_path)
+            .args([
+                "-i",
+                self.video_file_path
+                    .to_str()
+                    .expect("invalid video file path"),
+                "-vf",
+                "scale='if(gte(iw,ih)*sar,768,-1)':'if(gte(iw,ih)*sar, -1, 768)',select=eq(n\\,0)",
+                "-vsync",
+                "vfr",
+                "-compression_level",
+                "9",
+                frames_dir
+                    .as_ref()
+                    .join(format!("0.{}", FRAME_FILE_EXTENSION))
+                    .to_str()
+                    .expect("invalid frames dir path"),
+            ])
+            .output()
+        {
+            Ok(output) => {
+                if !output.status.success() {
+                    bail!(
+                        "Failed to save video frames: {}",
+                        String::from_utf8_lossy(&output.stderr)
+                    );
+                }
+            }
+            Err(e) => {
+                bail!("Failed to save video frames: {e}");
+            }
+        }
+
         match std::process::Command::new(&self.binary_file_path)
             .args([
                 "-i",

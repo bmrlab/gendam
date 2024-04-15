@@ -59,6 +59,7 @@ export default function useTaskAction({ fileHash, video }: TaskActionProps) {
       try {
         await regenerateTask({
           assetObjectId: param?.id ?? assetObjectId,
+          preserveArtifacts: false,
         })
         await taskListRefetch()
         toast.success('Successfully re-process job', {
@@ -93,6 +94,7 @@ export default function useTaskAction({ fileHash, video }: TaskActionProps) {
     async (id?: number) => {
       await cancelTask({
         assetObjectId: id ?? assetObjectId,
+        taskTypes: null,
       })
       await taskListRefetch()
       toast.success('Job cancelled', {

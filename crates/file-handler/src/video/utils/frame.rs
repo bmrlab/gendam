@@ -5,7 +5,10 @@ use ai::{
 };
 use anyhow::Ok;
 use prisma_lib::{video_frame, PrismaClient};
-use qdrant_client::{client::QdrantClient, qdrant::PointStruct};
+use qdrant_client::{
+    client::QdrantClient,
+    qdrant::{point_id::PointIdOptions, PointId, PointStruct},
+};
 use serde_json::json;
 use std::sync::Arc;
 use tracing::{debug, error};
@@ -62,49 +65,48 @@ pub async fn save_frame_content_embedding(
     // 这里还是从本地读取所有图片
     // 因为可能一个视频包含的帧数可能非常多，从 sqlite 读取反而麻烦了
     let frame_paths = std::fs::read_dir(frames_dir.as_ref())?
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, std::io::Error>>()?;
+        .filter_map(|res| res.map(|e| e.path()).ok())
+        .filter(|v| v.extension() == Some(std::ffi::OsStr::new(FRAME_FILE_EXTENSION)))
+        .collect::<Vec<_>>();
 
     for path in frame_paths {
-        if path.extension() == Some(std::ffi::OsStr::new(FRAME_FILE_EXTENSION)) {
-            let client = client.clone();
-            let clip_model = clip_model.clone();
-            let qdrant = qdrant.clone();
+        let client = client.clone();
+        let clip_model = clip_model.clone();
+        let qdrant = qdrant.clone();
 
-            let frame_timestamp = get_frame_timestamp_from_path(&path)?;
-            let file_identifier = file_identifier.clone();
+        let frame_timestamp = get_frame_timestamp_from_path(&path)?;
+        let file_identifier = file_identifier.clone();
 
-            // get data using prisma
-            let x = {
-                client
-                    .video_frame()
-                    .find_unique(video_frame::file_identifier_timestamp(
-                        file_identifier.clone(),
-                        frame_timestamp as i32,
-                    ))
-                    .exec()
-                    .await
-                // drop the rwlock
-            };
+        // get data using prisma
+        let x = {
+            client
+                .video_frame()
+                .find_unique(video_frame::file_identifier_timestamp(
+                    file_identifier.clone(),
+                    frame_timestamp as i32,
+                ))
+                .exec()
+                .await
+            // drop the rwlock
+        };
 
-            match x {
-                std::result::Result::Ok(Some(res)) => {
-                    let payload = SearchPayload::Frame {
-                        id: res.id as u64,
-                        file_identifier: file_identifier.clone(),
-                        timestamp: frame_timestamp,
-                    };
+        match x {
+            std::result::Result::Ok(Some(res)) => {
+                let payload = SearchPayload::Frame {
+                    id: res.id as u64,
+                    file_identifier: file_identifier.clone(),
+                    timestamp: frame_timestamp,
+                };
 
-                    let _ = get_single_frame_content_embedding(payload, &path, clip_model, qdrant)
-                        .await;
-                    debug!("frame content embedding saved");
-                }
-                std::result::Result::Ok(None) => {
-                    error!("failed to find frame");
-                }
-                Err(e) => {
-                    error!("failed to save frame content embedding: {:?}", e);
-                }
+                let _ =
+                    get_single_frame_content_embedding(payload, &path, clip_model, qdrant).await;
+                debug!("frame content embedding saved");
+            }
+            std::result::Result::Ok(None) => {
+                error!("failed to find frame");
+            }
+            Err(e) => {
+                error!("failed to save frame content embedding: {:?}", e);
             }
         }
     }
@@ -118,6 +120,27 @@ async fn get_single_frame_content_embedding(
     clip_model: BatchHandler<CLIP>,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
+    // if point exists, skip
+    match qdrant
+        .get_points(
+            vector_db::DEFAULT_VISION_COLLECTION_NAME,
+            None,
+            &[PointId {
+                point_id_options: Some(PointIdOptions::Uuid(payload.get_uuid().to_string())),
+            }],
+            Some(false),
+            Some(false),
+            None,
+        )
+        .await
+    {
+        std::result::Result::Ok(res) if res.result.len() > 0 => {
+            debug!("frame content embedding already exists, skip it");
+            return Ok(());
+        }
+        _ => {}
+    }
+
     let embedding = clip_model
         .process_single(CLIPInput::ImageFilePath(path.as_ref().to_path_buf()))
         .await?;

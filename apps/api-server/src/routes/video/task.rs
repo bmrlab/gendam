@@ -1,5 +1,6 @@
 use crate::task_queue::create_video_task;
 use crate::CtxWithLibrary;
+use file_handler::delete_artifacts::handle_delete_artifacts;
 use prisma_client_rust::{operator, Direction};
 use prisma_lib::PrismaClient;
 use prisma_lib::{asset_object, file_handler_task, media_data};
@@ -39,12 +40,14 @@ struct TaskListRequestPayload {
 #[serde(rename_all = "camelCase")]
 struct TaskCancelRequestPayload {
     asset_object_id: i32,
+    task_types: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
 struct TaskRedoRequestPayload {
     asset_object_id: i32,
+    preserve_artifacts: bool,
 }
 
 #[derive(Serialize, Type)]
@@ -178,22 +181,39 @@ impl VideoTaskHandler {
         let asset_object_id = input.asset_object_id;
 
         let tx = ctx.get_task_tx();
-
         if let Ok(tx) = tx.lock() {
-            tx.send(crate::task_queue::TaskPayload::CancelByAssetId(
-                asset_object_id,
-            ))?;
+            match input.task_types.as_ref() {
+                Some(task_types) => task_types.iter().for_each(|t| {
+                    if let Err(e) = tx.send(crate::task_queue::TaskPayload::CancelByAssetAndType(
+                        asset_object_id,
+                        t.to_string(),
+                    )) {
+                        tracing::warn!("cancel task({}-{}) error: {}", asset_object_id, t, e);
+                    }
+                }),
+                _ => {
+                    // cancel all tasks
+                    tx.send(crate::task_queue::TaskPayload::CancelByAssetId(
+                        asset_object_id,
+                    ))?;
+                }
+            }
+        }
+
+        let mut filter = vec![
+            file_handler_task::asset_object_id::equals(asset_object_id),
+            // 将所有未完成的任务设置为取消
+            file_handler_task::exit_code::equals(None),
+        ];
+
+        if let Some(task_types) = input.task_types {
+            // 如果传入了任务类型，则需要进一步过滤
+            filter.push(file_handler_task::task_type::in_vec(task_types));
         }
 
         self.prisma_client
             .file_handler_task()
-            .update_many(
-                vec![
-                    file_handler_task::asset_object_id::equals(asset_object_id),
-                    file_handler_task::starts_at::equals(None),
-                ],
-                vec![file_handler_task::exit_code::set(Some(1))],
-            )
+            .update_many(filter, vec![file_handler_task::exit_code::set(Some(1))])
             .exec()
             .await
             .map_err(|e| anyhow::anyhow!(e))?;
@@ -212,7 +232,13 @@ impl VideoTaskHandler {
             .with(asset_object::media_data::fetch())
             .exec()
             .await?;
+        let library = ctx.library()?;
+
         if let Some(asset_object_data) = asset_object_data {
+            if !payload.preserve_artifacts {
+                handle_delete_artifacts(&library, vec![(&asset_object_data.hash).into()]).await?;
+            }
+
             create_video_task(&asset_object_data, ctx, None)
                 .await
                 .map_err(|e| anyhow::anyhow!("failed to create video task: {e:?}"))?;

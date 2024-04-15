@@ -35,9 +35,11 @@ export type Procedures = {
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
 
-export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
+export type TaskRedoRequestPayload = { assetObjectId: number; preserveArtifacts: boolean }
 
-export type TaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
+export type Pagination = { pageSize: number; pageIndex: number }
+
+export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
 export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPath: string; oldName: string; newName: string }
 
@@ -46,10 +48,6 @@ export type FilePathMovePayload = { active: FilePathRequestPayload; target: File
 export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
 
 export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
-
-export type TaskRedoRequestPayload = { assetObjectId: number }
-
-export type Pagination = { pageSize: number; pageIndex: number }
 
 export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
 
@@ -61,8 +59,6 @@ export type LibrarySettingsThemeEnum = "light" | "dark"
 
 export type FilePathGetPayload = { materializedPath: string; name: string }
 
-export type TaskCancelRequestPayload = { assetObjectId: number }
-
 export type AudioResp = { type: AudioType; content: string }
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
@@ -73,11 +69,13 @@ export type CurrentLibraryResult = { id: string; dir: string }
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
 
+export type TaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
+
+export type VideoWithTasksResult = { name: string; materializedPath: string; assetObject: AssetObject; tasks: FileHandlerTask[]; mediaData: MediaData | null }
+
 export type LibrariesListResult = { id: string; dir: string; title: string }
 
 export type VideoWithTasksPageResult = { data: VideoWithTasksResult[]; pagination: Pagination; maxPage: number }
-
-export type VideoWithTasksResult = { name: string; materializedPath: string; assetObject: AssetObject; tasks: FileHandlerTask[]; mediaData: MediaData | null }
 
 export type TaskListRequestPayload = { pagination: Pagination; filter: TaskListRequestFilter }
 
@@ -86,6 +84,8 @@ export type FilePathDeletePayload = { materializedPath: string; name: string }
 export type AssetObject = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string }
 
 export type ExportInput = { types: AudioType[]; hash: string; path: string; fileName?: string | null }
+
+export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: string[] | null }
 
 export type SearchRequestPayload = { text: string; recordType: string }
 

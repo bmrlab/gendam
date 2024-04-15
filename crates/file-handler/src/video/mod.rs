@@ -171,36 +171,6 @@ impl VideoHandler {
         &self.file_identifier
     }
 
-    fn clip(&self) -> anyhow::Result<BatchHandler<CLIP>> {
-        self.clip
-            .clone()
-            .ok_or(anyhow::anyhow!("CLIP is not enabled"))
-    }
-
-    fn blip(&self) -> anyhow::Result<BatchHandler<BLIP>> {
-        self.blip
-            .clone()
-            .ok_or(anyhow::anyhow!("BLIP is not enabled"))
-    }
-
-    fn whisper(&self) -> anyhow::Result<BatchHandler<Whisper>> {
-        self.whisper
-            .clone()
-            .ok_or(anyhow::anyhow!("Whisper is not enabled"))
-    }
-
-    fn text_embedding(&self) -> anyhow::Result<BatchHandler<TextEmbedding>> {
-        self.text_embedding
-            .clone()
-            .ok_or(anyhow::anyhow!("Text Embedding is not enabled"))
-    }
-
-    fn yolo(&self) -> anyhow::Result<BatchHandler<YOLO>> {
-        self.yolo
-            .clone()
-            .ok_or(anyhow::anyhow!("YOLO is not enabled"))
-    }
-
     pub fn with_clip(self, clip: BatchHandler<CLIP>) -> Self {
         Self {
             clip: Some(clip),
@@ -247,6 +217,36 @@ impl VideoHandler {
         video_decoder
             .save_video_thumbnail(&self.artifacts_dir.join(THUMBNAIL_FILE_NAME), seconds)
             .await
+    }
+
+    fn clip(&self) -> anyhow::Result<BatchHandler<CLIP>> {
+        self.clip
+            .clone()
+            .ok_or(anyhow::anyhow!("CLIP is not enabled"))
+    }
+
+    fn blip(&self) -> anyhow::Result<BatchHandler<BLIP>> {
+        self.blip
+            .clone()
+            .ok_or(anyhow::anyhow!("BLIP is not enabled"))
+    }
+
+    fn whisper(&self) -> anyhow::Result<BatchHandler<Whisper>> {
+        self.whisper
+            .clone()
+            .ok_or(anyhow::anyhow!("Whisper is not enabled"))
+    }
+
+    fn text_embedding(&self) -> anyhow::Result<BatchHandler<TextEmbedding>> {
+        self.text_embedding
+            .clone()
+            .ok_or(anyhow::anyhow!("Text Embedding is not enabled"))
+    }
+
+    fn yolo(&self) -> anyhow::Result<BatchHandler<YOLO>> {
+        self.yolo
+            .clone()
+            .ok_or(anyhow::anyhow!("YOLO is not enabled"))
     }
 
     /// Extract key frames from video and save results

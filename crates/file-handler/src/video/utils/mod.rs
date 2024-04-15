@@ -1,6 +1,9 @@
 use crate::search::payload::SearchPayload;
 use ai::{text_embedding::TextEmbedding, BatchHandler};
-use qdrant_client::{client::QdrantClient, qdrant::PointStruct};
+use qdrant_client::{
+    client::QdrantClient,
+    qdrant::{point_id::PointIdOptions, PointId, PointStruct},
+};
 use serde_json::json;
 use std::sync::Arc;
 
@@ -16,6 +19,26 @@ pub async fn save_text_embedding(
     qdrant: Arc<QdrantClient>,
     collection_name: &str,
 ) -> anyhow::Result<()> {
+    // if point exists, skip
+    match qdrant
+        .get_points(
+            collection_name,
+            None,
+            &[PointId {
+                point_id_options: Some(PointIdOptions::Uuid(payload.get_uuid().to_string())),
+            }],
+            Some(false),
+            Some(false),
+            None,
+        )
+        .await
+    {
+        std::result::Result::Ok(res) if res.result.len() > 0 => {
+            return Ok(());
+        }
+        _ => {}
+    }
+
     let embedding = text_embedding.process_single(text.to_string()).await?;
     let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
 

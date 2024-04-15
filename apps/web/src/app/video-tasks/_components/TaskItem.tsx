@@ -1,16 +1,16 @@
 'use client'
-import { VideoTaskStatus } from './TaskStatus'
-import TaskDropdownMenu, { DropdownMenuOptions } from './TaskDropdownMenu'
-import Icon from '@muse/ui/icons'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { formatBytes, formatDuration } from '@/lib/utils'
+import Icon from '@muse/ui/icons'
+import classNames from 'classnames'
 import Image from 'next/image'
 import { HTMLAttributes, useCallback, useMemo } from 'react'
-import { isNotDone } from './utils'
 import { toast } from 'sonner'
-import classNames from 'classnames'
+import TaskDropdownMenu, { DropdownMenuOptions } from './TaskDropdownMenu'
+import { VideoTaskStatus } from './TaskStatus'
+import { isNotDone } from './utils'
 
 export type VideoTaskItemProps = {
   videoFile: VideoWithTasksResult
@@ -43,7 +43,7 @@ export default function VideoTaskItem({
             ),
             handleClick: async () => {
               // console.log('cancel task', assetObject.id)
-              await mutateAsync({ assetObjectId: assetObject.id })
+              await mutateAsync({ assetObjectId: assetObject.id, taskTypes: null })
               toast.success('Job cancelled', {
                 action: {
                   label: 'Dismiss',
@@ -71,84 +71,83 @@ export default function VideoTaskItem({
     ] as DropdownMenuOptions[]
   }, [assetObject.id, _isNotDone, mutateAsync])
 
-  return <>
-    <div
-      {...props}
-      className={classNames(
-        'flex items-center justify-start cursor-default w-full gap-2 rounded-md text-sm px-4 py-3',
-        isSelect ? 'bg-accent text-white' : null,
-      )}
-    >
+  return (
+    <>
       <div
-        className="relative flex size-9 cursor-default bg-app-overlay"
-        onClick={(e) => {
-          handleClick()
-          // e.stopPropagation()
-        }}
+        {...props}
+        className={classNames(
+          'flex w-full cursor-default items-center justify-start gap-2 rounded-md px-4 py-3 text-sm',
+          isSelect ? 'bg-accent text-white' : null,
+        )}
       >
-        {/* <video controls={false} autoPlay={false} muted loop className="size-full object-contain">
+        <div
+          className="bg-app-overlay relative flex size-9 cursor-default"
+          onClick={(e) => {
+            handleClick()
+            // e.stopPropagation()
+          }}
+        >
+          {/* <video controls={false} autoPlay={false} muted loop className="size-full object-contain">
           <source src={currentLibrary.getFileSrc(assetObject.hash)} />
         </video> */}
-        <Image
-          src={currentLibrary.getThumbnailSrc(assetObject.hash)}
-          alt={assetObject.hash}
-          fill={true}
-          className="object-cover"
-          priority
-        ></Image>
-      </div>
-      <div className="grid flex-1">
-        {materializedPath ? (
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium leading-4">{name}</span>
-            <span className="truncate text-xs font-normal leading-4 opacity-60">{materializedPath}</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="truncate text-xs font-normal leading-4 opacity-60">Deleted</span>
-          </div>
-        )}
-        <div className="flex w-full items-center justify-between">
-          <div className="flex items-center text-xs font-normal leading-4 opacity-60">
-            <span>{formatDuration(mediaData?.duration ?? 0)}</span>
-            <div className="mx-2">·</div>
-            <span>{formatBytes(assetObject.size)}</span>
-            <div className="mx-2">·</div>
-            <span>{`${mediaData?.width ?? 0} x ${mediaData?.height ?? 0}`}</span>
-            {_hasAudio ? null : (
-              <>
-                <div className="mx-2">·</div>
-                <NoAudio />
-              </>
-            )}
-          </div>
-          <div className="flex flex-wrap items-end gap-1.5">
-            <VideoTaskStatus tasks={tasks} ></VideoTaskStatus>
-            <TaskDropdownMenu
-              triggerIcon={<Icon.MoreVertical className="size-3" />}
-              options={moreActionOptions()}
-            >
-              <div
-                className={classNames(
-                  'inline-flex items-center justify-center size-6 rounded border cursor-default',
-                  !isSelect && 'data-[state=open]:bg-app-hover',
-                )}
-              >
-                <span className="sr-only">Open menu</span>
-                <Icon.MoreVertical className="size-3" />
-              </div>
-            </TaskDropdownMenu>
+          <Image
+            src={currentLibrary.getThumbnailSrc(assetObject.hash)}
+            alt={assetObject.hash}
+            fill={true}
+            className="object-cover"
+            priority
+          ></Image>
+        </div>
+        <div className="grid flex-1">
+          {materializedPath ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium leading-4">{name}</span>
+              <span className="truncate text-xs font-normal leading-4 opacity-60">{materializedPath}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="truncate text-xs font-normal leading-4 opacity-60">Deleted</span>
+            </div>
+          )}
+          <div className="flex w-full items-center justify-between">
+            <div className="flex items-center text-xs font-normal leading-4 opacity-60">
+              <span>{formatDuration(mediaData?.duration ?? 0)}</span>
+              <div className="mx-2">·</div>
+              <span>{formatBytes(assetObject.size)}</span>
+              <div className="mx-2">·</div>
+              <span>{`${mediaData?.width ?? 0} x ${mediaData?.height ?? 0}`}</span>
+              {_hasAudio ? null : (
+                <>
+                  <div className="mx-2">·</div>
+                  <NoAudio />
+                </>
+              )}
+            </div>
+            <div className="flex flex-wrap items-end gap-1.5">
+              <VideoTaskStatus tasks={tasks}></VideoTaskStatus>
+              <TaskDropdownMenu triggerIcon={<Icon.MoreVertical className="size-3" />} options={moreActionOptions()}>
+                <div
+                  className={classNames(
+                    'inline-flex size-6 cursor-default items-center justify-center rounded border',
+                    !isSelect && 'data-[state=open]:bg-app-hover',
+                  )}
+                >
+                  <span className="sr-only">Open menu</span>
+                  <Icon.MoreVertical className="size-3" />
+                </div>
+              </TaskDropdownMenu>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-    <div className="h-px mx-2 bg-app-line my-px"></div>
-  </>
+      <div className="bg-app-line mx-2 my-px h-px"></div>
+    </>
+  )
 }
 
 const NoAudio = () => {
   return (
-    <div className="flex items-center gap-1 text-ink/50">
+    <div className="text-ink/50 flex items-center gap-1">
       <Icon.SpeakerSimpleX />
       <span className="text-xs font-normal leading-4">No Audio</span>
     </div>
