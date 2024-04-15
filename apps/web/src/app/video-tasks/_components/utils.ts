@@ -10,7 +10,7 @@ import type { VideoWithTasksResult } from '@/lib/bindings'
 
 export const isNotDone = (tasks: VideoWithTasksResult['tasks']) => {
   // 未开始和正在进行的
-  return !!tasks.find((task) => getTaskStatus(task) !== TaskStatus.Done)
+  return !tasks.find((task) => [TaskStatus.Done, TaskStatus.Cancelled, TaskStatus.Failed].includes(getTaskStatus(task)))
 }
 
 export const hasAudio = (tasks: VideoWithTasksResult['tasks']) => {

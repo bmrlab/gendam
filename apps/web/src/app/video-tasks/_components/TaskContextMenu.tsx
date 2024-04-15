@@ -1,63 +1,14 @@
-import useTaskAction from '@/app/video-tasks/_components/useTaskAction'
-import type { VideoWithTasksResult } from '@/lib/bindings'
-import Icon from '@muse/ui/icons'
+import { useTaskActionOptions } from '@/app/video-tasks/_components/useTaskActionOptions'
 import { ContextMenu } from '@muse/ui/v2/context-menu'
-import { PropsWithChildren, ReactNode, useMemo } from 'react'
-// import { useBoundStore } from '../_store'
+import { PropsWithChildren } from 'react'
+import { useBoundStore } from '../_store'
 
-export type TaskContextMenuProps = PropsWithChildren<{
-  fileHash: string
-  isNotDone: boolean
-  video: VideoWithTasksResult
-}>
+export type TaskContextMenuProps = PropsWithChildren
 
-export default function TaskContextMenu({ video, fileHash, isNotDone, children }: TaskContextMenuProps) {
-  const { handleRegenerate, handleExport, handleCancel } = useTaskAction({ fileHash, video })
+export default function TaskContextMenu({ children }: TaskContextMenuProps) {
+  const videoSelected = useBoundStore.use.videoSelected()
 
-  const options = useMemo<
-    Array<
-      | 'Separator'
-      | {
-          disabled?: boolean
-          variant?: 'accent' | 'destructive'
-          label: string
-          icon: ReactNode
-          handleClick: () => void
-        }
-    >
-  >(() => {
-    const processingItem = isNotDone
-      ? [
-          {
-            label: 'Cancel job',
-            icon: <Icon.CloseRounded className="size-4" />,
-            handleClick: () => handleCancel(),
-          },
-        ]
-      : []
-
-    return [
-      {
-        label: 'Re-process job ',
-        icon: <Icon.Cycle className="size-4" />,
-        handleClick: () => handleRegenerate(),
-      },
-      ...processingItem,
-      {
-        label: 'Export transcript',
-        icon: <Icon.Download className="size-4" />,
-        handleClick: () => handleExport(),
-      },
-      'Separator',
-      {
-        disabled: true,
-        variant: 'destructive',
-        label: 'Delete job',
-        icon: <Icon.Trash className="size-4" />,
-        handleClick: () => console.log('Delete job'),
-      },
-    ]
-  }, [handleCancel, handleExport, handleRegenerate, isNotDone])
+  const { options } = useTaskActionOptions(videoSelected)
 
   return (
     <ContextMenu.Root>

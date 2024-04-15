@@ -6,11 +6,10 @@ import { formatBytes, formatDuration } from '@/lib/utils'
 import Icon from '@muse/ui/icons'
 import classNames from 'classnames'
 import Image from 'next/image'
-import { HTMLAttributes, useCallback, useMemo } from 'react'
-import { toast } from 'sonner'
-import TaskDropdownMenu, { DropdownMenuOptions } from './TaskDropdownMenu'
+import { HTMLAttributes, useMemo } from 'react'
+import TaskDropdownMenu from './TaskDropdownMenu'
 import { VideoTaskStatus } from './TaskStatus'
-import { isNotDone } from './utils'
+import { useTaskActionOptions } from './useTaskActionOptions'
 
 export type VideoTaskItemProps = {
   videoFile: VideoWithTasksResult
@@ -18,58 +17,30 @@ export type VideoTaskItemProps = {
   handleClick: () => void
 } & HTMLAttributes<HTMLDivElement>
 
-export default function VideoTaskItem({
-  videoFile: { name, assetObject, materializedPath, tasks, mediaData },
-  isSelect,
-  handleClick,
-  ...props
-}: VideoTaskItemProps) {
+export default function VideoTaskItem({ videoFile, isSelect, handleClick, ...props }: VideoTaskItemProps) {
   const currentLibrary = useCurrentLibrary()
-
   const { mutateAsync } = rspc.useMutation('video.tasks.cancel')
 
-  const _isNotDone = useMemo(() => isNotDone(tasks), [tasks])
-  const _hasAudio = useMemo(() => mediaData?.hasAudio ?? false, [mediaData?.hasAudio])
+  const { options } = useTaskActionOptions([videoFile])
+  const { name, assetObject, materializedPath, tasks, mediaData } = videoFile
 
-  const moreActionOptions = useCallback(() => {
-    const processItem = _isNotDone
-      ? [
-          {
+  const moreActionOptions = useMemo(() => {
+    return options.map((v) =>
+      v === 'Separator'
+        ? v
+        : {
             label: (
               <div className="flex items-center gap-1.5">
-                <Icon.CloseRounded />
-                <span>Cancel job</span>
+                {v.icon}
+                <span>{v.label}</span>
               </div>
             ),
-            handleClick: async () => {
-              // console.log('cancel task', assetObject.id)
-              await mutateAsync({ assetObjectId: assetObject.id, taskTypes: null })
-              toast.success('Job cancelled', {
-                action: {
-                  label: 'Dismiss',
-                  onClick: () => {},
-                },
-              })
-            },
+            disabled: v.disabled,
+            variant: v.variant,
+            handleClick: v.handleClick,
           },
-          'Separator',
-        ]
-      : []
-    return [
-      ...processItem,
-      {
-        disabled: true,
-        variant: 'destructive',
-        label: (
-          <div className="flex items-center gap-1.5">
-            <Icon.Trash />
-            <span>Delete job</span>
-          </div>
-        ),
-        handleClick: () => {},
-      },
-    ] as DropdownMenuOptions[]
-  }, [assetObject.id, _isNotDone, mutateAsync])
+    )
+  }, [options])
 
   return (
     <>
@@ -116,7 +87,7 @@ export default function VideoTaskItem({
               <span>{formatBytes(assetObject.size)}</span>
               <div className="mx-2">·</div>
               <span>{`${mediaData?.width ?? 0} x ${mediaData?.height ?? 0}`}</span>
-              {_hasAudio ? null : (
+              {mediaData?.hasAudio ? null : (
                 <>
                   <div className="mx-2">·</div>
                   <NoAudio />
@@ -125,7 +96,7 @@ export default function VideoTaskItem({
             </div>
             <div className="flex flex-wrap items-end gap-1.5">
               <VideoTaskStatus tasks={tasks}></VideoTaskStatus>
-              <TaskDropdownMenu triggerIcon={<Icon.MoreVertical className="size-3" />} options={moreActionOptions()}>
+              <TaskDropdownMenu triggerIcon={<Icon.MoreVertical className="size-3" />} options={moreActionOptions}>
                 <div
                   className={classNames(
                     'inline-flex size-6 cursor-default items-center justify-center rounded border',

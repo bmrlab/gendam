@@ -30,9 +30,6 @@ export default function VideoTasksList({ data, className }: VideoTasksListProps)
         return (
           <TaskContextMenu
             key={videoFile.assetObject.id}
-            fileHash={videoFile.assetObject.hash}
-            isNotDone={isNotDone(videoFile.tasks)}
-            video={videoFile}
           >
             <WithSelectVideoItem
               videoFile={videoFile}
