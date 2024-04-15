@@ -78,6 +78,8 @@ accent: 高亮色，我们是蓝色
     width: 100%;
     overflow: hidden;
     position: fixed;
+    /* app 一般使用 default pointer, 和 web 有区别 */
+    cursor: default;
   }
 }
 
