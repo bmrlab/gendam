@@ -5,7 +5,7 @@ import UploadQueue from '@/components/UploadQueue'
 import { LibrariesListResult } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
-import { Muse_Logo } from '@muse/assets/svgs'
+import { GenDAM_Logo } from '@muse/assets/images'
 import Icon from '@muse/ui/icons'
 import { Button } from '@muse/ui/v2/button'
 import classNames from 'classnames'
@@ -70,7 +70,7 @@ export default function Sidebar() {
     <div className="color-ink bg-sidebar relative flex h-screen w-60 flex-col items-stretch justify-start p-3">
       <section className="relative mb-6 mt-4">
         <div className="flex cursor-default items-center px-2" onClick={() => setSelectPanelOpen(true)}>
-          <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>
+          <Image src={GenDAM_Logo} alt="Muse" className="h-8 w-8"></Image>
           <div className="mx-2 flex-1 overflow-hidden">
             <div className="truncate text-xs font-semibold">{selected?.title ?? 'Untitled'}</div>
           </div>
@@ -89,7 +89,7 @@ export default function Sidebar() {
                   className="hover:bg-app-hover/50 flex cursor-default items-center justify-start gap-2 rounded-md px-3 py-2"
                   onClick={() => switchLibrary(library)}
                 >
-                  <Image src={Muse_Logo} alt="Muse" className="h-9 w-9"></Image>
+                  <Image src={GenDAM_Logo} alt="Muse" className="h-9 w-9"></Image>
                   <div className="flex-1 overflow-hidden">
                     <div className="truncate text-xs font-semibold">{library.title}</div>
                     <div className="text-ink/50 truncate text-[0.6rem]">{library.id}</div>

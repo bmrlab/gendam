@@ -1,6 +1,6 @@
 'use client'
 import { queryClient, rspc } from '@/lib/rspc'
-import { Muse_Logo } from '@muse/assets/svgs'
+import { GenDAM_Logo } from '@muse/assets/images'
 import Icon from '@muse/ui/icons'
 import Image from 'next/image'
 import { useCallback } from 'react'
@@ -24,7 +24,7 @@ export default function LibrariesSelect({
 
   return (
     <div className="bg-app flex h-screen w-screen flex-col items-center justify-center">
-      <Image src={Muse_Logo} alt="Muse" className="mb-4 h-8 w-8"></Image>
+      <Image src={GenDAM_Logo} alt="Muse" className="mb-4 h-8 w-8"></Image>
       {librariesQuery.isSuccess ? (
         <div className="border-app-line bg-app-box my-4 w-80 rounded-md border p-1 shadow-sm">
           {librariesQuery.data.length === 0 ? (
@@ -41,7 +41,7 @@ export default function LibrariesSelect({
                 className="hover:bg-app-hover flex items-center justify-start rounded-md px-3 py-2"
                 onClick={() => setCurrentLibrary(library.id)}
               >
-                <Image src={Muse_Logo} alt="Muse" className="h-8 w-8"></Image>
+                <Image src={GenDAM_Logo} alt="Muse" className="h-8 w-8"></Image>
                 <div className="mx-2 w-64 truncate text-xs font-semibold">
                   {library.title ?? 'Untitled'} ({library.id})
                 </div>
