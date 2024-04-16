@@ -8,11 +8,6 @@ import type { VideoWithTasksResult } from '@/lib/bindings'
 //     .some((status) => status === TaskStatus.Processing)
 // }
 
-export const isNotDone = (tasks: VideoWithTasksResult['tasks']) => {
-  // 未开始和正在进行的
-  return !tasks.every((task) => [TaskStatus.Done].includes(getTaskStatus(task)))
-}
-
 export const hasAudio = (tasks: VideoWithTasksResult['tasks']) => {
   return tasks.some((task) => task.taskType === 'Audio' && task.exitCode === 0)
 }

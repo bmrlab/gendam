@@ -6,7 +6,7 @@ import Icon from '@muse/ui/icons'
 import type { ReactNode } from 'react'
 import { useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
-import { TaskStatus, getTaskStatus, isNotDone } from './utils'
+import { TaskStatus, getTaskStatus } from './utils'
 
 export type TaskActionOption =
   | 'Separator'
@@ -136,7 +136,14 @@ export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
       },
     ]
 
-    if (isNotDone(videos.map((v) => v.tasks).flat())) {
+    if (videos
+        .map((v) => v.tasks).flat()
+        .some((task) => [TaskStatus.None, TaskStatus.Processing].includes(getTaskStatus(task)))
+    ) {
+      /**
+       * 未开始, 正在进行的, 可以取消
+       * 已完成, 已取消, 出错的, 不可以取消
+       */
       options.push({
         label: 'Cancel job',
         icon: <Icon.CloseRounded className="size-4" />,
