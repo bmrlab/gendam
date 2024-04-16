@@ -1,5 +1,7 @@
 'use client'
 import FoldersTree from '@/Explorer/components/FoldersTree'
+import { useUploadQueueStore } from '@/store/uploadQueue'
+import UploadQueue from '@/components/UploadQueue'
 import { LibrariesListResult } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
@@ -14,12 +16,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 export default function Sidebar() {
+  const currentLibrary = useCurrentLibrary()
   const librariesQuery = rspc.useQuery(['libraries.list'])
-
   const panelRef = useRef<HTMLDivElement>(null)
   const [selectPanelOpen, setSelectPanelOpen] = useState(false)
+
+  const uploadQueueStore = useUploadQueueStore()
+  const [uploadQueueOpen, setUploadQueueOpen] = useState(false)
+
   const pathname = usePathname()
-  const currentLibrary = useCurrentLibrary()
   const { data: version } = rspc.useQuery(['version'])
 
   const selected = useMemo<LibrariesListResult | undefined>(() => {
@@ -117,7 +122,7 @@ export default function Sidebar() {
       <FoldersTree className="-mx-3 my-4 flex-1" />
 
       <section>
-        <div className="mb-2 flex items-center justify-start gap-1 text-sm">
+        <div className="relative mb-2 flex items-center justify-start gap-1 text-sm">
           <Link href="/settings" className="block">
             <Button variant="ghost" size="sm" className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none">
               <Icon.Gear className="h-full w-full" />
@@ -137,6 +142,22 @@ export default function Sidebar() {
             <Icon.Sun className="block h-full w-full dark:hidden" />
             <Icon.Moon className="hidden h-full w-full dark:block" />
           </Button>
+          <div className="relative">
+            <Button
+              variant="ghost" size="sm" onClick={() => setUploadQueueOpen(!uploadQueueOpen)}
+              className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none"
+            >
+              {uploadQueueStore.uploading || uploadQueueStore.queue.length ? (
+                <div className="border-2 border-orange-400 p-[2px] h-full w-full rounded-full
+                  animate-[flashstroke] duration-1000 repeat-infinite"></div>
+              ) : (
+                <div className="border border-current p-[2px] h-full w-full rounded-full scale-90">
+                  <Icon.Check className="h-full w-full" />
+                </div>
+              )}
+            </Button>
+          </div>
+          {uploadQueueOpen ? <UploadQueue close={() => setUploadQueueOpen(false)} /> : null}
         </div>
         <div className="px-1 text-xs text-neutral-400">v{version}</div>
       </section>

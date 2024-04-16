@@ -52,9 +52,13 @@ const WebUploadButton: React.FC<
    * ```
    */
   const onFileInput = useCallback((e: React.FormEvent<HTMLInputElement>) => {
-    const files = (e.target as any)?.files ?? []
+    const files = e.currentTarget.files
+    if (!files || files.length === 0) {
+      return
+    }
     console.log('form input selected file:', files)
     const file = files[0]
+    e.currentTarget.value = ''  // 重置 inputvalue 以便下次选择同一个文件时触发 onInput 事件
     const reader = new FileReader()
     reader.onload = function () {
       const text = (reader.result ?? '').toString()

@@ -16,7 +16,9 @@ interface UploadQueue {
   nextUploading: () => FileItem | null
   completeUploading: () => void
   failedUploading: () => void
+  retryFailed: (item: FileItem) => void
   enqueue: (item: FileItem) => void
+  clear: () => void
 }
 
 export const useUploadQueueStore = create<UploadQueue>((set, get) => ({
@@ -58,9 +60,23 @@ export const useUploadQueueStore = create<UploadQueue>((set, get) => ({
       return {}
     })
   },
+  retryFailed: (item) => {
+    set((state) => ({
+      failed: state.failed.filter((failedItem) => failedItem !== item),
+      queue: [item, ...state.queue],
+    }))
+  },
   enqueue: (item) => {
     set((state) => ({
       queue: [...state.queue, item],
     }))
+  },
+  clear: () => {
+    set({
+      completed: [],
+      failed: [],
+      queue: [],
+      uploading: null,
+    })
   },
 }))
