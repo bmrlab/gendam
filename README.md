@@ -14,12 +14,12 @@ RUST_LOG="api_server=debug"
 RUST_LOG="api_server=debug,ai=debug,file_downloader=debug,file_handler=debug,muse_desktop=debug,content_library=debug"
 ```
 
-打包后的 app 会同时打印日志到 oslog 和 ` ~/Library/Logs/cc.musedam.local` 下，oslog 的查看方式是：
+打包后的 app 会同时打印日志到 oslog 和 ` ~/Library/Logs/ai.gendam.desktop` 下，oslog 的查看方式是：
 
 ```bash
-log stream --debug --predicate 'subsystem=="cc.musedam.local" and category=="default"'
-log stream --type log --level debug | grep "\[cc.musedam.local"
-log stream --type log --level debug | grep cc.musedam.local
+log stream --debug --predicate 'subsystem=="ai.gendam.desktop" and category=="default"'
+log stream --type log --level debug | grep "\[ai.gendam.desktop"
+log stream --type log --level debug | grep ai.gendam.desktop
 ```
 
 ### 开发环境准备
@@ -57,9 +57,9 @@ pnpm dev:api-server
 ```yaml
 # 根目录 .env 文件中配置
 # 本地数据目录，存储 Library 数据，包括素材文件、索引、数据库
-LOCAL_DATA_DIR="/Users/xddotcom/Library/Application Support/cc.musedam.local"
+LOCAL_DATA_DIR="/Users/xddotcom/Library/Application Support/ai.gendam.desktop"
 # 本地资源目录，存储模型等，一般用当前项目目录下的 /apps/desktop/src-tauri/resources
-LOCAL_RESOURCES_DIR="/Users/xddotcom/workspace/muse/muse-v2-client/apps/desktop/src-tauri/resources"
+LOCAL_RESOURCES_DIR="/Users/xddotcom/workspace/muse/gendam/apps/desktop/src-tauri/resources"
 ```
 
 ## Prisma Rust Client

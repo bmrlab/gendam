@@ -16,7 +16,7 @@ where
     let provider = TracerProvider::builder()
         .with_simple_exporter(opentelemetry_stdout::SpanExporter::default())
         .build();
-    let mut tracer = provider.tracer("cc.musedam.local");
+    let mut tracer = provider.tracer("ai.gendam.desktop");
 
     if let Ok(endpoint) = std::env::var("OPENTELEMETRY_OTLP_GRPC_ENDPOINT") {
         let otlp_exporter = opentelemetry_otlp::new_exporter()
@@ -27,7 +27,7 @@ where
             Resource::new(vec![
                 opentelemetry::KeyValue::new(
                     opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                    "cc.musedam.local",
+                    "ai.gendam.desktop",
                 )
             ])
         );

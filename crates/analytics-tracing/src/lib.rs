@@ -48,9 +48,9 @@ pub fn init_tracing_to_file(log_dir: PathBuf) {
 
     /*
     * see logs with cmd:
-    * log stream --debug --predicate 'subsystem=="cc.musedam.local" and category=="default"'
+    * log stream --debug --predicate 'subsystem=="ai.gendam.desktop" and category=="default"'
     */
-    // let os_logger = tracing_oslog::OsLogger::new("cc.musedam.local", "default");
+    // let os_logger = tracing_oslog::OsLogger::new("ai.gendam.desktop", "default");
 
     let file_log_layer = {
         if let Err(e) = std::fs::create_dir_all(&log_dir) {

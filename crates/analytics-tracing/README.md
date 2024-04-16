@@ -12,12 +12,12 @@ RUST_LOG="api_server=debug"
 RUST_LOG="api_server=debug,ai=debug,file_downloader=debug,file_handler=debug,muse_desktop=debug,content_library=debug"
 ```
 
-打包后的 app 会同时打印日志到 oslog 和 ` ~/Library/Logs/cc.musedam.local` 下，oslog 的查看方式是：
+打包后的 app 会同时打印日志到 oslog 和 ` ~/Library/Logs/ai.gendam.desktop` 下，oslog 的查看方式是：
 
 ```bash
-log stream --debug --predicate 'subsystem=="cc.musedam.local" and category=="default"'
-log stream --type log --level debug | grep "\[cc.musedam.local"
-log stream --type log --level debug | grep cc.musedam.local
+log stream --debug --predicate 'subsystem=="ai.gendam.desktop" and category=="default"'
+log stream --type log --level debug | grep "\[ai.gendam.desktop"
+log stream --type log --level debug | grep ai.gendam.desktop
 ```
 
 ## 链路

@@ -76,7 +76,7 @@ async fn main() {
     {
         /*
          * macos log dir
-         * ~/Library/Logs/cc.musedam.local/app.log
+         * ~/Library/Logs/ai.gendam.desktop/app.log
          */
         let log_dir = app.path_resolver().app_log_dir().unwrap();
         analytics_tracing::init_tracing_to_file(log_dir);
