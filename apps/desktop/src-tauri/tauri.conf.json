@@ -7,8 +7,8 @@
     "distDir": "../../web/out"
   },
   "package": {
-    "productName": "muse-v2-client",
-    "version": "0.1.1"
+    "productName": "GenDAM",
+    "version": "0.1.0"
   },
   "tauri": {
     "allowlist": {
@@ -66,8 +66,8 @@
     },
     "bundle": {
       "active": true,
-      "category": "DeveloperTool",
-      "copyright": "",
+      "category": "Video",
+      "copyright": "Copyright 2024 GenDAM AI.",
       "deb": {
         "depends": []
       },
@@ -84,7 +84,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "cc.musedam.local",
+      "identifier": "ai.gendam.desktop",
       "longDescription": "",
       "macOS": {
         "entitlements": null,
@@ -113,7 +113,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Muse V2",
+        "title": "GenDAM",
         "titleBarStyle":"Transparent",
         "height": 800,
         "width": 1400,
