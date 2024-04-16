@@ -28,7 +28,7 @@ function TaskItemStatus({ status, name, className }: Props) {
       case TaskStatus.Failed:
         return <Icon.Close className="h-4 w-4 text-red-500" />
       case TaskStatus.Cancelled:
-        return <Icon.Close className="h-4 w-4 text-neutral-900" />
+        return <Icon.Close className="h-3 w-3 text-neutral-800" />
       case TaskStatus.Done:
         return <Icon.Check className="h-4 w-4 text-green-500" />
       case TaskStatus.Processing:

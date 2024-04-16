@@ -58,7 +58,7 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
     setAudioDialogOpen(true)
   }
 
-  const handleRegenerate = useCallback(
+  const handleSingleRegenerate = useCallback(
     async (param: { path: string; id: number }) => {
       try {
         await regenerateTask({
@@ -77,7 +77,7 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
         toast.error('Failed re-process job', {
           action: {
             label: 'Retry',
-            onClick: () => handleRegenerate(param),
+            onClick: () => handleSingleRegenerate(param),
           },
         })
       }
@@ -87,14 +87,14 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
 
   const handleBatchRegenerate = useCallback(() => {
     videos.forEach(async (item) => {
-      await handleRegenerate({
+      await handleSingleRegenerate({
         path: item.materializedPath,
         id: item.assetObject.id,
       })
     })
-  }, [handleRegenerate, videos])
+  }, [handleSingleRegenerate, videos])
 
-  const handleCancel = useCallback(
+  const handleSingleCancel = useCallback(
     async (id: number) => {
       await cancelTask({
         assetObjectId: id,
@@ -113,9 +113,9 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
 
   const handleBatchCancel = useCallback(() => {
     videos.forEach(async (item) => {
-      await handleCancel(item.assetObject.id)
+      await handleSingleCancel(item.assetObject.id)
     })
-  }, [handleCancel, videos])
+  }, [handleSingleCancel, videos])
 
   return {
     handleExport: isBatchSelected ? handleBatchExport : handleSingleExport,
