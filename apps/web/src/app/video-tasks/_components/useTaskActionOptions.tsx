@@ -19,8 +19,6 @@ export type TaskActionOption =
     }
 
 function useTaskAction(videos: VideoWithTasksResult[]) {
-  // // 右键的时候任务自然被选中了，直接从所有选中的任务中获取数据即可
-  // const videos = useBoundStore.use.videos()
   const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
   const setAudioDialogProps = useBoundStore.use.setAudioDialogProps()
   const setAudioDialogOpen = useBoundStore.use.setIsOpenAudioDialog()
@@ -61,9 +59,7 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
   }
 
   const handleRegenerate = useCallback(
-    async (param?: { path: string; id: number }) => {
-      if (!param?.id) return
-
+    async (param: { path: string; id: number }) => {
       try {
         await regenerateTask({
           assetObjectId: param.id,
@@ -99,9 +95,7 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
   }, [handleRegenerate, videos])
 
   const handleCancel = useCallback(
-    async (id?: number) => {
-      if (!id) return
-
+    async (id: number) => {
       await cancelTask({
         assetObjectId: id,
         taskTypes: null,
@@ -125,8 +119,8 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
 
   return {
     handleExport: isBatchSelected ? handleBatchExport : handleSingleExport,
-    handleRegenerate: isBatchSelected ? handleBatchRegenerate : handleRegenerate,
-    handleCancel: isBatchSelected ? handleBatchCancel : handleCancel,
+    handleRegenerate: handleBatchRegenerate,
+    handleCancel: handleBatchCancel,
   }
 }
 
