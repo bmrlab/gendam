@@ -8,9 +8,7 @@ pub use faiss::*;
 mod qdrant;
 
 #[cfg(feature = "qdrant")]
-pub use qdrant::{
-    kill as kill_qdrant_server, kill_async as kill_qdrant_server_async, QdrantParams, QdrantServer,
-};
+pub use qdrant::{kill as kill_qdrant_server, QdrantParams, QdrantServer};
 
 pub const DEFAULT_VISION_COLLECTION_NAME: &str = "muse-v2-vision-512";
 pub const DEFAULT_LANGUAGE_COLLECTION_NAME: &str = "muse-v2-language-1024";

@@ -1,12 +1,10 @@
-use anyhow::{anyhow, bail};
+use anyhow::bail;
 pub use qdrant_client::client::QdrantClient;
-use rustix::process::{kill_process, Pid, Signal};
 use std::io::BufRead;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::num::NonZeroI32;
-use std::sync::mpsc::channel;
-use std::thread::sleep;
+use std::os::unix::process::CommandExt;
 use std::{path::PathBuf, sync::Arc};
+use sysinfo::{Pid, ProcessRefreshKind, RefreshKind, Signal, System};
 use tokio::sync::oneshot;
 use tracing::{debug, error, info, warn};
 
@@ -76,15 +74,24 @@ storage:
         debug!("qdrant reading config from {}", config_path.display());
 
         let current_exe_path = std::env::current_exe().expect("failed to get current executable");
-        let sidecar_path = current_exe_path.with_file_name("qdrant");
-        let process = std::process::Command::new(sidecar_path)
+        let qdrant_path = current_exe_path.with_file_name("qdrant");
+        let process = std::process::Command::new("/bin/bash")
             .env("QDRANT__SERVICE__HTTP_PORT", http_port.to_string())
             .env("QDRANT__SERVICE__GRPC_PORT", grpc_port.to_string())
-            .args(["--config-path", config_path.to_str().expect("invalid path")])
+            .args([
+                "-c",
+                &format!(
+                    "ulimit -n 10240; \"{}\" --config-path \"{}\" & PID=$!; setpgid $PID $$; wait",
+                    qdrant_path.to_string_lossy(),
+                    config_path.to_str().expect("invalid path")
+                ),
+            ])
+            // set group id as pid, so we can kill process group using pid
+            .process_group(0)
             .stdout(std::process::Stdio::piped())
             .spawn()?;
 
-        let pid = Pid::from_child(&process);
+        let pid = Pid::from_u32(process.id());
 
         if let Some(stdout) = process.stdout {
             let reader = std::io::BufReader::new(stdout);
@@ -118,8 +125,8 @@ storage:
         self.client.clone()
     }
 
-    pub fn get_pid(&self) -> NonZeroI32 {
-        self.pid.as_raw_nonzero()
+    pub fn get_pid(&self) -> u32 {
+        self.pid.as_u32()
     }
 }
 
@@ -156,73 +163,56 @@ async fn check_liveness(addr: SocketAddr) -> bool {
 /// Kill qdrant server using pid, if the executable path of pid is qdrant.
 ///
 /// This function will block until the process is killed.
-pub fn kill(pid: i32) -> anyhow::Result<()> {
-    let pidpath =
-        libproc::proc_pid::pidpath(pid).map_err(|e| anyhow!("failed to get pidpath: {}", e))?;
-    let current_exe_path = std::env::current_exe().expect("failed to get current executable");
-    let sidecar_path = current_exe_path.with_file_name("qdrant");
+pub fn kill(pid: u32) -> anyhow::Result<()> {
+    let s = System::new_with_specifics(
+        RefreshKind::new()
+            .with_processes(ProcessRefreshKind::new().with_cmd(sysinfo::UpdateKind::Always)),
+    );
 
-    if pidpath == sidecar_path.to_string_lossy().to_string() {
-        info!("pid {} is qdrant started using sidecar, killing it", pid);
-        let pid = Pid::from_raw(pid).ok_or(anyhow!("invalid pid"))?;
-        if let Err(e) = kill_process(pid, Signal::Term) {
-            bail!("failed to send SIGTERM: {}", e);
-        }
+    if let Some(process) = s.process(Pid::from_u32(pid)) {
+        let cmd = process.cmd().to_owned();
 
-        // waiting the process to exit
-        let (tx, rx) = channel();
-        std::thread::spawn(move || loop {
-            if libproc::proc_pid::pidpath(pid.as_raw_nonzero().into()).is_err() {
-                let _ = tx.send(());
+        debug!("pid {} cmd: {:?}", pid, cmd);
+
+        let current_exe_path = std::env::current_exe().expect("failed to get current executable");
+        let qdrant_path = current_exe_path.with_file_name("qdrant");
+
+        if cmd
+            .iter()
+            .any(|c| c.contains(qdrant_path.to_string_lossy().to_string().as_str()))
+        {
+            info!(
+                "pid {} is qdrant started using sidecar, killing all the child processes",
+                pid,
+            );
+
+            if process.group_id().is_some() {
+                // kill all child processes
+                s.processes().iter().for_each(|(_, p)| {
+                    if p.parent() == Some(process.pid()) {
+                        p.kill_with(Signal::Term);
+                    }
+                });
             }
-            sleep(std::time::Duration::from_millis(100));
-        });
 
-        rx.recv()
-            .map_err(|e| anyhow!("failed to kill qdrant: {}", e))
-    } else {
-        warn!("pid {} is not qdrant started using sidecar, ignore it", pid);
-        Ok(())
-    }
-}
-
-/// Kill qdrant server async using pid, if the executable path of pid is qdrant.
-///
-/// When this function returns, the process has been killed.
-pub async fn kill_async(pid: i32) -> anyhow::Result<()> {
-    let pidpath =
-        libproc::proc_pid::pidpath(pid).map_err(|e| anyhow!("failed to get pidpath: {}", e))?;
-    let current_exe_path = std::env::current_exe().expect("failed to get current executable");
-    let sidecar_path = current_exe_path.with_file_name("qdrant");
-
-    if pidpath == sidecar_path.to_string_lossy().to_string() {
-        info!("pid {} is qdrant started using sidecar, killing it", pid);
-        let pid = Pid::from_raw(pid).ok_or(anyhow!("invalid pid"))?;
-        if let Err(e) = kill_process(pid, Signal::Term) {
-            bail!("failed to send SIGTERM: {}", e);
+            // 主进程启动的时候加了 wait
+            // 所以这里只要所有子进程都被成功杀掉，主进程自然就结束了
+            // 也不需要额外再 kill 主进程
+            process.wait();
+        } else {
+            warn!("pid {} is not qdrant started using sidecar, ignore it", pid);
         }
-
-        // waiting the process to exit
-        let (tx, rx) = oneshot::channel();
-        tokio::spawn(async move {
-            if libproc::proc_pid::pidpath(pid.as_raw_nonzero().into()).is_err() {
-                let _ = tx.send(());
-            }
-            sleep(std::time::Duration::from_millis(100));
-        });
-
-        rx.await
-            .map_err(|e| anyhow!("failed to kill qdrant: {}", e))
     } else {
-        warn!("pid {} is not qdrant started using sidecar, ignore it", pid);
-        Ok(())
+        warn!("pid {} not found", pid);
     }
+
+    Ok(())
 }
 
 impl Drop for QdrantServer {
     fn drop(&mut self) {
         info!("qdrant server dropped");
-        match kill_process(self.pid, Signal::Term) {
+        match kill(self.get_pid()) {
             Ok(_) => {
                 info!("qdrant successfully killed");
             }

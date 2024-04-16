@@ -1,7 +1,7 @@
 use prisma_lib::{new_client_with_url, PrismaClient};
 use qdrant::create_qdrant_server;
 use qdrant_client::client::QdrantClient;
-use std::{num::NonZeroI32, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 use vector_db::QdrantServer;
 
 mod port;
@@ -27,7 +27,7 @@ impl Library {
         self.qdrant_server.get_client().clone()
     }
 
-    pub fn qdrant_server_info(&self) -> NonZeroI32 {
+    pub fn qdrant_server_info(&self) -> u32 {
         self.qdrant_server.get_pid()
     }
 
