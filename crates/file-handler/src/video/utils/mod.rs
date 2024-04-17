@@ -1,5 +1,5 @@
 use crate::search::payload::SearchPayload;
-use ai::{text_embedding::TextEmbedding, BatchHandler};
+use ai::AsTextEmbeddingModel;
 use qdrant_client::{
     client::QdrantClient,
     qdrant::{point_id::PointIdOptions, PointId, PointStruct},
@@ -15,7 +15,7 @@ pub(crate) mod transcript;
 pub async fn save_text_embedding(
     text: &str,
     payload: SearchPayload,
-    text_embedding: BatchHandler<TextEmbedding>,
+    text_embedding: &dyn AsTextEmbeddingModel,
     qdrant: Arc<QdrantClient>,
     collection_name: &str,
 ) -> anyhow::Result<()> {
@@ -39,8 +39,10 @@ pub async fn save_text_embedding(
         _ => {}
     }
 
-    let embedding = text_embedding.process_single(text.to_string()).await?;
-    let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
+    let embedding = text_embedding
+        .get_texts_embedding_tx()
+        .process_single(text.to_string())
+        .await?;
 
     let point = PointStruct::new(
         payload.get_uuid().to_string(),

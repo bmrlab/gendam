@@ -1,5 +1,5 @@
 use crate::video::split::split_video;
-use ai::whisper::WhisperItem;
+use ai::Transcription;
 use llm::LLMMessage;
 use prisma_lib::{
     video_clip,
@@ -26,12 +26,12 @@ pub async fn save_video_clips(
         if transcript_path.as_ref().exists() {
             let file = File::open(transcript_path.as_ref())?;
             let reader = BufReader::new(file);
-            let whisper_results: Vec<WhisperItem> = serde_json::from_reader(reader)?;
+            let transcription_results: Vec<Transcription> = serde_json::from_reader(reader)?;
 
             return create_video_clips(
                 file_identifier.clone(),
                 client.clone(),
-                whisper_results
+                transcription_results
                     .iter()
                     .map(|v| (v.start_timestamp as i32, v.end_timestamp as i32))
                     .collect(),

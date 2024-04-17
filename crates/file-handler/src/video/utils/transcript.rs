@@ -3,11 +3,7 @@ use crate::{
     search::payload::SearchPayload,
     video::{AUDIO_FILE_NAME, TRANSCRIPT_FILE_NAME},
 };
-use ai::{
-    text_embedding::TextEmbedding,
-    whisper::{Whisper, WhisperItem, WhisperParams},
-    BatchHandler,
-};
+use ai::{AsAudioTranscriptModel, AsTextEmbeddingModel, Transcription};
 use prisma_lib::{video_transcript, PrismaClient};
 use qdrant_client::client::QdrantClient;
 use std::{fs::File, io::BufReader, path::Path, sync::Arc};
@@ -18,25 +14,20 @@ pub async fn save_transcript(
     artifacts_dir: impl AsRef<std::path::Path>,
     file_identifier: String,
     client: Arc<PrismaClient>,
-    whisper: BatchHandler<Whisper>,
+    audio_transcript: &dyn AsAudioTranscriptModel,
 ) -> anyhow::Result<()> {
-    let result = whisper
-        .process_single((
-            artifacts_dir.as_ref().join(AUDIO_FILE_NAME),
-            Some(WhisperParams {
-                enable_translate: false,
-                ..Default::default()
-            }),
-        ))
+    let result = audio_transcript
+        .get_audio_transcript_tx()
+        .process_single(artifacts_dir.as_ref().join(AUDIO_FILE_NAME))
         .await?;
 
     // write results into json file
     let mut file =
         tokio::fs::File::create(artifacts_dir.as_ref().join(TRANSCRIPT_FILE_NAME)).await?;
-    let json = serde_json::to_string(&result.items())?;
+    let json = serde_json::to_string(&result.transcriptions)?;
     file.write_all(json.as_bytes()).await?;
 
-    for item in result.items() {
+    for item in result.transcriptions {
         let file_identifier = file_identifier.clone();
         let client = client.clone();
 
@@ -74,26 +65,23 @@ pub async fn save_transcript_embedding(
     file_identifier: String,
     client: Arc<PrismaClient>,
     path: impl AsRef<Path>,
-    text_embedding: BatchHandler<TextEmbedding>,
+    text_embedding: &dyn AsTextEmbeddingModel,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
-    let whisper_results: Vec<WhisperItem> = {
+    let transcript_results: Vec<Transcription> = {
         let file = File::open(path.as_ref())?;
         let reader = BufReader::new(file);
-        // Read the JSON contents of the file as an instance of `WhisperItem`
+        // Read the JSON contents of the file as an instance of `Transcription`
         serde_json::from_reader(reader)?
     };
 
-    let text_embedding = text_embedding.clone();
-
-    for item in whisper_results {
+    for item in transcript_results {
         // if item is some like [MUSIC], just skip it
         // TODO need to make sure all filter rules
         if item.text.starts_with("[") || item.text.starts_with("(") {
             continue;
         }
 
-        let text_embedding = text_embedding.clone();
         let file_identifier = file_identifier.clone();
         let client = client.clone();
         let qdrant = qdrant.clone();

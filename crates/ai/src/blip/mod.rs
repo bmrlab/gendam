@@ -1,5 +1,6 @@
 extern crate accelerate_src;
 
+use crate::traits::{ImageCaptionInput, ImageCaptionOutput};
 use crate::Model;
 use anyhow::{anyhow, bail};
 use async_trait::async_trait;
@@ -10,7 +11,7 @@ use candle_transformers::generation::LogitsProcessor;
 use candle_transformers::models::blip::VisionConfig;
 use candle_transformers::models::quantized_blip;
 use candle_transformers::models::{blip, blip_text};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tokenizers::Tokenizer;
 use tracing::debug;
 
@@ -64,8 +65,8 @@ pub enum BLIPModel {
 
 #[async_trait]
 impl Model for BLIP {
-    type Item = PathBuf;
-    type Output = String;
+    type Item = ImageCaptionInput;
+    type Output = ImageCaptionOutput;
 
     fn batch_size_limit(&self) -> usize {
         1

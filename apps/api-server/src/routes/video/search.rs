@@ -56,8 +56,8 @@ where
                 },
                 library.prisma_client(),
                 library.qdrant_client(),
-                ctx.get_ai_handler().clip,
-                ctx.get_ai_handler().text_embedding,
+                ctx.get_ai_handler().multi_modal_embedding.as_ref(),
+                ctx.get_ai_handler().text_embedding.as_ref(),
             )
             .await;
 

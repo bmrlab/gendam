@@ -1,8 +1,5 @@
 use crate::{search::payload::SearchPayload, video::FRAME_FILE_EXTENSION};
-use ai::{
-    clip::{CLIPInput, CLIP},
-    BatchHandler,
-};
+use ai::AsMultiModalEmbeddingModel;
 use anyhow::Ok;
 use prisma_lib::{video_frame, PrismaClient};
 use qdrant_client::{
@@ -59,7 +56,7 @@ pub async fn save_frame_content_embedding(
     file_identifier: String,
     client: Arc<PrismaClient>,
     frames_dir: impl AsRef<std::path::Path>,
-    clip_model: BatchHandler<CLIP>,
+    multi_modal_embedding: &dyn AsMultiModalEmbeddingModel,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
     // 这里还是从本地读取所有图片
@@ -71,7 +68,6 @@ pub async fn save_frame_content_embedding(
 
     for path in frame_paths {
         let client = client.clone();
-        let clip_model = clip_model.clone();
         let qdrant = qdrant.clone();
 
         let frame_timestamp = get_frame_timestamp_from_path(&path)?;
@@ -98,8 +94,13 @@ pub async fn save_frame_content_embedding(
                     timestamp: frame_timestamp,
                 };
 
-                let _ =
-                    get_single_frame_content_embedding(payload, &path, clip_model, qdrant).await;
+                let _ = get_single_frame_content_embedding(
+                    payload,
+                    &path,
+                    multi_modal_embedding,
+                    qdrant,
+                )
+                .await;
                 debug!("frame content embedding saved");
             }
             std::result::Result::Ok(None) => {
@@ -117,7 +118,7 @@ pub async fn save_frame_content_embedding(
 async fn get_single_frame_content_embedding(
     payload: SearchPayload,
     path: impl AsRef<std::path::Path>,
-    clip_model: BatchHandler<CLIP>,
+    multi_modal_embedding: &dyn AsMultiModalEmbeddingModel,
     qdrant: Arc<QdrantClient>,
 ) -> anyhow::Result<()> {
     // if point exists, skip
@@ -141,10 +142,10 @@ async fn get_single_frame_content_embedding(
         _ => {}
     }
 
-    let embedding = clip_model
-        .process_single(CLIPInput::ImageFilePath(path.as_ref().to_path_buf()))
+    let embedding = multi_modal_embedding
+        .get_images_embedding_tx()
+        .process_single(path.as_ref().to_path_buf())
         .await?;
-    let embedding: Vec<f32> = embedding.iter().map(|&x| x).collect();
 
     let point = PointStruct::new(
         payload.get_uuid().to_string(),

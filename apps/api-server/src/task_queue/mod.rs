@@ -52,10 +52,10 @@ pub async fn create_video_task(
         &library,
     ) {
         Ok(vh) => vh
-            .with_clip(ai_handler.clip)
-            .with_blip(ai_handler.blip)
-            .with_whisper(ai_handler.whisper)
-            .with_text_embedding(ai_handler.text_embedding),
+            .with_multi_modal_embedding(ai_handler.multi_modal_embedding.as_ref())
+            .with_image_caption(ai_handler.image_caption.as_ref())
+            .with_audio_transcript(ai_handler.audio_transcript.as_ref())
+            .with_text_embedding(ai_handler.text_embedding.as_ref()),
         Err(e) => {
             error!("failed to initialize video handler: {}", e);
             return Err(());

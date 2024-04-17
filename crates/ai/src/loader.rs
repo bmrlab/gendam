@@ -1,12 +1,11 @@
-use crate::Model;
 use futures::Future;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::debug;
 
-pub(crate) struct ModelLoader<T, TFn, TFut>
+pub(crate) struct ModelLoaderV2<T, TFn, TFut>
 where
-    T: Model,
+    T: Send,
     TFut: Future<Output = anyhow::Result<T>>,
     TFn: Fn() -> TFut,
 {
@@ -14,9 +13,9 @@ where
     create_model_fn: TFn,
 }
 
-impl<T, TFn, TFut> ModelLoader<T, TFn, TFut>
+impl<T, TFn, TFut> ModelLoaderV2<T, TFn, TFut>
 where
-    T: Model,
+    T: Send,
     TFut: Future<Output = anyhow::Result<T>>,
     TFn: Fn() -> TFut,
 {

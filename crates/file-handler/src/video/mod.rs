@@ -1,9 +1,11 @@
 pub use self::decoder::VideoMetadata;
 use ai::{
-    blip::BLIP, clip::CLIP, text_embedding::TextEmbedding, whisper::Whisper, yolo::YOLO,
-    BatchHandler,
+    AIModelLoader, AsAudioTranscriptModel, AsImageCaptionModel,
+    AsMultiModalEmbeddingModel, AsTextEmbeddingModel, AudioTranscriptInput, AudioTranscriptOutput,
+    ImageCaptionInput, ImageCaptionOutput, MultiModalEmbeddingInput, MultiModalEmbeddingOutput,
+    TextEmbeddingInput, TextEmbeddingOutput,
 };
-use anyhow::Ok;
+use anyhow::{bail, Ok};
 pub use constants::*;
 use content_library::Library;
 use std::fmt::Display;
@@ -36,9 +38,9 @@ mod utils;
 ///     &local_data_dir.into(),
 ///     &resources_dir.into(),
 ///     library_id,
-///     clip,
-///     blip,
-///     whisper,
+///     multi_modal_embedding,
+///     image_caption,
+///     audio_transcript,
 /// ).await;
 ///
 /// let video_handler = VideoHandler::new(
@@ -50,7 +52,7 @@ mod utils;
 /// // get video metadata
 /// video_handler.get_video_metadata().await;
 ///
-/// // CLIP, BLIP, Whisper, TextEmbedding and YOLO models should be initialized in advanced
+/// // multi_modal_embedding, image_caption, audio_transcript, TextEmbedding and YOLO models should be initialized in advanced
 /// // in order to implement advanced information extraction
 /// // following examples shows how to use them
 /// // refer to `ai` crate for initialization of these models
@@ -62,11 +64,11 @@ pub struct VideoHandler {
     file_identifier: String,
     artifacts_dir: std::path::PathBuf,
     library: Library,
-    clip: Option<BatchHandler<CLIP>>,
-    blip: Option<BatchHandler<BLIP>>,
-    whisper: Option<BatchHandler<Whisper>>,
-    text_embedding: Option<BatchHandler<TextEmbedding>>,
-    yolo: Option<BatchHandler<YOLO>>,
+    multi_modal_embedding:
+        Option<AIModelLoader<MultiModalEmbeddingInput, MultiModalEmbeddingOutput>>,
+    image_caption: Option<AIModelLoader<ImageCaptionInput, ImageCaptionOutput>>,
+    audio_transcript: Option<AIModelLoader<AudioTranscriptInput, AudioTranscriptOutput>>,
+    text_embedding: Option<AIModelLoader<TextEmbeddingInput, TextEmbeddingOutput>>,
 }
 
 #[derive(Clone, Debug, EnumDiscriminants, EnumString, PartialEq, Eq, Hash)]
@@ -109,11 +111,10 @@ impl VideoHandler {
             file_identifier: video_file_hash.to_string(),
             artifacts_dir,
             library: library.clone(),
-            clip: None,
-            blip: None,
-            whisper: None,
+            multi_modal_embedding: None,
+            image_caption: None,
+            audio_transcript: None,
             text_embedding: None,
-            yolo: None,
         })
     }
 
@@ -126,19 +127,18 @@ impl VideoHandler {
             VideoTaskType::Audio => self.save_audio().await,
             VideoTaskType::Transcript => self.save_transcript().await,
             VideoTaskType::TranscriptEmbedding => self.save_transcript_embedding().await,
-            VideoTaskType::FrameTags => self.save_frames_tags().await,
-            VideoTaskType::FrameTagsEmbedding => self.save_frame_tags_embedding().await,
+            _ => Ok(()),
         }
     }
 
     pub fn get_supported_task_types(&self, with_audio: Option<bool>) -> Vec<VideoTaskType> {
         let mut task_types = vec![VideoTaskType::Frame];
 
-        if self.clip.is_some() {
+        if self.multi_modal_embedding.is_some() {
             task_types.push(VideoTaskType::FrameContentEmbedding);
         }
 
-        if self.blip.is_some() {
+        if self.image_caption.is_some() {
             task_types.push(VideoTaskType::FrameCaption);
             if self.text_embedding.is_some() {
                 task_types.push(VideoTaskType::FrameCaptionEmbedding);
@@ -149,19 +149,13 @@ impl VideoHandler {
             if with_audio {
                 task_types.push(VideoTaskType::Audio);
 
-                if self.whisper.is_some() {
+                if self.audio_transcript.is_some() {
                     task_types.push(VideoTaskType::Transcript);
                     if self.text_embedding.is_some() {
                         task_types.push(VideoTaskType::TranscriptEmbedding);
                     }
                 }
             }
-        }
-
-        // make sure the order is behind audio related tasks
-        if self.yolo.is_some() {
-            task_types
-                .extend_from_slice(&[VideoTaskType::FrameTags, VideoTaskType::FrameTagsEmbedding]);
         }
 
         task_types
@@ -171,37 +165,33 @@ impl VideoHandler {
         &self.file_identifier
     }
 
-    pub fn with_clip(self, clip: BatchHandler<CLIP>) -> Self {
+    pub fn with_multi_modal_embedding(
+        self,
+        multi_modal_embedding: &dyn AsMultiModalEmbeddingModel,
+    ) -> Self {
         Self {
-            clip: Some(clip),
+            multi_modal_embedding: Some(multi_modal_embedding.get_inputs_embedding_tx().into()),
             ..self
         }
     }
 
-    pub fn with_blip(self, blip: BatchHandler<BLIP>) -> Self {
+    pub fn with_image_caption(self, image_caption: &dyn AsImageCaptionModel) -> Self {
         Self {
-            blip: Some(blip),
+            image_caption: Some(image_caption.get_images_caption_tx().into()),
             ..self
         }
     }
 
-    pub fn with_whisper(self, whisper: BatchHandler<Whisper>) -> Self {
+    pub fn with_audio_transcript(self, audio_transcript: &dyn AsAudioTranscriptModel) -> Self {
         Self {
-            whisper: Some(whisper),
+            audio_transcript: Some(audio_transcript.get_audio_transcript_tx().into()),
             ..self
         }
     }
 
-    pub fn with_text_embedding(self, text_embedding: BatchHandler<TextEmbedding>) -> Self {
+    pub fn with_text_embedding(self, text_embedding: &dyn AsTextEmbeddingModel) -> Self {
         Self {
-            text_embedding: Some(text_embedding),
-            ..self
-        }
-    }
-
-    pub fn with_yolo(self, yolo: BatchHandler<YOLO>) -> Self {
-        Self {
-            yolo: Some(yolo),
+            text_embedding: Some(text_embedding.get_texts_embedding_tx().into()),
             ..self
         }
     }
@@ -219,34 +209,40 @@ impl VideoHandler {
             .await
     }
 
-    fn clip(&self) -> anyhow::Result<BatchHandler<CLIP>> {
-        self.clip
-            .clone()
-            .ok_or(anyhow::anyhow!("CLIP is not enabled"))
+    fn multi_modal_embedding(&self) -> anyhow::Result<&dyn AsMultiModalEmbeddingModel> {
+        match self.multi_modal_embedding.as_ref() {
+            Some(v) => Ok(v),
+            _ => {
+                bail!("multi_modal_embedding is not enabled")
+            }
+        }
     }
 
-    fn blip(&self) -> anyhow::Result<BatchHandler<BLIP>> {
-        self.blip
-            .clone()
-            .ok_or(anyhow::anyhow!("BLIP is not enabled"))
+    fn image_caption(&self) -> anyhow::Result<&dyn AsImageCaptionModel> {
+        match self.image_caption.as_ref() {
+            Some(v) => Ok(v),
+            _ => {
+                bail!("image_caption is not enabled")
+            }
+        }
     }
 
-    fn whisper(&self) -> anyhow::Result<BatchHandler<Whisper>> {
-        self.whisper
-            .clone()
-            .ok_or(anyhow::anyhow!("Whisper is not enabled"))
+    fn audio_transcript(&self) -> anyhow::Result<&dyn AsAudioTranscriptModel> {
+        match self.audio_transcript.as_ref() {
+            Some(v) => Ok(v),
+            _ => {
+                bail!("audio_transcript is not enabled")
+            }
+        }
     }
 
-    fn text_embedding(&self) -> anyhow::Result<BatchHandler<TextEmbedding>> {
-        self.text_embedding
-            .clone()
-            .ok_or(anyhow::anyhow!("Text Embedding is not enabled"))
-    }
-
-    fn yolo(&self) -> anyhow::Result<BatchHandler<YOLO>> {
-        self.yolo
-            .clone()
-            .ok_or(anyhow::anyhow!("YOLO is not enabled"))
+    fn text_embedding(&self) -> anyhow::Result<&dyn AsTextEmbeddingModel> {
+        match self.text_embedding.as_ref() {
+            Some(v) => Ok(v),
+            _ => {
+                bail!("text_embedding is not enabled")
+            }
+        }
     }
 
     /// Extract key frames from video and save results
@@ -309,7 +305,7 @@ impl VideoHandler {
             &self.artifacts_dir,
             self.file_identifier.clone(),
             self.library.prisma_client(),
-            self.whisper()?,
+            self.audio_transcript()?,
         )
         .await
     }
@@ -333,7 +329,7 @@ impl VideoHandler {
             self.file_identifier.clone(),
             self.library.prisma_client(),
             self.artifacts_dir.join(FRAME_DIR),
-            self.clip()?,
+            self.multi_modal_embedding()?,
             self.library.qdrant_client(),
         )
         .await
@@ -349,7 +345,7 @@ impl VideoHandler {
         utils::caption::save_frames_caption(
             self.file_identifier().into(),
             self.artifacts_dir.join(FRAME_DIR),
-            self.blip()?,
+            self.image_caption()?,
             self.library.prisma_client(),
         )
         .await
@@ -371,33 +367,9 @@ impl VideoHandler {
         Ok(())
     }
 
-    async fn save_frames_tags(&self) -> anyhow::Result<()> {
-        utils::caption::save_frames_tags(
-            self.file_identifier().into(),
-            self.artifacts_dir.join(FRAME_DIR),
-            self.yolo()?,
-            self.library.prisma_client(),
-        )
-        .await
-    }
-
-    async fn save_frame_tags_embedding(&self) -> anyhow::Result<()> {
-        utils::caption::save_frame_caption_embedding(
-            self.file_identifier().into(),
-            self.library.prisma_client(),
-            self.artifacts_dir.join(FRAME_DIR),
-            utils::caption::CaptionMethod::YOLO,
-            self.text_embedding()?,
-            self.library.qdrant_client(),
-        )
-        .await?;
-
-        Ok(())
-    }
-
-    /// Split video into multiple clips
+    /// Split video into multiple multi_modal_embeddings
     #[allow(dead_code)]
-    async fn save_video_clips(&self) -> anyhow::Result<()> {
+    async fn save_video_multi_modal_embeddings(&self) -> anyhow::Result<()> {
         utils::clip::save_video_clips(
             self.file_identifier.clone(),
             Some(self.artifacts_dir.join(TRANSCRIPT_FILE_NAME)),
@@ -408,9 +380,9 @@ impl VideoHandler {
     }
 
     #[allow(dead_code)]
-    async fn save_video_clips_summarization(&self) -> anyhow::Result<()> {
-        todo!("implement video clips summarization")
-        // utils::clip::get_video_clips_summarization(
+    async fn save_video_multi_modal_embeddings_summarization(&self) -> anyhow::Result<()> {
+        todo!("implement video multi_modal_embeddings summarization")
+        // utils::multi_modal_embedding::get_video_multi_modal_embeddings_summarization(
         //     self.file_identifier.clone(),
         //     self.resources_dir.clone(),
         //     self.client.clone(),

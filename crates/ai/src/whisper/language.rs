@@ -3,7 +3,7 @@ use strum_macros::{AsRefStr, EnumString};
 
 #[derive(AsRefStr, Debug, Clone, Serialize, Deserialize, PartialEq, Eq, EnumString)]
 #[strum(serialize_all = "lowercase")]
-pub enum WhisperLanguage {
+pub enum TranscriptionLanguage {
     EN,
     ZH,
     DE,

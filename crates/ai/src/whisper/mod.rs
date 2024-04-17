@@ -1,3 +1,4 @@
+use crate::traits::{AudioTranscriptInput, AudioTranscriptOutput, Transcription};
 use crate::Model;
 use anyhow::{anyhow, bail};
 use async_trait::async_trait;
@@ -48,13 +49,8 @@ impl WhisperModel {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct WhisperLanguageResult {
-    language: WhisperLanguage,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub struct WhisperResult {
-    language: WhisperLanguage,
+    language: TranscriptionLanguage,
     transcription: Vec<WhisperTranscription>,
 }
 
@@ -66,10 +62,10 @@ pub struct WhisperItem {
 }
 
 impl WhisperResult {
-    pub fn items(&self) -> Vec<WhisperItem> {
+    pub fn items(&self) -> Vec<Transcription> {
         self.transcription
             .iter()
-            .map(|item| WhisperItem {
+            .map(|item| Transcription {
                 start_timestamp: item.offsets.from,
                 end_timestamp: item.offsets.to,
                 text: item.text.clone(),
@@ -77,8 +73,17 @@ impl WhisperResult {
             .collect()
     }
 
-    pub fn language(&self) -> WhisperLanguage {
+    pub fn language(&self) -> TranscriptionLanguage {
         self.language.clone()
+    }
+}
+
+impl Into<AudioTranscriptOutput> for WhisperResult {
+    fn into(self) -> AudioTranscriptOutput {
+        AudioTranscriptOutput {
+            language: self.language.clone(),
+            transcriptions: self.items(),
+        }
     }
 }
 
@@ -200,7 +205,7 @@ impl Whisper {
 
         let mut transcript: serde_json::Value = serde_json::from_str(&transcript)?;
         let language = transcript["result"]["language"].take();
-        let language = WhisperLanguage::from_str(language.as_str().unwrap_or("en"))?;
+        let language = TranscriptionLanguage::from_str(language.as_str().unwrap_or("en"))?;
         let transcription = transcript["transcription"].take();
         let transcription: Vec<WhisperTranscription> = serde_json::from_value(transcription)?;
 
@@ -218,8 +223,8 @@ impl Whisper {
 
 #[async_trait]
 impl Model for Whisper {
-    type Item = (PathBuf, Option<WhisperParams>);
-    type Output = WhisperResult;
+    type Item = AudioTranscriptInput;
+    type Output = AudioTranscriptOutput;
 
     fn batch_size_limit(&self) -> usize {
         1
@@ -231,7 +236,8 @@ impl Model for Whisper {
     ) -> anyhow::Result<Vec<anyhow::Result<Self::Output>>> {
         let mut results = Vec::with_capacity(items.len());
         for item in items {
-            results.push(self.transcribe(item.0, item.1).await);
+            let res = self.transcribe(item, None).await;
+            results.push(res.map(|v| v.into()));
         }
         Ok(results)
     }
@@ -279,7 +285,7 @@ fn test_with_invalid_utf8() {
 
     let mut transcript: serde_json::Value = serde_json::from_str(&transcript).expect("");
     let language = transcript["result"]["language"].take();
-    let language = WhisperLanguage::from_str(language.as_str().unwrap_or("en")).expect("");
+    let language = TranscriptionLanguage::from_str(language.as_str().unwrap_or("en")).expect("");
     let transcription = transcript["transcription"].take();
     let transcription: Vec<WhisperTranscription> = serde_json::from_value(transcription).expect("");
 

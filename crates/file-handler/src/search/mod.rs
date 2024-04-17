@@ -2,11 +2,7 @@ mod constants;
 pub(crate) mod payload;
 
 use self::constants::RETRIEVAL_COUNT;
-use ai::{
-    clip::{CLIPInput, CLIP},
-    text_embedding::TextEmbedding,
-    BatchHandler,
-};
+use ai::{AsMultiModalEmbeddingModel, AsTextEmbeddingModel};
 use payload::{SearchPayload, SearchRecordType};
 use prisma_lib::{video_transcript, PrismaClient};
 use qdrant_client::{
@@ -70,16 +66,17 @@ pub async fn handle_search(
     payload: SearchRequest,
     client: Arc<PrismaClient>,
     qdrant: Arc<QdrantClient>,
-    clip: BatchHandler<CLIP>,
-    text_embedding: BatchHandler<TextEmbedding>,
+    multi_modal_embedding: &dyn AsMultiModalEmbeddingModel,
+    text_embedding: &dyn AsTextEmbeddingModel,
 ) -> anyhow::Result<Vec<SearchResult>> {
-    let clip_text_embedding = clip
-        .process_single(CLIPInput::Text(payload.text.clone()))
+    let clip_text_embedding = multi_modal_embedding
+        .get_texts_embedding_tx()
+        .process_single(payload.text.clone())
         .await?;
-    let clip_text_embedding: Vec<_> = clip_text_embedding.iter().map(|&x| x).collect();
-
-    let text_model_embedding = text_embedding.process_single(payload.text.clone()).await?;
-    let text_model_embedding: Vec<_> = text_model_embedding.iter().map(|&x| x).collect();
+    let text_model_embedding = text_embedding
+        .get_texts_embedding_tx()
+        .process_single(payload.text.clone())
+        .await?;
 
     let record_types = payload.record_type.unwrap_or(vec![
         SearchRecordType::Frame,

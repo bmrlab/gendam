@@ -1,7 +1,10 @@
-use crate::{ort::load_onnx_model, Model};
-
 use super::utils;
-use anyhow::{anyhow, bail};
+use crate::{
+    ort::load_onnx_model,
+    traits::{MultiModalEmbeddingInput, MultiModalEmbeddingOutput},
+    Model,
+};
+use anyhow::anyhow;
 use async_trait::async_trait;
 use image::RgbImage;
 pub use model::*;
@@ -32,8 +35,8 @@ pub enum CLIPInput {
 
 #[async_trait]
 impl Model for CLIP {
-    type Item = CLIPInput;
-    type Output = CLIPEmbedding;
+    type Item = MultiModalEmbeddingInput;
+    type Output = MultiModalEmbeddingOutput;
 
     fn batch_size_limit(&self) -> usize {
         // TODO 后续可以支持 batch 模式
@@ -44,19 +47,22 @@ impl Model for CLIP {
         &mut self,
         items: Vec<Self::Item>,
     ) -> anyhow::Result<Vec<anyhow::Result<Self::Output>>> {
-        if items.len() > self.batch_size_limit() {
-            bail!("too many items");
-        }
+        // if items.len() > self.batch_size_limit() {
+        //     bail!("too many items");
+        // }
 
         let mut results = vec![];
 
         for item in items {
             let res = match item {
-                CLIPInput::Image(rgb) => self.get_image_embedding_from_image(&rgb).await,
-                CLIPInput::ImageFilePath(path) => self.get_image_embedding_from_file(&path).await,
-                CLIPInput::Text(text) => self.get_text_embedding(&text).await,
+                MultiModalEmbeddingInput::Image(path) => {
+                    self.get_image_embedding_from_file(&path).await
+                }
+                // CLIPInput::ImageFilePath(path) => self.get_image_embedding_from_file(&path).await,
+                MultiModalEmbeddingInput::Text(text) => self.get_text_embedding(&text).await,
             };
 
+            let res = res.map(|v| v.iter().map(|&t| t).collect::<Vec<_>>());
             results.push(res);
         }
 

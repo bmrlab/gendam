@@ -1,51 +1,24 @@
 use crate::{
     ort::load_onnx_model,
+    traits::{TextEmbeddingInput, TextEmbeddingOutput},
     utils::{self, normalize},
     Model,
 };
-use anyhow::{anyhow, bail};
+use anyhow::anyhow;
 use async_trait::async_trait;
 use ndarray::{Array1, Axis};
 use ort::Session;
 use std::path::Path;
 use tokenizers::Tokenizer;
 
-pub struct TextEmbedding {
+pub struct OrtTextEmbedding {
     model: Session,
     tokenizer: Tokenizer,
     dim: usize,
     max_len: usize,
 }
 
-#[async_trait]
-impl Model for TextEmbedding {
-    type Item = String;
-    type Output = Vec<f32>;
-
-    fn batch_size_limit(&self) -> usize {
-        1
-    }
-
-    async fn process(
-        &mut self,
-        items: Vec<Self::Item>,
-    ) -> anyhow::Result<Vec<anyhow::Result<Self::Output>>> {
-        if items.len() > self.batch_size_limit() {
-            bail!("too many items");
-        }
-
-        let mut results = vec![];
-
-        for item in items {
-            let res = self.get_text_embedding(&item).await;
-            results.push(res);
-        }
-
-        Ok(results)
-    }
-}
-
-impl TextEmbedding {
+impl OrtTextEmbedding {
     pub async fn new(resources_dir: impl AsRef<Path>) -> anyhow::Result<Self> {
         let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
             resources_dir: resources_dir.as_ref().to_path_buf(),
@@ -132,9 +105,33 @@ impl TextEmbedding {
     }
 }
 
+#[async_trait]
+impl Model for OrtTextEmbedding {
+    type Item = TextEmbeddingInput;
+    type Output = TextEmbeddingOutput;
+
+    fn batch_size_limit(&self) -> usize {
+        1
+    }
+
+    async fn process(
+        &mut self,
+        items: Vec<String>,
+    ) -> anyhow::Result<Vec<anyhow::Result<Vec<f32>>>> {
+        let mut results = vec![];
+
+        for item in items {
+            let res = self.get_text_embedding(&item).await;
+            results.push(res);
+        }
+
+        Ok(results)
+    }
+}
+
 #[test_log::test(tokio::test)]
 async fn test_text_embedding() {
-    let model = TextEmbedding::new(
+    let model = OrtTextEmbedding::new(
         "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
     )
     .await
