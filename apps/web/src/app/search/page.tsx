@@ -9,7 +9,7 @@ import classNames from 'classnames'
 import { useSearchParams } from 'next/navigation'
 import React, { useCallback, useMemo, useState } from 'react'
 import SearchForm from './SearchForm'
-import VideoItem from './VideoItem'
+import SearchResults from './SearchResults'
 import { Checkbox } from '@muse/ui/v2/checkbox'
 
 const useSearchPayloadInURL: () => [
@@ -112,14 +112,7 @@ export default function Search() {
               </div>
             </div>
           ) : queryRes.isSuccess && queryRes.data.length > 0 ? (
-            <div className="min-h-full pb-8 flex flex-wrap gap-4 content-start">
-              {queryRes.data.map((item: SearchResultPayload, index: number) => (
-                <VideoItem
-                  key={`${item.assetObjectId}-${index}`}
-                  item={item} groupFrames={groupFrames}
-                ></VideoItem>
-              ))}
-            </div>
+            <SearchResults items={queryRes.data} groupFrames={groupFrames} />
           ) : (
             <div>Something went wrong</div>
           )}
