@@ -4,6 +4,7 @@ import ExplorerDroppable, { useExplorerDroppableContext } from '@/Explorer/compo
 import FileThumb from '@/Explorer/components/View/FileThumb'
 import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
+import { SELECTABLE_TARGETS_IDS } from '@/Explorer/constant'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
@@ -32,10 +33,7 @@ const DroppableInner: React.FC<ItemsWithSize> = ({ data, width, height }) => {
   return (
     <>
       <div
-        className={classNames(
-          'mb-1 overflow-hidden',
-          highlight ? 'bg-app-hover' : null
-        )}
+        className={classNames('mb-1 overflow-hidden', highlight ? 'bg-app-hover' : null)}
         style={{ width: `${width}px`, height: `${height}px` }}
       >
         <FileThumb data={data} className="h-full w-full" />
@@ -56,9 +54,11 @@ const DroppableInner: React.FC<ItemsWithSize> = ({ data, width, height }) => {
   )
 }
 
-const MediaItem: React.FC<ItemsWithSize & {
-  onSelect: (e: React.MouseEvent, data: ExplorerItem) => void
-}> = ({ data, width, height, onSelect }) => {
+const MediaItem: React.FC<
+  ItemsWithSize & {
+    onSelect: (e: React.MouseEvent, data: ExplorerItem) => void
+  }
+> = ({ data, width, height, onSelect }) => {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const quickViewStore = useQuickViewStore()
@@ -77,7 +77,9 @@ const MediaItem: React.FC<ItemsWithSize & {
 
   return (
     <div
-      data-component-hint='ViewItem(MediaView,Media)'
+      id={SELECTABLE_TARGETS_IDS[2]}
+      itemID={data.id.toString()}
+      data-component-hint="ViewItem(MediaView,Media)"
       onClick={(e) => {
         e.stopPropagation()
         onSelect(e, data)
@@ -102,29 +104,29 @@ export default function Medias({ items }: { items: ExplorerItem[] }) {
 
   const ref = useRef<HTMLDivElement>(null)
   const gap = 10
-  const padding = 30  // container 左右 padding
+  const padding = 30 // container 左右 padding
   const [containerWidth, setContainerWidth] = useState<number>(0)
 
   useEffect(() => {
-    const $el = ref.current;
+    const $el = ref.current
     if (!$el) {
       return
     }
     // ref.current 必须在 useEffect 里面用, 不然还没有 mount, 它还是 undefined
     const containerWidth = Math.max(0, ($el.clientWidth || 0) - padding * 2)
     setContainerWidth(containerWidth)
-    const resizeObserver = new ResizeObserver(entries => {
+    const resizeObserver = new ResizeObserver((entries) => {
       for (let entry of entries) {
         if (entry.target === $el) {
           const containerWidth = Math.max(0, ($el.clientWidth || 0) - padding * 2)
           setContainerWidth(containerWidth)
         }
       }
-    });
-    resizeObserver.observe($el);
+    })
+    resizeObserver.observe($el)
     return () => {
-      resizeObserver.unobserve($el);
-    };
+      resizeObserver.unobserve($el)
+    }
   }, [])
 
   const itemsWithSize = useMemo<ItemsWithSize[]>(() => {
@@ -135,15 +137,12 @@ export default function Medias({ items }: { items: ExplorerItem[] }) {
     let itemsWithSize: ItemsWithSize[] = []
     let queue: ItemsWithSize[] = []
     for (let data of items) {
-      const mediaWidth = data.assetObject?.mediaData?.width || 100  // px
-      const mediaHeight = data.assetObject?.mediaData?.height || 100  // px
+      const mediaWidth = data.assetObject?.mediaData?.width || 100 // px
+      const mediaHeight = data.assetObject?.mediaData?.height || 100 // px
       /* 高度 100px, 宽度 100 ~ 300 px */
       const height = 150
-      const width = Math.min(
-        Math.min(450, containerWidth),
-        Math.max(100, height * mediaWidth / mediaHeight)
-      )
-      const maxTotalWidth = containerWidth - (gap * (queue.length - 1))
+      const width = Math.min(Math.min(450, containerWidth), Math.max(100, (height * mediaWidth) / mediaHeight))
+      const maxTotalWidth = containerWidth - gap * (queue.length - 1)
       if (itemsTotalWidth + width > maxTotalWidth) {
         const scale = maxTotalWidth / itemsTotalWidth
         queue.forEach((item) => {
@@ -157,7 +156,7 @@ export default function Medias({ items }: { items: ExplorerItem[] }) {
       itemsTotalWidth += width
       queue.push({ data, width, height })
     }
-    itemsWithSize = [ ...itemsWithSize, ...queue]
+    itemsWithSize = [...itemsWithSize, ...queue]
     return itemsWithSize
   }, [containerWidth, items])
 
@@ -198,7 +197,7 @@ export default function Medias({ items }: { items: ExplorerItem[] }) {
   return (
     <div
       ref={ref}
-      className="w-full flex flex-wrap content-start items-start justify-start"
+      className="flex w-full flex-wrap content-start items-start justify-start"
       style={{ columnGap: `${gap}px`, rowGap: '30px', padding: `${padding}px` }}
     >
       {itemsWithSize.map(({ data, width, height }) => (

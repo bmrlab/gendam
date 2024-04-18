@@ -8,6 +8,7 @@ import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
 // import { useCurrentLibrary } from '@/lib/library'
+import { SELECTABLE_TARGETS_IDS } from '@/Explorer/constant'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { formatBytes, formatDateTime } from '@/lib/utils'
 import classNames from 'classnames'
@@ -98,9 +99,9 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
 
   return (
     <div
-      id="explore-list__item"
-      data-component-hint="ViewItem(ListView)"
+      id={SELECTABLE_TARGETS_IDS[1]}
       itemID={data.id.toString()}
+      data-component-hint="ViewItem(ListView)"
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
     >
