@@ -46,6 +46,8 @@ export default function Sidebar() {
     [currentLibrary],
   )
 
+  uploadQueueStore
+
   useEffect(() => {
     function handleClickOutside(event: any) {
       // console.log(panelRef.current, event.target);
@@ -58,6 +60,14 @@ export default function Sidebar() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
+
+  const [lastQueueLength, setLastQueueLength] = useState(0)
+  useEffect(() => {
+    if (uploadQueueStore.queue.length > lastQueueLength) {
+      setUploadQueueOpen(true)
+    }
+    setLastQueueLength(uploadQueueStore.queue.length)
+  }, [lastQueueLength, uploadQueueStore.queue.length])
 
   const menuClassNames = (path: string) => {
     return classNames(
