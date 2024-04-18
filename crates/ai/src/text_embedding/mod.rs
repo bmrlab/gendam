@@ -19,18 +19,21 @@ pub struct OrtTextEmbedding {
 }
 
 impl OrtTextEmbedding {
-    pub async fn new(resources_dir: impl AsRef<Path>) -> anyhow::Result<Self> {
-        let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
-            resources_dir: resources_dir.as_ref().to_path_buf(),
-            ..Default::default()
-        });
+    pub async fn new(
+        model_path: impl AsRef<Path>,
+        tokenizer_config_path: impl AsRef<Path>,
+    ) -> anyhow::Result<Self> {
+        // let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
+        //     resources_dir: resources_dir.as_ref().to_path_buf(),
+        //     ..Default::default()
+        // });
 
-        let model_path = download
-            .download_if_not_exists("puff-base-v1/model_quantized.onnx")
-            .await?;
-        let tokenizer_config_path = download
-            .download_if_not_exists("puff-base-v1/tokenizer.json")
-            .await?;
+        // let model_path = download
+        //     .download_if_not_exists("puff-base-v1/model_quantized.onnx")
+        //     .await?;
+        // let tokenizer_config_path = download
+        //     .download_if_not_exists("puff-base-v1/tokenizer.json")
+        //     .await?;
 
         let model = load_onnx_model(model_path, None)?;
 
@@ -132,6 +135,7 @@ impl Model for OrtTextEmbedding {
 #[test_log::test(tokio::test)]
 async fn test_text_embedding() {
     let model = OrtTextEmbedding::new(
+        "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
         "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
     )
     .await

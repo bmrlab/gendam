@@ -1,10 +1,14 @@
-use crate::{ai::AIHandler, task_queue::TaskPayload};
-use content_library::Library;
+use crate::{
+    ai::AIHandler,
+    download::{DownloadReporter, DownloadStatus},
+    task_queue::TaskPayload,
+};
+use async_trait::async_trait;
+use content_library::{Library, QdrantServerInfo};
 use file_handler::video::{VideoHandler, VideoTaskType};
 use std::{
     boxed::Box,
     path::PathBuf,
-    pin::Pin,
     sync::{mpsc::Sender, Arc, Mutex},
 };
 
@@ -19,28 +23,24 @@ pub trait CtxStore {
     fn delete(&mut self, key: &str) -> Result<(), StoreError>;
 }
 
-pub trait CtxWithLibrary {
+#[async_trait]
+pub trait CtxWithLibrary: Sync {
     fn get_local_data_root(&self) -> PathBuf;
     fn get_resources_dir(&self) -> PathBuf;
 
-    fn load_library<'async_trait>(
-        &'async_trait self,
-        library_id: &'async_trait str,
-    ) -> Pin<Box<dyn std::future::Future<Output = Result<(), rspc::Error>> + Send + 'async_trait>>
-    where
-        Self: Sync + 'async_trait;
+    async fn load_library(&self, library_id: &str) -> Result<(), rspc::Error>;
 
     fn quit_library_in_store(&self) -> Result<(), rspc::Error>;
     fn library_id_in_store(&self) -> Option<String>;
 
     fn library(&self) -> Result<Library, rspc::Error>;
+    fn task_tx(&self) -> Result<Sender<TaskPayload<VideoHandler, VideoTaskType>>, rspc::Error>;
+    fn ai_handler(&self) -> Result<AIHandler, rspc::Error>;
+    fn ai_handler_mutex(&self) -> Arc<Mutex<Option<AIHandler>>>;
+    fn download_reporter(&self) -> Result<DownloadReporter, rspc::Error>;
+    fn download_status(&self) -> Result<Vec<DownloadStatus>, rspc::Error>;
 
-    fn get_task_tx(&self) -> Arc<Mutex<Sender<TaskPayload<VideoHandler, VideoTaskType>>>>;
-    fn get_ai_handler(&self) -> AIHandler;
+    fn qdrant_info(&self) -> Result<QdrantServerInfo, rspc::Error>;
 
-    fn trigger_unfinished_tasks<'async_trait>(
-        &'async_trait self,
-    ) -> Pin<Box<dyn std::future::Future<Output = ()> + Send + 'async_trait>>
-    where
-        Self: Sync + 'async_trait;
+    async fn trigger_unfinished_tasks(&self) -> ();
 }

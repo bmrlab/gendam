@@ -1,3 +1,4 @@
+use crate::port::get_available_port;
 use qdrant_client::{
     client::QdrantClient,
     qdrant::{
@@ -8,7 +9,17 @@ use qdrant_client::{
 use std::{path::Path, sync::Arc};
 use vector_db::{QdrantParams, QdrantServer};
 
-use crate::port::get_available_port;
+#[derive(Debug, Clone)]
+pub struct QdrantCollectionInfo {
+    pub name: String,
+    pub dim: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct QdrantServerInfo {
+    pub language_collection: QdrantCollectionInfo,
+    pub vision_collection: QdrantCollectionInfo,
+}
 
 pub async fn create_qdrant_server(qdrant_dir: impl AsRef<Path>) -> Result<QdrantServer, ()> {
     let http_port = get_available_port(6333, 8000).ok_or(())?;
@@ -24,27 +35,27 @@ pub async fn create_qdrant_server(qdrant_dir: impl AsRef<Path>) -> Result<Qdrant
         tracing::error!("failed to start qdrant server: {}", e);
     })?;
 
-    let qdrant = qdrant_server.get_client().clone();
+    // let qdrant = qdrant_server.get_client().clone();
 
-    for (collection_name, collection_dim) in vec![
-        vector_db::DEFAULT_VISION_COLLECTION_NAME,
-        vector_db::DEFAULT_LANGUAGE_COLLECTION_NAME,
-    ]
-    .iter()
-    .zip(vec![
-        vector_db::DEFAULT_VISION_COLLECTION_DIM,
-        vector_db::DEFAULT_LANGUAGE_COLLECTION_DIM,
-    ]) {
-        make_sure_collection_created(qdrant.clone(), &collection_name, collection_dim)
-            .await
-            .map_err(|e| {
-                tracing::error!(
-                    "failed to make sure collection created: {}, {}",
-                    collection_name,
-                    e
-                );
-            })?;
-    }
+    // for (collection_name, collection_dim) in vec![
+    //     vector_db::DEFAULT_VISION_COLLECTION_NAME,
+    //     vector_db::DEFAULT_LANGUAGE_COLLECTION_NAME,
+    // ]
+    // .iter()
+    // .zip(vec![
+    //     vector_db::DEFAULT_VISION_COLLECTION_DIM,
+    //     vector_db::DEFAULT_LANGUAGE_COLLECTION_DIM,
+    // ]) {
+    //     make_sure_collection_created(qdrant.clone(), &collection_name, collection_dim)
+    //         .await
+    //         .map_err(|e| {
+    //             tracing::error!(
+    //                 "failed to make sure collection created: {}, {}",
+    //                 collection_name,
+    //                 e
+    //             );
+    //         })?;
+    // }
 
     Ok(qdrant_server)
 }

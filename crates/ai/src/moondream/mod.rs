@@ -21,14 +21,17 @@ pub struct Moondream {
 
 #[allow(dead_code)]
 impl Moondream {
-    pub async fn new(resources_dir: impl AsRef<Path>) -> anyhow::Result<Self> {
-        let (tokenizer_uri, model_uri) = ("moondream/tokenizer.json", "moondream/model-q4_0.gguf");
-        let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
-            resources_dir: resources_dir.as_ref().to_path_buf(),
-            ..Default::default()
-        });
-        let model_path = download.download_if_not_exists(model_uri).await?;
-        let tokenizer_path = download.download_if_not_exists(tokenizer_uri).await?;
+    pub async fn new(
+        model_path: impl AsRef<Path>,
+        tokenizer_path: impl AsRef<Path>,
+    ) -> anyhow::Result<Self> {
+        // let (tokenizer_uri, model_uri) = ("moondream/tokenizer.json", "moondream/model-q4_0.gguf");
+        // let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
+        //     resources_dir: resources_dir.as_ref().to_path_buf(),
+        //     ..Default::default()
+        // });
+        // let model_path = download.download_if_not_exists(model_uri).await?;
+        // let tokenizer_path = download.download_if_not_exists(tokenizer_uri).await?;
 
         let tokenizer = Tokenizer::from_file(tokenizer_path)
             .map_err(|_| anyhow::anyhow!("failed to initialize tokenizer"))?;
@@ -154,6 +157,7 @@ pub fn load_image<P: AsRef<std::path::Path>>(p: P) -> candle_core::Result<Tensor
 #[test_log::test(tokio::test)]
 async fn test_moondream() {
     let mut moondream = Moondream::new(
+        "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
         "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
     )
     .await

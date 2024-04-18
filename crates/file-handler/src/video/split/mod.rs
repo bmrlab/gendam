@@ -10,6 +10,7 @@ mod kts;
 ///
 /// # Returns
 /// * `Vec<usize>` - best split points for input features
+#[allow(dead_code)]
 pub fn split_video(features: Array2<f64>, alpha: Option<usize>) -> anyhow::Result<Vec<usize>> {
     let alpha = alpha.unwrap_or(10);
 
@@ -31,9 +32,14 @@ async fn test_split_video() {
     let frames_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local/libraries/98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797/artifacts/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/frames";
     let resources_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local/resources";
 
-    let clip_model = ai::clip::CLIP::new(resources_dir, ai::clip::CLIPModel::MViTB32)
-        .await
-        .expect("failed to load CLIP");
+    let clip_model = ai::clip::CLIP::new(
+        resources_dir,
+        resources_dir,
+        resources_dir,
+        ai::clip::CLIPModel::MViTB32,
+    )
+    .await
+    .expect("failed to load CLIP");
 
     let mut frame_paths = std::fs::read_dir(frames_dir)
         .unwrap()

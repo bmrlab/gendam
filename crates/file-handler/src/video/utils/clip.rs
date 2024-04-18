@@ -319,24 +319,24 @@ async fn create_video_clips(
 
 #[test_log::test(tokio::test)]
 async fn test_video_clip() {
-    let local_data_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local";
-    let library = content_library::load_library(
-        &local_data_dir.into(),
-        "98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797",
-    )
-    .await
-    .unwrap();
+    // let local_data_dir = "/Users/zhuo/Library/Application Support/cc.musedam.local";
+    // let library = content_library::load_library(
+    //     &local_data_dir.into(),
+    //     "98f19afbd2dee7fa6415d5f523d36e8322521e73fd7ac21332756330e836c797",
+    // )
+    // .await
+    // .unwrap();
 
-    let file_identifier =
-        String::from("1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b");
+    // let file_identifier =
+    //     String::from("1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b");
 
-    let result = save_video_clips(
-        file_identifier,
-        None::<std::path::PathBuf>,
-        library.prisma_client(),
-        library.qdrant_client(),
-    )
-    .await;
+    // let result = save_video_clips(
+    //     file_identifier,
+    //     None::<std::path::PathBuf>,
+    //     library.prisma_client(),
+    //     library.qdrant_client(),
+    // )
+    // .await;
 
-    assert!(result.is_ok())
+    // assert!(result.is_ok())
 }

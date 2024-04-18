@@ -3,6 +3,7 @@ use crate::HandlerPayload;
 use std::path::PathBuf;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
+use tracing::info;
 
 #[derive(Clone)]
 pub enum MultiModalEmbeddingInput {
@@ -44,11 +45,12 @@ impl AsTextEmbeddingModel for AIModelLoader<MultiModalEmbeddingInput, MultiModal
 
                         let _ = data.1.send(results);
                     }
-                    None => {
+                    Some(HandlerPayload::Shutdown) => {
+                        info!("Shutdown texts_embedding_tx");
                         break;
                     }
                     _ => {
-                        // ignore
+                        break;
                     }
                 }
             }
@@ -84,12 +86,11 @@ impl AsImageEmbeddingModel for AIModelLoader<MultiModalEmbeddingInput, MultiModa
 
                         let _ = data.1.send(results);
                     }
-                    None => {
+                    Some(HandlerPayload::Shutdown) => {
+                        info!("Shutdown images_embedding_tx");
                         break;
                     }
-                    _ => {
-                        // ignore
-                    }
+                    _ => break,
                 }
             }
         });

@@ -227,6 +227,7 @@ dependencies = [
  "ai",
  "analytics-tracing",
  "anyhow",
+ "async-trait",
  "axum 0.7.5",
  "blake3",
  "chrono",
@@ -235,6 +236,7 @@ dependencies = [
  "dirs",
  "docx-rs",
  "dotenvy",
+ "downloader",
  "file-handler",
  "mime_guess",
  "priority-queue",
@@ -243,6 +245,7 @@ dependencies = [
  "qdrant-client",
  "rand 0.8.5",
  "regex",
+ "reqwest",
  "rspc",
  "rspc-axum",
  "serde",
@@ -1716,6 +1719,19 @@ name = "dotenvy"
 version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
+
+[[package]]
+name = "downloader"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d05213e96f184578b5f70105d4d0a644a168e99e12d7bea0b200c15d67b5c182"
+dependencies = [
+ "futures",
+ "rand 0.8.5",
+ "reqwest",
+ "thiserror",
+ "tokio",
+]
 
 [[package]]
 name = "dtoa"

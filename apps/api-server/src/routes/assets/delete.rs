@@ -1,4 +1,4 @@
-use content_library::Library;
+use crate::CtxWithLibrary;
 use file_handler::delete_artifacts::handle_delete_artifacts;
 use prisma_client_rust::{Direction, QueryError};
 use prisma_lib::{asset_object, file_path};
@@ -7,10 +7,12 @@ use tokio::sync::Mutex;
 use tracing::error;
 
 pub async fn delete_file_path(
-    library: &Library,
+    ctx: &dyn CtxWithLibrary,
     materialized_path: &str,
     name: &str,
 ) -> Result<(), rspc::Error> {
+    let library = ctx.library()?;
+
     let deleted_file_hashes = Arc::new(Mutex::new(vec![]));
     let deleted_file_hashes_clone = deleted_file_hashes.clone();
 
@@ -121,14 +123,18 @@ pub async fn delete_file_path(
             };
         });
 
+    let qdrant_info = ctx.qdrant_info()?;
+
     handle_delete_artifacts(
-        library,
+        &library,
         deleted_file_hashes_clone
             .lock()
             .await
             .iter()
             .map(|v| v.to_string())
             .collect(),
+        &qdrant_info.vision_collection.name,
+        &qdrant_info.language_collection.name,
         true,
     )
     .await

@@ -1,7 +1,11 @@
 use prisma_lib::{new_client_with_url, PrismaClient};
 use qdrant::create_qdrant_server;
+pub use qdrant::{make_sure_collection_created, QdrantCollectionInfo, QdrantServerInfo};
 use qdrant_client::client::QdrantClient;
-use std::{path::PathBuf, sync::Arc};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use vector_db::QdrantServer;
 
 mod port;
@@ -64,8 +68,11 @@ impl Library {
     }
 }
 
-pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Result<Library, ()> {
-    let library_dir = local_data_root.join("libraries").join(library_id);
+pub async fn load_library(
+    local_data_root: impl AsRef<Path>,
+    library_id: &str,
+) -> Result<Library, ()> {
+    let library_dir = local_data_root.as_ref().join("libraries").join(library_id);
     let db_dir = library_dir.join("databases");
     let artifacts_dir = library_dir.join("artifacts");
     let files_dir = library_dir.join("files");
@@ -103,9 +110,9 @@ pub async fn load_library(local_data_root: &PathBuf, library_id: &str) -> Result
     Ok(library)
 }
 
-pub async fn create_library(local_data_root: &PathBuf) -> PathBuf {
+pub async fn create_library(local_data_root: impl AsRef<Path>) -> PathBuf {
     let library_id = uuid::Uuid::new_v4().to_string();
-    let library_dir = local_data_root.join("libraries").join(&library_id);
+    let library_dir = local_data_root.as_ref().join("libraries").join(&library_id);
     let db_dir = library_dir.join("databases");
     let qdrant_dir = library_dir.join("qdrant");
     let artifacts_dir = library_dir.join("artifacts");
@@ -117,8 +124,8 @@ pub async fn create_library(local_data_root: &PathBuf) -> PathBuf {
     library_dir
 }
 
-pub fn list_library_dirs(local_data_root: &PathBuf) -> Vec<(String, String)> {
-    let libraries_dir = local_data_root.join("libraries");
+pub fn list_library_dirs(local_data_root: impl AsRef<Path>) -> Vec<(String, String)> {
+    let libraries_dir = local_data_root.as_ref().join("libraries");
     if !libraries_dir.exists() {
         return vec![];
     }
@@ -155,39 +162,6 @@ pub fn list_library_dirs(local_data_root: &PathBuf) -> Vec<(String, String)> {
         res.push(library_dir);
     }
     res
-}
-
-pub fn get_library_settings(library_dir: &PathBuf) -> serde_json::Value {
-    match std::fs::File::open(library_dir.join("settings.json")) {
-        Ok(file) => {
-            let reader = std::io::BufReader::new(file);
-            match serde_json::from_reader(reader) {
-                Ok(values) => values,
-                Err(e) => {
-                    tracing::error!("Failed to read file: {}", e);
-                    serde_json::json!({ "title": "Untitled" })
-                }
-            }
-        }
-        Err(e) => {
-            tracing::error!("Failed to open library's settings.json, {}", e);
-            serde_json::json!({ "title": "Untitled" })
-        }
-    }
-}
-
-pub fn set_library_settings(library_dir: &PathBuf, settings: serde_json::Value) {
-    // create or update to library_dir.join("settings.json")
-    match std::fs::File::create(library_dir.join("settings.json")) {
-        Ok(file) => {
-            if let Err(e) = serde_json::to_writer(file, &settings) {
-                tracing::error!("Failed to write file: {}", e);
-            }
-        }
-        Err(e) => {
-            tracing::error!("Failed to create file: {}", e);
-        }
-    };
 }
 
 fn get_shard_hex(hash: &str) -> &str {

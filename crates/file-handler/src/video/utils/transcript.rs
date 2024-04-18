@@ -67,6 +67,7 @@ pub async fn save_transcript_embedding(
     path: impl AsRef<Path>,
     text_embedding: &dyn AsTextEmbeddingModel,
     qdrant: Arc<QdrantClient>,
+    collection_name: &str,
 ) -> anyhow::Result<()> {
     let transcript_results: Vec<Transcription> = {
         let file = File::open(path.as_ref())?;
@@ -124,7 +125,7 @@ pub async fn save_transcript_embedding(
                     payload,
                     text_embedding,
                     qdrant,
-                    vector_db::DEFAULT_LANGUAGE_COLLECTION_NAME,
+                    collection_name,
                 )
                 .await
                 {

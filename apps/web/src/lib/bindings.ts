@@ -8,6 +8,8 @@ export type Procedures = {
         { key: "libraries.get_current_library", input: never, result: CurrentLibraryResult } | 
         { key: "libraries.get_library_settings", input: never, result: LibrarySettings } | 
         { key: "libraries.list", input: never, result: LibrariesListResult[] } | 
+        { key: "libraries.models.get_model", input: string, result: AIModelResult } | 
+        { key: "libraries.models.list", input: never, result: Result[] } | 
         { key: "users.list", input: never, result: any } | 
         { key: "version", input: never, result: string } | 
         { key: "video.search.all", input: SearchRequestPayload, result: SearchResultPayload[] } | 
@@ -23,6 +25,8 @@ export type Procedures = {
         { key: "audio.batch_export", input: ExportInput[], result: AudioType[] } | 
         { key: "audio.export", input: ExportInput, result: AudioType[] } | 
         { key: "libraries.create", input: string, result: null } | 
+        { key: "libraries.models.download_model", input: DownloadModelPayload, result: null } | 
+        { key: "libraries.models.set_model", input: SetModelPayload, result: null } | 
         { key: "libraries.quit_current_library", input: string, result: any } | 
         { key: "libraries.set_current_library", input: string, result: any } | 
         { key: "libraries.update_library_settings", input: LibrarySettings, result: null } | 
@@ -33,7 +37,15 @@ export type Procedures = {
     subscriptions: never
 };
 
+export type SetModelPayload = { category: AIModelCategory; modelId: string }
+
+export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum; models: LibraryModels }
+
+export type ModelArtifact = { url: string; checksum: string }
+
 export type FilePathCreatePayload = { materializedPath: string; name: string }
+
+export type CurrentLibraryResult = { id: string; dir: string }
 
 export type TaskRedoRequestPayload = { assetObjectId: number; preserveArtifacts: boolean }
 
@@ -41,13 +53,15 @@ export type Pagination = { pageSize: number; pageIndex: number }
 
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
+export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
+
 export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPath: string; oldName: string; newName: string }
 
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
 
 export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
 
-export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
+export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageCaption" | "AudioTranscript" | "TextEmbedding"
 
 export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
 
@@ -55,33 +69,45 @@ export type SearchResultPayload = { name: string; materializedPath: string; asse
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
-export type LibrarySettingsThemeEnum = "light" | "dark"
+export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
+
+export type LibrariesListResult = { id: string; dir: string; title: string }
 
 export type FilePathGetPayload = { materializedPath: string; name: string }
+
+export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo"
 
 export type AudioResp = { type: AudioType; content: string }
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
-export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum }
+export type DownloadModelPayload = { modelId: string }
 
-export type CurrentLibraryResult = { id: string; dir: string }
+export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string }
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
+
+export type Result = { category: AIModelCategory; models: AIModelResult[] }
+
+export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
 
 export type TaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
 
 export type VideoWithTasksResult = { name: string; materializedPath: string; assetObject: AssetObject; tasks: FileHandlerTask[]; mediaData: MediaData | null }
 
-export type LibrariesListResult = { id: string; dir: string; title: string }
+export type AIModelResult = { info: AIModel; status: AIModelStatus }
 
 export type VideoWithTasksPageResult = { data: VideoWithTasksResult[]; pagination: Pagination; maxPage: number }
 
 export type TaskListRequestPayload = { pagination: Pagination; filter: TaskListRequestFilter }
 
+export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
+
 export type FilePathDeletePayload = { materializedPath: string; name: string }
 
 export type AssetObject = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string }
+
+export type LibrarySettingsThemeEnum = "light" | "dark"
 
 export type ExportInput = { types: AudioType[]; hash: string; path: string; fileName?: string | null }
 

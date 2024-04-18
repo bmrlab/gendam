@@ -34,6 +34,7 @@ where
         }
         t(move |ctx: TCtx, input: SearchRequestPayload| async move {
             let library = ctx.library()?;
+            let qdrant_info = ctx.qdrant_info()?;
 
             let text = input.text.clone();
             let record_types = match input.record_type {
@@ -56,8 +57,10 @@ where
                 },
                 library.prisma_client(),
                 library.qdrant_client(),
-                ctx.get_ai_handler().multi_modal_embedding.as_ref(),
-                ctx.get_ai_handler().text_embedding.as_ref(),
+                &qdrant_info.vision_collection.name,
+                &qdrant_info.language_collection.name,
+                ctx.ai_handler()?.multi_modal_embedding.as_ref(),
+                ctx.ai_handler()?.text_embedding.as_ref(),
             )
             .await;
 

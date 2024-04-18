@@ -174,8 +174,7 @@ where
                     name: String,
                 }
                 |ctx, input: FilePathDeletePayload| async move {
-                    let library = ctx.library()?;
-                    delete_file_path(&library, &input.materialized_path, &input.name).await?;
+                    delete_file_path(&ctx, &input.materialized_path, &input.name).await?;
                     Ok(())
                 }
             })

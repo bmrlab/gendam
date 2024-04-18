@@ -1,6 +1,6 @@
 use crate::traits::{AudioTranscriptInput, AudioTranscriptOutput, Transcription};
 use crate::Model;
-use anyhow::{anyhow, bail};
+use anyhow::bail;
 use async_trait::async_trait;
 pub use language::*;
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,7 @@ mod language;
 
 pub struct Whisper {
     binary_path: PathBuf,
-    resources_dir: PathBuf,
+    model_path: PathBuf,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -104,7 +104,7 @@ impl Default for WhisperParams {
 }
 
 impl Whisper {
-    pub async fn new(resources_dir: impl AsRef<Path>) -> anyhow::Result<Self> {
+    pub async fn new(model_path: impl AsRef<Path>) -> anyhow::Result<Self> {
         let current_exe_path = std::env::current_exe().expect("failed to get current executable");
         let current_dir = current_exe_path
             .parent()
@@ -113,32 +113,32 @@ impl Whisper {
 
         // download metal file
         // TODO not sure if this is ok to do so
-        let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
-            resources_dir: current_dir.to_path_buf(),
-            ..Default::default()
-        });
-        if let Err(e) = download
-            .download_to_path_if_not_exists(
-                "whisper/ggml-metal.metal",
-                current_dir.join("ggml-metal.metal"),
-            )
-            .await
-        {
-            warn!("failed to download `ggml-metal.metal`: {}", e);
-        };
-        if let Err(e) = download
-            .download_to_path_if_not_exists(
-                "whisper/ggml-common.h",
-                current_dir.join("ggml-common.h"),
-            )
-            .await
-        {
-            warn!("failed to download `ggml-common.h`: {}", e);
-        };
+        // let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
+        //     resources_dir: current_dir.to_path_buf(),
+        //     ..Default::default()
+        // });
+        // if let Err(e) = download
+        //     .download_to_path_if_not_exists(
+        //         "whisper/ggml-metal.metal",
+        //         current_dir.join("ggml-metal.metal"),
+        //     )
+        //     .await
+        // {
+        //     warn!("failed to download `ggml-metal.metal`: {}", e);
+        // };
+        // if let Err(e) = download
+        //     .download_to_path_if_not_exists(
+        //         "whisper/ggml-common.h",
+        //         current_dir.join("ggml-common.h"),
+        //     )
+        //     .await
+        // {
+        //     warn!("failed to download `ggml-common.h`: {}", e);
+        // };
 
         Ok(Self {
             binary_path,
-            resources_dir: resources_dir.as_ref().to_path_buf(),
+            model_path: model_path.as_ref().to_path_buf(),
         })
     }
 
@@ -150,17 +150,19 @@ impl Whisper {
         let params = params.unwrap_or_default();
         let output_file_path = audio_file_path.as_ref().with_file_name("transcript");
 
-        let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
-            resources_dir: self.resources_dir.clone(),
-            ..Default::default()
-        });
+        // let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
+        //     resources_dir: self.resources_dir.clone(),
+        //     ..Default::default()
+        // });
 
-        let model_path = download
-            .download_if_not_exists(format!("whisper/{}", params.model.file_name()))
-            .await?
-            .to_str()
-            .ok_or(anyhow!("invalid path"))?
-            .to_string();
+        // let model_path = download
+        //     .download_if_not_exists(format!("whisper/{}", params.model.file_name()))
+        //     .await?
+        //     .to_str()
+        //     .ok_or(anyhow!("invalid path"))?
+        //     .to_string();
+
+        let model_path = self.model_path.to_string_lossy().to_string();
 
         let mut args_list = vec![
             "-l",

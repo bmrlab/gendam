@@ -7,6 +7,7 @@ sidecar/*
 !sidecar/.gitkeep
 resources/*
 !resources/.gitkeep
+!resources/model_list.json
 
 .data/
 

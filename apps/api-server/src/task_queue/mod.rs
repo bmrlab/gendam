@@ -35,6 +35,8 @@ pub async fn create_video_task(
     ctx: &impl CtxWithLibrary,
     task_types: Option<Vec<VideoTaskType>>,
 ) -> Result<(), ()> {
+    let qdrant_info = ctx.qdrant_info().map_err(|_| ())?;
+
     let library = &ctx.library().map_err(|e| {
         error!(
             "library must be set before triggering create_video_task: {}",
@@ -44,7 +46,7 @@ pub async fn create_video_task(
 
     let local_video_file_full_path = library.file_path(&asset_object_data.hash);
 
-    let ai_handler = ctx.get_ai_handler();
+    let ai_handler = ctx.ai_handler().map_err(|_| ())?;
 
     let video_handler = match VideoHandler::new(
         local_video_file_full_path,
@@ -52,10 +54,16 @@ pub async fn create_video_task(
         &library,
     ) {
         Ok(vh) => vh
-            .with_multi_modal_embedding(ai_handler.multi_modal_embedding.as_ref())
+            .with_multi_modal_embedding(
+                ai_handler.multi_modal_embedding.as_ref(),
+                &qdrant_info.vision_collection.name,
+            )
             .with_image_caption(ai_handler.image_caption.as_ref())
             .with_audio_transcript(ai_handler.audio_transcript.as_ref())
-            .with_text_embedding(ai_handler.text_embedding.as_ref()),
+            .with_text_embedding(
+                ai_handler.text_embedding.as_ref(),
+                &qdrant_info.language_collection.name,
+            ),
         Err(e) => {
             error!("failed to initialize video handler: {}", e);
             return Err(());
@@ -109,56 +117,47 @@ pub async fn create_video_task(
         }
     }
 
-    let tx = ctx.get_task_tx();
+    let tx = ctx.task_tx().map_err(|_| ())?;
 
-    match tx.lock() {
-        Ok(tx) => {
-            for (idx, task_type) in task_types.iter().enumerate() {
-                let priority = match task_type {
-                    // it's better not to add default arm `_ => {}` here
-                    // if there are new task type in future, compiler will throw an error
-                    // this will force us to add priority manually
-                    VideoTaskType::FrameCaption | VideoTaskType::FrameCaptionEmbedding => {
-                        TaskPriority::new(TaskPriorityRaw::Low)
-                    }
-                    VideoTaskType::Frame
-                    | VideoTaskType::FrameContentEmbedding
-                    | VideoTaskType::Audio
-                    | VideoTaskType::Transcript
-                    | VideoTaskType::TranscriptEmbedding
-                    | VideoTaskType::FrameTags
-                    | VideoTaskType::FrameTagsEmbedding => {
-                        TaskPriority::new(TaskPriorityRaw::Normal)
-                    }
-                };
-
-                match tx.send(TaskPayload::Task((
-                    Task {
-                        handler: video_handler.clone(),
-                        task_type: task_type.clone(),
-                        asset_object_id: asset_object_data.id,
-                        prisma_client: library.prisma_client(),
-                    },
-                    priority,
-                    idx,
-                ))) {
-                    Ok(_) => {
-                        info!(
-                            "Task queued {} {}, priority: {}",
-                            asset_object_data.id, &task_type, priority
-                        );
-                    }
-                    Err(e) => {
-                        error!(
-                            "Failed to queue task {} {}: {}",
-                            asset_object_data.id, &task_type, e
-                        );
-                    }
-                }
+    for (idx, task_type) in task_types.iter().enumerate() {
+        let priority = match task_type {
+            // it's better not to add default arm `_ => {}` here
+            // if there are new task type in future, compiler will throw an error
+            // this will force us to add priority manually
+            VideoTaskType::FrameCaption | VideoTaskType::FrameCaptionEmbedding => {
+                TaskPriority::new(TaskPriorityRaw::Low)
             }
-        }
-        Err(e) => {
-            error!("Failed to lock mutex: {}", e);
+            VideoTaskType::Frame
+            | VideoTaskType::FrameContentEmbedding
+            | VideoTaskType::Audio
+            | VideoTaskType::Transcript
+            | VideoTaskType::TranscriptEmbedding
+            | VideoTaskType::FrameTags
+            | VideoTaskType::FrameTagsEmbedding => TaskPriority::new(TaskPriorityRaw::Normal),
+        };
+
+        match tx.send(TaskPayload::Task((
+            Task {
+                handler: video_handler.clone(),
+                task_type: task_type.clone(),
+                asset_object_id: asset_object_data.id,
+                prisma_client: library.prisma_client(),
+            },
+            priority,
+            idx,
+        ))) {
+            Ok(_) => {
+                info!(
+                    "Task queued {} {}, priority: {}",
+                    asset_object_data.id, &task_type, priority
+                );
+            }
+            Err(e) => {
+                error!(
+                    "Failed to queue task {} {}: {}",
+                    asset_object_data.id, &task_type, e
+                );
+            }
         }
     }
 

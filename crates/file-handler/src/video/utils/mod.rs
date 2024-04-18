@@ -8,7 +8,7 @@ use serde_json::json;
 use std::sync::Arc;
 
 pub(crate) mod caption;
-pub(crate) mod clip;
+// pub(crate) mod clip;
 pub(crate) mod frame;
 pub(crate) mod transcript;
 

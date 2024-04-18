@@ -37,6 +37,8 @@ strum = "0.26"
 strum_macros = "0.26"
 # tracing
 tracing = "0.1.40"
+async-trait = "0.1.77"
+downloader = "0.2.7"
 # Set the settings for build scripts and proc-macros.
 [profile.dev.build-override]
 opt-level = 3

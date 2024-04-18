@@ -180,23 +180,21 @@ impl VideoTaskHandler {
     ) -> anyhow::Result<()> {
         let asset_object_id = input.asset_object_id;
 
-        let tx = ctx.get_task_tx();
-        if let Ok(tx) = tx.lock() {
-            match input.task_types.as_ref() {
-                Some(task_types) => task_types.iter().for_each(|t| {
-                    if let Err(e) = tx.send(crate::task_queue::TaskPayload::CancelByAssetAndType(
-                        asset_object_id,
-                        t.to_string(),
-                    )) {
-                        tracing::warn!("cancel task({}-{}) error: {}", asset_object_id, t, e);
-                    }
-                }),
-                _ => {
-                    // cancel all tasks
-                    tx.send(crate::task_queue::TaskPayload::CancelByAssetId(
-                        asset_object_id,
-                    ))?;
+        let tx = ctx.task_tx()?;
+        match input.task_types.as_ref() {
+            Some(task_types) => task_types.iter().for_each(|t| {
+                if let Err(e) = tx.send(crate::task_queue::TaskPayload::CancelByAssetAndType(
+                    asset_object_id,
+                    t.to_string(),
+                )) {
+                    tracing::warn!("cancel task({}-{}) error: {}", asset_object_id, t, e);
                 }
+            }),
+            _ => {
+                // cancel all tasks
+                tx.send(crate::task_queue::TaskPayload::CancelByAssetId(
+                    asset_object_id,
+                ))?;
             }
         }
 
@@ -233,11 +231,18 @@ impl VideoTaskHandler {
             .exec()
             .await?;
         let library = ctx.library()?;
+        let qdrant_info = ctx.qdrant_info()?;
 
         if let Some(asset_object_data) = asset_object_data {
             if !payload.preserve_artifacts {
-                handle_delete_artifacts(&library, vec![(&asset_object_data.hash).into()], false)
-                    .await?;
+                handle_delete_artifacts(
+                    &library,
+                    vec![(&asset_object_data.hash).into()],
+                    &qdrant_info.vision_collection.name,
+                    &qdrant_info.language_collection.name,
+                    false,
+                )
+                .await?;
             }
 
             create_video_task(&asset_object_data, ctx, None)

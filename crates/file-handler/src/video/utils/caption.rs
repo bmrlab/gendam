@@ -231,6 +231,7 @@ pub(crate) async fn save_frame_caption_embedding(
     method: CaptionMethod,
     text_embedding: &dyn AsTextEmbeddingModel,
     qdrant: Arc<QdrantClient>,
+    collection_name: &str,
 ) -> anyhow::Result<()> {
     let frame_paths = std::fs::read_dir(&frames_dir)?
         .filter_map(|res| res.map(|e| e.path()).ok())
@@ -257,6 +258,7 @@ pub(crate) async fn save_frame_caption_embedding(
             method,
             text_embedding,
             qdrant,
+            collection_name,
         )
         .await
         {
@@ -277,6 +279,7 @@ async fn get_single_frame_caption_embedding(
     method: CaptionMethod,
     text_embedding: &dyn AsTextEmbeddingModel,
     qdrant: Arc<QdrantClient>,
+    collection_name: &str,
 ) -> anyhow::Result<()> {
     let x = {
         client
@@ -318,7 +321,7 @@ async fn get_single_frame_caption_embedding(
                 payload,
                 text_embedding,
                 qdrant,
-                vector_db::DEFAULT_LANGUAGE_COLLECTION_NAME,
+                collection_name.into(),
             )
             .await?;
         }

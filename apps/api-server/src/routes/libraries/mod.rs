@@ -1,10 +1,11 @@
-mod settings;
+mod models;
+
 use crate::CtxWithLibrary;
 use content_library::{create_library, list_library_dirs};
 use rspc::{Router, RouterBuilder};
 use serde::Serialize;
 use serde_json::json;
-use settings::{
+use crate::library::{
     get_library_settings, set_library_settings, LibrarySettings, LIBRARY_SETTINGS_FILE_NAME,
 };
 use specta::Type;
@@ -139,4 +140,15 @@ where
                 })
             })
         })
+        // .query("download_status_by_file_name", |t| {
+        //     t(|ctx, file_name: String| async move {
+        //         let download_status = ctx.download_status()?;
+        //         let download_status = download_status
+        //             .iter()
+        //             .find(|status| status.file_name == file_name)
+        //             .cloned();
+        //         Ok(download_status)
+        //     })
+        // })
+        .merge("models.", models::get_routes())
 }

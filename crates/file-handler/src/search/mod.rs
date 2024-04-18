@@ -66,6 +66,8 @@ pub async fn handle_search(
     payload: SearchRequest,
     client: Arc<PrismaClient>,
     qdrant: Arc<QdrantClient>,
+    vision_collection_name: &str,
+    language_collection_name: &str,
     multi_modal_embedding: &dyn AsMultiModalEmbeddingModel,
     text_embedding: &dyn AsTextEmbeddingModel,
 ) -> anyhow::Result<Vec<SearchResult>> {
@@ -90,7 +92,7 @@ pub async fn handle_search(
             SearchRecordType::Frame => {
                 qdrant
                     .search_points(&SearchPoints {
-                        collection_name: vector_db::DEFAULT_VISION_COLLECTION_NAME.into(),
+                        collection_name: vision_collection_name.into(),
                         vector: clip_text_embedding.clone(),
                         limit: RETRIEVAL_COUNT,
                         with_payload: Some(true.into()),
@@ -106,7 +108,7 @@ pub async fn handle_search(
             _ => {
                 qdrant
                     .search_points(&SearchPoints {
-                        collection_name: vector_db::DEFAULT_LANGUAGE_COLLECTION_NAME.into(),
+                        collection_name: language_collection_name.into(),
                         vector: text_model_embedding.clone(),
                         limit: RETRIEVAL_COUNT,
                         with_payload: Some(true.into()),

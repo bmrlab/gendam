@@ -1,0 +1,103 @@
+[
+  {
+    "id": "clip-multilingual-v1",
+    "categories": [
+      "TextEmbedding",
+      "MultiModalEmbedding"
+    ],
+    "title": "CLIP Multilingual",
+    "description": "",
+    "artifacts_dir": "CLIP-ViT-B-32-multilingual-v1",
+    "artifacts": [
+      {
+        "url": "https://tezign-ai-models.oss-cn-beijing.aliyuncs.com/CLIP-ViT-B-32-multilingual-v1/visual_quantize.onnx",
+        "checksum": ""
+      },
+      {
+        "url": "https://tezign-ai-models.oss-cn-beijing.aliyuncs.com/CLIP-ViT-B-32-multilingual-v1/textual.onnx",
+        "checksum": ""
+      },
+      {
+        "url": "https://tezign-ai-models.oss-cn-beijing.aliyuncs.com/CLIP-ViT-B-32-multilingual-v1/tokenizer.json",
+        "checksum": ""
+      }
+    ],
+    "model_type": "CLIP",
+    "params": {
+      "image_model_path": "./CLIP-ViT-B-32-multilingual-v1/visual_quantize.onnx",
+      "text_model_path": "./CLIP-ViT-B-32-multilingual-v1/textual.onnx",
+      "text_tokenizer_vocab_path": "./CLIP-ViT-B-32-multilingual-v1/tokenizer.json",
+      "model_type": "MViTB32"
+    },
+    "dim": 512
+  },
+  {
+    "id": "blip-base",
+    "categories": [
+      "ImageCaption"
+    ],
+    "title": "BLIP",
+    "description": "",
+    "artifacts_dir": "blip-base",
+    "artifacts": [
+      {
+        "url": "https://tezign-ai-models.oss-cn-beijing.aliyuncs.com/blip-base/blip-base-q4k.gguf",
+        "checksum": ""
+      },
+      {
+        "url": "https://tezign-ai-models.oss-cn-beijing.aliyuncs.com/blip-base/tokenizer.json",
+        "checksum": ""
+      }
+    ],
+    "model_type": "BLIP",
+    "params": {
+      "model_path": "./blip-base/blip-base-q4k.gguf",
+      "tokenizer_path": "./blip-base/tokenizer.json",
+      "model_type": "Base"
+    }
+  },
+  {
+    "id": "whisper-small",
+    "categories": [
+      "AudioTranscript"
+    ],
+    "title": "Whisper Small",
+    "description": "",
+    "artifacts_dir": "whisper",
+    "artifacts": [
+      {
+        "url": "https://tezign-ai-models.oss-cn-beijing.aliyuncs.com/whisper/ggml-small-q5_1.bin",
+        "checksum": ""
+      }
+    ],
+    "model_type": "Whisper",
+    "params": {
+      "model_path": "./whisper/ggml-small-q5_1.bin"
+    }
+  },
+  {
+    "id": "puff-base-v1",
+    "categories": [
+      "TextEmbedding"
+    ],
+    "title": "Puff Base V1",
+    "description": "",
+    "artifacts_dir": "./puff-base-v1",
+    "artifacts": [
+      {
+        "url": "https://tezign-ai-models.oss-cn-beijing.aliyuncs.com/puff-base-v1/model_quantized.onnx",
+        "checksum": ""
+      },
+      {
+        "url": "https://tezign-ai-models.oss-cn-beijing.aliyuncs.com/puff-base-v1/tokenizer.json",
+        "checksum": ""
+      }
+    ],
+    "model_type": "OrtTextEmbedding",
+    "params": {
+      "model_path": "./puff-base-v1/model_quantized.onnx",
+      "tokenizer_config_path": "./puff-base-v1/tokenizer.json"
+    },
+    "dim": 1024
+  }
+]

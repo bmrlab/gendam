@@ -1,11 +1,12 @@
 'use client'
 import PageNav from '@/components/PageNav'
 import Viewport from '@/components/Viewport'
+import { useCurrentLibrary } from '@/lib/library'
 import { Button } from '@muse/ui/v2/button'
 import { Form } from '@muse/ui/v2/form'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { useCurrentLibrary } from '@/lib/library'
+import { ModelList } from './_components/ModelList'
 
 const LibrarySettings: React.FC = () => {
   const currentLibrary = useCurrentLibrary()
@@ -62,6 +63,7 @@ export default function Settings() {
         <LibrarySettings />
         <div className="bg-app-line my-4 h-px"></div>
         <div className="h-10">Model Settings</div>
+        <ModelList />
       </Viewport.Content>
     </Viewport.Page>
   )

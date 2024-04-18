@@ -72,22 +72,26 @@ impl Model for CLIP {
 
 impl CLIP {
     pub async fn new(
-        resources_dir: impl AsRef<Path>,
-        model: model::CLIPModel,
+        // resources_dir: impl AsRef<Path>,
+        // model: model::CLIPModel,
+        image_model_path: impl AsRef<Path>,
+        text_model_path:impl AsRef<Path>,
+        text_tokenizer_vocab_path: impl AsRef<Path>,
+        model_type: model::CLIPModel,
     ) -> anyhow::Result<Self> {
-        let (image_model_uri, text_model_uri, text_tokenizer_vocab_uri) = model.model_uri();
-        let dim = model.dim();
+        // let (image_model_uri, text_model_uri, text_tokenizer_vocab_uri) = model_type.model_uri();
+        let dim = model_type.dim();
 
-        let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
-            resources_dir: resources_dir.as_ref().to_path_buf(),
-            ..Default::default()
-        });
+        // let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
+        //     resources_dir: resources_dir.as_ref().to_path_buf(),
+        //     ..Default::default()
+        // });
 
-        let image_model_path = download.download_if_not_exists(&image_model_uri).await?;
-        let text_model_path = download.download_if_not_exists(&text_model_uri).await?;
-        let text_tokenizer_vocab_path = download
-            .download_if_not_exists(&text_tokenizer_vocab_uri)
-            .await?;
+        // let image_model_path = download.download_if_not_exists(&image_model_uri).await?;
+        // let text_model_path = download.download_if_not_exists(&text_model_uri).await?;
+        // let text_tokenizer_vocab_path = download
+        //     .download_if_not_exists(&text_tokenizer_vocab_uri)
+        //     .await?;
 
         Self::from_file(
             image_model_path,
@@ -212,6 +216,8 @@ impl CLIP {
 #[test_log::test(tokio::test)]
 async fn test_clip() {
     let clip = CLIP::new(
+        "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
+        "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
         "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
         model::CLIPModel::MViTB32,
     )

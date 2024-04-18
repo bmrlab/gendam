@@ -1,9 +1,9 @@
 pub use self::decoder::VideoMetadata;
 use ai::{
-    AIModelLoader, AsAudioTranscriptModel, AsImageCaptionModel,
-    AsMultiModalEmbeddingModel, AsTextEmbeddingModel, AudioTranscriptInput, AudioTranscriptOutput,
-    ImageCaptionInput, ImageCaptionOutput, MultiModalEmbeddingInput, MultiModalEmbeddingOutput,
-    TextEmbeddingInput, TextEmbeddingOutput,
+    AIModelLoader, AsAudioTranscriptModel, AsImageCaptionModel, AsMultiModalEmbeddingModel,
+    AsTextEmbeddingModel, AudioTranscriptInput, AudioTranscriptOutput, ImageCaptionInput,
+    ImageCaptionOutput, MultiModalEmbeddingInput, MultiModalEmbeddingOutput, TextEmbeddingInput,
+    TextEmbeddingOutput,
 };
 use anyhow::{bail, Ok};
 pub use constants::*;
@@ -64,6 +64,8 @@ pub struct VideoHandler {
     file_identifier: String,
     artifacts_dir: std::path::PathBuf,
     library: Library,
+    language_collection_name: Option<String>,
+    vision_collection_name: Option<String>,
     multi_modal_embedding:
         Option<AIModelLoader<MultiModalEmbeddingInput, MultiModalEmbeddingOutput>>,
     image_caption: Option<AIModelLoader<ImageCaptionInput, ImageCaptionOutput>>,
@@ -111,6 +113,8 @@ impl VideoHandler {
             file_identifier: video_file_hash.to_string(),
             artifacts_dir,
             library: library.clone(),
+            vision_collection_name: None,
+            language_collection_name: None,
             multi_modal_embedding: None,
             image_caption: None,
             audio_transcript: None,
@@ -168,9 +172,11 @@ impl VideoHandler {
     pub fn with_multi_modal_embedding(
         self,
         multi_modal_embedding: &dyn AsMultiModalEmbeddingModel,
+        collection_name: &str,
     ) -> Self {
         Self {
             multi_modal_embedding: Some(multi_modal_embedding.get_inputs_embedding_tx().into()),
+            vision_collection_name: Some(collection_name.to_string()),
             ..self
         }
     }
@@ -189,9 +195,14 @@ impl VideoHandler {
         }
     }
 
-    pub fn with_text_embedding(self, text_embedding: &dyn AsTextEmbeddingModel) -> Self {
+    pub fn with_text_embedding(
+        self,
+        text_embedding: &dyn AsTextEmbeddingModel,
+        collection_name: &str,
+    ) -> Self {
         Self {
             text_embedding: Some(text_embedding.get_texts_embedding_tx().into()),
+            language_collection_name: Some(collection_name.to_string()),
             ..self
         }
     }
@@ -241,6 +252,24 @@ impl VideoHandler {
             Some(v) => Ok(v),
             _ => {
                 bail!("text_embedding is not enabled")
+            }
+        }
+    }
+
+    fn vision_collection_name(&self) -> anyhow::Result<&str> {
+        match self.vision_collection_name.as_ref() {
+            Some(v) => Ok(v),
+            _ => {
+                bail!("vision_collection_name is not enabled")
+            }
+        }
+    }
+
+    fn language_collection_name(&self) -> anyhow::Result<&str> {
+        match self.language_collection_name.as_ref() {
+            Some(v) => Ok(v),
+            _ => {
+                bail!("language_collection_name is not enabled")
             }
         }
     }
@@ -317,6 +346,7 @@ impl VideoHandler {
             self.artifacts_dir.join(TRANSCRIPT_FILE_NAME),
             self.text_embedding()?,
             self.library.qdrant_client(),
+            self.language_collection_name()?,
         )
         .await?;
 
@@ -331,6 +361,7 @@ impl VideoHandler {
             self.artifacts_dir.join(FRAME_DIR),
             self.multi_modal_embedding()?,
             self.library.qdrant_client(),
+            self.vision_collection_name()?,
         )
         .await
     }
@@ -361,32 +392,33 @@ impl VideoHandler {
             utils::caption::CaptionMethod::BLIP,
             self.text_embedding()?,
             self.library.qdrant_client(),
+            self.language_collection_name()?,
         )
         .await?;
 
         Ok(())
     }
 
-    /// Split video into multiple multi_modal_embeddings
-    #[allow(dead_code)]
-    async fn save_video_multi_modal_embeddings(&self) -> anyhow::Result<()> {
-        utils::clip::save_video_clips(
-            self.file_identifier.clone(),
-            Some(self.artifacts_dir.join(TRANSCRIPT_FILE_NAME)),
-            self.library.prisma_client(),
-            self.library.qdrant_client(),
-        )
-        .await
-    }
+    // /// Split video into multiple multi_modal_embeddings
+    // #[allow(dead_code)]
+    // async fn save_video_multi_modal_embeddings(&self) -> anyhow::Result<()> {
+    //     utils::clip::save_video_clips(
+    //         self.file_identifier.clone(),
+    //         Some(self.artifacts_dir.join(TRANSCRIPT_FILE_NAME)),
+    //         self.library.prisma_client(),
+    //         self.library.qdrant_client(),
+    //     )
+    //     .await
+    // }
 
-    #[allow(dead_code)]
-    async fn save_video_multi_modal_embeddings_summarization(&self) -> anyhow::Result<()> {
-        todo!("implement video multi_modal_embeddings summarization")
-        // utils::multi_modal_embedding::get_video_multi_modal_embeddings_summarization(
-        //     self.file_identifier.clone(),
-        //     self.resources_dir.clone(),
-        //     self.client.clone(),
-        // )
-        // .await
-    }
+    // #[allow(dead_code)]
+    // async fn save_video_multi_modal_embeddings_summarization(&self) -> anyhow::Result<()> {
+    // todo!("implement video multi_modal_embeddings summarization")
+    // utils::multi_modal_embedding::get_video_multi_modal_embeddings_summarization(
+    //     self.file_identifier.clone(),
+    //     self.resources_dir.clone(),
+    //     self.client.clone(),
+    // )
+    // .await
+    // }
 }

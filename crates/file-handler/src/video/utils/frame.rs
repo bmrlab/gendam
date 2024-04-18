@@ -58,6 +58,7 @@ pub async fn save_frame_content_embedding(
     frames_dir: impl AsRef<std::path::Path>,
     multi_modal_embedding: &dyn AsMultiModalEmbeddingModel,
     qdrant: Arc<QdrantClient>,
+    collection_name: &str,
 ) -> anyhow::Result<()> {
     // 这里还是从本地读取所有图片
     // 因为可能一个视频包含的帧数可能非常多，从 sqlite 读取反而麻烦了
@@ -99,6 +100,7 @@ pub async fn save_frame_content_embedding(
                     &path,
                     multi_modal_embedding,
                     qdrant,
+                    collection_name,
                 )
                 .await;
                 debug!("frame content embedding saved");
@@ -120,11 +122,12 @@ async fn get_single_frame_content_embedding(
     path: impl AsRef<std::path::Path>,
     multi_modal_embedding: &dyn AsMultiModalEmbeddingModel,
     qdrant: Arc<QdrantClient>,
+    collection_name: &str,
 ) -> anyhow::Result<()> {
     // if point exists, skip
     match qdrant
         .get_points(
-            vector_db::DEFAULT_VISION_COLLECTION_NAME,
+            collection_name,
             None,
             &[PointId {
                 point_id_options: Some(PointIdOptions::Uuid(payload.get_uuid().to_string())),
@@ -155,12 +158,7 @@ async fn get_single_frame_content_embedding(
             .map_err(|_| anyhow::anyhow!("invalid payload"))?,
     );
     qdrant
-        .upsert_points(
-            vector_db::DEFAULT_VISION_COLLECTION_NAME,
-            None,
-            vec![point],
-            None,
-        )
+        .upsert_points(collection_name, None, vec![point], None)
         .await?;
 
     Ok(())
