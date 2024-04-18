@@ -4,11 +4,13 @@ import DragOverlay from '@/Explorer/components/Draggable/DragOverlay'
 import GridView from '@/Explorer/components/LayoutView/GridView'
 import ListView from '@/Explorer/components/LayoutView/ListView'
 import MediaView from '@/Explorer/components/LayoutView/MediaView'
+import { DRAGCONTAINER_ID, SELECTABLE_TARGETS_IDS } from '@/Explorer/constant'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { queryClient, rspc } from '@/lib/rspc'
 import { DragCancelEvent, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { useCallback } from 'react'
+import Selecto from 'react-selecto'
 import { ExplorerItem } from '../types'
 
 export default function Explorer() {
@@ -108,24 +110,55 @@ export default function Explorer() {
   }
 
   return (
-    <DndContext onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
-      {/* <GridView items={explorer.items}></GridView> */}
-      {/* <ListView items={explorer.items}></ListView> */}
+    <>
+      <DndContext onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
+        {/* <GridView items={explorer.items}></GridView> */}
+        {/* <ListView items={explorer.items}></ListView> */}
 
-      {(function renderLayout() {
-        switch (explorer.settings.layout) {
-          case 'grid':
-            return <GridView items={explorer.items} />
-          case 'list':
-            return <ListView items={explorer.items} />
-          case 'media':
-            return <MediaView items={explorer.items} />
-          default:
-            return null
-        }
-      })()}
+        <div id={DRAGCONTAINER_ID} className="h-full">
+          {(function renderLayout() {
+            switch (explorer.settings.layout) {
+              case 'grid':
+                return <GridView items={explorer.items} />
+              case 'list':
+                return <ListView items={explorer.items} />
+              case 'media':
+                return <MediaView items={explorer.items} />
+              default:
+                return null
+            }
+          })()}
+        </div>
 
-      <DragOverlay />
-    </DndContext>
+        <DragOverlay />
+      </DndContext>
+      <Selecto
+        dragContainer={`#${DRAGCONTAINER_ID}`}
+        selectableTargets={SELECTABLE_TARGETS_IDS.map((id) => `#${id}`)}
+        onSelect={(e) => {
+          e.added.forEach((el) => {
+            const id = Number(el.getAttribute('itemID'))
+            if (id) {
+              explorer.addSelected(id)
+              explorerStore.reset()
+            }
+          })
+          e.removed.forEach((el) => {
+            const id = Number(el.getAttribute('itemID'))
+            if (id) {
+              explorer.removeSelected(id)
+              explorerStore.reset()
+            }
+          })
+        }}
+        hitRate={0}
+        selectByClick={false}
+        selectFromInside={false}
+        preventClickEventOnDrag={true}
+        continueSelect={false}
+        continueSelectWithoutDeselect={true}
+        ratio={0}
+      />
+    </>
   )
 }

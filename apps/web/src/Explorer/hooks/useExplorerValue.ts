@@ -8,9 +8,12 @@ type UseExplorerSettings = {
 function useSettings(defaultSettings: UseExplorerSettings) {
   const [settings, setSettings] = useState<UseExplorerSettings>(defaultSettings)
 
-  const update = useCallback((partialSettings: Partial<UseExplorerSettings>) => {
-    setSettings({ ...settings, ...partialSettings })
-  }, [settings, setSettings])
+  const update = useCallback(
+    (partialSettings: Partial<UseExplorerSettings>) => {
+      setSettings({ ...settings, ...partialSettings })
+    },
+    [settings, setSettings],
+  )
 
   return {
     ...settings,
@@ -50,9 +53,23 @@ function useSelectedItems(items: ExplorerItem[] | null) {
   return {
     selectedItems,
     selectedItemIds,
+    addSelected: useCallback(
+      (newId: number) => {
+        selectedItemIds.value.add(newId)
+        updateIds()
+      },
+      [selectedItemIds.value, updateIds],
+    ),
     addSelectedItem: useCallback(
       (item: ExplorerItem) => {
         selectedItemIds.value.add(item.id)
+        updateIds()
+      },
+      [selectedItemIds.value, updateIds],
+    ),
+    removeSelected: useCallback(
+      (removeId: number) => {
+        selectedItemIds.value.delete(removeId)
         updateIds()
       },
       [selectedItemIds.value, updateIds],
@@ -83,14 +100,9 @@ type UseExplorerProps = {
   settings: UseExplorerSettings
 }
 
-export function useExplorerValue({
-  count,
-  items,
-  materializedPath,
-  settings,
-}: UseExplorerProps) {
+export function useExplorerValue({ count, items, materializedPath, settings }: UseExplorerProps) {
   return {
-    count: count ? count : (items?.length ?? 0),
+    count: count ? count : items?.length ?? 0,
     items,
     materializedPath,
     ...useSelectedItems(items),

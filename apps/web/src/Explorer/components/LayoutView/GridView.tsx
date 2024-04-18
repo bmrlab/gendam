@@ -9,6 +9,7 @@ import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 // import { useCurrentLibrary } from '@/lib/library'
+import { SELECTABLE_TARGETS_IDS } from '@/Explorer/constant'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -25,28 +26,25 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
   }, [data, explorer, isDroppable])
 
   return (
-    <>
-      <div className={classNames('mb-1 h-28 w-28 p-2 rounded-lg', highlight ? 'bg-app-hover' : null)}>
-        <FileThumb data={data} className="w-full h-full"/>
+    <div id={SELECTABLE_TARGETS_IDS[0]} itemID={data.id.toString()}>
+      <div className={classNames('mb-1 h-28 w-28 rounded-lg p-2', highlight ? 'bg-app-hover' : null)}>
+        <FileThumb data={data} className="h-full w-full" />
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
         <div className="w-28">
           <RenamableItemText data={data} className="text-center" />
         </div>
       ) : (
-        <div className={classNames(
-          'w-28 rounded-lg p-1 text-ink',
-          highlight ? 'bg-accent text-white' : null
-        )}>
-          <div className="line-clamp-2 max-h-[2.8em] text-center text-xs leading-[1.4em] break-all">{data.name}</div>
+        <div className={classNames('text-ink w-28 rounded-lg p-1', highlight ? 'bg-accent text-white' : null)}>
+          <div className="line-clamp-2 max-h-[2.8em] break-all text-center text-xs leading-[1.4em]">{data.name}</div>
         </div>
       )}
-    </>
+    </div>
   )
 }
 
 const GridItem: React.FC<{
-  data: ExplorerItem,
+  data: ExplorerItem
   onSelect: (e: React.MouseEvent, data: ExplorerItem) => void
 }> = ({ data, onSelect }) => {
   const router = useRouter()
@@ -73,7 +71,8 @@ const GridItem: React.FC<{
 
   return (
     <div
-      data-component-hint='ViewItem(GridView)'
+      id="explore-grid__item"
+      data-component-hint="ViewItem(GridView)"
       onClick={(e) => {
         e.stopPropagation()
         onSelect(e, data)
@@ -96,28 +95,31 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
   const explorerStore = useExplorerStore()
   const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
 
-  const onSelect = useCallback((e: React.MouseEvent, data: ExplorerItem) => {
-    // 按住 cmd 键多选
-    const selectIndex = items.indexOf(data)
-    if (e.metaKey) {
-      if (explorer.isItemSelected(data)) {
-        explorer.removeSelectedItem(data)
+  const onSelect = useCallback(
+    (e: React.MouseEvent, data: ExplorerItem) => {
+      // 按住 cmd 键多选
+      const selectIndex = items.indexOf(data)
+      if (e.metaKey) {
+        if (explorer.isItemSelected(data)) {
+          explorer.removeSelectedItem(data)
+        } else {
+          explorer.addSelectedItem(data)
+        }
+        setLastSelectedIndex(selectIndex)
+      } else if (e.shiftKey) {
+        if (explorer.selectedItems.size > 0 && lastSelectIndex >= 0) {
+          const start = Math.min(lastSelectIndex, selectIndex)
+          const end = Math.max(lastSelectIndex, selectIndex)
+          explorer.resetSelectedItems(items.slice(start, end + 1))
+        }
       } else {
-        explorer.addSelectedItem(data);
+        explorer.resetSelectedItems([data])
+        setLastSelectedIndex(selectIndex)
       }
-      setLastSelectedIndex(selectIndex)
-    } else if (e.shiftKey) {
-      if (explorer.selectedItems.size > 0 && lastSelectIndex >= 0) {
-        const start = Math.min(lastSelectIndex, selectIndex)
-        const end = Math.max(lastSelectIndex, selectIndex)
-        explorer.resetSelectedItems(items.slice(start, end + 1))
-      }
-    } else {
-      explorer.resetSelectedItems([data])
-      setLastSelectedIndex(selectIndex)
-    }
-    explorerStore.reset()
-  }, [explorer, explorerStore, items, lastSelectIndex])
+      explorerStore.reset()
+    },
+    [explorer, explorerStore, items, lastSelectIndex],
+  )
 
   useEffect(() => {
     // 右键点开以后重置 shift 批量选择的状态，因为右键菜单打开的时候会选中对应的条目

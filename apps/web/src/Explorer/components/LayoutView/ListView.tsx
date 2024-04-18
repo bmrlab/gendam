@@ -8,11 +8,11 @@ import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
 // import { useCurrentLibrary } from '@/lib/library'
+import { useQuickViewStore } from '@/components/Shared/QuickView/store'
+import { formatBytes, formatDateTime } from '@/lib/utils'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
-import { formatBytes, formatDateTime } from '@/lib/utils'
-import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 
 const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index }) => {
   // const currentLibrary = useCurrentLibrary()
@@ -27,31 +27,31 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
   return (
     <div
       className={classNames(
-        'flex items-center justify-start px-6 py-2 text-ink',
+        'text-ink flex items-center justify-start px-6 py-2',
         index % 2 === 1 && !highlight ? 'bg-app-hover' : null,
         highlight ? 'bg-accent text-white' : null,
       )}
     >
       <div className="mr-3 h-8 w-8">
-        <FileThumb data={data} className="w-full h-full" />
+        <FileThumb data={data} className="h-full w-full" />
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
-        <div className="flex-1 max-w-96 mr-2">
+        <div className="mr-2 max-w-96 flex-1">
           <RenamableItemText data={data} />
         </div>
       ) : (
         <div className={classNames('flex-1', highlight ? 'text-white' : null)}>
-          <div className="truncate text-xs break-all">{data.name}</div>
+          <div className="truncate break-all text-xs">{data.name}</div>
         </div>
       )}
       <div className="ml-auto" />
-      <div className={classNames('text-xs text-neutral-500 w-48', highlight ? 'text-white' : null )}>
+      <div className={classNames('w-48 text-xs text-neutral-500', highlight ? 'text-white' : null)}>
         {formatDateTime(data.createdAt)}
       </div>
-      <div className={classNames('text-xs text-neutral-500 w-24', highlight ? 'text-white' : null )}>
+      <div className={classNames('w-24 text-xs text-neutral-500', highlight ? 'text-white' : null)}>
         {data.assetObject ? formatBytes(data.assetObject.size) : null}
       </div>
-      <div className={classNames('text-xs text-neutral-500 w-24', highlight ? 'text-white' : null )}>
+      <div className={classNames('w-24 text-xs text-neutral-500', highlight ? 'text-white' : null)}>
         {data.isDir ? 'Folder' : data.assetObject?.mimeType ?? 'unknown'}
       </div>
     </div>
@@ -72,7 +72,7 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
       if (explorer.isItemSelected(data)) {
         explorer.removeSelectedItem(data)
       } else {
-        explorer.addSelectedItem(data);
+        explorer.addSelectedItem(data)
       }
     } else {
       explorer.resetSelectedItems([data])
@@ -98,7 +98,9 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
 
   return (
     <div
-      data-component-hint='ViewItem(ListView)'
+      id="explore-list__item"
+      data-component-hint="ViewItem(ListView)"
+      itemID={data.id.toString()}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
     >
@@ -116,14 +118,14 @@ const ListItem: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index
 export default function ListView({ items }: { items: ExplorerItem[] }) {
   return (
     <>
-      <div className='flex items-center justify-start px-10 py-2 border-b border-app-line'>
-        <div className="text-xs text-ink font-bold pl-9">Name</div>
+      <div className="border-app-line flex items-center justify-start border-b px-10 py-2">
+        <div className="text-ink pl-9 text-xs font-bold">Name</div>
         <div className="ml-auto" />
-        <div className="text-xs text-ink font-bold w-48">Created</div>
-        <div className="text-xs text-ink font-bold w-24">Size</div>
-        <div className="text-xs text-ink font-bold w-24">Type</div>
+        <div className="text-ink w-48 text-xs font-bold">Created</div>
+        <div className="text-ink w-24 text-xs font-bold">Size</div>
+        <div className="text-ink w-24 text-xs font-bold">Type</div>
       </div>
-      <div className="py-2 px-4">
+      <div className="px-4 py-2">
         {items.map((item, index) => (
           <ListItem key={item.id} data={item} index={index} />
         ))}
