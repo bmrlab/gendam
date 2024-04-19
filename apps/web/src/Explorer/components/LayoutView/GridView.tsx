@@ -9,7 +9,6 @@ import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 // import { useCurrentLibrary } from '@/lib/library'
-import { SELECTABLE_TARGETS_IDS } from '@/Explorer/constant'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -26,7 +25,7 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
   }, [data, explorer, isDroppable])
 
   return (
-    <div id={SELECTABLE_TARGETS_IDS[0]} itemID={data.id.toString()}>
+    <div data-selecto-item={data.id}>
       <div className={classNames('mb-1 h-28 w-28 rounded-lg p-2', highlight ? 'bg-app-hover' : null)}>
         <FileThumb data={data} className="h-full w-full" />
       </div>

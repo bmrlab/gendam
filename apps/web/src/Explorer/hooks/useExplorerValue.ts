@@ -53,7 +53,7 @@ function useSelectedItems(items: ExplorerItem[] | null) {
   return {
     selectedItems,
     selectedItemIds,
-    addSelected: useCallback(
+    addSelectedItemById: useCallback(
       (newId: number) => {
         selectedItemIds.value.add(newId)
         updateIds()
@@ -67,7 +67,7 @@ function useSelectedItems(items: ExplorerItem[] | null) {
       },
       [selectedItemIds.value, updateIds],
     ),
-    removeSelected: useCallback(
+    removeSelectedItemById: useCallback(
       (removeId: number) => {
         selectedItemIds.value.delete(removeId)
         updateIds()

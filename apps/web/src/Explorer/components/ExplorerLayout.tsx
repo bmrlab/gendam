@@ -4,7 +4,6 @@ import DragOverlay from '@/Explorer/components/Draggable/DragOverlay'
 import GridView from '@/Explorer/components/LayoutView/GridView'
 import ListView from '@/Explorer/components/LayoutView/ListView'
 import MediaView from '@/Explorer/components/LayoutView/MediaView'
-import { DRAGCONTAINER_ID, SELECTABLE_TARGETS_IDS } from '@/Explorer/constant'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { queryClient, rspc } from '@/lib/rspc'
@@ -110,7 +109,7 @@ export default function Explorer({ ...props }: HTMLAttributes<HTMLDivElement>) {
   }
 
   return (
-    <div id={DRAGCONTAINER_ID} className="h-full" { ...props }>
+    <div { ...props } data-selecto-container>
       <DndContext onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
         {/* <GridView items={explorer.items}></GridView> */}
         {/* <ListView items={explorer.items}></ListView> */}
@@ -129,20 +128,20 @@ export default function Explorer({ ...props }: HTMLAttributes<HTMLDivElement>) {
         <DragOverlay />
       </DndContext>
       <Selecto
-        dragContainer={`#${DRAGCONTAINER_ID}`}
-        selectableTargets={SELECTABLE_TARGETS_IDS.map((id) => `#${id}`)}
+        dragContainer="[data-selecto-container]"
+        selectableTargets={['[data-selecto-item]']}
         onSelect={(e) => {
           e.added.forEach((el) => {
-            const id = Number(el.getAttribute('itemID'))
+            const id = Number(el.getAttribute('data-selecto-item'))
             if (id) {
-              explorer.addSelected(id)
+              explorer.addSelectedItemById(id)
               explorerStore.reset()
             }
           })
           e.removed.forEach((el) => {
-            const id = Number(el.getAttribute('itemID'))
+            const id = Number(el.getAttribute('data-selecto-item'))
             if (id) {
-              explorer.removeSelected(id)
+              explorer.removeSelectedItemById(id)
               explorerStore.reset()
             }
           })

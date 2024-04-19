@@ -4,7 +4,6 @@ import ExplorerDroppable, { useExplorerDroppableContext } from '@/Explorer/compo
 import FileThumb from '@/Explorer/components/View/FileThumb'
 import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
-import { SELECTABLE_TARGETS_IDS } from '@/Explorer/constant'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
@@ -77,8 +76,7 @@ const MediaItem: React.FC<
 
   return (
     <div
-      id={SELECTABLE_TARGETS_IDS[2]}
-      itemID={data.id.toString()}
+      data-selecto-item={data.id}
       data-component-hint="ViewItem(MediaView,Media)"
       onClick={(e) => {
         e.stopPropagation()
