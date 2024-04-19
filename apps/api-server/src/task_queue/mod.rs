@@ -6,7 +6,7 @@ use crate::{
     CtxWithLibrary,
 };
 use content_library::Library;
-use file_handler::video::{VideoHandler, VideoTaskType};
+use file_handler::{video::{VideoHandler, VideoTaskType}, FileHandler};
 pub use pool::*;
 use prisma_lib::{
     asset_object::{self, media_data},
@@ -22,7 +22,7 @@ pub trait Handler {
 
 impl Handler for VideoHandler {
     async fn process(&self, task_type: &str) -> anyhow::Result<()> {
-        self.run_task(VideoTaskType::from_str(task_type)?).await
+        self.run_task(&VideoTaskType::from_str(task_type)?).await
     }
 }
 
@@ -72,12 +72,7 @@ pub async fn create_video_task(
 
     tracing::debug!("asset object: {:?}", asset_object_data);
 
-    let video_has_audio = match asset_object_data.media_data() {
-        Ok(Some(metadata)) => metadata.has_audio,
-        _ => None,
-    };
-
-    let valid_task_types = video_handler.get_supported_task_types(video_has_audio);
+    let valid_task_types = video_handler.get_supported_task_types();
     let task_types = match task_types {
         // 这里做一下过滤，防止传入的任务类型不支持或者顺序不正确
         Some(task_types) => valid_task_types

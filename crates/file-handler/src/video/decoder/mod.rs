@@ -127,7 +127,7 @@ pub struct VideoDecoder {
 
 #[cfg(feature = "ffmpeg-binary")]
 impl VideoDecoder {
-    pub async fn new(filename: impl AsRef<Path>) -> anyhow::Result<Self> {
+    pub fn new(filename: impl AsRef<Path>) -> anyhow::Result<Self> {
         let current_exe_path = std::env::current_exe().expect("failed to get current executable");
         let current_dir = current_exe_path
             .parent()
@@ -145,7 +145,7 @@ impl VideoDecoder {
 
 #[cfg(feature = "ffmpeg-binary")]
 impl VideoDecoder {
-    pub async fn get_video_metadata(&self) -> anyhow::Result<VideoMetadata> {
+    pub fn get_video_metadata(&self) -> anyhow::Result<VideoMetadata> {
         match std::process::Command::new(&self.ffprobe_file_path)
             .args([
                 "-v",
@@ -377,7 +377,6 @@ async fn test_video_decoder() {
     #[cfg(feature = "ffmpeg-binary")]
     {
         let video_decoder = VideoDecoder::new("/Users/zhuo/Desktop/1-4 插件-整页截屏.mp4")
-            .await
             .expect("failed to find ffmpeg binary file");
 
         // let frames_fut = video_decoder.save_video_frames("/Users/zhuo/Desktop/frames");
@@ -391,7 +390,6 @@ async fn test_video_decoder() {
 
         let metadata = video_decoder
             .get_video_metadata()
-            .await
             .expect("failed to get video metadata");
         println!("{metadata:#?}");
     }

@@ -1,7 +1,7 @@
 use crate::task_queue::create_video_task;
 use crate::CtxWithLibrary;
 use content_library::Library;
-use file_handler::video::VideoHandler;
+use file_handler::{video::VideoHandler, FileHandler};
 use prisma_client_rust::QueryError;
 use prisma_lib::{asset_object, file_path, media_data};
 use tracing::{error, info};
@@ -109,7 +109,7 @@ pub async fn process_video_metadata(
             format!("failed to get video metadata: {}", e),
         )
     })?;
-    let metadata = video_handler.get_video_metadata().await.map_err(|e| {
+    let metadata = video_handler.metadata().map_err(|e| {
         error!("failed to get video metadata from video handler: {e}");
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,

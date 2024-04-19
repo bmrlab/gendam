@@ -1,4 +1,10 @@
+mod constants;
+mod decoder;
+mod impls;
+mod split;
+
 pub use self::decoder::VideoMetadata;
+use crate::traits::FileHandler;
 use ai::{
     AIModelLoader, AsAudioTranscriptModel, AsImageCaptionModel, AsMultiModalEmbeddingModel,
     AsTextEmbeddingModel, AudioTranscriptInput, AudioTranscriptOutput, ImageCaptionInput,
@@ -6,56 +12,18 @@ use ai::{
     TextEmbeddingOutput,
 };
 use anyhow::{bail, Ok};
+use async_trait::async_trait;
 pub use constants::*;
 use content_library::Library;
-use std::fmt::Display;
+use std::{
+    fmt::Display,
+    sync::{Arc, Mutex},
+};
 use strum_macros::{EnumDiscriminants, EnumString};
-
-mod constants;
-mod decoder;
-mod split;
-mod utils;
 
 /// Video Handler
 ///
-/// VideoHandler is a helper to extract video artifacts and get embeddings, and save results using Prisma and faiss.
-///
-/// All artifacts will be saved into `local_data_dir` (one of the input argument of `new` function).
-///
-/// And in Tauri on macOS, it should be `/Users/%USER_NAME%/Library/Application Support/%APP_IDENTIFIER%`
-/// where `APP_IDENTIFIER` is configured in `tauri.conf.json`.
-///
-/// # Examples
-///
-/// ```rust
-/// let video_path = "";
-/// let video_file_hash = "";
-/// let resources_dir = "";
-/// let local_data_dir = ""
-/// let library_id = "";
-///
-/// let library = content_library::load_library(
-///     &local_data_dir.into(),
-///     &resources_dir.into(),
-///     library_id,
-///     multi_modal_embedding,
-///     image_caption,
-///     audio_transcript,
-/// ).await;
-///
-/// let video_handler = VideoHandler::new(
-///     video_path,
-///     video_file_hash,
-///     &library,
-/// ).await.unwrap();
-///
-/// // get video metadata
-/// video_handler.get_video_metadata().await;
-///
-/// // multi_modal_embedding, image_caption, audio_transcript, TextEmbedding and YOLO models should be initialized in advanced
-/// // in order to implement advanced information extraction
-/// // following examples shows how to use them
-/// // refer to `ai` crate for initialization of these models
+/// VideoHandler is a helper to extract video artifacts and embeddings, and save results into databases.
 /// ```
 #[allow(dead_code)]
 #[derive(Clone)]
@@ -71,6 +39,7 @@ pub struct VideoHandler {
     image_caption: Option<AIModelLoader<ImageCaptionInput, ImageCaptionOutput>>,
     audio_transcript: Option<AIModelLoader<AudioTranscriptInput, AudioTranscriptOutput>>,
     text_embedding: Option<AIModelLoader<TextEmbeddingInput, TextEmbeddingOutput>>,
+    metadata: Arc<Mutex<Option<VideoMetadata>>>,
 }
 
 #[derive(Clone, Debug, EnumDiscriminants, EnumString, PartialEq, Eq, Hash)]
@@ -119,50 +88,8 @@ impl VideoHandler {
             image_caption: None,
             audio_transcript: None,
             text_embedding: None,
+            metadata: Arc::new(Mutex::new(None)),
         })
-    }
-
-    pub async fn run_task(&self, task_type: VideoTaskType) -> anyhow::Result<()> {
-        match task_type {
-            VideoTaskType::Frame => self.save_frames().await,
-            VideoTaskType::FrameContentEmbedding => self.save_frame_content_embedding().await,
-            VideoTaskType::FrameCaption => self.save_frames_caption().await,
-            VideoTaskType::FrameCaptionEmbedding => self.save_frame_caption_embedding().await,
-            VideoTaskType::Audio => self.save_audio().await,
-            VideoTaskType::Transcript => self.save_transcript().await,
-            VideoTaskType::TranscriptEmbedding => self.save_transcript_embedding().await,
-            _ => Ok(()),
-        }
-    }
-
-    pub fn get_supported_task_types(&self, with_audio: Option<bool>) -> Vec<VideoTaskType> {
-        let mut task_types = vec![VideoTaskType::Frame];
-
-        if self.multi_modal_embedding.is_some() {
-            task_types.push(VideoTaskType::FrameContentEmbedding);
-        }
-
-        if self.image_caption.is_some() {
-            task_types.push(VideoTaskType::FrameCaption);
-            if self.text_embedding.is_some() {
-                task_types.push(VideoTaskType::FrameCaptionEmbedding);
-            }
-        }
-
-        if let Some(with_audio) = with_audio {
-            if with_audio {
-                task_types.push(VideoTaskType::Audio);
-
-                if self.audio_transcript.is_some() {
-                    task_types.push(VideoTaskType::Transcript);
-                    if self.text_embedding.is_some() {
-                        task_types.push(VideoTaskType::TranscriptEmbedding);
-                    }
-                }
-            }
-        }
-
-        task_types
     }
 
     pub fn file_identifier(&self) -> &str {
@@ -207,14 +134,8 @@ impl VideoHandler {
         }
     }
 
-    pub async fn get_video_metadata(&self) -> anyhow::Result<VideoMetadata> {
-        // TODO ffmpeg-dylib not implemented
-        let video_decoder = decoder::VideoDecoder::new(&self.video_path).await?;
-        video_decoder.get_video_metadata().await
-    }
-
     pub async fn save_thumbnail(&self, seconds: Option<u64>) -> anyhow::Result<()> {
-        let video_decoder = decoder::VideoDecoder::new(&self.video_path).await?;
+        let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
         video_decoder
             .save_video_thumbnail(&self.artifacts_dir.join(THUMBNAIL_FILE_NAME), seconds)
             .await
@@ -273,152 +194,82 @@ impl VideoHandler {
             }
         }
     }
+}
 
-    /// Extract key frames from video and save results
-    /// - Save into disk (a folder named by `library` and `video_file_hash`)
-    /// - Save into prisma `VideoFrame` model
-    async fn save_frames(&self) -> anyhow::Result<()> {
-        let video_path = &self.video_path;
-        let frames_dir = self.artifacts_dir.join(FRAME_DIR);
+#[async_trait]
+impl FileHandler<VideoTaskType, VideoMetadata> for VideoHandler {
+    async fn run_task(&self, task_type: &VideoTaskType) -> anyhow::Result<()> {
+        match task_type {
+            VideoTaskType::Frame => self.save_frames().await,
+            VideoTaskType::FrameContentEmbedding => self.save_frame_content_embedding().await,
+            VideoTaskType::FrameCaption => self.save_frames_caption().await,
+            VideoTaskType::FrameCaptionEmbedding => self.save_frame_caption_embedding().await,
+            VideoTaskType::Audio => self.save_audio().await,
+            VideoTaskType::Transcript => self.save_transcript().await,
+            VideoTaskType::TranscriptEmbedding => self.save_transcript_embedding().await,
+            _ => Ok(()),
+        }
+    }
 
-        #[cfg(feature = "ffmpeg-binary")]
-        {
-            let video_decoder = decoder::VideoDecoder::new(video_path).await?;
-            video_decoder.save_video_frames(frames_dir.clone()).await?;
+    async fn delete_task_artifacts(&self, task_type: &VideoTaskType) -> anyhow::Result<()> {
+        match task_type {
+            VideoTaskType::Frame => self.delete_frames().await,
+            VideoTaskType::FrameContentEmbedding => self.delete_frame_content_embedding().await,
+            VideoTaskType::FrameCaption => self.delete_frames_caption().await,
+            VideoTaskType::FrameCaptionEmbedding => self.delete_frame_caption_embedding().await,
+            VideoTaskType::Audio => self.delete_audio().await,
+            VideoTaskType::Transcript => self.delete_transcript().await,
+            VideoTaskType::TranscriptEmbedding => self.delete_transcript_embedding().await,
+            _ => Ok(()),
+        }
+    }
+
+    fn get_supported_task_types(&self) -> Vec<VideoTaskType> {
+        let mut task_types = vec![VideoTaskType::Frame];
+
+        if self.multi_modal_embedding.is_some() {
+            task_types.push(VideoTaskType::FrameContentEmbedding);
         }
 
-        #[cfg(feature = "ffmpeg-dylib")]
-        {
-            let video_decoder = decoder::VideoDecoder::new(video_path);
-            video_decoder.save_video_frames(frames_dir.clone()).await?;
+        if self.image_caption.is_some() {
+            task_types.push(VideoTaskType::FrameCaption);
+            if self.text_embedding.is_some() {
+                task_types.push(VideoTaskType::FrameCaptionEmbedding);
+            }
         }
 
-        utils::frame::save_frames(
-            self.file_identifier().into(),
-            self.library.prisma_client(),
-            frames_dir,
-        )
-        .await?;
+        if let anyhow::Result::Ok(metadata) = self.metadata() {
+            if metadata.audio.is_some() {
+                task_types.push(VideoTaskType::Audio);
 
-        Ok(())
-    }
-
-    /// Extract audio from video and save results
-    /// - Save into disk (a folder named by `library` and `video_file_hash`)
-    async fn save_audio(&self) -> anyhow::Result<()> {
-        #[cfg(feature = "ffmpeg-binary")]
-        {
-            let video_decoder = decoder::VideoDecoder::new(&self.video_path).await?;
-            video_decoder
-                .save_video_audio(self.artifacts_dir.join(AUDIO_FILE_NAME))
-                .await?;
+                if self.audio_transcript.is_some() {
+                    task_types.push(VideoTaskType::Transcript);
+                    if self.text_embedding.is_some() {
+                        task_types.push(VideoTaskType::TranscriptEmbedding);
+                    }
+                }
+            }
         }
 
-        #[cfg(feature = "ffmpeg-dylib")]
-        {
-            let video_decoder = decoder::VideoDecoder::new(&self.video_path);
-            video_decoder.save_video_audio(&self.audio_path).await?;
+        task_types
+    }
+
+    async fn update_database(&self) -> anyhow::Result<()> {
+        todo!()
+    }
+
+    fn metadata(&self) -> anyhow::Result<VideoMetadata> {
+        let mut metadata = self.metadata.lock().unwrap();
+
+        match &*metadata {
+            Some(v) => Ok(v.clone()),
+            _ => {
+                // TODO ffmpeg-dylib not implemented
+                let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
+                let data = video_decoder.get_video_metadata()?;
+                *metadata = Some(data.clone());
+                Ok(data)
+            }
         }
-
-        Ok(())
     }
-
-    /// Convert audio of the video into text
-    /// **This requires extracting audio in advance**
-    ///
-    /// This will also save results:
-    /// - Save into disk (a folder named by `library` and `video_file_hash`)
-    /// - Save into prisma `VideoTranscript` model
-    async fn save_transcript(&self) -> anyhow::Result<()> {
-        utils::transcript::save_transcript(
-            &self.artifacts_dir,
-            self.file_identifier.clone(),
-            self.library.prisma_client(),
-            self.audio_transcript()?,
-        )
-        .await
-    }
-
-    async fn save_transcript_embedding(&self) -> anyhow::Result<()> {
-        utils::transcript::save_transcript_embedding(
-            self.file_identifier().into(),
-            self.library.prisma_client(),
-            self.artifacts_dir.join(TRANSCRIPT_FILE_NAME),
-            self.text_embedding()?,
-            self.library.qdrant_client(),
-            self.language_collection_name()?,
-        )
-        .await?;
-
-        Ok(())
-    }
-
-    /// Save frame content embedding into qdrant
-    async fn save_frame_content_embedding(&self) -> anyhow::Result<()> {
-        utils::frame::save_frame_content_embedding(
-            self.file_identifier.clone(),
-            self.library.prisma_client(),
-            self.artifacts_dir.join(FRAME_DIR),
-            self.multi_modal_embedding()?,
-            self.library.qdrant_client(),
-            self.vision_collection_name()?,
-        )
-        .await
-    }
-
-    /// Save frames' captions of video
-    /// **this requires extracting frames in advance**
-    ///
-    /// The captions will be saved:
-    /// - To disk: as `.caption` file in the same place with frame file
-    /// - To prisma `VideoFrameCaption` model
-    async fn save_frames_caption(&self) -> anyhow::Result<()> {
-        utils::caption::save_frames_caption(
-            self.file_identifier().into(),
-            self.artifacts_dir.join(FRAME_DIR),
-            self.image_caption()?,
-            self.library.prisma_client(),
-        )
-        .await
-    }
-
-    /// Save frame caption embedding into qdrant
-    /// this requires extracting frames and get captions in advance
-    async fn save_frame_caption_embedding(&self) -> anyhow::Result<()> {
-        utils::caption::save_frame_caption_embedding(
-            self.file_identifier().into(),
-            self.library.prisma_client(),
-            self.artifacts_dir.join(FRAME_DIR),
-            utils::caption::CaptionMethod::BLIP,
-            self.text_embedding()?,
-            self.library.qdrant_client(),
-            self.language_collection_name()?,
-        )
-        .await?;
-
-        Ok(())
-    }
-
-    // /// Split video into multiple multi_modal_embeddings
-    // #[allow(dead_code)]
-    // async fn save_video_multi_modal_embeddings(&self) -> anyhow::Result<()> {
-    //     utils::clip::save_video_clips(
-    //         self.file_identifier.clone(),
-    //         Some(self.artifacts_dir.join(TRANSCRIPT_FILE_NAME)),
-    //         self.library.prisma_client(),
-    //         self.library.qdrant_client(),
-    //     )
-    //     .await
-    // }
-
-    // #[allow(dead_code)]
-    // async fn save_video_multi_modal_embeddings_summarization(&self) -> anyhow::Result<()> {
-    // todo!("implement video multi_modal_embeddings summarization")
-    // utils::multi_modal_embedding::get_video_multi_modal_embeddings_summarization(
-    //     self.file_identifier.clone(),
-    //     self.resources_dir.clone(),
-    //     self.client.clone(),
-    // )
-    // .await
-    // }
 }

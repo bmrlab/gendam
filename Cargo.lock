@@ -2045,6 +2045,7 @@ version = "0.1.0"
 dependencies = [
  "ai",
  "anyhow",
+ "async-trait",
  "content-library",
  "ffmpeg-next",
  "file-downloader",
