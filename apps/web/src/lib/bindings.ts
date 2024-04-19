@@ -81,8 +81,6 @@ export type AudioResp = { type: AudioType; content: string }
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
-export type DownloadModelPayload = { modelId: string }
-
 export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string }
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
@@ -98,6 +96,8 @@ export type VideoWithTasksResult = { name: string; materializedPath: string; ass
 export type AIModelResult = { info: AIModel; status: AIModelStatus }
 
 export type VideoWithTasksPageResult = { data: VideoWithTasksResult[]; pagination: Pagination; maxPage: number }
+
+export type DownloadModelPayload = { modelId: string }
 
 export type TaskListRequestPayload = { pagination: Pagination; filter: TaskListRequestFilter }
 

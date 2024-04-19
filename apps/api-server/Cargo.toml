@@ -40,7 +40,7 @@ test-log = { workspace = true }
 priority-queue = "2.0.0"
 async-trait = { workspace = true }
 downloader = { workspace = true }
-reqwest = { workspace = true, default-features = false }
+reqwest = { workspace = true }
 
 
 # 处理 enum
