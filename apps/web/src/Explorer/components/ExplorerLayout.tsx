@@ -9,11 +9,11 @@ import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { queryClient, rspc } from '@/lib/rspc'
 import { DragCancelEvent, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
-import { useCallback } from 'react'
+import { HTMLAttributes, useCallback } from 'react'
 import Selecto from 'react-selecto'
 import { ExplorerItem } from '../types'
 
-export default function Explorer() {
+export default function Explorer({ ...props }: HTMLAttributes<HTMLDivElement>) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const moveMut = rspc.useMutation(['assets.move_file_path'])
@@ -110,26 +110,22 @@ export default function Explorer() {
   }
 
   return (
-    <>
+    <div id={DRAGCONTAINER_ID} className="h-full" { ...props }>
       <DndContext onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
         {/* <GridView items={explorer.items}></GridView> */}
         {/* <ListView items={explorer.items}></ListView> */}
-
-        <div id={DRAGCONTAINER_ID} className="h-full">
-          {(function renderLayout() {
-            switch (explorer.settings.layout) {
-              case 'grid':
-                return <GridView items={explorer.items} />
-              case 'list':
-                return <ListView items={explorer.items} />
-              case 'media':
-                return <MediaView items={explorer.items} />
-              default:
-                return null
-            }
-          })()}
-        </div>
-
+        {(function renderLayout() {
+          switch (explorer.settings.layout) {
+            case 'grid':
+              return <GridView items={explorer.items} />
+            case 'list':
+              return <ListView items={explorer.items} />
+            case 'media':
+              return <MediaView items={explorer.items} />
+            default:
+              return null
+          }
+        })()}
         <DragOverlay />
       </DndContext>
       <Selecto
@@ -159,6 +155,6 @@ export default function Explorer() {
         continueSelectWithoutDeselect={true}
         ratio={0}
       />
-    </>
+    </div>
   )
 }
