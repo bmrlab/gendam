@@ -11,7 +11,7 @@ use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::thread::sleep;
-use vector_db::get_language_collection_name;
+use vector_db::{get_language_collection_name, get_vision_collection_name};
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -98,6 +98,25 @@ where
                         settings.models.text_embedding = payload.model_id;
                     }
                     AIModelCategory::MultiModalEmbedding => {
+                        let model_info = get_model_info_by_id(&ctx, &payload.model_id)?;
+                        let dim = model_info.dim.ok_or(rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            "invalid model info".into(),
+                        ))?;
+
+                        if let Err(e) = make_sure_collection_created(
+                            library.qdrant_client(),
+                            &get_vision_collection_name(&model_info.id),
+                            dim as u64,
+                        )
+                        .await
+                        {
+                            return Err(rspc::Error::new(
+                                rspc::ErrorCode::InternalServerError,
+                                format!("failed to create qdrant collection: {}", e),
+                            ));
+                        }
+
                         settings.models.multi_modal_embedding = payload.model_id;
                     }
                     _ => {}
