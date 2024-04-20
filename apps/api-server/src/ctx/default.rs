@@ -213,7 +213,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             };
             if let Some(ai_handler) = current_ai_handler {
                 ai_handler.shutdown().await.map_err(|e| {
-                    tracing::warn!(task = "shutdown ai handler", "Failed: {}", e);
+                    tracing::error!(task = "shutdown ai handler", "Failed: {}", e);
                     rspc::Error::new(
                         rspc::ErrorCode::InternalServerError,
                         format!("Failed to shutdown AI handler: {}", e),
@@ -226,7 +226,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         /* unload library */
         {
             let mut store = self.store.lock().map_err(unexpected_err)?;
-            let mut current_library = self.current_library.lock().unwrap();
+            let mut current_library = self.current_library.lock().map_err(unexpected_err)?;
             *current_library = None; // same as self.current_library.lock().unwrap().take();
             tracing::info!(task = "unload library", "Success");
             let _ = store.delete("current-library-id");
@@ -258,7 +258,8 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
     async fn load_library(&self, library_id: &str) -> Result<(), rspc::Error> {
-        // tracing::info!("try to load library: {}", library_id);
+        tracing::info!(library_id = library_id, "load library");
+
         {
             let mut is_busy = self.is_busy.lock().map_err(unexpected_err)?;
             if *is_busy.get_mut() {
@@ -273,55 +274,102 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
         }
 
+        /* init library */
+        let library = {
+            let library = load_library(&self.local_data_root, &library_id)
+                .await
+                .map_err(|e| {
+                    tracing::error!(task = "init library", "Failed: {:?}", e);
+                    rspc::Error::new(
+                        rspc::ErrorCode::NotFound,
+                        format!("Failed to init library: {:?}", e),
+                    )
+                })?;
+            tracing::info!(task = "init library", "Success");
+            library
+        };
+
+        /* update ctx */
         {
-            let mut current_tx = self.tx.lock().unwrap();
-            if current_tx.is_some() {
-                if let Err(e) = current_tx.as_ref().unwrap().send(TaskPayload::CancelAll) {
-                    tracing::warn!("Failed to send task cancel: {}", e);
-                }
-            }
-            let tx = init_task_pool().expect("Failed to init task pool");
-            *current_tx = Some(tx);
-        }
-        {
-            let mut store = self.store.lock().unwrap();
-            let _ = store.insert("current-library-id", library_id);
-            if store.save().is_err() {
-                tracing::warn!("Failed to save store");
-            }
+            // should update ctx before self.qdrant_info() is called
+            let mut current_library = self.current_library.lock().map_err(unexpected_err)?;
+            current_library.replace(library.clone());
+            tracing::info!(task = "update ctx", "Success");
         }
 
-        let library = load_library(&self.local_data_root, &library_id)
-            .await
-            .unwrap();
-
-        let qdrant_client = library.qdrant_client();
-
-        let pid = library.qdrant_server_info();
-        self.current_library.lock().unwrap().replace(library);
-
+        /* update store */
         {
             let mut store = self.store.lock().map_err(unexpected_err)?;
+            let _ = store.insert("current-library-id", library_id);
+            let pid = library.qdrant_server_info();
             let _ = store.insert("current-qdrant-pid", &pid.to_string());
-            if store.save().is_err() {
-                tracing::warn!("Failed to save store");
+            if let Err(e) = store.save() {
+                tracing::warn!(task = "update store", "Failed: {:?}", e);
+                // this issue can be safely ignored
+            } else {
+                tracing::info!(task = "update store", "Success");
             }
         }
 
-        tracing::info!("Current library switched to {}", library_id);
-
+        /* check qdrant */
         {
-            let mut store = self.store.lock().map_err(unexpected_err)?;
-            let _ = store.insert("current-library-id", library_id);
-            if store.save().is_err() {
-                tracing::warn!("Failed to save store");
-            }
+            let qdrant_client = library.qdrant_client();
+            // make sure qdrant collections are created
+            let qdrant_info = self.qdrant_info()?;
+
+            make_sure_collection_created(
+                qdrant_client.clone(),
+                &qdrant_info.language_collection.name,
+                qdrant_info.language_collection.dim as u64,
+            )
+            .await
+            .map_err(|e| {
+                tracing::error!(task = "check qdrant", "Language collection error: {}", e);
+                rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    format!("Language collection error: {}", e),
+                )
+            })?;
+            make_sure_collection_created(
+                qdrant_client.clone(),
+                &qdrant_info.vision_collection.name,
+                qdrant_info.vision_collection.dim as u64,
+            )
+            .await
+            .map_err(|e| {
+                tracing::error!(task = "check qdrant", "Vision collection error: {}", e);
+                rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    format!("Vision collection error: {}", e),
+                )
+            })?;
+            tracing::info!(
+                task = "check qdrant",
+                language_collection = qdrant_info.language_collection.name,
+                vision_collection = qdrant_info.vision_collection.name,
+                "Success"
+            );
+        }
+
+        /* init task pool */
+        {
+            let mut current_tx = self.tx.lock().map_err(unexpected_err)?;
+            let tx = init_task_pool().map_err(|e| {
+                tracing::error!(task = "init task pool", "Failed: {}", e);
+                rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    format!("Failed to init task pool: {}", e),
+                )
+            })?;
+            tracing::info!(task = "init task pool", "Success");
+            current_tx.replace(tx);
         }
 
         // init download hub
         {
             let download_hub = DownloadHub::new();
-            self.download_hub.lock().unwrap().replace(download_hub);
+            let mut current_download_hub = self.download_hub.lock().map_err(unexpected_err)?;
+            current_download_hub.replace(download_hub);
         }
 
         // trigger model download according to new library
@@ -329,40 +377,23 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             // TODO
         }
 
-        // init AI handler after library is loaded
+        /* init ai handler */
         {
+            // init AI handler after library is loaded
             let ai_handler = AIHandler::new(self).map_err(|e| {
+                tracing::error!(task = "init ai handler", "Failed: {}", e);
                 rspc::Error::new(
                     rspc::ErrorCode::InternalServerError,
                     format!("Failed to init AI handler: {}", e),
                 )
             })?;
-            self.ai_handler.lock().unwrap().replace(ai_handler);
-        }
-
-        // make sure qdrant collections are created
-        let qdrant_info = self.qdrant_info()?;
-        if let Err(e) = make_sure_collection_created(
-            qdrant_client.clone(),
-            &qdrant_info.language_collection.name,
-            qdrant_info.language_collection.dim as u64,
-        )
-        .await
-        {
-            tracing::warn!("Failed to check language collection: {}", e);
-        }
-        if let Err(e) = make_sure_collection_created(
-            qdrant_client.clone(),
-            &qdrant_info.vision_collection.name,
-            qdrant_info.vision_collection.dim as u64,
-        )
-        .await
-        {
-            tracing::warn!("Failed to check vision collection: {}", e);
+            tracing::info!(task = "init ai handler", "Success");
+            let mut current_ai_handler = self.ai_handler.lock().map_err(unexpected_err)?;
+            current_ai_handler.replace(ai_handler);
         }
 
         {
-            let is_busy = self.is_busy.lock().unwrap();
+            let is_busy = self.is_busy.lock().map_err(unexpected_err)?;
             is_busy.store(false, std::sync::atomic::Ordering::Relaxed);
         }
 
