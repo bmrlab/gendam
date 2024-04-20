@@ -144,36 +144,20 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
     }
 
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
-    fn unload_library(&self) -> Result<(), rspc::Error> {
-        let mut is_busy = self.is_busy.lock().map_err(unexpected_err)?;
-        if *is_busy.get_mut() {
-            // FIXME should use 429 too many requests error code
-            return Err(rspc::Error::new(
-                rspc::ErrorCode::Conflict,
-                "App is busy".into(),
-            ));
-        }
-        is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
-
-        let mut store = self.store.lock().map_err(unexpected_err)?;
-
-        /* unload qdrant */
+    async fn unload_library(&self) -> Result<(), rspc::Error> {
         {
-            let pid_in_store = store.get("current-qdrant-pid").unwrap_or("".to_string());
-            if let Ok(pid) = pid_in_store.parse() {
-                kill_qdrant_server(pid).map_err(|e| {
-                    tracing::error!(task = "kill qdrant", "Failed: {}", e);
-                    rspc::Error::new(
-                        rspc::ErrorCode::InternalServerError,
-                        format!("Failed to kill qdrant: {}", e),
-                    )
-                })?;
-                tracing::info!(task = "kill qdrant", "Success");
+            let mut is_busy = self.is_busy.lock().map_err(unexpected_err)?;
+            if *is_busy.get_mut() {
+                // FIXME should use 429 too many requests error code
+                return Err(rspc::Error::new(
+                    rspc::ErrorCode::Conflict,
+                    "App is busy".into(),
+                ));
             }
-            let _ = store.delete("current-qdrant-pid");
+            is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
         }
 
-        /* unload tasks */
+        /* cancel tasks */
         {
             let mut current_tx = self.tx.lock().map_err(unexpected_err)?;
             if let Some(tx) = current_tx.as_ref() {
@@ -189,74 +173,24 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             *current_tx = None; // same as current_tx.take();
         }
 
-        /* unload library */
+        /* kill qdrant */
         {
-            let mut current_library = self.current_library.lock().unwrap();
-            *current_library = None; // same as self.current_library.lock().unwrap().take();
-            tracing::info!(task = "unload library", "Success");
-            let _ = store.delete("current-library-id");
-        }
-
-        if let Err(e) = store.save() {
-            tracing::warn!(task = "update store", "Failed: {:?}", e);
-            // this issue can be safely ignored
-        } else {
-            tracing::info!(task = "update store", "Success");
-        }
-
-        is_busy.store(false, std::sync::atomic::Ordering::Relaxed);
-
-        Ok(())
-    }
-
-    fn library_id_in_store(&self) -> Option<String> {
-        let store = self.store.lock().unwrap();
-        store.get("current-library-id")
-    }
-
-    async fn load_library(&self, library_id: &str) -> Result<(), rspc::Error> {
-        tracing::info!("try to load library: {}", library_id);
-
-        {
-            let mut is_busy = self.is_busy.lock().unwrap();
-            if *is_busy.get_mut() {
-                // if library is already loading, just return
-                // FIXME it's better to wait until library is loaded
-                return Err(rspc::Error::new(
-                    // FIXME should use 429 too many requests error code
-                    rspc::ErrorCode::Conflict,
-                    "too many requests".into(),
-                ));
+            let mut store = self.store.lock().map_err(unexpected_err)?;
+            let pid_in_store = store.get("current-qdrant-pid").unwrap_or("".to_string());
+            if let Ok(pid) = pid_in_store.parse() {
+                kill_qdrant_server(pid).map_err(|e| {
+                    tracing::error!(task = "kill qdrant", "Failed: {}", e);
+                    rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("Failed to kill qdrant: {}", e),
+                    )
+                })?;
+                tracing::info!(task = "kill qdrant", "Success");
             }
-
-            is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
+            let _ = store.delete("current-qdrant-pid");
         }
 
-        if let Err(e) = self.unload_library() {
-            tracing::warn!("Failed to quit current library: {}", e);
-        } else {
-            tracing::info!("Quit current library successfully");
-        }
-
-        {
-            let mut current_tx = self.tx.lock().unwrap();
-            if current_tx.is_some() {
-                if let Err(e) = current_tx.as_ref().unwrap().send(TaskPayload::CancelAll) {
-                    tracing::warn!("Failed to send task cancel: {}", e);
-                }
-            }
-            let tx = init_task_pool().expect("Failed to init task pool");
-            *current_tx = Some(tx);
-        }
-
-        {
-            let mut store = self.store.lock().unwrap();
-            let _ = store.insert("current-library-id", library_id);
-            if store.save().is_err() {
-                tracing::warn!("Failed to save store");
-            }
-        }
-
+        /* shutdown ai handler */
         {
             // MutexGuard is not `Send`, so we have to write in this way
             // otherwise we can't send it to other thread, and compiler will throw error
@@ -273,14 +207,87 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             //     }
             // }
             let current_ai_handler = {
-                let current_ai_handler = self.ai_handler.lock().unwrap();
-                let current_ai_handler = current_ai_handler.as_ref().map(|v| v.clone());
-                current_ai_handler
+                let ai_handler = self.ai_handler.lock().map_err(unexpected_err)?;
+                let ai_handler = ai_handler.as_ref().map(|v| v.clone());
+                ai_handler
             };
             if let Some(ai_handler) = current_ai_handler {
-                if let Err(e) = ai_handler.shutdown().await {
-                    tracing::warn!("Failed to shutdown AI handler: {}", e);
+                ai_handler.shutdown().await.map_err(|e| {
+                    tracing::warn!(task = "shutdown ai handler", "Failed: {}", e);
+                    rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("Failed to shutdown AI handler: {}", e),
+                    )
+                })?;
+                tracing::info!(task = "shutdown ai handler", "Success");
+            }
+        }
+
+        /* unload library */
+        {
+            let mut store = self.store.lock().map_err(unexpected_err)?;
+            let mut current_library = self.current_library.lock().unwrap();
+            *current_library = None; // same as self.current_library.lock().unwrap().take();
+            tracing::info!(task = "unload library", "Success");
+            let _ = store.delete("current-library-id");
+        }
+
+        /* update store */
+        {
+            let store = self.store.lock().map_err(unexpected_err)?;
+            if let Err(e) = store.save() {
+                tracing::warn!(task = "update store", "Failed: {:?}", e);
+                // this issue can be safely ignored
+            } else {
+                tracing::info!(task = "update store", "Success");
+            }
+        }
+
+        {
+            let is_busy = self.is_busy.lock().map_err(unexpected_err)?;
+            is_busy.store(false, std::sync::atomic::Ordering::Relaxed);
+        }
+
+        Ok(())
+    }
+
+    fn library_id_in_store(&self) -> Option<String> {
+        let store = self.store.lock().unwrap();
+        store.get("current-library-id")
+    }
+
+    #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
+    async fn load_library(&self, library_id: &str) -> Result<(), rspc::Error> {
+        // tracing::info!("try to load library: {}", library_id);
+        {
+            let mut is_busy = self.is_busy.lock().map_err(unexpected_err)?;
+            if *is_busy.get_mut() {
+                // if library is already loading, just return
+                // FIXME it's better to wait until library is loaded
+                // FIXME should use 429 too many requests error code
+                return Err(rspc::Error::new(
+                    rspc::ErrorCode::Conflict,
+                    "App is busy".into(),
+                ));
+            }
+            is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
+
+        {
+            let mut current_tx = self.tx.lock().unwrap();
+            if current_tx.is_some() {
+                if let Err(e) = current_tx.as_ref().unwrap().send(TaskPayload::CancelAll) {
+                    tracing::warn!("Failed to send task cancel: {}", e);
                 }
+            }
+            let tx = init_task_pool().expect("Failed to init task pool");
+            *current_tx = Some(tx);
+        }
+        {
+            let mut store = self.store.lock().unwrap();
+            let _ = store.insert("current-library-id", library_id);
+            if store.save().is_err() {
+                tracing::warn!("Failed to save store");
             }
         }
 
@@ -294,7 +301,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         self.current_library.lock().unwrap().replace(library);
 
         {
-            let mut store = self.store.lock().unwrap();
+            let mut store = self.store.lock().map_err(unexpected_err)?;
             let _ = store.insert("current-qdrant-pid", &pid.to_string());
             if store.save().is_err() {
                 tracing::warn!("Failed to save store");
@@ -302,6 +309,14 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         }
 
         tracing::info!("Current library switched to {}", library_id);
+
+        {
+            let mut store = self.store.lock().map_err(unexpected_err)?;
+            let _ = store.insert("current-library-id", library_id);
+            if store.save().is_err() {
+                tracing::warn!("Failed to save store");
+            }
+        }
 
         // init download hub
         {

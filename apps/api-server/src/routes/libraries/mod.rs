@@ -101,7 +101,7 @@ where
                  * 所以这里就用 serde_json::Value | None 来允许接收任何值
                  */
                 // ctx.library()?;  // 不需要确认 library 存在, 意外情况下可能 library 已经清空但是 task 和 qdrant 还在
-                ctx.unload_library()?;
+                ctx.unload_library().await?;
                 Ok(json!({ "status": "ok" }))
             })
         })
