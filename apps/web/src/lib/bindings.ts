@@ -27,8 +27,8 @@ export type Procedures = {
         { key: "libraries.create", input: string, result: null } | 
         { key: "libraries.models.download_model", input: DownloadModelPayload, result: null } | 
         { key: "libraries.models.set_model", input: SetModelPayload, result: null } | 
-        { key: "libraries.quit_current_library", input: string, result: any } | 
         { key: "libraries.set_current_library", input: string, result: any } | 
+        { key: "libraries.unload_library", input: any | null, result: any } | 
         { key: "libraries.update_library_settings", input: LibrarySettings, result: null } | 
         { key: "video.tasks.cancel", input: TaskCancelRequestPayload, result: null } | 
         { key: "video.tasks.create", input: string, result: null } | 
@@ -45,8 +45,6 @@ export type ModelArtifact = { url: string; checksum: string }
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
 
-export type CurrentLibraryResult = { id: string; dir: string }
-
 export type TaskRedoRequestPayload = { assetObjectId: number; preserveArtifacts: boolean }
 
 export type Pagination = { pageSize: number; pageIndex: number }
@@ -54,6 +52,8 @@ export type Pagination = { pageSize: number; pageIndex: number }
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
 export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
+
+export type CurrentLibraryResult = { id: string; dir: string }
 
 export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPath: string; oldName: string; newName: string }
 

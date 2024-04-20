@@ -1,13 +1,13 @@
 mod models;
 
+use crate::library::{
+    get_library_settings, set_library_settings, LibrarySettings, LIBRARY_SETTINGS_FILE_NAME,
+};
 use crate::CtxWithLibrary;
 use content_library::{create_library, list_library_dirs};
 use rspc::{Router, RouterBuilder};
 use serde::Serialize;
 use serde_json::json;
-use crate::library::{
-    get_library_settings, set_library_settings, LibrarySettings, LIBRARY_SETTINGS_FILE_NAME,
-};
 use specta::Type;
 use std::path::PathBuf;
 
@@ -93,21 +93,15 @@ where
                 json!({ "status": "ok" })
             })
         })
-        .mutation("quit_current_library", |t| {
-            t(|ctx, library_id: String| async move {
+        .mutation("unload_library", |t| {
+            t(|ctx, _: Option<serde_json::Value>| async move {
                 /*
                  * TODO 如果这里不加一个参数直接用 _input: (), 会因参数校验失败而返回错误,
-                 * 因为前端会发一个 payload: `{}`, 而不是空, 这个 issue 需要排查一下
-                 * 现在就索性校验一下 library_id, 实际没啥用
+                 * 因为前端会发一个 payload: `{}`, 而不是空
+                 * 所以这里就用 serde_json::Value | None 来允许接收任何值
                  */
-                let library = ctx.library()?;
-                if library.id != library_id {
-                    return Err(rspc::Error::new(
-                        rspc::ErrorCode::BadRequest,
-                        String::from("The library is not the current library"),
-                    ));
-                }
-                ctx.quit_library_in_store()?;
+                // ctx.library()?;  // 不需要确认 library 存在, 意外情况下可能 library 已经清空但是 task 和 qdrant 还在
+                ctx.unload_library()?;
                 Ok(json!({ "status": "ok" }))
             })
         })

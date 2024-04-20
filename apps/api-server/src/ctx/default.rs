@@ -13,6 +13,7 @@ use content_library::{
 use file_handler::video::{VideoHandler, VideoTaskType};
 use std::{
     boxed::Box,
+    fmt::Debug,
     path::PathBuf,
     sync::{atomic::AtomicBool, mpsc::Sender, Arc, Mutex},
 };
@@ -21,7 +22,6 @@ use vector_db::{get_language_collection_name, get_vision_collection_name, kill_q
 /**
  * default impl of a store for rspc Ctx
  */
-
 pub struct Store {
     path: PathBuf,
     values: std::collections::HashMap<String, String>,
@@ -80,7 +80,7 @@ pub struct Ctx<S: CtxStore> {
     current_library: Arc<Mutex<Option<Library>>>,
     tx: Arc<Mutex<Option<Sender<TaskPayload<VideoHandler, VideoTaskType>>>>>,
     pub ai_handler: Arc<Mutex<Option<AIHandler>>>,
-    library_loading: Arc<Mutex<AtomicBool>>,
+    is_busy: Arc<Mutex<AtomicBool>>, // is loading or unloading a library
     download_hub: Arc<Mutex<Option<DownloadHub>>>,
 }
 
@@ -93,7 +93,7 @@ impl<S: CtxStore> Clone for Ctx<S> {
             current_library: self.current_library.clone(),
             tx: self.tx.clone(),
             ai_handler: self.ai_handler.clone(),
-            library_loading: self.library_loading.clone(),
+            is_busy: self.is_busy.clone(),
             download_hub: self.download_hub.clone(),
         }
     }
@@ -110,10 +110,17 @@ impl<S: CtxStore> Ctx<S> {
             current_library: Arc::new(Mutex::new(None)),
             tx: Arc::new(Mutex::new(None)),
             ai_handler: Arc::new(Mutex::new(None)),
-            library_loading: Arc::new(Mutex::new(AtomicBool::new(false))),
+            is_busy: Arc::new(Mutex::new(AtomicBool::new(false))),
             download_hub: Arc::new(Mutex::new(None)),
         }
     }
+}
+
+fn unexpected_err(e: impl Debug) -> rspc::Error {
+    rspc::Error::new(
+        rspc::ErrorCode::InternalServerError,
+        format!("unlock failed: {:?}", e),
+    )
 }
 
 #[async_trait]
@@ -136,25 +143,68 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         }
     }
 
-    fn quit_library_in_store(&self) -> Result<(), rspc::Error> {
-        let mut store = self.store.lock().unwrap();
-        let qdrant_pid = store.get("current-qdrant-pid");
+    #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
+    fn unload_library(&self) -> Result<(), rspc::Error> {
+        let mut is_busy = self.is_busy.lock().map_err(unexpected_err)?;
+        if *is_busy.get_mut() {
+            // FIXME should use 429 too many requests error code
+            return Err(rspc::Error::new(
+                rspc::ErrorCode::Conflict,
+                "App is busy".into(),
+            ));
+        }
+        is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
 
-        match qdrant_pid {
-            Some(pid) => {
-                if let Ok(pid) = pid.parse() {
-                    kill_qdrant_server(pid).map_err(|e| {
-                        rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string())
-                    })?;
-                }
-                let _ = store.delete("current-qdrant-pid");
+        let mut store = self.store.lock().map_err(unexpected_err)?;
+
+        /* unload qdrant */
+        {
+            let pid_in_store = store.get("current-qdrant-pid").unwrap_or("".to_string());
+            if let Ok(pid) = pid_in_store.parse() {
+                kill_qdrant_server(pid).map_err(|e| {
+                    tracing::error!(task = "kill qdrant", "Failed: {}", e);
+                    rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("Failed to kill qdrant: {}", e),
+                    )
+                })?;
+                tracing::info!(task = "kill qdrant", "Success");
             }
-            _ => {}
+            let _ = store.delete("current-qdrant-pid");
         }
 
-        if store.save().is_err() {
-            tracing::warn!("Failed to save store");
+        /* unload tasks */
+        {
+            let mut current_tx = self.tx.lock().map_err(unexpected_err)?;
+            if let Some(tx) = current_tx.as_ref() {
+                tx.send(TaskPayload::CancelAll).map_err(|e| {
+                    tracing::error!(task = "cancel tasks", "Failed: {}", e);
+                    rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("Failed to cancel tasks: {}", e),
+                    )
+                })?;
+                tracing::info!(task = "cancel tasks", "Success");
+            }
+            *current_tx = None; // same as current_tx.take();
         }
+
+        /* unload library */
+        {
+            let mut current_library = self.current_library.lock().unwrap();
+            *current_library = None; // same as self.current_library.lock().unwrap().take();
+            tracing::info!(task = "unload library", "Success");
+            let _ = store.delete("current-library-id");
+        }
+
+        if let Err(e) = store.save() {
+            tracing::warn!(task = "update store", "Failed: {:?}", e);
+            // this issue can be safely ignored
+        } else {
+            tracing::info!(task = "update store", "Success");
+        }
+
+        is_busy.store(false, std::sync::atomic::Ordering::Relaxed);
 
         Ok(())
     }
@@ -168,9 +218,8 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         tracing::info!("try to load library: {}", library_id);
 
         {
-            let mut library_loading = self.library_loading.lock().unwrap();
-            let is_loading = library_loading.get_mut();
-            if *is_loading {
+            let mut is_busy = self.is_busy.lock().unwrap();
+            if *is_busy.get_mut() {
                 // if library is already loading, just return
                 // FIXME it's better to wait until library is loaded
                 return Err(rspc::Error::new(
@@ -180,10 +229,10 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 ));
             }
 
-            library_loading.store(true, std::sync::atomic::Ordering::Relaxed);
+            is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
         }
 
-        if let Err(e) = self.quit_library_in_store() {
+        if let Err(e) = self.unload_library() {
             tracing::warn!("Failed to quit current library: {}", e);
         } else {
             tracing::info!("Quit current library successfully");
@@ -298,8 +347,8 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         }
 
         {
-            let library_loading = self.library_loading.lock().unwrap();
-            library_loading.store(false, std::sync::atomic::Ordering::Relaxed);
+            let is_busy = self.is_busy.lock().unwrap();
+            is_busy.store(false, std::sync::atomic::Ordering::Relaxed);
         }
 
         Ok(())

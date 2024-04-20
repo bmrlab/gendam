@@ -22,6 +22,8 @@ async fn main() {
         Err(e) => println!("Could not load .env file: {e}"),
     };
 
+    // let log_dir = env::var("LOCAL_LOG_DIR").unwrap();
+    // analytics_tracing::init_tracing_to_file(log_dir.into());
     analytics_tracing::init_tracing_to_stdout();
     {
         // https://docs.rs/tracing/latest/tracing/struct.Span.html#in-asynchronous-code
