@@ -25,9 +25,9 @@ export type Procedures = {
         { key: "audio.batch_export", input: ExportInput[], result: AudioType[] } | 
         { key: "audio.export", input: ExportInput, result: AudioType[] } | 
         { key: "libraries.create", input: string, result: null } | 
+        { key: "libraries.load_library", input: string, result: any } | 
         { key: "libraries.models.download_model", input: DownloadModelPayload, result: null } | 
         { key: "libraries.models.set_model", input: SetModelPayload, result: null } | 
-        { key: "libraries.set_current_library", input: string, result: any } | 
         { key: "libraries.unload_library", input: any | null, result: any } | 
         { key: "libraries.update_library_settings", input: LibrarySettings, result: null } | 
         { key: "video.tasks.cancel", input: TaskCancelRequestPayload, result: null } | 
@@ -51,9 +51,9 @@ export type Pagination = { pageSize: number; pageIndex: number }
 
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
-export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
-
 export type CurrentLibraryResult = { id: string; dir: string }
+
+export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPath: string; oldName: string; newName: string }
 

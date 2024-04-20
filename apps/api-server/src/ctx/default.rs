@@ -74,13 +74,13 @@ impl CtxStore for Store {
 
 #[derive(Debug)]
 pub struct Ctx<S: CtxStore> {
+    pub is_busy: Arc<Mutex<AtomicBool>>, // is loading or unloading a library
     local_data_root: PathBuf,
     resources_dir: PathBuf,
     store: Arc<Mutex<S>>,
     current_library: Arc<Mutex<Option<Library>>>,
     tx: Arc<Mutex<Option<Sender<TaskPayload<VideoHandler, VideoTaskType>>>>>,
-    pub ai_handler: Arc<Mutex<Option<AIHandler>>>,
-    is_busy: Arc<Mutex<AtomicBool>>, // is loading or unloading a library
+    ai_handler: Arc<Mutex<Option<AIHandler>>>,
     download_hub: Arc<Mutex<Option<DownloadHub>>>,
 }
 
@@ -125,6 +125,10 @@ fn unexpected_err(e: impl Debug) -> rspc::Error {
 
 #[async_trait]
 impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
+    fn is_busy(&self) -> std::sync::MutexGuard<'_, AtomicBool> {
+        self.is_busy.lock().unwrap()
+    }
+
     fn get_local_data_root(&self) -> PathBuf {
         self.local_data_root.clone()
     }
@@ -145,18 +149,6 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
     async fn unload_library(&self) -> Result<(), rspc::Error> {
-        {
-            let mut is_busy = self.is_busy.lock().map_err(unexpected_err)?;
-            if *is_busy.get_mut() {
-                // FIXME should use 429 too many requests error code
-                return Err(rspc::Error::new(
-                    rspc::ErrorCode::Conflict,
-                    "App is busy".into(),
-                ));
-            }
-            is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
-        }
-
         /* cancel tasks */
         {
             let mut current_tx = self.tx.lock().map_err(unexpected_err)?;
@@ -243,11 +235,6 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             }
         }
 
-        {
-            let is_busy = self.is_busy.lock().map_err(unexpected_err)?;
-            is_busy.store(false, std::sync::atomic::Ordering::Relaxed);
-        }
-
         Ok(())
     }
 
@@ -259,20 +246,6 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
     async fn load_library(&self, library_id: &str) -> Result<(), rspc::Error> {
         tracing::info!(library_id = library_id, "load library");
-
-        {
-            let mut is_busy = self.is_busy.lock().map_err(unexpected_err)?;
-            if *is_busy.get_mut() {
-                // if library is already loading, just return
-                // FIXME it's better to wait until library is loaded
-                // FIXME should use 429 too many requests error code
-                return Err(rspc::Error::new(
-                    rspc::ErrorCode::Conflict,
-                    "App is busy".into(),
-                ));
-            }
-            is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
-        }
 
         /* init library */
         let library = {
@@ -390,11 +363,6 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             tracing::info!(task = "init ai handler", "Success");
             let mut current_ai_handler = self.ai_handler.lock().map_err(unexpected_err)?;
             current_ai_handler.replace(ai_handler);
-        }
-
-        {
-            let is_busy = self.is_busy.lock().map_err(unexpected_err)?;
-            is_busy.store(false, std::sync::atomic::Ordering::Relaxed);
         }
 
         Ok(())

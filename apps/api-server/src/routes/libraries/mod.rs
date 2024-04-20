@@ -82,15 +82,40 @@ where
                 Ok(())
             })
         })
-        .mutation("set_current_library", |t| {
-            /*
-             * ctx.load_library 会负责进行当前 library 的卸载
-             */
+        .mutation("load_library", |t| {
             t(|ctx, library_id: String| async move {
+                if ctx.library().is_ok() {
+                    return Err(rspc::Error::new(
+                        rspc::ErrorCode::Conflict,
+                        "Library already loaded".into(),
+                    ));
+                }
+                {
+                    // 优化一下，直接在 is_busy 里面 unwrap 好
+                    let mut is_busy = ctx.is_busy();
+                    if *is_busy.get_mut() {
+                        // FIXME should use 429 too many requests error code
+                        return Err(rspc::Error::new(
+                            rspc::ErrorCode::Conflict,
+                            "App is busy".into(),
+                        ));
+                    }
+                    is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
+                }
+                let mut result: Result<_, rspc::Error> = Ok(json!({ "status": "ok" }));
                 if let Err(e) = ctx.load_library(&library_id).await {
                     tracing::error!("Failed to load library: {}", e);
+                    result = Err(e);
+                    // TODO !!!!!! should unload library if failed to load
+                    if let Err(e) = ctx.unload_library().await {
+                        tracing::error!("Failed to unload library: {}", e);
+                        result = Err(e);
+                    }
                 }
-                json!({ "status": "ok" })
+                {
+                    ctx.is_busy().store(false, std::sync::atomic::Ordering::Relaxed);
+                }
+                result
             })
         })
         .mutation("unload_library", |t| {
@@ -100,9 +125,30 @@ where
                  * 因为前端会发一个 payload: `{}`, 而不是空
                  * 所以这里就用 serde_json::Value | None 来允许接收任何值
                  */
-                // ctx.library()?;  // 不需要确认 library 存在, 意外情况下可能 library 已经清空但是 task 和 qdrant 还在
-                ctx.unload_library().await?;
-                Ok(json!({ "status": "ok" }))
+                {
+                    // ctx.library()?;
+                    // 不需要确认 library 存在, 意外情况下可能 library 已经清空但是 task 和 qdrant 还在
+                }
+                {
+                    let mut is_busy = ctx.is_busy();
+                    if *is_busy.get_mut() {
+                        // FIXME should use 429 too many requests error code
+                        return Err(rspc::Error::new(
+                            rspc::ErrorCode::Conflict,
+                            "App is busy".into(),
+                        ));
+                    }
+                    is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
+                }
+                let mut result: Result<_, rspc::Error> = Ok(json!({ "status": "ok" }));
+                if let Err(e) = ctx.unload_library().await {
+                    tracing::error!("Failed to unload library: {}", e);
+                    result = Err(e);
+                }
+                {
+                    ctx.is_busy().store(false, std::sync::atomic::Ordering::Relaxed);
+                }
+                result
             })
         })
         .query("get_current_library", |t| {

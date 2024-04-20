@@ -90,7 +90,7 @@ export default function ClientLayout({
     async (libraryId: string) => {
       setLibrary(null)
       setPending(true)
-      await client.mutation(['libraries.set_current_library', libraryId])
+      await client.mutation(['libraries.load_library', libraryId])
       initLibraryData()
     },
     [initLibraryData],
