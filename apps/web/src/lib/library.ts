@@ -11,7 +11,7 @@ type CurrentLibraryContext = {
   dir: string
   librarySettings: LibrarySettings
   updateLibrarySettings: (partialSettingssettings: Partial<LibrarySettings>) => Promise<void>
-  set: (libraryId: string) => Promise<void>
+  switchCurrentLibraryById: (libraryId: string) => Promise<void>
   getFileSrc: (assetObjectId: string) => string
   getThumbnailSrc: (assetObjectId: string, timestampInSecond?: number) => string
 }

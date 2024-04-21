@@ -6,9 +6,9 @@ import Image from 'next/image'
 import { useCallback } from 'react'
 
 export default function LibrariesSelect({
-  setCurrentLibrary,
+  switchCurrentLibraryById,
 }: {
-  setCurrentLibrary: (libraryId: string) => Promise<void>
+  switchCurrentLibraryById: (libraryId: string) => Promise<void>
 }) {
   const librariesQuery = rspc.useQuery(['libraries.list'])
   const libraryCreateMut = rspc.useMutation('libraries.create')
@@ -39,7 +39,7 @@ export default function LibrariesSelect({
               <div
                 key={library.id}
                 className="hover:bg-app-hover flex items-center justify-start rounded-md px-3 py-2"
-                onClick={() => setCurrentLibrary(library.id)}
+                onClick={() => switchCurrentLibraryById(library.id)}
               >
                 <Image src={GenDAM_Logo} alt="Muse" className="h-8 w-8"></Image>
                 <div className="mx-2 w-64 truncate text-xs font-semibold">

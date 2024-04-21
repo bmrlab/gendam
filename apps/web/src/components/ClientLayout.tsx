@@ -18,6 +18,15 @@ export default function ClientLayout({
   const [library, setLibrary] = useState<Library | null>(null)
   const [librarySettings, setLibrarySettings] = useState<LibrarySettings | null>(null)
 
+  useEffect(() => {
+    const theme = librarySettings?.appearanceTheme
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [librarySettings?.appearanceTheme])
+
   const blockCmdQ = useCallback(() => {
     document.addEventListener('keydown', (event) => {
       if (event.metaKey && (event.key === 'q' || event.key === 'w')) {
@@ -31,35 +40,43 @@ export default function ClientLayout({
     })
   }, [])
 
-  const initLibraryData = useCallback(async () => {
+  const loadLibrary = useCallback(async (libraryId: string | null) => {
     setPending(true)
-
-    try {
-      // get_current_library will load the library from store
-      const library = await client.query(['libraries.get_current_library'])
-      setLibrary(library)
-      const librarySettings = await client.query(['libraries.get_library_settings'])
-      setLibrarySettings(librarySettings)
-      setPending(false)
-
-      // 触发未完成的任务
-      await client.mutation(['video.tasks.trigger_unfinished', library.id])
-    } catch (error: any) {
-      /**
-       * 现在 libraries.get_current_library 有两种情况会报错
-       * - 当前 library 为空
-       * - 当前 library 正在 loading, 此时 error.message === "too many requests"
-       *
-       * 对于第二种情况，可以直接忽略请求，一般是因为 useEffect 二次执行造成的
-       */
-      if (error.message !== 'too many requests') {
-        setPending(false)
-        toast.error('Something went wrong getting library data, application will not start', {
-          description: `${error}`,
-        })
+    let library: Library | null = null
+    if (libraryId) {
+      try {
+        const result = await client.mutation(['libraries.load_library', libraryId])
+        library = result
+      } catch (error: any) {
+        toast.error('Failed to load library', { description: `${error}` })
       }
     }
-  }, [setLibrarySettings, setLibrary, setPending])
+    // 如果 library 为空，就 unload_library，然后回到 libraries 选择界面
+    if (!library) {
+      try {
+        await client.mutation(['libraries.unload_library'])
+      } catch (error: any) {
+        toast.error('Failed to unload library', { description: `${error}` })
+      }
+      setLibrary(null)
+      setLibrarySettings(null)
+    } else {
+      setLibrary(library)
+      try {
+        const librarySettings = await client.query(['libraries.get_library_settings'])
+        setLibrarySettings(librarySettings)
+      } catch (error: any) {
+        toast.error('Failed to get library settings', { description: `${error}` })
+      }
+      try {
+        // 触发未完成的任务
+        await client.mutation(['video.tasks.trigger_unfinished', library.id])
+      } catch (error: any) {
+        toast.error('Failed to trigger unfinished tasks', { description: `${error}` })
+      }
+    }
+    setPending(false)
+  }, [])
 
   useEffect(() => {
     // blockCmdQ()
@@ -68,32 +85,29 @@ export default function ClientLayout({
       window.addEventListener('contextmenu', disableContextMenu)
     }
 
-    initLibraryData()
+    client.query(['libraries.status']).then(({
+      id, loaded, isBusy
+    }) => {
+      loadLibrary(id)
+    })
 
     return () => {
       if (typeof window !== 'undefined') {
         window.removeEventListener('contextmenu', disableContextMenu)
       }
     }
-  }, [initLibraryData])
+  }, [loadLibrary])
 
-  useEffect(() => {
-    const theme = librarySettings?.appearanceTheme
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }, [librarySettings?.appearanceTheme])
-
-  const setCurrentLibrary = useCallback(
+  const switchCurrentLibraryById = useCallback(
     async (libraryId: string) => {
-      setLibrary(null)
-      setPending(true)
-      await client.mutation(['libraries.load_library', libraryId])
-      initLibraryData()
+      if (libraryId === library?.id) {
+        return
+      }
+      // switch: unload then load
+      await loadLibrary(null)
+      await loadLibrary(libraryId)
     },
-    [initLibraryData],
+    [loadLibrary, library?.id],
   )
 
   const updateLibrarySettings = useCallback(
@@ -161,7 +175,7 @@ export default function ClientLayout({
     </div>
   ) : !library || !librarySettings ? (
     <rspc.Provider client={client} queryClient={queryClient}>
-      <LibrariesSelect setCurrentLibrary={setCurrentLibrary} />
+      <LibrariesSelect switchCurrentLibraryById={switchCurrentLibraryById} />
     </rspc.Provider>
   ) : (
     <CurrentLibrary.Provider
@@ -170,7 +184,7 @@ export default function ClientLayout({
         dir: library.dir,
         librarySettings: librarySettings,
         updateLibrarySettings: updateLibrarySettings,
-        set: setCurrentLibrary,
+        switchCurrentLibraryById: switchCurrentLibraryById,
         getFileSrc,
         getThumbnailSrc,
       }}

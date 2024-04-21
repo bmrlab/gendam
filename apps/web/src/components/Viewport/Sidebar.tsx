@@ -36,7 +36,7 @@ export default function Sidebar() {
   const switchLibrary = useCallback(
     async (library: LibrariesListResult) => {
       try {
-        await currentLibrary.set(library.id)
+        await currentLibrary.switchCurrentLibraryById(library.id)
       } catch (error) {
         toast.error('Failed to quit current library', {
           description: `${error}`,
