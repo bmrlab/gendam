@@ -147,8 +147,14 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         }
     }
 
+    fn library_id_in_store(&self) -> Option<String> {
+        let store = self.store.lock().unwrap();
+        store.get("current-library-id")
+    }
+
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
     async fn unload_library(&self) -> Result<(), rspc::Error> {
+        tracing::info!("unload library");
         /* cancel tasks */
         {
             let mut current_tx = self.tx.lock().map_err(unexpected_err)?;
@@ -167,7 +173,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
         /* kill qdrant */
         {
-            let mut store = self.store.lock().map_err(unexpected_err)?;
+            let store = self.store.lock().map_err(unexpected_err)?;
             let pid_in_store = store.get("current-qdrant-pid").unwrap_or("".to_string());
             if let Ok(pid) = pid_in_store.parse() {
                 kill_qdrant_server(pid).map_err(|e| {
@@ -179,7 +185,6 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 })?;
                 tracing::info!(task = "kill qdrant", "Success");
             }
-            let _ = store.delete("current-qdrant-pid");
         }
 
         /* shutdown ai handler */
@@ -215,18 +220,18 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             }
         }
 
-        /* unload library */
+        /* update ctx */
         {
-            let mut store = self.store.lock().map_err(unexpected_err)?;
             let mut current_library = self.current_library.lock().map_err(unexpected_err)?;
             *current_library = None; // same as self.current_library.lock().unwrap().take();
-            tracing::info!(task = "unload library", "Success");
-            let _ = store.delete("current-library-id");
+            tracing::info!(task = "update ctx", "Success");
         }
 
         /* update store */
         {
-            let store = self.store.lock().map_err(unexpected_err)?;
+            let mut store = self.store.lock().map_err(unexpected_err)?;
+            let _ = store.delete("current-library-id");
+            let _ = store.delete("current-qdrant-pid");
             if let Err(e) = store.save() {
                 tracing::warn!(task = "update store", "Failed: {:?}", e);
                 // this issue can be safely ignored
@@ -236,11 +241,6 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         }
 
         Ok(())
-    }
-
-    fn library_id_in_store(&self) -> Option<String> {
-        let store = self.store.lock().unwrap();
-        store.get("current-library-id")
     }
 
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
@@ -268,7 +268,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 .map_err(|e| {
                     tracing::error!(task = "init library", "Failed: {:?}", e);
                     rspc::Error::new(
-                        rspc::ErrorCode::NotFound,
+                        rspc::ErrorCode::InternalServerError,
                         format!("Failed to init library: {:?}", e),
                     )
                 })?;
@@ -303,7 +303,6 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             let qdrant_client = library.qdrant_client();
             // make sure qdrant collections are created
             let qdrant_info = self.qdrant_info()?;
-
             make_sure_collection_created(
                 qdrant_client.clone(),
                 &qdrant_info.language_collection.name,

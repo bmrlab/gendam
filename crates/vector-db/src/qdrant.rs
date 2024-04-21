@@ -132,16 +132,30 @@ storage:
 }
 
 /// Check if qdrant is alive
-async fn check_liveness(addr: SocketAddr) -> bool {
+pub async fn check_liveness(addr: SocketAddr) -> bool {
     let probe = format!("http://{}:{}", addr.ip(), addr.port());
-
-    let (tx1, rx1) = oneshot::channel();
+    let (tx1, rx1) = oneshot::channel::<bool>();
     tokio::spawn(async move {
+        let mut count = 0;
         loop {
+            count += 1;
+            if count > 15 {
+                let _ = tx1.send(false);
+                break;
+            }
             let resp = reqwest::get(probe.clone()).await;
+            tracing::debug!(
+                probe = probe,
+                count = count,
+                "qdrant probe: {}",
+                match &resp {
+                    Ok(resp) => resp.status().to_string(),
+                    Err(e) => e.to_string(),
+                }
+            );
             if let Ok(resp) = resp {
                 if resp.status() == reqwest::StatusCode::OK {
-                    let _ = tx1.send(());
+                    let _ = tx1.send(true);
                     break;
                 }
             }
@@ -149,14 +163,23 @@ async fn check_liveness(addr: SocketAddr) -> bool {
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         }
     });
+    // 上面的 thread 在 15 次尝试以后会停止
+    // 不然 30s 时间到了以后虽然方法已退出, 上面的 loop 会一直在执行
+    // TODO 然后既然是这样，第一个 select! 其实不需要了, 直接 match rx1.recv() 就行
     tokio::select! {
         // timeout for 30s
         _ = tokio::time::sleep(std::time::Duration::from_secs(30)) => {
+            tracing::error!("qdrant start timeout");
             false
         }
-        _ = rx1 => {
-            info!("qdrant started");
-            true
+        result = rx1 => {
+            let success = result.unwrap_or(false);
+            if !success {
+                tracing::error!("qdrant start timeout");
+            } else {
+                tracing::info!("qdrant started");
+            }
+            success
         }
     }
 }
