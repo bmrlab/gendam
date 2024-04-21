@@ -191,7 +191,11 @@ pub fn kill(pid: u32) -> anyhow::Result<()> {
                 // kill all child processes
                 s.processes().iter().for_each(|(_, p)| {
                     if p.parent() == Some(process.pid()) {
-                        p.kill_with(Signal::Term);
+                        // TODO:
+                        // kill -15 似乎对 qdrant 子进程无效, 会被忽略, 然后主进程就卡住了
+                        // kill -9 可以, 这里临时改下
+                        // p.kill_with(Signal::Term);
+                        p.kill_with(Signal::Kill);
                     }
                 });
             }
