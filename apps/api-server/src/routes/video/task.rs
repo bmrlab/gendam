@@ -325,24 +325,6 @@ where
                 Ok(())
             })
         })
-        .mutation("trigger_unfinished", |t| {
-            t(|ctx: TCtx, library_id: String| async move {
-                /*
-                 * TODO 如果这里不加一个参数直接用 _input: (), 会因参数校验失败而返回错误,
-                 * 因为前端会发一个 payload: `{}`, 而不是空, 这个 issue 需要排查一下
-                 * 现在就索性校验一下 library_id, 实际没啥用
-                 */
-                let library = ctx.library()?;
-                if library.id != library_id {
-                    return Err(rspc::Error::new(
-                        rspc::ErrorCode::BadRequest,
-                        String::from("The library is not the current library"),
-                    ));
-                }
-                ctx.trigger_unfinished_tasks().await;
-                Ok(())
-            })
-        })
 }
 /*
         .procedure(

@@ -139,6 +139,20 @@ fn unexpected_err(e: impl Debug) -> rspc::Error {
     )
 }
 
+impl<S: CtxStore + Send> Ctx<S> {
+    async fn trigger_unfinished_tasks(&self) -> () {
+        if let Ok(library) = self.library() {
+            // Box::pin(async move {
+            // })
+            if let Err(e) = trigger_unfinished(&library, self).await {
+                tracing::warn!("Failed to trigger unfinished tasks: {}", e);
+            }
+        } else {
+            // Box::pin(async move {})
+        }
+    }
+}
+
 #[async_trait]
 impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
     fn is_busy(&self) -> Arc<Mutex<AtomicBool>> {
@@ -420,6 +434,10 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             current_ai_handler.replace(ai_handler);
         }
 
+        {
+            self.trigger_unfinished_tasks().await;
+        }
+
         Ok(library)
 
         // 这里本来应该触发一下未完成的任务
@@ -498,18 +516,5 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 dim: vision_dim,
             },
         })
-    }
-
-    async fn trigger_unfinished_tasks(&self) -> () {
-        if let Ok(library) = self.library() {
-            // Box::pin(async move {
-
-            // })
-            if let Err(e) = trigger_unfinished(&library, self).await {
-                tracing::warn!("Failed to trigger unfinished tasks: {}", e);
-            }
-        } else {
-            // Box::pin(async move {})
-        }
     }
 }

@@ -64,14 +64,6 @@ async fn main() {
     let router = api_server::get_routes::<Ctx<Store>>().arced();
     let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store);
 
-    // TODO: this is useless, remove it
-    tokio::spawn({
-        let ctx = ctx.clone();
-        async move {
-            ctx.trigger_unfinished_tasks().await;
-        }
-    });
-
     let app: axum::Router = axum::Router::new()
         .route("/", get(|| async { "Hello 'rspc'!" }))
         .nest("/rspc", {
@@ -119,10 +111,12 @@ async fn shutdown_signal(ctx: impl CtxWithLibrary) {
         _ = ctrl_c => {
             tracing::info!("Ctrl-C received, unload library and shut down...");
             let _ = ctx.unload_library().await;
+            std::process::exit(0);
         },
         _ = terminate => {
             tracing::info!("Ctrl-C received, unload library and shut down...");
             let _ = ctx.unload_library().await;
+            std::process::exit(0);
         },
     }
 }

@@ -43,6 +43,4 @@ pub trait CtxWithLibrary: Sync {
     fn download_status(&self) -> Result<Vec<DownloadStatus>, rspc::Error>;
 
     fn qdrant_info(&self) -> Result<QdrantServerInfo, rspc::Error>;
-
-    async fn trigger_unfinished_tasks(&self) -> ();
 }

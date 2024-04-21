@@ -55,12 +55,6 @@ export default function ClientLayout({
       } catch (error: any) {
         toast.error('Failed to get library settings', { description: `${error}` })
       }
-      try {
-        // 触发未完成的任务
-        await client.mutation(['video.tasks.trigger_unfinished', library.id])
-      } catch (error: any) {
-        toast.error('Failed to trigger unfinished tasks', { description: `${error}` })
-      }
     }
     setPending(false)
   }, [])

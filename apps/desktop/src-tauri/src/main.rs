@@ -126,12 +126,6 @@ async fn main() {
     let router = api_server::get_routes::<Ctx<Store>>();
     let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store);
 
-    // TODO: this is useless, remove it
-    let ctx_clone = ctx.clone();
-    tokio::spawn(async move {
-        ctx_clone.trigger_unfinished_tasks().await;
-    });
-
     window.on_window_event({
         let ctx = ctx.clone();
         move |e| {
