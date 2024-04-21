@@ -51,12 +51,17 @@
         ],
         "sidecar": true
       },
+      "process": {
+        "all": false,
+        "exit": true,
+        "relaunch": true,
+        "relaunchDangerousAllowSymlinkMacos": false
+      },
       "dialog": {
         "ask": true,
         "open": true,
         "message": true
       },
-
       "protocol": {
         "all": true,
         "assetScope": [

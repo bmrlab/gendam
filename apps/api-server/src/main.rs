@@ -64,15 +64,18 @@ async fn main() {
     let router = api_server::get_routes::<Ctx<Store>>().arced();
     let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store);
 
-    let ctx_clone = ctx.clone();
-    tokio::spawn(async move {
-        ctx_clone.trigger_unfinished_tasks().await;
+    tokio::spawn({
+        let ctx = ctx.clone();
+        async move {
+            ctx.trigger_unfinished_tasks().await;
+        }
     });
 
     let app: axum::Router = axum::Router::new()
         .route("/", get(|| async { "Hello 'rspc'!" }))
         .nest("/rspc", {
             rspc_axum::endpoint(router.clone(), {
+                let ctx = ctx.clone();
                 move |parts: Parts| {
                     tracing::info!("Client requested operation '{}'", parts.uri.path());
                     // 不能每次 new 而应该是 clone，这样会保证 ctx 里面的每个元素每次只是新建了引用
@@ -86,7 +89,39 @@ async fn main() {
 
     let addr = "[::]:3001".parse::<std::net::SocketAddr>().unwrap(); // This listens on IPv6 and IPv4
     tracing::debug!("Listening on http://{}/rspc/version", addr);
-    axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app)
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal(ctx.clone()))
         .await
         .unwrap();
+}
+
+async fn shutdown_signal(ctx: impl CtxWithLibrary) {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {
+            tracing::info!("Ctrl-C received, unload library and shut down...");
+            let _ = ctx.unload_library().await;
+        },
+        _ = terminate => {
+            tracing::info!("Ctrl-C received, unload library and shut down...");
+            let _ = ctx.unload_library().await;
+        },
+    }
 }

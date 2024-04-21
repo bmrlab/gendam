@@ -1,7 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use api_server::{ctx::default::Ctx, CtxWithLibrary};
-use content_library::Library;
 use dotenvy::dotenv;
 use std::{
     path::PathBuf,
@@ -114,8 +113,6 @@ async fn main() {
 
     // validate_app_version(window.app_handle(), &local_data_root);
 
-    let current_library = Arc::new(Mutex::<Option<Library>>::new(None));
-
     let mut tauri_store = tauri_plugin_store::StoreBuilder::new(
         window.app_handle(),
         "settings.json".parse().unwrap(),
@@ -125,17 +122,6 @@ async fn main() {
         tracing::warn!("Failed to load tauri store: {:?}", e);
     });
 
-    window.on_window_event({
-        let current_library = current_library.clone();
-        move |e| {
-            if let tauri::WindowEvent::Destroyed = e {
-                if let Some(library) = current_library.lock().unwrap().take() {
-                    drop(library);
-                }
-            }
-        }
-    });
-
     let store = Arc::new(Mutex::new(Store::new(tauri_store)));
     let router = api_server::get_routes::<Ctx<Store>>();
     let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store);
@@ -143,6 +129,20 @@ async fn main() {
     let ctx_clone = ctx.clone();
     tokio::spawn(async move {
         ctx_clone.trigger_unfinished_tasks().await;
+    });
+
+    window.on_window_event({
+        let ctx = ctx.clone();
+        move |e| {
+            if let tauri::WindowEvent::Destroyed = e {
+                // if let Ok(library) = ctx.library() {
+                //     drop(library);
+                // }
+                tokio::runtime::Runtime::new().unwrap().block_on(async {
+                    let _ = ctx.unload_library().await;
+                });
+            }
+        }
     });
 
     window

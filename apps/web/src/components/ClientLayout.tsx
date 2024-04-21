@@ -27,19 +27,6 @@ export default function ClientLayout({
     }
   }, [librarySettings?.appearanceTheme])
 
-  const blockCmdQ = useCallback(() => {
-    document.addEventListener('keydown', (event) => {
-      if (event.metaKey && (event.key === 'q' || event.key === 'w')) {
-        event.preventDefault()
-        console.log('Cmd + Q is pressed.')
-        alert('Cmd + Q 暂时禁用了，因为会导致 qdrant 不正常停止，TODO：实现 Cmd + Q 按了以后自行处理 app 退出')
-        /**
-         * https://github.com/bmrlab/tauri-dam-test-playground/issues/21#issuecomment-2002549684
-         */
-      }
-    })
-  }, [])
-
   const loadLibrary = useCallback(async (libraryId: string | null) => {
     setPending(true)
     let library: Library | null = null
@@ -78,8 +65,26 @@ export default function ClientLayout({
     setPending(false)
   }, [])
 
+  const listenToCmdQ = useCallback(() => {
+    document.addEventListener('keydown', async (event) => {
+      if (event.metaKey && (event.key === 'q' || event.key === 'w')) {
+        event.preventDefault()
+        toast.info('Cmd + Q is pressed, the app will be closed after library is unloaded.')
+        // await new Promise((resolve) => setTimeout(resolve, 3000));
+        await loadLibrary(null)
+        const { exit } = await import('@tauri-apps/api/process')
+        exit(0)
+        /**
+         * console.log('Cmd + Q is pressed.')
+         * alert('Cmd + Q 暂时禁用了，因为会导致 qdrant 不正常停止，TODO：实现 Cmd + Q 按了以后自行处理 app 退出')
+         * https://github.com/bmrlab/tauri-dam-test-playground/issues/21#issuecomment-2002549684
+         */
+      }
+    })
+  }, [loadLibrary])
+
   useEffect(() => {
-    // blockCmdQ()
+    listenToCmdQ();
     const disableContextMenu = (event: MouseEvent) => event.preventDefault()
     if (typeof window !== 'undefined') {
       window.addEventListener('contextmenu', disableContextMenu)
@@ -96,7 +101,7 @@ export default function ClientLayout({
         window.removeEventListener('contextmenu', disableContextMenu)
       }
     }
-  }, [loadLibrary])
+  }, [loadLibrary, listenToCmdQ])
 
   const switchCurrentLibraryById = useCallback(
     async (libraryId: string) => {

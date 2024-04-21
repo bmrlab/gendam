@@ -215,6 +215,10 @@ pub fn kill(pid: u32) -> anyhow::Result<()> {
 }
 
 impl Drop for QdrantServer {
+    /*
+     * TODO: 已经不需要使用 Drop trait 来 kill qdrant, 而是改成调用 ctx.unload_library
+     * 这里可以注释掉
+     */
     fn drop(&mut self) {
         info!("qdrant server dropped");
         match kill(self.get_pid()) {
