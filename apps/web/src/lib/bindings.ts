@@ -28,7 +28,7 @@ export type Procedures = {
         { key: "libraries.load_library", input: string, result: LibraryLoadResult } | 
         { key: "libraries.models.download_model", input: DownloadModelPayload, result: null } | 
         { key: "libraries.models.set_model", input: SetModelPayload, result: null } | 
-        { key: "libraries.unload_library", input: any | null, result: any } | 
+        { key: "libraries.unload_library", input: any | null, result: null } | 
         { key: "libraries.update_library_settings", input: LibrarySettings, result: null } | 
         { key: "video.tasks.cancel", input: TaskCancelRequestPayload, result: null } | 
         { key: "video.tasks.create", input: string, result: null } | 
@@ -39,8 +39,6 @@ export type Procedures = {
 
 export type SetModelPayload = { category: AIModelCategory; modelId: string }
 
-export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
-
 export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum; models: LibraryModels }
 
 export type ModelArtifact = { url: string; checksum: string }
@@ -48,6 +46,8 @@ export type ModelArtifact = { url: string; checksum: string }
 export type FilePathCreatePayload = { materializedPath: string; name: string }
 
 export type TaskRedoRequestPayload = { assetObjectId: number; preserveArtifacts: boolean }
+
+export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
 export type Pagination = { pageSize: number; pageIndex: number }
 

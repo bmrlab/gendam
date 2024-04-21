@@ -64,6 +64,7 @@ async fn main() {
     let router = api_server::get_routes::<Ctx<Store>>().arced();
     let ctx = Ctx::<Store>::new(local_data_root, resources_dir, store);
 
+    // TODO: this is useless, remove it
     tokio::spawn({
         let ctx = ctx.clone();
         async move {

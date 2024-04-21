@@ -103,12 +103,13 @@ impl<S: CtxStore> Clone for Ctx<S> {
  * is_busy 需要被实现一个 Drop trait，用于在离开作用域时自动释放锁
  * 不然当 load_library 和 unload_library 出错时，is_busy 会一直处于 true
  */
-struct BusyGuard<'a> {
-    pub is_busy: &'a std::sync::Arc<std::sync::Mutex<std::sync::atomic::AtomicBool>>
+struct BusyGuard {
+    pub is_busy: std::sync::Arc<std::sync::Mutex<std::sync::atomic::AtomicBool>>
 }
 
-impl<'a> Drop for BusyGuard<'a> {
+impl Drop for BusyGuard {
     fn drop(&mut self) {
+        tracing::info!("BusyGuard drop");
         let is_busy = self.is_busy.lock().unwrap();
         is_busy.store(false, std::sync::atomic::Ordering::Relaxed);
     }
@@ -169,9 +170,8 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
     async fn unload_library(&self) -> Result<(), rspc::Error> {
-        let _guard = BusyGuard { is_busy: &self.is_busy };
         {
-            let mut is_busy = _guard.is_busy.lock().unwrap();
+            let mut is_busy = self.is_busy.lock().unwrap();
             if *is_busy.get_mut() {
                 // FIXME should use 429 too many requests error code
                 return Err(rspc::Error::new(
@@ -181,7 +181,9 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             }
             is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
         }
-        tracing::info!("unload library");
+        // guard 需要放在后面, 这样前面返回 app is busy 的时候就不会触发 guard 的 drop
+        let _guard = BusyGuard { is_busy: self.is_busy.clone() };
+
         /* cancel tasks */
         {
             let mut current_tx = self.tx.lock().map_err(unexpected_err)?;
@@ -256,6 +258,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
         /* update store */
         {
+            // TODO: 其实这里可以不删掉 library-id 和 qdrant-id 的，因为下次 load_library 的时候会自动覆盖
             let mut store = self.store.lock().map_err(unexpected_err)?;
             let _ = store.delete("current-library-id");
             let _ = store.delete("current-qdrant-pid");
@@ -272,9 +275,8 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
     async fn load_library(&self, library_id: &str) -> Result<Library, rspc::Error> {
-        let _guard = BusyGuard { is_busy: &self.is_busy };
         {
-            let mut is_busy = _guard.is_busy.lock().unwrap();
+            let mut is_busy = self.is_busy.lock().unwrap();
             if *is_busy.get_mut() {
                 // FIXME should use 429 too many requests error code
                 return Err(rspc::Error::new(
@@ -284,8 +286,8 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             }
             is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
         }
-
-        tracing::info!(library_id = library_id, "load library");
+        // guard 需要放在后面, 这样前面返回 app is busy 的时候就不会触发 guard 的 drop
+        let _guard = BusyGuard { is_busy: self.is_busy.clone() };
 
         if let Some(library) = self.current_library.lock().unwrap().as_ref() {
             if library.id == library_id {
