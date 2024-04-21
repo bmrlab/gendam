@@ -90,18 +90,6 @@ where
                 pub dir: String,
             }
             t(|ctx, library_id: String| async move {
-                {
-                    // 优化一下，直接在 is_busy 里面 unwrap 好
-                    let mut is_busy = ctx.is_busy();
-                    if *is_busy.get_mut() {
-                        // FIXME should use 429 too many requests error code
-                        return Err(rspc::Error::new(
-                            rspc::ErrorCode::Conflict,
-                            "App is busy".into(),
-                        ));
-                    }
-                    is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
-                }
                 let result = match ctx.load_library(&library_id).await {
                     Ok(library) => {
                         Ok(LibraryLoadResult {
@@ -122,9 +110,6 @@ where
                         // result
                     }
                 };
-                {
-                    ctx.is_busy().store(false, std::sync::atomic::Ordering::Relaxed);
-                }
                 result
             })
         })
@@ -140,24 +125,10 @@ where
                     // 不需要确认 library 存在, 意外情况下可能 library 已经清空但是 task 和 qdrant 还在
                     // unload_library 可以反复执行
                 }
-                {
-                    let mut is_busy = ctx.is_busy();
-                    if *is_busy.get_mut() {
-                        // FIXME should use 429 too many requests error code
-                        return Err(rspc::Error::new(
-                            rspc::ErrorCode::Conflict,
-                            "App is busy".into(),
-                        ));
-                    }
-                    is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
-                }
                 let mut result: Result<_, rspc::Error> = Ok(json!({ "status": "ok" }));
                 if let Err(e) = ctx.unload_library().await {
                     tracing::error!("Failed to unload library: {}", e);
                     result = Err(e);
-                }
-                {
-                    ctx.is_busy().store(false, std::sync::atomic::Ordering::Relaxed);
                 }
                 result
             })
@@ -172,7 +143,11 @@ where
             }
             t(|ctx, _input: ()| async move {
                 let library_id_in_store = ctx.library_id_in_store();
-                let mut is_busy = ctx.is_busy();
+                let is_busy = {
+                    let is_busy = ctx.is_busy();
+                    let mut is_busy = is_busy.lock().unwrap();
+                    (*is_busy.get_mut()).clone()
+                };
                 let library = ctx.library();
                 let mut loaded = false;
                 if let Some(library_id_in_store) = library_id_in_store.clone() {
@@ -182,8 +157,8 @@ where
                 }
                 LibraryStatusResult {
                     id: library_id_in_store,
-                    loaded: loaded,
-                    is_busy: *is_busy.get_mut(),
+                    loaded,
+                    is_busy,
                 }
             })
         })

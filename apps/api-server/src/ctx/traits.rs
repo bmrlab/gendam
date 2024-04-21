@@ -25,7 +25,7 @@ pub trait CtxStore {
 
 #[async_trait]
 pub trait CtxWithLibrary: Sync {
-    fn is_busy(&self) -> std::sync::MutexGuard<'_, std::sync::atomic::AtomicBool>;
+    fn is_busy(&self) -> Arc<Mutex<std::sync::atomic::AtomicBool>>;
 
     fn get_local_data_root(&self) -> PathBuf;
     fn get_resources_dir(&self) -> PathBuf;
