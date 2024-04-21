@@ -272,16 +272,17 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
         /* update store */
         {
-            // TODO: 其实这里可以不删掉 library-id 和 qdrant-id 的，因为下次 load_library 的时候会自动覆盖
-            let mut store = self.store.lock().map_err(unexpected_err)?;
-            let _ = store.delete("current-library-id");
-            let _ = store.delete("current-qdrant-pid");
-            if let Err(e) = store.save() {
-                tracing::warn!(task = "update store", "Failed: {:?}", e);
-                // this issue can be safely ignored
-            } else {
-                tracing::info!(task = "update store", "Success");
-            }
+            // 其实这里可以不删掉 library-id 和 qdrant-id 的，因为下次 load_library 的时候会自动覆盖
+            // 保留 unload 之前的数据，意想不到的问题少点, 所以下面直接注释掉了
+            // let mut store = self.store.lock().map_err(unexpected_err)?;
+            // let _ = store.delete("current-library-id");
+            // let _ = store.delete("current-qdrant-pid");
+            // if let Err(e) = store.save() {
+            //     tracing::warn!(task = "update store", "Failed: {:?}", e);
+            //     // this issue can be safely ignored
+            // } else {
+            //     tracing::info!(task = "update store", "Success");
+            // }
         }
 
         Ok(())
@@ -434,8 +435,10 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             current_ai_handler.replace(ai_handler);
         }
 
+        /* trigger unfinished tasks */
         {
             self.trigger_unfinished_tasks().await;
+            tracing::info!(task = "trigger unfinished tasks", "Success");
         }
 
         Ok(library)

@@ -28,22 +28,23 @@ export default function ClientLayout({
   }, [librarySettings?.appearanceTheme])
 
   const loadLibrary = useCallback(async (libraryId: string | null) => {
-    setPending(true)
     let library: Library | null = null
     if (libraryId) {
       try {
         const result = await client.mutation(['libraries.load_library', libraryId])
         library = result
-      } catch (error: any) {
+      } catch (error) {
         toast.error('Failed to load library', { description: `${error}` })
+        throw error
       }
     }
     // 如果 library 为空，就 unload_library，然后回到 libraries 选择界面
     if (!library) {
       try {
         await client.mutation(['libraries.unload_library'])
-      } catch (error: any) {
+      } catch (error) {
         toast.error('Failed to unload library', { description: `${error}` })
+        throw error
       }
       setLibrary(null)
       setLibrarySettings(null)
@@ -52,12 +53,12 @@ export default function ClientLayout({
       try {
         const librarySettings = await client.query(['libraries.get_library_settings'])
         setLibrarySettings(librarySettings)
-      } catch (error: any) {
+      } catch (error) {
         toast.error('Failed to get library settings', { description: `${error}` })
+        throw error
       }
     }
-    setPending(false)
-  }, [])
+  }, [setLibrary, setLibrarySettings])
 
   const listenToCmdQ = useCallback(() => {
     document.addEventListener('keydown', async (event) => {
@@ -84,10 +85,13 @@ export default function ClientLayout({
       window.addEventListener('contextmenu', disableContextMenu)
     }
 
+    setPending(true)
     client.query(['libraries.status']).then(({
       id, loaded, isBusy
     }) => {
-      loadLibrary(id)
+      loadLibrary(id).then(() => setPending(false))
+    }).catch((error: any) => {
+      console.error(error)
     })
 
     return () => {
@@ -95,18 +99,24 @@ export default function ClientLayout({
         window.removeEventListener('contextmenu', disableContextMenu)
       }
     }
-  }, [loadLibrary, listenToCmdQ])
+  }, [loadLibrary, listenToCmdQ, setPending])
 
   const switchCurrentLibraryById = useCallback(
     async (libraryId: string) => {
       if (libraryId === library?.id) {
         return
       }
-      // switch: unload then load
-      await loadLibrary(null)
-      await loadLibrary(libraryId)
+      setPending(true)
+      try {
+        // switch: unload then load
+        await loadLibrary(null)
+        await loadLibrary(libraryId)
+        setPending(false)
+      } catch (error) {
+        console.error(error)
+      }
     },
-    [loadLibrary, library?.id],
+    [loadLibrary, library?.id, setPending],
   )
 
   const updateLibrarySettings = useCallback(
