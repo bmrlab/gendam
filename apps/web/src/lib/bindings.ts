@@ -5,11 +5,11 @@ export type Procedures = {
         { key: "assets.get", input: FilePathGetPayload, result: FilePath } | 
         { key: "assets.list", input: FilePathQueryPayload, result: FilePath[] } | 
         { key: "audio.find_by_hash", input: string, result: AudioResp[] } | 
-        { key: "libraries.get_current_library", input: never, result: CurrentLibraryResult } | 
         { key: "libraries.get_library_settings", input: never, result: LibrarySettings } | 
         { key: "libraries.list", input: never, result: LibrariesListResult[] } | 
         { key: "libraries.models.get_model", input: string, result: AIModelResult } | 
         { key: "libraries.models.list", input: never, result: Result[] } | 
+        { key: "libraries.status", input: never, result: LibraryStatusResult } | 
         { key: "users.list", input: never, result: any } | 
         { key: "version", input: never, result: string } | 
         { key: "video.search.all", input: SearchRequestPayload, result: SearchResultPayload[] } | 
@@ -25,7 +25,7 @@ export type Procedures = {
         { key: "audio.batch_export", input: ExportInput[], result: AudioType[] } | 
         { key: "audio.export", input: ExportInput, result: AudioType[] } | 
         { key: "libraries.create", input: string, result: null } | 
-        { key: "libraries.load_library", input: string, result: any } | 
+        { key: "libraries.load_library", input: string, result: LibraryLoadResult } | 
         { key: "libraries.models.download_model", input: DownloadModelPayload, result: null } | 
         { key: "libraries.models.set_model", input: SetModelPayload, result: null } | 
         { key: "libraries.unload_library", input: any | null, result: any } | 
@@ -51,8 +51,6 @@ export type Pagination = { pageSize: number; pageIndex: number }
 
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
-export type CurrentLibraryResult = { id: string; dir: string }
-
 export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPath: string; oldName: string; newName: string }
@@ -73,6 +71,8 @@ export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string 
 
 export type LibrariesListResult = { id: string; dir: string; title: string }
 
+export type LibraryLoadResult = { id: string; dir: string }
+
 export type FilePathGetPayload = { materializedPath: string; name: string }
 
 export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo"
@@ -82,6 +82,8 @@ export type AudioResp = { type: AudioType; content: string }
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
 export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string }
+
+export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
 

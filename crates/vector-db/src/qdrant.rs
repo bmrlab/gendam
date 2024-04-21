@@ -97,6 +97,7 @@ storage:
             let reader = std::io::BufReader::new(stdout);
             tokio::spawn(async move {
                 let mut lines = reader.lines();
+                // TODO: 如果 qdrant stdout 检测到有报错, 这里可以直接退出
                 while let Some(line) = lines.next() {
                     if let Ok(line) = line {
                         tracing::debug!("[qdrant bin] {}", line);

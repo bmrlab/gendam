@@ -244,8 +244,22 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
     }
 
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
-    async fn load_library(&self, library_id: &str) -> Result<(), rspc::Error> {
+    async fn load_library(&self, library_id: &str) -> Result<Library, rspc::Error> {
         tracing::info!(library_id = library_id, "load library");
+
+        if let Some(library) = self.current_library.lock().unwrap().as_ref() {
+            if library.id == library_id {
+                return Ok(library.clone());
+            } else {
+                return Err(rspc::Error::new(
+                    rspc::ErrorCode::BadRequest,
+                    format!(
+                        "Library with diffrerent id {} is already loaded",
+                        library.id
+                    ),
+                ));
+            }
+        }
 
         /* init library */
         let library = {
@@ -365,7 +379,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             current_ai_handler.replace(ai_handler);
         }
 
-        Ok(())
+        Ok(library)
 
         // 这里本来应该触发一下未完成的任务
         // 但是不await的话，没有特别好的写法

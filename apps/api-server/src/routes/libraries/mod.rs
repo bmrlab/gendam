@@ -83,13 +83,13 @@ where
             })
         })
         .mutation("load_library", |t| {
+            #[derive(Serialize, Type)]
+            #[serde(rename_all = "camelCase")]
+            pub struct LibraryLoadResult {
+                pub id: String,
+                pub dir: String,
+            }
             t(|ctx, library_id: String| async move {
-                if ctx.library().is_ok() {
-                    return Err(rspc::Error::new(
-                        rspc::ErrorCode::Conflict,
-                        "Library already loaded".into(),
-                    ));
-                }
                 {
                     // 优化一下，直接在 is_busy 里面 unwrap 好
                     let mut is_busy = ctx.is_busy();
@@ -102,16 +102,26 @@ where
                     }
                     is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
                 }
-                let mut result: Result<_, rspc::Error> = Ok(json!({ "status": "ok" }));
-                if let Err(e) = ctx.load_library(&library_id).await {
-                    tracing::error!("Failed to load library: {}", e);
-                    result = Err(e);
-                    // TODO !!!!!! should unload library if failed to load
-                    if let Err(e) = ctx.unload_library().await {
-                        tracing::error!("Failed to unload library: {}", e);
-                        result = Err(e);
+                let result = match ctx.load_library(&library_id).await {
+                    Ok(library) => {
+                        Ok(LibraryLoadResult {
+                            id: library.id.clone(),
+                            dir: library.dir.to_str().unwrap().to_string(),
+                        })
                     }
-                }
+                    Err(e) => {
+                        tracing::error!("Failed to load library: {}", e);
+                        Err(e)
+                        // 前端遇到 load 失败以后自己调用 unload, 方便控制状态
+                        // let mut result = Err(e);
+                        // // should unload library if failed to load
+                        // if let Err(e) = ctx.unload_library().await {
+                        //     tracing::error!("Failed to unload library: {}", e);
+                        //     result = Err(e);
+                        // }
+                        // result
+                    }
+                };
                 {
                     ctx.is_busy().store(false, std::sync::atomic::Ordering::Relaxed);
                 }
@@ -128,6 +138,7 @@ where
                 {
                     // ctx.library()?;
                     // 不需要确认 library 存在, 意外情况下可能 library 已经清空但是 task 和 qdrant 还在
+                    // unload_library 可以反复执行
                 }
                 {
                     let mut is_busy = ctx.is_busy();
@@ -151,33 +162,29 @@ where
                 result
             })
         })
-        .query("get_current_library", |t| {
+        .query("status", |t| {
+            #[derive(Serialize, Type)]
+            #[serde(rename_all = "camelCase")]
+            pub struct LibraryStatusResult {
+                pub id: Option<String>,
+                pub loaded: bool,
+                pub is_busy: bool,
+            }
             t(|ctx, _input: ()| async move {
-                #[derive(Serialize, Type)]
-                #[serde(rename_all = "camelCase")]
-                pub struct CurrentLibraryResult {
-                    pub id: String,
-                    pub dir: String,
-                }
-                let library = match ctx.library() {
-                    Ok(lib) => lib,
-                    // 如果当前 library不存在，需要从本地 store 中将其读取出来
-                    _ => {
-                        let library_id = ctx.library_id_in_store();
-                        // 如果本地 store 中也没有，说明没有设置，返回错误
-                        let library_id = library_id.ok_or(rspc::Error::new(
-                            rspc::ErrorCode::InternalServerError,
-                            "current library not set".into(),
-                        ))?;
-                        ctx.load_library(&library_id).await?;
-                        ctx.library()?
+                let library_id_in_store = ctx.library_id_in_store();
+                let mut is_busy = ctx.is_busy();
+                let library = ctx.library();
+                let mut loaded = false;
+                if let Some(library_id_in_store) = library_id_in_store.clone() {
+                    if let Ok(library) = library {
+                        loaded = library.id == library_id_in_store;
                     }
-                };
-
-                Ok(CurrentLibraryResult {
-                    id: library.id.clone(),
-                    dir: library.dir.to_str().unwrap().to_string(),
-                })
+                }
+                LibraryStatusResult {
+                    id: library_id_in_store,
+                    loaded: loaded,
+                    is_busy: *is_busy.get_mut(),
+                }
             })
         })
         // .query("download_status_by_file_name", |t| {
