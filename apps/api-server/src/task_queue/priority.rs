@@ -2,8 +2,7 @@ use std::{
     fmt::Display,
     time::{SystemTime, UNIX_EPOCH},
 };
-
-use strum_macros::AsRefStr;
+use file_handler::TaskPriority as TaskPriorityRaw;
 
 #[derive(Clone, Copy, Debug)]
 pub struct TaskPriority {
@@ -39,42 +38,6 @@ impl Display for TaskPriority {
             "{}-{}-{:?}",
             self.priority, self.timestamp, self.insert_order
         )
-    }
-}
-
-#[derive(AsRefStr, Clone, Copy, strum_macros::Display, Debug)]
-pub enum TaskPriorityRaw {
-    #[strum(serialize = "0")]
-    Low,
-    #[strum(serialize = "5")]
-    Normal,
-    #[strum(serialize = "10")]
-    High,
-}
-
-impl From<TaskPriorityRaw> for usize {
-    fn from(priority: TaskPriorityRaw) -> Self {
-        priority.to_string().parse().unwrap()
-    }
-}
-
-impl PartialEq for TaskPriorityRaw {
-    fn eq(&self, other: &Self) -> bool {
-        usize::from(*self) == usize::from(*other)
-    }
-}
-
-impl Eq for TaskPriorityRaw {}
-
-impl PartialOrd for TaskPriorityRaw {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for TaskPriorityRaw {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        usize::from(*self).cmp(&usize::from(*other))
     }
 }
 

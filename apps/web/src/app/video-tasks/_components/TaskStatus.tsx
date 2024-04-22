@@ -8,13 +8,13 @@ import { TaskStatus, getTaskStatus } from './utils'
 
 export const VIDEO_DIMENSION: Record<string, [string, number]> = {
   // 任务类型: [任务名称, 任务排序, 完成以后是否显示]
-  Frame: ['Frame Processing', 1],                      // 帧处理
-  FrameContentEmbedding: ['Visual Indexing', 2],       // 画面索引
-  FrameCaption: ['Video Recognition', 3],              // 视频描述
-  FrameCaptionEmbedding: ['Description Indexing', 4],  // 描述索引
-  Audio: ['Audio Processing', 5],                      // 音频提取
-  Transcript: ['Speech Recognition', 6],               // 语音转译
-  TranscriptEmbedding: ['Transcript Indexing', 7],     // 语音索引
+  VideoTaskFrame: ['Frame Processing', 1],                      // 帧处理
+  VideoTaskFrameContentEmbedding: ['Visual Indexing', 2],       // 画面索引
+  VideoTaskFrameCaption: ['Video Recognition', 3],              // 视频描述
+  VideoTaskFrameCaptionEmbedding: ['Description Indexing', 4],  // 描述索引
+  VideoTaskAudio: ['Audio Processing', 5],                      // 音频提取
+  VideoTaskTranscript: ['Speech Recognition', 6],               // 语音转译
+  VideoTaskTranscriptEmbedding: ['Transcript Indexing', 7],     // 语音索引
 }
 
 type Props = {
@@ -67,11 +67,11 @@ export function VideoTaskStatus({ tasks }: { tasks: VideoWithTasksResult['tasks'
     const result: GroupProps[] = [
       {
         name: 'Description',
-        tasks: [map['Frame'], map['FrameContentEmbedding'], map['FrameCaption'], map['FrameCaptionEmbedding']],
+        tasks: [map['VideoTaskFrame'], map['VideoTaskFrameContentEmbedding'], map['VideoTaskFrameCaption'], map['VideoTaskFrameCaptionEmbedding']],
       },
       {
         name: 'Transcript',
-        tasks: [map['Audio'], map['Transcript'], map['TranscriptEmbedding']],
+        tasks: [map['VideoTaskAudio'], map['VideoTaskTranscript'], map['VideoTaskTranscriptEmbedding']],
       },
     ]
     result.forEach((group) => {

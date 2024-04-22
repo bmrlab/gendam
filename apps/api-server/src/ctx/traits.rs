@@ -5,7 +5,6 @@ use crate::{
 };
 use async_trait::async_trait;
 use content_library::{Library, QdrantServerInfo};
-use file_handler::video::{VideoHandler, VideoTaskType};
 use std::{
     boxed::Box,
     path::PathBuf,
@@ -36,7 +35,7 @@ pub trait CtxWithLibrary: Sync {
     fn library_id_in_store(&self) -> Option<String>;
 
     fn library(&self) -> Result<Library, rspc::Error>;
-    fn task_tx(&self) -> Result<Sender<TaskPayload<VideoHandler, VideoTaskType>>, rspc::Error>;
+    fn task_tx(&self) -> Result<Sender<TaskPayload>, rspc::Error>;
     fn ai_handler(&self) -> Result<AIHandler, rspc::Error>;
     fn ai_handler_mutex(&self) -> Arc<Mutex<Option<AIHandler>>>;
     fn download_reporter(&self) -> Result<DownloadReporter, rspc::Error>;

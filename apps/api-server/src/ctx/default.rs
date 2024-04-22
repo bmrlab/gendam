@@ -10,7 +10,6 @@ use async_trait::async_trait;
 use content_library::{
     load_library, make_sure_collection_created, Library, QdrantCollectionInfo, QdrantServerInfo,
 };
-use file_handler::video::{VideoHandler, VideoTaskType};
 use std::{
     boxed::Box,
     fmt::Debug,
@@ -79,7 +78,7 @@ pub struct Ctx<S: CtxStore> {
     resources_dir: PathBuf,
     store: Arc<Mutex<S>>,
     current_library: Arc<Mutex<Option<Library>>>,
-    tx: Arc<Mutex<Option<Sender<TaskPayload<VideoHandler, VideoTaskType>>>>>,
+    tx: Arc<Mutex<Option<Sender<TaskPayload>>>>,
     ai_handler: Arc<Mutex<Option<AIHandler>>>,
     download_hub: Arc<Mutex<Option<DownloadHub>>>,
 }
@@ -104,7 +103,7 @@ impl<S: CtxStore> Clone for Ctx<S> {
  * 不然当 load_library 和 unload_library 出错时，is_busy 会一直处于 true
  */
 struct BusyGuard {
-    pub is_busy: std::sync::Arc<std::sync::Mutex<std::sync::atomic::AtomicBool>>
+    pub is_busy: std::sync::Arc<std::sync::Mutex<std::sync::atomic::AtomicBool>>,
 }
 
 impl Drop for BusyGuard {
@@ -196,7 +195,9 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
         }
         // guard 需要放在后面, 这样前面返回 app is busy 的时候就不会触发 guard 的 drop
-        let _guard = BusyGuard { is_busy: self.is_busy.clone() };
+        let _guard = BusyGuard {
+            is_busy: self.is_busy.clone(),
+        };
 
         /* cancel tasks */
         {
@@ -302,7 +303,9 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
         }
         // guard 需要放在后面, 这样前面返回 app is busy 的时候就不会触发 guard 的 drop
-        let _guard = BusyGuard { is_busy: self.is_busy.clone() };
+        let _guard = BusyGuard {
+            is_busy: self.is_busy.clone(),
+        };
 
         if let Some(library) = self.current_library.lock().unwrap().as_ref() {
             if library.id == library_id {
@@ -449,7 +452,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         // 这样用户操作也不会被 block
     }
 
-    fn task_tx(&self) -> Result<Sender<TaskPayload<VideoHandler, VideoTaskType>>, rspc::Error> {
+    fn task_tx(&self) -> Result<Sender<TaskPayload>, rspc::Error> {
         match self.tx.lock().unwrap().as_ref() {
             Some(tx) => Ok(tx.clone()),
             None => Err(rspc::Error::new(

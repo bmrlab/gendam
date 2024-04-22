@@ -1,30 +1,20 @@
 mod pool;
 mod priority;
 
-use crate::{
-    task_queue::priority::{TaskPriority, TaskPriorityRaw},
-    CtxWithLibrary,
-};
+use crate::{task_queue::priority::TaskPriority, CtxWithLibrary};
 use content_library::Library;
-use file_handler::{video::{VideoHandler, VideoTaskType}, FileHandler};
+use file_handler::{
+    video::{VideoHandler, VideoTaskType},
+    FileHandler,
+};
 pub use pool::*;
 use prisma_lib::{
     asset_object::{self, media_data},
     file_handler_task,
 };
+use std::sync::Arc;
 use std::{collections::HashMap, str::FromStr};
 use tracing::{error, info};
-
-pub trait Handler {
-    #[allow(async_fn_in_trait)]
-    async fn process(&self, task_type: &str) -> anyhow::Result<()>;
-}
-
-impl Handler for VideoHandler {
-    async fn process(&self, task_type: &str) -> anyhow::Result<()> {
-        self.run_task(&VideoTaskType::from_str(task_type)?).await
-    }
-}
 
 /// 创建视频任务
 ///
@@ -75,10 +65,13 @@ pub async fn create_video_task(
     let valid_task_types = video_handler.get_supported_task_types();
     let task_types = match task_types {
         // 这里做一下过滤，防止传入的任务类型不支持或者顺序不正确
-        Some(task_types) => valid_task_types
-            .into_iter()
-            .filter(|v| task_types.contains(v))
-            .collect(),
+        Some(task_types) => {
+            let task_types = task_types.iter().map(|v| v.to_string()).collect::<Vec<_>>();
+            valid_task_types
+                .into_iter()
+                .filter(|v| task_types.contains(&v.0))
+                .collect()
+        }
         None => valid_task_types,
     };
 
@@ -89,9 +82,9 @@ pub async fn create_video_task(
             .upsert(
                 file_handler_task::asset_object_id_task_type(
                     asset_object_data.id,
-                    task_type.to_string(),
+                    task_type.0.to_string(),
                 ),
-                file_handler_task::create(asset_object_data.id, task_type.to_string(), vec![]),
+                file_handler_task::create(asset_object_data.id, task_type.0.to_string(), vec![]),
                 vec![
                     file_handler_task::starts_at::set(None),
                     file_handler_task::ends_at::set(None),
@@ -114,27 +107,15 @@ pub async fn create_video_task(
 
     let tx = ctx.task_tx().map_err(|_| ())?;
 
-    for (idx, task_type) in task_types.iter().enumerate() {
-        let priority = match task_type {
-            // it's better not to add default arm `_ => {}` here
-            // if there are new task type in future, compiler will throw an error
-            // this will force us to add priority manually
-            VideoTaskType::FrameCaption | VideoTaskType::FrameCaptionEmbedding => {
-                TaskPriority::new(TaskPriorityRaw::Low)
-            }
-            VideoTaskType::Frame
-            | VideoTaskType::FrameContentEmbedding
-            | VideoTaskType::Audio
-            | VideoTaskType::Transcript
-            | VideoTaskType::TranscriptEmbedding
-            | VideoTaskType::FrameTags
-            | VideoTaskType::FrameTagsEmbedding => TaskPriority::new(TaskPriorityRaw::Normal),
-        };
+    let handler: Arc<Box<dyn FileHandler>> = Arc::new(Box::new(video_handler));
+
+    for (idx, task_type) in task_types.into_iter().enumerate() {
+        let priority = TaskPriority::new(task_type.1);
 
         match tx.send(TaskPayload::Task((
             Task {
-                handler: video_handler.clone(),
-                task_type: task_type.clone(),
+                handler: handler.clone(),
+                task_type: task_type.0.clone(),
                 asset_object_id: asset_object_data.id,
                 prisma_client: library.prisma_client(),
             },
@@ -144,13 +125,13 @@ pub async fn create_video_task(
             Ok(_) => {
                 info!(
                     "Task queued {} {}, priority: {}",
-                    asset_object_data.id, &task_type, priority
+                    asset_object_data.id, &task_type.0, priority
                 );
             }
             Err(e) => {
                 error!(
                     "Failed to queue task {} {}: {}",
-                    asset_object_data.id, &task_type, e
+                    asset_object_data.id, &task_type.0, e
                 );
             }
         }

@@ -3,8 +3,7 @@ mod decoder;
 mod impls;
 mod split;
 
-pub use self::decoder::VideoMetadata;
-use crate::traits::FileHandler;
+use crate::{metadata::video::VideoMetadata, traits::FileHandler, TaskPriority};
 use ai::{
     AIModelLoader, AsAudioTranscriptModel, AsImageCaptionModel, AsMultiModalEmbeddingModel,
     AsTextEmbeddingModel, AudioTranscriptInput, AudioTranscriptOutput, ImageCaptionInput,
@@ -16,16 +15,16 @@ use async_trait::async_trait;
 pub use constants::*;
 use content_library::Library;
 use std::{
-    fmt::Display,
+    str::FromStr,
     sync::{Arc, Mutex},
 };
-use strum_macros::{EnumDiscriminants, EnumString};
+use strum::IntoEnumIterator;
+use strum_macros::{EnumIter, EnumString};
 
 /// Video Handler
 ///
 /// VideoHandler is a helper to extract video artifacts and embeddings, and save results into databases.
 /// ```
-#[allow(dead_code)]
 #[derive(Clone)]
 pub struct VideoHandler {
     video_path: std::path::PathBuf,
@@ -42,8 +41,8 @@ pub struct VideoHandler {
     metadata: Arc<Mutex<Option<VideoMetadata>>>,
 }
 
-#[derive(Clone, Debug, EnumDiscriminants, EnumString, PartialEq, Eq, Hash)]
-#[strum_discriminants(derive(strum_macros::Display))]
+#[derive(Clone, Debug, EnumIter, EnumString, PartialEq, Eq, Hash, strum_macros::Display)]
+#[strum(prefix = "VideoTask")] // 增加 prefix 避免任务名称冲突，注意这里 from_str 的时候不会考虑这个 prefix
 pub enum VideoTaskType {
     Frame,
     FrameCaption,
@@ -54,12 +53,6 @@ pub enum VideoTaskType {
     Audio,
     Transcript,
     TranscriptEmbedding,
-}
-
-impl Display for VideoTaskType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
 }
 
 impl VideoHandler {
@@ -194,71 +187,8 @@ impl VideoHandler {
             }
         }
     }
-}
 
-#[async_trait]
-impl FileHandler<VideoTaskType, VideoMetadata> for VideoHandler {
-    async fn run_task(&self, task_type: &VideoTaskType) -> anyhow::Result<()> {
-        match task_type {
-            VideoTaskType::Frame => self.save_frames().await,
-            VideoTaskType::FrameContentEmbedding => self.save_frame_content_embedding().await,
-            VideoTaskType::FrameCaption => self.save_frames_caption().await,
-            VideoTaskType::FrameCaptionEmbedding => self.save_frame_caption_embedding().await,
-            VideoTaskType::Audio => self.save_audio().await,
-            VideoTaskType::Transcript => self.save_transcript().await,
-            VideoTaskType::TranscriptEmbedding => self.save_transcript_embedding().await,
-            _ => Ok(()),
-        }
-    }
-
-    async fn delete_task_artifacts(&self, task_type: &VideoTaskType) -> anyhow::Result<()> {
-        match task_type {
-            VideoTaskType::Frame => self.delete_frames().await,
-            VideoTaskType::FrameContentEmbedding => self.delete_frame_content_embedding().await,
-            VideoTaskType::FrameCaption => self.delete_frames_caption().await,
-            VideoTaskType::FrameCaptionEmbedding => self.delete_frame_caption_embedding().await,
-            VideoTaskType::Audio => self.delete_audio().await,
-            VideoTaskType::Transcript => self.delete_transcript().await,
-            VideoTaskType::TranscriptEmbedding => self.delete_transcript_embedding().await,
-            _ => Ok(()),
-        }
-    }
-
-    fn get_supported_task_types(&self) -> Vec<VideoTaskType> {
-        let mut task_types = vec![VideoTaskType::Frame];
-
-        if self.multi_modal_embedding.is_some() {
-            task_types.push(VideoTaskType::FrameContentEmbedding);
-        }
-
-        if self.image_caption.is_some() {
-            task_types.push(VideoTaskType::FrameCaption);
-            if self.text_embedding.is_some() {
-                task_types.push(VideoTaskType::FrameCaptionEmbedding);
-            }
-        }
-
-        if let anyhow::Result::Ok(metadata) = self.metadata() {
-            if metadata.audio.is_some() {
-                task_types.push(VideoTaskType::Audio);
-
-                if self.audio_transcript.is_some() {
-                    task_types.push(VideoTaskType::Transcript);
-                    if self.text_embedding.is_some() {
-                        task_types.push(VideoTaskType::TranscriptEmbedding);
-                    }
-                }
-            }
-        }
-
-        task_types
-    }
-
-    async fn update_database(&self) -> anyhow::Result<()> {
-        todo!()
-    }
-
-    fn metadata(&self) -> anyhow::Result<VideoMetadata> {
+    pub fn inner_metadata(&self) -> anyhow::Result<VideoMetadata> {
         let mut metadata = self.metadata.lock().unwrap();
 
         match &*metadata {
@@ -271,5 +201,83 @@ impl FileHandler<VideoTaskType, VideoMetadata> for VideoHandler {
                 Ok(data)
             }
         }
+    }
+
+    async fn _run_task(&self, task_type: VideoTaskType) -> anyhow::Result<()> {
+        match task_type {
+            VideoTaskType::Frame => self.save_frames().await,
+            VideoTaskType::FrameContentEmbedding => self.save_frame_content_embedding().await,
+            VideoTaskType::FrameCaption => self.save_frames_caption().await,
+            VideoTaskType::FrameCaptionEmbedding => self.save_frame_caption_embedding().await,
+            VideoTaskType::Audio => self.save_audio().await,
+            VideoTaskType::Transcript => self.save_transcript().await,
+            VideoTaskType::TranscriptEmbedding => self.save_transcript_embedding().await,
+            _ => Ok(()),
+        }
+    }
+}
+
+#[async_trait]
+impl FileHandler for VideoHandler {
+    async fn run_task(&self, task_type: &str) -> anyhow::Result<()> {
+        for enum_item in VideoTaskType::iter() {
+            if enum_item.to_string().as_str() == task_type {
+                return self._run_task(enum_item).await;
+            }
+        }
+
+        bail!("unknown task type: {}", task_type);
+    }
+
+    async fn delete_task_artifacts(&self, task_type: &str) -> anyhow::Result<()> {
+        let task_type = VideoTaskType::from_str(task_type)?;
+
+        match task_type {
+            VideoTaskType::Frame => self.delete_frames().await,
+            VideoTaskType::FrameContentEmbedding => self.delete_frame_content_embedding().await,
+            VideoTaskType::FrameCaption => self.delete_frames_caption().await,
+            VideoTaskType::FrameCaptionEmbedding => self.delete_frame_caption_embedding().await,
+            VideoTaskType::Audio => self.delete_audio().await,
+            VideoTaskType::Transcript => self.delete_transcript().await,
+            VideoTaskType::TranscriptEmbedding => self.delete_transcript_embedding().await,
+            _ => Ok(()),
+        }
+    }
+
+    fn get_supported_task_types(&self) -> Vec<(String, TaskPriority)> {
+        let mut task_types = vec![(VideoTaskType::Frame, TaskPriority::Normal)];
+
+        if self.multi_modal_embedding.is_some() {
+            task_types.push((VideoTaskType::FrameContentEmbedding, TaskPriority::Normal));
+        }
+
+        if self.image_caption.is_some() {
+            task_types.push((VideoTaskType::FrameCaption, TaskPriority::Low));
+            if self.text_embedding.is_some() {
+                task_types.push((VideoTaskType::FrameCaptionEmbedding, TaskPriority::Low));
+            }
+        }
+
+        if let anyhow::Result::Ok(metadata) = self.inner_metadata() {
+            if metadata.audio.is_some() {
+                task_types.push((VideoTaskType::Audio, TaskPriority::Normal));
+
+                if self.audio_transcript.is_some() {
+                    task_types.push((VideoTaskType::Transcript, TaskPriority::Normal));
+                    if self.text_embedding.is_some() {
+                        task_types.push((VideoTaskType::TranscriptEmbedding, TaskPriority::Normal));
+                    }
+                }
+            }
+        }
+
+        task_types
+            .into_iter()
+            .map(|v| (v.0.to_string(), v.1))
+            .collect()
+    }
+
+    async fn update_database(&self) -> anyhow::Result<()> {
+        todo!()
     }
 }

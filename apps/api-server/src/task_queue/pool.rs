@@ -1,9 +1,9 @@
-use super::{priority::TaskPriority, Handler};
+use super::priority::TaskPriority;
+use file_handler::FileHandler;
 use priority_queue::PriorityQueue;
 use prisma_lib::{file_handler_task, PrismaClient};
 use std::{
     collections::HashMap,
-    fmt::Display,
     hash::Hash,
     sync::{
         mpsc::{self, Sender},
@@ -16,37 +16,28 @@ use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 
 #[derive(Clone)]
-pub struct Task<THandler, Type>
-where
-    THandler: Handler + Clone + Send + Sync + 'static,
-    Type: Display + Clone + Send + Sync + 'static,
-{
-    pub task_type: Type,
+pub struct Task {
+    pub handler: Arc<Box<dyn FileHandler>>,
+    pub task_type: String,
     pub asset_object_id: i32,
     pub prisma_client: Arc<PrismaClient>,
-    pub handler: THandler,
 }
 
-impl<THandler, Type> Task<THandler, Type>
-where
-    THandler: Handler + Clone + Send + Sync + 'static,
-    Type: Display + Clone + Send + Sync + 'static,
-{
+impl Task {
     async fn run(&self) -> anyhow::Result<()> {
         self.save_starts_at().await;
 
-        match self
-            .handler
-            .process(self.task_type.to_string().as_str())
-            .await
-        {
+        match self.handler.run_task(&self.task_type).await {
             Ok(()) => {
                 self.save_ends_at(None).await;
             }
             Err(e) => {
                 warn!(
                     "task {}/{} exit with error: {}",
-                    self.asset_object_id, self.task_type, e
+                    self.asset_object_id,
+                    // (&*self.task_type).as_ref(),
+                    &self.task_type,
+                    e
                 );
                 self.save_ends_at(Some(e.to_string())).await;
             }
@@ -61,7 +52,8 @@ where
             .update(
                 file_handler_task::asset_object_id_task_type(
                     self.asset_object_id,
-                    self.task_type.to_string(),
+                    // (&*self.task_type).as_ref().to_string(),
+                    self.task_type.clone(),
                 ),
                 vec![file_handler_task::starts_at::set(Some(
                     chrono::Utc::now().into(),
@@ -69,7 +61,7 @@ where
             )
             .exec()
             .await
-            .expect(&format!("failed save_starts_at {}", self.task_type));
+            .expect(&format!("failed save_starts_at {}", &self.task_type,));
     }
 
     async fn save_ends_at(&self, error: Option<String>) {
@@ -83,7 +75,8 @@ where
             .update(
                 file_handler_task::asset_object_id_task_type(
                     self.asset_object_id,
-                    self.task_type.to_string(),
+                    // (&*self.task_type).as_ref().to_string(),
+                    self.task_type.clone(),
                 ),
                 vec![
                     file_handler_task::ends_at::set(Some(chrono::Utc::now().into())),
@@ -93,56 +86,39 @@ where
             )
             .exec()
             .await
-            .expect(&format!("failed save_ends_at {}", self.task_type));
+            .expect(&format!(
+                "failed save_ends_at {}",
+                // (&*self.task_type).as_ref()
+                &self.task_type,
+            ));
     }
 }
 
-impl<THandler, Type> Hash for Task<THandler, Type>
-where
-    THandler: Handler + Clone + Send + Sync + 'static,
-    Type: Display + Clone + Send + Sync + 'static,
-{
+impl Hash for Task {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.asset_object_id.hash(state);
         self.task_type.to_string().hash(state);
     }
 }
 
-impl<THandler, Type> PartialEq for Task<THandler, Type>
-where
-    THandler: Handler + Clone + Send + Sync + 'static,
-    Type: Display + Clone + Send + Sync + 'static,
-{
+impl PartialEq for Task {
     fn eq(&self, other: &Self) -> bool {
         self.asset_object_id == other.asset_object_id
             && self.task_type.to_string() == other.task_type.to_string()
     }
 }
 
-impl<THandler, Type> Eq for Task<THandler, Type>
-where
-    THandler: Handler + Clone + Send + Sync + 'static,
-    Type: Display + Clone + Send + Sync + 'static,
-{
-}
+impl Eq for Task {}
 
-pub enum TaskPayload<THandler, Type>
-where
-    THandler: Handler + Clone + Send + Sync + 'static,
-    Type: Display + Clone + Send + Sync + 'static,
-{
-    Task((Task<THandler, Type>, TaskPriority, usize)),
+pub enum TaskPayload {
+    Task((Task, TaskPriority, usize)),
     #[allow(dead_code)]
     CancelByAssetAndType(i32, String),
     CancelByAssetId(i32),
     CancelAll,
 }
 
-pub fn init_task_pool<THandler, Type>() -> anyhow::Result<Sender<TaskPayload<THandler, Type>>>
-where
-    THandler: Handler + Clone + Send + Sync + 'static,
-    Type: Display + Clone + Send + Sync + 'static,
-{
+pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
     let task_mapping: HashMap<i32, HashMap<String, CancellationToken>> = HashMap::new();
     let task_mapping = Arc::new(RwLock::new(task_mapping));
     let task_mapping_clone = task_mapping.clone();
@@ -219,31 +195,29 @@ where
 
 /// 监听来自外部的任务创建、任务取消
 /// 收到任务则将任务加入队列
-async fn handle_task_payload_input<THandler, Type>(
-    task_queue: Arc<RwLock<PriorityQueue<Task<THandler, Type>, TaskPriority>>>,
+async fn handle_task_payload_input(
+    task_queue: Arc<RwLock<PriorityQueue<Task, TaskPriority>>>,
     task_mapping: Arc<RwLock<HashMap<i32, HashMap<String, CancellationToken>>>>,
     current_task_priority: Arc<RwLock<Option<TaskPriority>>>,
-    rx: mpsc::Receiver<TaskPayload<THandler, Type>>,
+    rx: mpsc::Receiver<TaskPayload>,
     task_tx: tokio::sync::mpsc::Sender<()>,
     priority_tx: tokio::sync::mpsc::Sender<()>,
     asset_cancel_token: CancellationToken,
-) where
-    THandler: Handler + Clone + Send + Sync + 'static,
-    Type: Display + Clone + Send + Sync + 'static,
-{
+) {
     loop {
         match rx.recv() {
             Ok(payload) => match payload {
                 TaskPayload::Task((task, priority, order)) => {
                     let asset_object_id = task.asset_object_id;
+                    // let task_type = (&*task.task_type).as_ref().to_string();
                     let task_type = task.task_type.clone();
-                    info!("Task received: {} {}", asset_object_id, task_type);
+                    info!("Task received: {} {}", asset_object_id, &task_type);
 
                     // if task exists, ignore it
                     // 这里 task_queue 是所有未执行的任务
                     // task_mapping 还包括了正在执行的任务，所以用它
                     if let Some(tasks) = task_mapping.read().await.get(&asset_object_id) {
-                        if let Some(_) = tasks.get(&task_type.to_string()) {
+                        if let Some(_) = tasks.get(&task_type) {
                             continue;
                         }
                     }
@@ -254,11 +228,11 @@ async fn handle_task_payload_input<THandler, Type>(
                         let mut task_mapping = task_mapping.write().await;
                         match task_mapping.get_mut(&asset_object_id) {
                             Some(item) => {
-                                item.insert(task_type.to_string(), current_cancel_token);
+                                item.insert(task_type, current_cancel_token);
                             }
                             None => {
                                 let mut new_item = HashMap::new();
-                                new_item.insert(task_type.to_string(), current_cancel_token);
+                                new_item.insert(task_type, current_cancel_token);
                                 task_mapping.insert(asset_object_id, new_item);
                             }
                         };
@@ -325,17 +299,14 @@ async fn handle_task_payload_input<THandler, Type>(
 
 /// 持续处理任务队列中的任务
 /// 当任务队列为空时，如果 task_rx 收到信息，则继续处理任务
-async fn loop_until_queue_empty<THandler, Type>(
-    task_queue: Arc<RwLock<PriorityQueue<Task<THandler, Type>, TaskPriority>>>,
+async fn loop_until_queue_empty(
+    task_queue: Arc<RwLock<PriorityQueue<Task, TaskPriority>>>,
     task_mapping: Arc<RwLock<HashMap<i32, HashMap<String, CancellationToken>>>>,
     current_task_priority: Arc<RwLock<Option<TaskPriority>>>,
     mut task_rx: tokio::sync::mpsc::Receiver<()>,
     mut priority_rx: tokio::sync::mpsc::Receiver<()>,
     asset_cancel_token: CancellationToken,
-) where
-    THandler: Handler + Clone + Send + Sync + 'static,
-    Type: Display + Clone + Send + Sync + 'static,
-{
+) {
     // TODO 优化这里的两层循环
     loop {
         // 等待 task_rx 收到任务
@@ -356,6 +327,7 @@ async fn loop_until_queue_empty<THandler, Type>(
                     };
 
                     let asset_object_id = task.asset_object_id;
+                    // let task_type = (&*task.task_type).as_ref().to_string();
                     let task_type = task.task_type.clone();
                     info!(
                         "Task processing: {} {}, priority: {}",
