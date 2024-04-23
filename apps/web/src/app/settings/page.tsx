@@ -65,8 +65,6 @@ export default function Settings() {
         <div className="bg-app-line my-4 h-px"></div>
         <LibrarySettings />
         <div className="bg-app-line my-4 h-px"></div>
-        <div className="h-10">Model Settings</div>
-        <ModelList />
       </Viewport.Content>
     </Viewport.Page>
   )
