@@ -2,12 +2,29 @@
 import PageNav from '@/components/PageNav'
 import Viewport from '@/components/Viewport'
 import { useCurrentLibrary } from '@/lib/library'
+import { rspc } from '@/lib/rspc'
 import { Button } from '@muse/ui/v2/button'
 import { Form } from '@muse/ui/v2/form'
+import Link from 'next/link'
+import Icon from '@muse/ui/icons'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { ModelList } from './_components/ModelList'
-import Link from 'next/link'
+
+const AccountDetail: React.FC = () => {
+  const { data: auth } = rspc.useQuery(['users.get'])
+
+  return (
+    <div>
+      <div className="mb-4 text-xl font-medium">Account</div>
+      <div className="mb-8 flex flex-col items-center justify-center gap-4 w-64 h-64 text-ink/75 bg-app-box border border-app-line rounded-xl">
+        <div className="w-24 h-24 p-6 rounded-full bg-app-overlay">
+          <Icon.Person className="w-full h-full" />
+        </div>
+        <div className="text-sm text-center">Welcome<br />{auth?.name}</div>
+      </div>
+    </div>
+  )
+}
 
 const LibrarySettings: React.FC = () => {
   const currentLibrary = useCurrentLibrary()
@@ -59,9 +76,7 @@ export default function Settings() {
         <PageNav title="Settings" />
       </Viewport.Toolbar>
       <Viewport.Content className="p-6">
-        <div className="h-10">
-          <Link href="/settings/account">User / login / logout</Link>
-        </div>
+        <AccountDetail />
         <div className="bg-app-line my-4 h-px"></div>
         <LibrarySettings />
         <div className="bg-app-line my-4 h-px"></div>

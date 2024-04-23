@@ -55,6 +55,9 @@ import SelfAdapting from './jsx/SelfAdapting'
 import Sidebar from './jsx/Sidebar'
 import Sun from './jsx/Sun'
 
+// copied from radix
+import Person from './radix/Person'
+
 export type SvgIconProps = React.SVGProps<SVGSVGElement>
 
 export default {
@@ -113,4 +116,7 @@ export default {
   SelfAdapting,
   Sidebar,
   Sun,
+
+  // copied from radix
+  Person,
 }
