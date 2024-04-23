@@ -37,8 +37,12 @@ export default function ClientLayout({
         const result = await client.mutation(['libraries.load_library', libraryId])
         library = result
       } catch (error: any) {
-        toast.error('Failed to load library', { description: error?.message || error })
-        // continue without throwing error
+        if (error?.code === 409 && error?.message === 'App is busy') {
+          return
+        } else {
+          toast.error('Failed to load library', { description: error?.message || error })
+          // continue without throwing error
+        }
       }
     }
     // 如果 library 为空，就 unload_library，然后回到 libraries 选择界面
@@ -47,7 +51,7 @@ export default function ClientLayout({
         await client.mutation(['libraries.unload_library'])
       } catch (error: any) {
         toast.error('Failed to unload library', { description: error?.message || error })
-        // throw error  // continue without throwing error
+        throw error
       }
       setLibrary(null)
       setLibrarySettings(null)
@@ -58,7 +62,7 @@ export default function ClientLayout({
         setLibrarySettings(librarySettings)
       } catch (error: any) {
         toast.error('Failed to get library settings', { description: error?.message || error })
-        // throw error  // continue without throwing error
+        throw error
       }
     }
   }, [setLibrary, setLibrarySettings])
