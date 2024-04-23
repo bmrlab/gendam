@@ -1,7 +1,9 @@
 'use client'
+import SonnerToaster from '@/components/Shared/SonnerToaster'
 import LibrariesSelect from '@/components/LibrariesSelect'
+import DeviceAuth from '@/components/DeviceAuth'
 import Shared from '@/components/Shared'
-import { LibrarySettings } from '@/lib/bindings'
+import { LibrarySettings, Auth } from '@/lib/bindings'
 import { CurrentLibrary, type Library } from '@/lib/library'
 import { client, queryClient, rspc } from '@/lib/rspc'
 import Icon from '@muse/ui/icons'
@@ -15,6 +17,7 @@ export default function ClientLayout({
   children: React.ReactNode
 }>) {
   const [pending, setPending] = useState(true)
+  const [auth, setAuth] = useState<Auth | null>(null)
   const [library, setLibrary] = useState<Library | null>(null)
   const [librarySettings, setLibrarySettings] = useState<LibrarySettings | null>(null)
 
@@ -33,18 +36,18 @@ export default function ClientLayout({
       try {
         const result = await client.mutation(['libraries.load_library', libraryId])
         library = result
-      } catch (error) {
-        toast.error('Failed to load library', { description: `${error}` })
-        throw error
+      } catch (error: any) {
+        toast.error('Failed to load library', { description: error?.message || error })
+        // continue without throwing error
       }
     }
     // 如果 library 为空，就 unload_library，然后回到 libraries 选择界面
     if (!library) {
       try {
         await client.mutation(['libraries.unload_library'])
-      } catch (error) {
-        toast.error('Failed to unload library', { description: `${error}` })
-        throw error
+      } catch (error: any) {
+        toast.error('Failed to unload library', { description: error?.message || error })
+        // throw error  // continue without throwing error
       }
       setLibrary(null)
       setLibrarySettings(null)
@@ -53,9 +56,9 @@ export default function ClientLayout({
       try {
         const librarySettings = await client.query(['libraries.get_library_settings'])
         setLibrarySettings(librarySettings)
-      } catch (error) {
-        toast.error('Failed to get library settings', { description: `${error}` })
-        throw error
+      } catch (error: any) {
+        toast.error('Failed to get library settings', { description: error?.message || error })
+        // throw error  // continue without throwing error
       }
     }
   }, [setLibrary, setLibrarySettings])
@@ -79,17 +82,32 @@ export default function ClientLayout({
   }, [loadLibrary])
 
   useEffect(() => {
-    listenToCmdQ();
+    listenToCmdQ()
     const disableContextMenu = (event: MouseEvent) => event.preventDefault()
     if (typeof window !== 'undefined') {
       window.addEventListener('contextmenu', disableContextMenu)
     }
 
     setPending(true)
-    client.query(['libraries.status']).then(({
-      id, loaded, isBusy
-    }) => {
-      loadLibrary(id).then(() => setPending(false))
+    Promise.all([
+      client.query(['users.get']),
+      client.query(['libraries.status']),
+    ]).then(([
+      auth,
+      { id, isBusy },
+    ]) => {
+      if (auth) {
+        setAuth(auth)
+      }
+      if (isBusy) {
+        toast.warning('App is busy, please try again later.')
+        return
+      }
+      loadLibrary(id).then(() => {
+        setPending(false)
+      }).catch((error: any) => {
+        console.log('loadLibrary failed', error)
+      })
     }).catch((error: any) => {
       console.error(error)
     })
@@ -128,9 +146,9 @@ export default function ClientLayout({
       try {
         await client.mutation(['libraries.update_library_settings', newSettings])
         setLibrarySettings(newSettings)
-      } catch (error) {
+      } catch (error: any) {
         toast.error('Failed to update library settings', {
-          description: `${error}`,
+          description: error?.message || error,
         })
       }
     },
@@ -181,10 +199,16 @@ export default function ClientLayout({
     <div className="text-ink/50 flex h-full w-full flex-col items-center justify-center">
       <Icon.Loading className="h-8 w-8 animate-spin" />
       <div className="mt-8 text-sm">Checking library data</div>
+      <SonnerToaster />
     </div>
+  ) : !auth ? (
+    <DeviceAuth onSuccess={(auth) => setAuth(auth)} />
   ) : !library || !librarySettings ? (
     <rspc.Provider client={client} queryClient={queryClient}>
-      <LibrariesSelect switchCurrentLibraryById={switchCurrentLibraryById} />
+      <>
+        <LibrariesSelect switchCurrentLibraryById={switchCurrentLibraryById} />
+        <SonnerToaster />
+      </>
     </rspc.Provider>
   ) : (
     <CurrentLibrary.Provider

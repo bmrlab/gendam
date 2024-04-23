@@ -7,6 +7,7 @@ import { Form } from '@muse/ui/v2/form'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { ModelList } from './_components/ModelList'
+import Link from 'next/link'
 
 const LibrarySettings: React.FC = () => {
   const currentLibrary = useCurrentLibrary()
@@ -58,7 +59,9 @@ export default function Settings() {
         <PageNav title="Settings" />
       </Viewport.Toolbar>
       <Viewport.Content className="p-6">
-        <div className="h-10">User / login / logout</div>
+        <div className="h-10">
+          <Link href="/settings/account">User / login / logout</Link>
+        </div>
         <div className="bg-app-line my-4 h-px"></div>
         <LibrarySettings />
         <div className="bg-app-line my-4 h-px"></div>

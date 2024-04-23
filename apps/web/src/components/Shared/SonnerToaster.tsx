@@ -5,7 +5,6 @@ import { Toaster, toast } from 'sonner'
 type ToasterProps = React.ComponentProps<typeof Toaster>
 
 const SonnerToaster = ({ ...props }: ToasterProps) => {
-  ;(window as any).toast = toast
   return (
     <Toaster
       // theme='dark' | 'light'

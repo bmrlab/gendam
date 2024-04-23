@@ -10,7 +10,7 @@ export type Procedures = {
         { key: "libraries.models.get_model", input: string, result: AIModelResult } | 
         { key: "libraries.models.list", input: never, result: Result[] } | 
         { key: "libraries.status", input: never, result: LibraryStatusResult } | 
-        { key: "users.list", input: never, result: any } | 
+        { key: "users.get", input: never, result: Auth | null } | 
         { key: "version", input: never, result: string } | 
         { key: "video.search.all", input: SearchRequestPayload, result: SearchResultPayload[] } | 
         { key: "video.tasks.list", input: TaskListRequestPayload, result: VideoWithTasksPageResult },
@@ -30,6 +30,7 @@ export type Procedures = {
         { key: "libraries.models.set_model", input: SetModelPayload, result: null } | 
         { key: "libraries.unload_library", input: any | null, result: null } | 
         { key: "libraries.update_library_settings", input: LibrarySettings, result: null } | 
+        { key: "users.set", input: Auth, result: Auth } | 
         { key: "video.tasks.cancel", input: TaskCancelRequestPayload, result: null } | 
         { key: "video.tasks.create", input: string, result: null } | 
         { key: "video.tasks.regenerate", input: TaskRedoRequestPayload, result: null },
@@ -43,6 +44,8 @@ export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsT
 export type ModelArtifact = { url: string; checksum: string }
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
+
+export type Auth = { id: string; name: string }
 
 export type TaskRedoRequestPayload = { assetObjectId: number; preserveArtifacts: boolean }
 
