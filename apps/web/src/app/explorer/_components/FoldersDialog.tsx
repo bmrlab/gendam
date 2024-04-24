@@ -25,6 +25,7 @@ export const useFoldersDialog = create<FoldersDialogState>((set) => ({
 export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | null) => void }) {
   const foldersDialog = useFoldersDialog()
   const [currentPath, setCurrentPath] = useState<string>('/')
+  const [selectedFolder, setSelectedFolder] = useState<ExplorerItem | null>(null)
 
   const { data: dirs, isError: assetsListFailed } = rspc.useQuery(
     [
@@ -51,6 +52,14 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
     }
   }, [assetsListFailed, currentPath])
 
+  useEffect(() => {
+    if (!foldersDialog.open) {
+      // 关闭以后清空状态
+      setCurrentPath('/')
+      setSelectedFolder(null)
+    }
+  }, [foldersDialog.open])
+
   const [currentExplorerItem, setCurrentExplorerItem] = useState<ExplorerItem | null>(null)
 
   useEffect(() => {
@@ -73,7 +82,11 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
     }
   }, [setCurrentExplorerItem, currentPath])
 
-  const goto = useCallback(
+  const selectFolder = useCallback((data: ExplorerItem|null) => {
+    setSelectedFolder(data)
+  }, [])
+
+  const gotoFolder = useCallback(
     (data: ExplorerItem | '-1') => {
       if (data === '-1') {
         let newPath = currentPath.replace(/([^/]+)\/$/, '')
@@ -95,21 +108,40 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
         <Dialog.Content onClick={(e) => e.stopPropagation()} className="w-[40rem]">
           <div className="flex items-center justify-start border-b border-app-line px-4 py-3">
             <div className="text-sm">Choose folder</div>
-            <div className="ml-2 flex items-center gap-1 text-xs text-ink/50" onClick={() => goto('-1')}>
+            <Button
+              variant="ghost"
+              size="xs"
+              className="ml-2 gap-1 px-1"
+              onClick={() => gotoFolder('-1')}>
               <Icon.arrowUpLeft className="h-4 w-4" />
               <span>Back</span>
-            </div>
+            </Button>
           </div>
-          <div className="flex h-80 flex-wrap content-start items-start justify-start gap-4 overflow-auto p-4">
+          <div
+            className="flex h-80 flex-wrap content-start items-start justify-start gap-4 overflow-auto p-4"
+            onClick={() => selectFolder(null)}
+          >
             {dirs && dirs.length > 0 ? (
               dirs.map((data) => (
                 <div
                   key={data.id}
-                  onDoubleClick={() => goto(data)}
+                  onDoubleClick={() => gotoFolder(data)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    selectFolder(data)
+                  }}
                   className="flex cursor-default select-none flex-col items-center justify-start"
                 >
-                  <FileThumb data={data} className={classNames('mb-1 h-16 w-16 rounded-sm p-1')} />
-                  <div className={classNames('w-16 rounded-sm px-1')}>
+                  <div className={classNames(
+                    "mb-1 h-16 w-16 rounded p-1",
+                    selectedFolder?.id === data.id ? "bg-app-hover" : null
+                  )}>
+                    <FileThumb data={data} className="h-full w-full" />
+                  </div>
+                  <div className={classNames(
+                    "w-16 rounded px-1",
+                    selectedFolder?.id === data.id ? "bg-accent text-white" : null
+                  )}>
                     <div className="truncate text-center text-xs">{data.name}</div>
                   </div>
                 </div>
@@ -127,8 +159,16 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
             <Dialog.Close asChild>
               <Button variant="outline" size="sm">Cancel</Button>
             </Dialog.Close>
-            <Dialog.Close asChild onClick={() => onConfirm(currentExplorerItem)}>
-              <Button variant="accent" size="sm">Choose current folder</Button>
+            <Dialog.Close asChild onClick={() => {
+              if (selectedFolder) {
+                onConfirm(selectedFolder)
+              } else {
+                onConfirm(currentExplorerItem)
+              }
+            }}>
+              <Button variant="accent" size="sm">
+                Choose {selectedFolder ? `folder "${selectedFolder.name}"` : 'current folder'}
+              </Button>
             </Dialog.Close>
             {/* {Array.from(explorer.selectedItems).map((item) => {
               return (
