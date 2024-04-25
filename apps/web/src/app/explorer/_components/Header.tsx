@@ -8,7 +8,7 @@ import { useUploadQueueStore } from '@/store/uploadQueue'
 import Icon from '@muse/ui/icons'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import SearchForm from '../../search/SearchForm'  // TODO: 这样不大好，应该是一个公共组件
 import { useInspector } from './Inspector'
 import TitleDialog, { useTitleDialog } from './TitleDialog'
@@ -44,6 +44,29 @@ export default function Header() {
     search.set('recordType', recordType)
     router.push(`/search?${search}`)
   }, [router])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
+      let unlisten: () => void
+      let isExit = false
+      import('@tauri-apps/api/event').then(async ({ listen }) => {
+        if (isExit) {
+          return
+        }
+        unlisten = await listen('tauri://file-drop', (event) => {
+          const files = event.payload as string[]
+          console.log('files dropped', files)
+          handleSelectFiles(files)
+        })
+      })
+      return () => {
+        isExit = true
+        if (unlisten) {
+          unlisten()
+        }
+      }
+    }
+  }, [handleSelectFiles])
 
   return (
     <>
