@@ -89,8 +89,6 @@ export default function SearchResults({ items, groupFrames }: { items: SearchRes
     return itemsWithSize
   }, [containerWidth, framesWidth, items])
 
-  console.log(containerWidth, itemsWithSize)
-
   return (
     <div
       ref={ref}

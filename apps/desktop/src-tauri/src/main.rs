@@ -98,6 +98,8 @@ async fn main() {
         .path_resolver()
         .app_local_data_dir()
         .expect("failed to find local data dir");
+    std::fs::create_dir_all(&local_data_root).unwrap();
+
     let resources_dir = window
         .app_handle()
         .path_resolver()
