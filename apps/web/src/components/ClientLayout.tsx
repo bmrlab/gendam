@@ -120,7 +120,7 @@ export default function ClientLayout({
         setPending(false)
       }).catch((error: any) => {
         console.error(error)
-        unloadLibrary().catch(console.error)
+        unloadLibrary().then(() => setPending(false)).catch(console.error)
       })
     }).catch((error: any) => {
       console.error(error)
