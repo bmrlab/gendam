@@ -36,7 +36,7 @@ impl Default for LibraryModels {
     fn default() -> Self {
         LibraryModels {
             multi_modal_embedding: "clip-multilingual-v1".to_string(),
-            text_embedding: "clip-multilingual-v1".to_string(),
+            text_embedding: "stella-base-zh-v3-1792d".to_string(),
             image_caption: "blip-base".to_string(),
             audio_transcript: "whisper-small".to_string(),
         }

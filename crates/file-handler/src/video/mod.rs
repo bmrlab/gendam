@@ -42,7 +42,7 @@ pub struct VideoHandler {
 }
 
 #[derive(Clone, Debug, EnumIter, EnumString, PartialEq, Eq, Hash, strum_macros::Display)]
-#[strum(prefix = "VideoTask")] // 增加 prefix 避免任务名称冲突，注意这里 from_str 的时候不会考虑这个 prefix
+#[strum(serialize_all = "kebab-case")]
 pub enum VideoTaskType {
     Frame,
     FrameCaption,

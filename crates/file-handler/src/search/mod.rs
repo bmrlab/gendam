@@ -53,15 +53,15 @@ struct ClipRetrievalInfo {
 /// - 根据输入分别生成 CLIP 文本特征和 text-embedding
 /// - 数据召回（对于embedding类型，各召回最多`RETRIEVAL_COUNT` 个结果）
 ///   （frame_score_mapping 是视频帧和得分之间的对应关系 -> HashMap<VIDEO_ID-FRAME_ID, f32>）
-///     - 根据 CLIP 文本特征进行图像召回 (以0.2 为过滤阈值)，得到 frame_score_mapping_1，得分为 cosine similarity + 0.2 (加分数量有待测试)
-///     - 根据 text-embedding 进行 caption 和 transcript 召回，得到 frame_score_mapping_2，得分为 cosine similarity
+///     - 根据 CLIP 文本特征进行图像召回 (以 0.2 为过滤阈值)，得到 frame_score_mapping_1，得分为 cosine similarity + 0.4 (加分数量有待测试)
+///     - 根据 text-embedding 进行 caption 和 transcript 召回 (以 0.8 为过滤阈值)，得到 frame_score_mapping_2，得分为 cosine similarity
 ///     - 根据文本匹配进行 transcript 召回，得到 frame_score_mapping_3，得分为 0.5 + 0.5 * (query.length / content.length)
 /// - 根据上述 frame_score_mapping 首先进行片段切分，得到 clip_frames_score_mapping
 ///   （clip_frames_score_mapping 是视频片段、视频帧和得分之间的对应关系 -> HaspMap<CLIP_ID, Vec<f32>> ）
 /// - 对 clip_frames_score_mapping 中的每个片段计算加权得分，得分规则如下：
 ///     - clip_score = MAX(Vec<f32>) + lambda * POOL(Vec<f32>)
 ///     - 其中 MAX 函数负责找到最高得分作为基础得分，POOL 函数负责汇总所有得分，POOL 函数作为额外 bonus
-///     - （亟待进一步优化）POOL 取 log_5^(min(5, 召回数量))，lambda 取 0.3
+///     - （亟待进一步优化）POOL 取 log_5^(min(5, 召回数量))，lambda 取 0.15
 pub async fn handle_search(
     payload: SearchRequest,
     client: Arc<PrismaClient>,
@@ -90,7 +90,7 @@ pub async fn handle_search(
     for record_type in record_types {
         let retrieval_result = match record_type {
             SearchRecordType::Frame => {
-                qdrant
+                let res = qdrant
                     .search_points(&SearchPoints {
                         collection_name: vision_collection_name.into(),
                         vector: clip_text_embedding.clone(),
@@ -103,10 +103,14 @@ pub async fn handle_search(
                         score_threshold: Some(0.2),
                         ..Default::default()
                     })
-                    .await?
+                    .await?;
+
+                tracing::debug!("vision search result: {:?}", res);
+
+                res
             }
             _ => {
-                qdrant
+                let res = qdrant
                     .search_points(&SearchPoints {
                         collection_name: language_collection_name.into(),
                         vector: text_model_embedding.clone(),
@@ -116,9 +120,14 @@ pub async fn handle_search(
                             "record_type", // TODO maybe this can be better
                             record_type.to_string(),
                         )])),
+                        score_threshold: Some(0.8),
                         ..Default::default()
                     })
-                    .await?
+                    .await?;
+
+                tracing::debug!("language search result: {:?}", res);
+
+                res
             }
         };
 
@@ -131,7 +140,7 @@ pub async fn handle_search(
 
                 match payload {
                     SearchPayload::Frame { timestamp, .. } => {
-                        target_file_frames.push((timestamp, v.score + 0.2))
+                        target_file_frames.push((timestamp, v.score + 0.5))
                     }
                     SearchPayload::FrameCaption { timestamp, .. } => {
                         target_file_frames.push((timestamp, v.score))
@@ -242,7 +251,7 @@ pub async fn handle_search(
             .to_owned();
         // 用匹配到的数量作为 bonus
         // 数量为1 时不加分，增加数量则按照 log 函数增加，超过5个的也不加分
-        score += (info.scores.len().min(5) as f32).log(5.0) * 0.3;
+        score += (info.scores.len().min(5) as f32).log(5.0) * 0.15;
 
         result.push(SearchResult {
             file_identifier: info.file_identifier.clone(),

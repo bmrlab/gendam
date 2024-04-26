@@ -99,5 +99,30 @@
       "tokenizer_config_path": "./puff-base-v1/tokenizer.json"
     },
     "dim": 1024
+  },
+  {
+    "id": "stella-base-zh-v3-1792d",
+    "categories": [
+      "TextEmbedding"
+    ],
+    "title": "Stella Base ZH V3",
+    "description": "",
+    "artifacts_dir": "./stella-base-zh-v3-1792d",
+    "artifacts": [
+      {
+        "url": "https://tezign-ai-models.oss-cn-beijing.aliyuncs.com/stella-base-zh-v3-1792d/model_quantized.onnx",
+        "checksum": ""
+      },
+      {
+        "url": "https://tezign-ai-models.oss-cn-beijing.aliyuncs.com/stella-base-zh-v3-1792d/tokenizer.json",
+        "checksum": ""
+      }
+    ],
+    "model_type": "OrtTextEmbedding",
+    "params": {
+      "model_path": "./stella-base-zh-v3-1792d/model_quantized.onnx",
+      "tokenizer_config_path": "./stella-base-zh-v3-1792d/tokenizer.json"
+    },
+    "dim": 1792
   }
 ]

@@ -152,7 +152,7 @@ export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
     }
 
     if (
-      !!videos.find((v) => v.tasks.some((t) => t.taskType === 'Transcript' && getTaskStatus(t) === TaskStatus.Done))
+      !!videos.find((v) => v.tasks.some((t) => t.taskType === 'transcript' && getTaskStatus(t) === TaskStatus.Done))
     ) {
       options.push({
         label: 'Export transcript',

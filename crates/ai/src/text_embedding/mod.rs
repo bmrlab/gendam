@@ -23,18 +23,6 @@ impl OrtTextEmbedding {
         model_path: impl AsRef<Path>,
         tokenizer_config_path: impl AsRef<Path>,
     ) -> anyhow::Result<Self> {
-        // let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
-        //     resources_dir: resources_dir.as_ref().to_path_buf(),
-        //     ..Default::default()
-        // });
-
-        // let model_path = download
-        //     .download_if_not_exists("puff-base-v1/model_quantized.onnx")
-        //     .await?;
-        // let tokenizer_config_path = download
-        //     .download_if_not_exists("puff-base-v1/tokenizer.json")
-        //     .await?;
-
         let model = load_onnx_model(model_path, None)?;
 
         let tokenizer = match Tokenizer::from_file(tokenizer_config_path) {
@@ -55,7 +43,7 @@ impl OrtTextEmbedding {
         Ok(Self {
             model,
             tokenizer,
-            dim: 1024,
+            dim: 1792,
             max_len: 512,
         })
     }
