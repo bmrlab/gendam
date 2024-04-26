@@ -102,12 +102,12 @@ export default function ClientLayout({
       { id, isBusy },
     ]) => {
       setAuth(auth)
-      if (isBusy) {
-        toast.warning('App is busy, please try again later.')
-        return
-      }
       if (!id) {
         setPending(false)
+        return
+      }
+      if (isBusy) {
+        toast.warning('App is busy, please try again later.')
         return
       }
       loadLibrary(id).then(({ isBusy }) => {
@@ -120,7 +120,7 @@ export default function ClientLayout({
         setPending(false)
       }).catch((error: any) => {
         console.error(error)
-        unloadLibrary()
+        unloadLibrary().catch(console.error)
       })
     }).catch((error: any) => {
       console.error(error)
