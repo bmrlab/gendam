@@ -7,7 +7,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tauri::Manager;
-
+use vector_db::kill_qdrant_server;
 mod store;
 use store::Store;
 
@@ -132,12 +132,16 @@ async fn main() {
         let ctx = ctx.clone();
         move |e| {
             if let tauri::WindowEvent::Destroyed = e {
-                // if let Ok(library) = ctx.library() {
-                //     drop(library);
-                // }
-                tokio::runtime::Runtime::new().unwrap().block_on(async {
-                    let _ = ctx.unload_library().await;
-                });
+                // https://github.com/bmrlab/gendam/issues/10#issuecomment-2078827778
+                tracing::info!("window destroyed");
+                if let Ok(library) = ctx.library() {
+                    // drop(library);
+                    let pid = library.qdrant_server_info();
+                    let _ = kill_qdrant_server(pid);
+                }
+                // tokio::runtime::Runtime::new().unwrap().block_on(async {
+                //     let _ = ctx.unload_library().await;
+                // });
             }
         }
     });

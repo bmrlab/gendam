@@ -241,6 +241,7 @@ impl Drop for QdrantServer {
     /*
      * TODO: 已经不需要使用 Drop trait 来 kill qdrant, 而是改成调用 ctx.unload_library
      * 这里可以注释掉
+     * https://github.com/bmrlab/gendam/issues/10#issuecomment-2078827778
      */
     fn drop(&mut self) {
         info!("qdrant server dropped");
