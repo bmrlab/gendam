@@ -58,7 +58,12 @@ pub fn init_tracing_to_file(log_dir: PathBuf) {
             init_tracing_to_stdout();  // fallback to stdout tracing
             return;
         }
-        let file = match std::fs::File::create(log_dir.join("app.log")) {
+        let log_file_full_path = log_dir.join(format!("app.{}.log", chrono::Utc::now().format("%Y-%m-%d")));
+        let file = match std::fs::OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(log_file_full_path)
+        {
             Ok(f) => f,
             Err(e) => {
                 eprintln!("Failed to create log file: {}", e);

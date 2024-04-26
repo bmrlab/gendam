@@ -5,6 +5,7 @@ edition = { workspace = true }
 
 [dependencies]
 dotenvy = { workspace = true }
+chrono = { workspace = true }
 tracing = { workspace = true }
 tracing-oslog = "0.1.2"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
