@@ -1,6 +1,6 @@
 [package]
 name = "muse-desktop"
-version = "0.1.1"
+version = "0.1.0"
 description = "Muse Desktop Client - A Tauri App"
 authors = ["Anonymous"]
 default-run = "muse-desktop"
@@ -13,7 +13,7 @@ rust-version = "1.60"
 tauri-build = { version = "1.5.1", features = [] }
 
 [dependencies]
-tauri = { version = "1.5.4", features = [ "shell-open", "process-exit", "process-relaunch", "dialog-message", "os-all", "path-all",
+tauri = { version = "1.5.4", features = [ "updater", "shell-open", "process-exit", "process-relaunch", "dialog-message", "os-all", "path-all",
   "dialog-ask",
   "dialog-open",
   "protocol-all",

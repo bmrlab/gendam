@@ -113,7 +113,12 @@
       "csp": "default-src 'self' asset: https://asset.localhost blob: data: filesystem: ws: wss: http: https: tauri: 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost; connect-src 'self' https://gendam.ai https://gendam.app;"
     },
     "updater": {
-      "active": false
+      "active": true,
+      "endpoints": [
+        "https://gendam.ai/api/releases/{{version}}/{{target}}/{{arch}}"
+      ],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVEN0E3MTE2RDM4OTY4RkMKUldUOGFJblRGbkY2WFJ4Q0VwVjErRytuSU1Eajl3ZTg4OGUrU2w2d0Y4VlNUQlJyb01wNVJGa24K"
     },
     "windows": [
       {
