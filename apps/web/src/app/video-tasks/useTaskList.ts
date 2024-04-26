@@ -28,9 +28,9 @@ export default function useTaskList(props: TaskListProps) {
     ],
     {
       refetchInterval: 5000,
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
-      refetchOnReconnect: false,
+      // refetchOnWindowFocus: false,
+      refetchOnMount: true,
+      // refetchOnReconnect: false,
     },
   )
 
