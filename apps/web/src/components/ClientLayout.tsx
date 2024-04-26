@@ -30,41 +30,42 @@ export default function ClientLayout({
     }
   }, [librarySettings?.appearanceTheme])
 
-  const loadLibrary = useCallback(async (libraryId: string | null) => {
-    let library: Library | null = null
-    if (libraryId) {
-      try {
-        const result = await client.mutation(['libraries.load_library', libraryId])
-        library = result
-      } catch (error: any) {
-        if (error?.code === 409 && error?.message === 'App is busy') {
-          return
-        } else {
-          toast.error('Failed to load library', { description: error?.message || error })
-          // continue without throwing error
-        }
+  const loadLibrary = useCallback(async (libraryId: string) => {
+    try {
+      const library = await client.mutation(['libraries.load_library', libraryId])
+      setLibrary(library)
+    } catch (error: any) {
+      if (error?.code === 409 && error?.message === 'App is busy') {
+        return { isBusy: true }
+      } else {
+        toast.error('Failed to load library', { description: error?.message || error })
+        throw error
       }
     }
-    // 如果 library 为空，就 unload_library，然后回到 libraries 选择界面
-    if (!library) {
-      try {
-        await client.mutation(['libraries.unload_library'])
-      } catch (error: any) {
+    try {
+      const librarySettings = await client.query(['libraries.get_library_settings'])
+      setLibrarySettings(librarySettings)
+    } catch (error: any) {
+      toast.error('Failed to get library settings', { description: error?.message || error })
+      throw error
+    }
+    return {}
+  }, [setLibrary, setLibrarySettings])
+
+  const unloadLibrary = useCallback(async () => {
+    try {
+      await client.mutation(['libraries.unload_library'])
+    } catch (error: any) {
+      if (error?.code === 409 && error?.message === 'App is busy') {
+        return { isBusy: true }
+      } else {
         toast.error('Failed to unload library', { description: error?.message || error })
         throw error
       }
-      setLibrary(null)
-      setLibrarySettings(null)
-    } else {
-      setLibrary(library)
-      try {
-        const librarySettings = await client.query(['libraries.get_library_settings'])
-        setLibrarySettings(librarySettings)
-      } catch (error: any) {
-        toast.error('Failed to get library settings', { description: error?.message || error })
-        throw error
-      }
     }
+    setLibrary(null)
+    setLibrarySettings(null)
+    return {}
   }, [setLibrary, setLibrarySettings])
 
   const listenToCmdQ = useCallback(() => {
@@ -73,7 +74,7 @@ export default function ClientLayout({
         event.preventDefault()
         toast.info('Cmd + Q is pressed, the app will be closed after library is unloaded.')
         // await new Promise((resolve) => setTimeout(resolve, 3000));
-        await loadLibrary(null)
+        await unloadLibrary()
         const { exit } = await import('@tauri-apps/api/process')
         exit(0)
         /**
@@ -83,7 +84,7 @@ export default function ClientLayout({
          */
       }
     })
-  }, [loadLibrary])
+  }, [unloadLibrary])
 
   useEffect(() => {
     listenToCmdQ()
@@ -100,17 +101,26 @@ export default function ClientLayout({
       auth,
       { id, isBusy },
     ]) => {
-      if (auth) {
-        setAuth(auth)
-      }
+      setAuth(auth)
       if (isBusy) {
         toast.warning('App is busy, please try again later.')
         return
       }
-      loadLibrary(id).then(() => {
+      if (!id) {
+        setPending(false)
+        return
+      }
+      loadLibrary(id).then(({ isBusy }) => {
+        if (isBusy) {
+          toast.info('App is busy', {
+            description: 'The library is being loaded, please wait until it is done.',
+          })
+          return
+        }
         setPending(false)
       }).catch((error: any) => {
-        console.log('loadLibrary failed', error)
+        console.error(error)
+        unloadLibrary()
       })
     }).catch((error: any) => {
       console.error(error)
@@ -121,7 +131,7 @@ export default function ClientLayout({
         window.removeEventListener('contextmenu', disableContextMenu)
       }
     }
-  }, [loadLibrary, listenToCmdQ, setPending])
+  }, [loadLibrary, unloadLibrary, listenToCmdQ, setPending])
 
   const switchCurrentLibraryById = useCallback(
     async (libraryId: string) => {
@@ -131,14 +141,14 @@ export default function ClientLayout({
       setPending(true)
       try {
         // switch: unload then load
-        await loadLibrary(null)
+        await unloadLibrary()
         await loadLibrary(libraryId)
         setPending(false)
       } catch (error) {
         console.error(error)
       }
     },
-    [loadLibrary, library?.id, setPending],
+    [loadLibrary, unloadLibrary, library?.id, setPending],
   )
 
   const updateLibrarySettings = useCallback(
@@ -149,6 +159,7 @@ export default function ClientLayout({
       const newSettings = { ...librarySettings, ...partialSettings }
       try {
         await client.mutation(['libraries.update_library_settings', newSettings])
+        queryClient.invalidateQueries({ queryKey: ['libraries.list'] })
         setLibrarySettings(newSettings)
       } catch (error: any) {
         toast.error('Failed to update library settings', {
