@@ -15,6 +15,19 @@ import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
+const useVersion = () => {
+  const [version, setVersion] = useState<string>('')
+  useEffect(() => {
+    if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
+      import('@tauri-apps/api/app').then(async ({ getVersion }) => {
+        const version = await getVersion()
+        setVersion(version)
+      })
+    }
+  }, [])
+  return version
+}
+
 export default function Sidebar() {
   const currentLibrary = useCurrentLibrary()
   const librariesQuery = rspc.useQuery(['libraries.list'])
@@ -25,7 +38,8 @@ export default function Sidebar() {
   const [uploadQueueOpen, setUploadQueueOpen] = useState(false)
 
   const pathname = usePathname()
-  const { data: version } = rspc.useQuery(['version'])
+
+  const version = useVersion()
 
   const selected = useMemo<LibrariesListResult | undefined>(() => {
     if (librariesQuery.isSuccess) {
@@ -45,8 +59,6 @@ export default function Sidebar() {
     },
     [currentLibrary],
   )
-
-  uploadQueueStore
 
   useEffect(() => {
     function handleClickOutside(event: any) {
