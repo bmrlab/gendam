@@ -14,18 +14,36 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useUpdater } from '@/hooks/useUpdater'
 
-const useVersion = () => {
-  const [version, setVersion] = useState<string>('')
+const Version = () => {
+  const { currentVersion, updateStatus, updateError } = useUpdater()
+  // "PENDING" | "ERROR" | "DONE" | "UPTODATE"
   useEffect(() => {
-    if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-      import('@tauri-apps/api/app').then(async ({ getVersion }) => {
-        const version = await getVersion()
-        setVersion(version)
+    if (updateStatus === 'DONE') {
+      toast.success('Update completed', {
+        description: 'GenDAM has been updated to the latest version, it will apply after you restart the app.',
+        duration: 86400 * 1000,
+      })
+    } else if (updateStatus === 'ERROR') {
+      toast.error('Update failed', {
+        description: updateError,
+        duration: 30 * 1000,
       })
     }
-  }, [])
-  return version
+  }, [updateError, updateStatus])
+
+  return (
+    <div className="px-1 text-xs text-ink/50 flex items-center justify-start gap-2">
+      <div>v{currentVersion}</div>
+      {updateStatus === 'PENDING' ? (
+        <>
+          <Icon.Loading className="h-3 w-3 animate-spin" />
+          <div className="text-ink/30">Updating</div>
+        </>
+      ) : null}
+    </div>
+  )
 }
 
 export default function Sidebar() {
@@ -38,8 +56,6 @@ export default function Sidebar() {
   const [uploadQueueOpen, setUploadQueueOpen] = useState(false)
 
   const pathname = usePathname()
-
-  const version = useVersion()
 
   const selected = useMemo<LibrariesListResult | undefined>(() => {
     if (librariesQuery.isSuccess) {
@@ -143,46 +159,45 @@ export default function Sidebar() {
 
       <FoldersTree className="-mx-3 my-4 flex-1" />
 
-      <section>
-        <div className="relative mb-2 flex items-center justify-start gap-1 text-sm">
-          <Link href="/settings" className="block">
-            <Button variant="ghost" size="sm" className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none">
-              <Icon.Gear className="h-full w-full" />
-            </Button>
-          </Link>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none"
-            onClick={() => {
-              const theme = currentLibrary.librarySettings.appearanceTheme === 'dark' ? 'light' : 'dark'
-              currentLibrary.updateLibrarySettings({
-                appearanceTheme: theme,
-              })
-            }}
-          >
-            <Icon.Sun className="block h-full w-full dark:hidden" />
-            <Icon.Moon className="hidden h-full w-full dark:block" />
+      <section className="relative mb-2 flex items-center justify-start gap-1 text-sm">
+        <Link href="/settings" className="block">
+          <Button variant="ghost" size="sm" className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none">
+            <Icon.Gear className="h-full w-full" />
           </Button>
-          <div className="relative">
-            <Button
-              variant="ghost" size="sm" onClick={() => setUploadQueueOpen(!uploadQueueOpen)}
-              className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none"
-            >
-              {uploadQueueStore.uploading || uploadQueueStore.queue.length ? (
-                <div className="border-2 border-orange-400 p-[2px] h-full w-full rounded-full
-                  animate-[flashstroke] duration-1000 repeat-infinite"></div>
-              ) : (
-                <div className="border border-current p-[2px] h-full w-full rounded-full scale-90">
-                  <Icon.Check className="h-full w-full" />
-                </div>
-              )}
-            </Button>
-          </div>
-          {uploadQueueOpen ? <UploadQueue close={() => setUploadQueueOpen(false)} /> : null}
+        </Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none"
+          onClick={() => {
+            const theme = currentLibrary.librarySettings.appearanceTheme === 'dark' ? 'light' : 'dark'
+            currentLibrary.updateLibrarySettings({
+              appearanceTheme: theme,
+            })
+          }}
+        >
+          <Icon.Sun className="block h-full w-full dark:hidden" />
+          <Icon.Moon className="hidden h-full w-full dark:block" />
+        </Button>
+        <div className="relative">
+          <Button
+            variant="ghost" size="sm" onClick={() => setUploadQueueOpen(!uploadQueueOpen)}
+            className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none"
+          >
+            {uploadQueueStore.uploading || uploadQueueStore.queue.length ? (
+              <div className="border-2 border-orange-400 p-[2px] h-full w-full rounded-full
+                animate-[flashstroke] duration-1000 repeat-infinite"></div>
+            ) : (
+              <div className="border border-current p-[2px] h-full w-full rounded-full scale-90">
+                <Icon.Check className="h-full w-full" />
+              </div>
+            )}
+          </Button>
         </div>
-        <div className="px-1 text-xs text-neutral-400">v{version}</div>
+        {uploadQueueOpen ? <UploadQueue close={() => setUploadQueueOpen(false)} /> : null}
       </section>
+
+      <Version />
     </div>
   )
 }
