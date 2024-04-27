@@ -87,7 +87,7 @@ async fn main() {
     {
         // https://docs.rs/tracing/latest/tracing/struct.Span.html#in-asynchronous-code
         // Spans will be sent to the configured OpenTelemetry exporter
-        // let root = tracing::span!(tracing::Level::INFO, "muse-desktop", custom_field="custom value");
+        // let root = tracing::span!(tracing::Level::INFO, "gendam-desktop", custom_field="custom value");
         // let _enter = root.enter();
         // tracing::error!("This event will be logged in the root span.");
     }

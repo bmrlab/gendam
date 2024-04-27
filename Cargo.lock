@@ -2490,6 +2490,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "gendam-desktop"
+version = "0.1.0"
+dependencies = [
+ "analytics-tracing",
+ "api-server",
+ "chrono",
+ "content-library",
+ "dotenvy",
+ "file-downloader",
+ "file-handler",
+ "prisma-client-rust",
+ "prisma-client-rust-cli",
+ "prisma-lib",
+ "rspc",
+ "rspc-tauri",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-store",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "vector-db",
+]
+
+[[package]]
 name = "generator"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3989,33 +4016,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.58",
-]
-
-[[package]]
-name = "muse-desktop"
-version = "0.1.0"
-dependencies = [
- "analytics-tracing",
- "api-server",
- "chrono",
- "content-library",
- "dotenvy",
- "file-downloader",
- "file-handler",
- "prisma-client-rust",
- "prisma-client-rust-cli",
- "prisma-lib",
- "rspc",
- "rspc-tauri",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-store",
- "tokio",
- "tokio-util",
- "tracing",
- "vector-db",
 ]
 
 [[package]]

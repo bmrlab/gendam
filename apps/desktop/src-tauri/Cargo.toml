@@ -1,9 +1,9 @@
 [package]
-name = "muse-desktop"
-version = "0.1.0"
-description = "Muse Desktop Client - A Tauri App"
+name = "gendam-desktop"
+version = { workspace = true }
+description = "GenDAM Desktop Application"
 authors = ["Anonymous"]
-default-run = "muse-desktop"
+default-run = "gendam-desktop"
 edition = { workspace = true }
 rust-version = "1.60"
 

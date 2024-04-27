@@ -1,1 +1,1 @@
-这个文件夹里放置 app 打包所需的资源文件，比如基础的模型，在 tauri build 以后这些文件会被复制到 muse-v2-client.app/Contents 目录下
+这个文件夹里放置 app 打包所需的资源文件，比如基础的模型，在 tauri build 以后这些文件会被复制到 GenDAM.app/Contents 目录下

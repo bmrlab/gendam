@@ -1,6 +1,5 @@
 {
-  "name": "muse-v2-client",
-  "version": "0.1.0",
+  "name": "gendam",
   "private": true,
   "scripts": {
     "dev:prep": "bash scripts/download-sidecar.sh && cargo prisma generate && pnpm tauri build --debug",

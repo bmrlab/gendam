@@ -3,6 +3,7 @@ resolver = "2"
 members = ["crates/*", "apps/api-server", "apps/desktop/src-tauri"]
 
 [workspace.package]
+version = "0.1.0"
 edition = "2021"
 
 [workspace.dependencies]
