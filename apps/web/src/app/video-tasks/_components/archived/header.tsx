@@ -3,7 +3,7 @@
 // import PageNav from '@/components/PageNav'
 // import Viewport from '@/components/Viewport'
 // import { cn, twx } from '@/lib/utils'
-// import { Input } from '@muse/ui/v1/input'
+// import { Input } from '@gendam/ui/v1/input'
 // import { HTMLAttributes } from 'react'
 // import { useBoundStore } from '../_store'
 

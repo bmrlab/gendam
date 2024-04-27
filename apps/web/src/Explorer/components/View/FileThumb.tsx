@@ -1,7 +1,7 @@
 'use client'
 import { ExplorerItem } from '@/Explorer/types'
 import { useCurrentLibrary } from '@/lib/library'
-import { Document_Light, Folder_Light } from '@muse/assets/images'
+import { Document_Light, Folder_Light } from '@gendam/assets/images'
 import classNames from 'classnames'
 import Image from 'next/image'
 

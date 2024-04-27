@@ -1,5 +1,5 @@
 import { Inter } from 'next/font/google'
-import '@muse/tailwind/globals.css'
+import '@gendam/tailwind/globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -13,8 +13,8 @@ import ClientLayout from '@/components/ClientLayout'
 import Viewport from '@/components/Viewport'
 import type { Metadata } from 'next'
 export const metadata: Metadata = {
-  title: 'Muse | a local DAM of videos',
-  description: 'Muse is a local DAM for videos',
+  title: 'GenDAM | A privacy first generative DAM.',
+  description: 'A cross-platform desktop application for managing, processing, and searching multimedia content using Rust-based libraries and AI models.',
 }
 
 export default function RootLayout({

@@ -1,12 +1,12 @@
 'use client'
 import { queryClient, rspc } from '@/lib/rspc'
-import { GenDAM_Logo } from '@muse/assets/images'
-import Icon from '@muse/ui/icons'
+import { GenDAM_Logo } from '@gendam/assets/images'
+import Icon from '@gendam/ui/icons'
 import Image from 'next/image'
 import { useCallback, useState } from 'react'
-import { Dialog } from '@muse/ui/v2/dialog'
-import { Form } from '@muse/ui/v2/form'
-import { Button } from '@muse/ui/v2/button'
+import { Dialog } from '@gendam/ui/v2/dialog'
+import { Form } from '@gendam/ui/v2/form'
+import { Button } from '@gendam/ui/v2/button'
 
 export default function LibrariesSelect({
   switchCurrentLibraryById,
@@ -35,7 +35,7 @@ export default function LibrariesSelect({
 
   return (
     <div className="bg-app flex h-screen w-screen flex-col items-center justify-center">
-      <Image src={GenDAM_Logo} alt="Muse" className="mb-4 h-8 w-8"></Image>
+      <Image src={GenDAM_Logo} alt="GenDAM" className="mb-4 h-8 w-8"></Image>
       {librariesQuery.isSuccess ? (
         <div className="border-app-line bg-app-box my-4 w-80 rounded-md border p-1 shadow-sm">
           {librariesQuery.data.length === 0 ? (
@@ -52,7 +52,7 @@ export default function LibrariesSelect({
                 className="hover:bg-app-hover flex items-center justify-start rounded-md px-3 py-2"
                 onClick={() => switchCurrentLibraryById(library.id)}
               >
-                <Image src={GenDAM_Logo} alt="Muse" className="h-8 w-8"></Image>
+                <Image src={GenDAM_Logo} alt="GenDAM" className="h-8 w-8"></Image>
                 <div className="mx-2 w-64 truncate text-xs font-semibold">
                   {library.title ?? 'Untitled'} ({library.id})
                 </div>

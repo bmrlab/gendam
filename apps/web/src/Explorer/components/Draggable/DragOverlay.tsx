@@ -1,7 +1,7 @@
 import { useExplorerStore } from '@/Explorer/store'
 import { DragOverlay as DragOverlayPrimitive, Modifier, type ClientRect } from '@dnd-kit/core'
 import { getEventCoordinates } from '@dnd-kit/utilities'
-import { Document_Light, Folder_Light } from '@muse/assets/images'
+import { Document_Light, Folder_Light } from '@gendam/assets/images'
 import Image from 'next/image'
 import { PropsWithChildren, useEffect, useRef } from 'react'
 

@@ -1,4 +1,4 @@
-export { cn, twx } from '@muse/tailwind/utils'
+export { cn, twx } from '@gendam/tailwind/utils'
 
 export function formatDuration(seconds: number) {
   let d = seconds < 0 ? 0 : seconds

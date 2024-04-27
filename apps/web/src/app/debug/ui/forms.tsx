@@ -1,5 +1,5 @@
 'use client'
-import { Form } from '@muse/ui/v2/form'
+import { Form } from '@gendam/ui/v2/form'
 
 export default function Forms() {
   return (

@@ -4,12 +4,12 @@
   "scripts": {
     "dev:prep": "bash scripts/download-sidecar.sh && cargo prisma generate && pnpm tauri build --debug",
     "prisma": "cargo prisma --",
-    "web": "pnpm run --filter @muse/web --",
+    "web": "pnpm run --filter gendam-web --",
     "dev:web": "pnpm web dev",
     "build:web": "pnpm web build",
-    "desktop": "pnpm run --filter @muse/desktop --",
+    "desktop": "pnpm run --filter gendam-desktop --",
     "tauri": "pnpm desktop tauri",
-    "api-server": "pnpm run --filter @muse/api-server --",
+    "api-server": "pnpm run --filter api-server --",
     "dev:api-server": "pnpm api-server dev"
   },
   "dependencies": {},

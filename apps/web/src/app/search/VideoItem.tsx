@@ -1,5 +1,5 @@
 'use client'
-import { ContextMenu } from '@muse/ui/v2/context-menu'
+import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { useCurrentLibrary } from '@/lib/library'
 import { formatDuration } from '@/lib/utils'

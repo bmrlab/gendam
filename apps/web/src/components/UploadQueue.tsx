@@ -1,12 +1,12 @@
 'use client'
-import Icon from '@muse/ui/icons'
+import Icon from '@gendam/ui/icons'
 import { rspc, queryClient } from '@/lib/rspc'
 import { FileItem, useUploadQueueStore } from '@/store/uploadQueue'
-import { Video_File } from '@muse/assets/images'
+import { Video_File } from '@gendam/assets/images'
 import classNames from 'classnames'
 import Image from 'next/image'
 import { PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react'
-import { Button } from '@muse/ui/v2/button'
+import { Button } from '@gendam/ui/v2/button'
 // import { twx } from '@/lib/utils'
 // const QueueItem = twx.div`flex items-center justify-start pl-2 pr-4 py-2`
 

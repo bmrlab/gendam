@@ -1,5 +1,5 @@
 {
-  "name": "@muse/desktop",
+  "name": "gendam-desktop",
   "private": true,
   "scripts": {
     "tauri": "tauri"

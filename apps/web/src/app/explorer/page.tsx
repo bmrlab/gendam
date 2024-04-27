@@ -10,7 +10,7 @@ import {
 import { ExplorerItem } from '@/Explorer/types'
 import Viewport from '@/components/Viewport'
 import { queryClient, rspc } from '@/lib/rspc'
-import { Drop_To_Folder } from '@muse/assets/images'
+import { Drop_To_Folder } from '@gendam/assets/images'
 import { RSPCError } from '@rspc/client'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'

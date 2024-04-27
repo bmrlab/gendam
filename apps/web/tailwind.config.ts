@@ -1,1 +1,1 @@
-module.exports = require('@muse/tailwind');
+module.exports = require('@gendam/tailwind');

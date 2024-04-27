@@ -37,13 +37,13 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@18.2.0)
-      '@muse/assets':
+      '@gendam/assets':
         specifier: workspace:*
         version: link:../../packages/assets
-      '@muse/tailwind':
+      '@gendam/tailwind':
         specifier: workspace:*
         version: link:../../packages/tailwind
-      '@muse/ui':
+      '@gendam/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@rspc/client':
@@ -137,7 +137,7 @@ importers:
 
   packages/ui:
     dependencies:
-      '@muse/tailwind':
+      '@gendam/tailwind':
         specifier: workspace:*
         version: link:../tailwind
       '@radix-ui/react-checkbox':

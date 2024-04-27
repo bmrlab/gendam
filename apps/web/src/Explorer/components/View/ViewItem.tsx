@@ -2,7 +2,7 @@
 import { useExplorerContext, useExplorerViewContext } from '@/Explorer/hooks'
 import { useExplorerStore } from '@/Explorer/store'
 import { type ExplorerItem } from '@/Explorer/types'
-import { ContextMenu } from '@muse/ui/v2/context-menu'
+import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { PropsWithChildren, useCallback, type HTMLAttributes } from 'react'
 
 // see spacedrive's `interface/app/$libraryId/Explorer/View/ViewItem.tsx`

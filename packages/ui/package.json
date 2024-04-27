@@ -1,5 +1,5 @@
 {
-  "name": "@muse/ui",
+  "name": "@gendam/ui",
   "version": "1.0.0",
   "private": true,
   "sideEffects": false,
@@ -9,7 +9,7 @@
     "./icons": "./src/icons/index.tsx"
   },
   "dependencies": {
-    "@muse/tailwind": "workspace:*",
+    "@gendam/tailwind": "workspace:*",
     "@radix-ui/react-checkbox": "^1.0.4",
     "@radix-ui/react-context-menu": "^2.1.5",
     "@radix-ui/react-dialog": "^1.0.5",

@@ -1,8 +1,8 @@
 'use client'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 import { cn } from '@/lib/utils'
-import Icon from '@muse/ui/icons'
-import { Tooltip } from '@muse/ui/v2/tooltip'
+import Icon from '@gendam/ui/icons'
+import { Tooltip } from '@gendam/ui/v2/tooltip'
 import { HTMLAttributes, forwardRef, useMemo } from 'react'
 import { TaskStatus, getTaskStatus } from './utils'
 

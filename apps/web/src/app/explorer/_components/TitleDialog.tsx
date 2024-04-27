@@ -1,8 +1,8 @@
 import { useExplorerContext } from '@/Explorer/hooks'
 import { rspc, queryClient } from '@/lib/rspc'
-import { Button } from '@muse/ui/v2/button'
-import { Dialog } from '@muse/ui/v2/dialog'
-import { Form } from '@muse/ui/v2/form'
+import { Button } from '@gendam/ui/v2/button'
+import { Dialog } from '@gendam/ui/v2/dialog'
+import { Form } from '@gendam/ui/v2/form'
 import { useCallback, useState } from 'react'
 import { create } from 'zustand'
 

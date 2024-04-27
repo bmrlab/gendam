@@ -1,6 +1,6 @@
 import { useExplorerContext } from '@/Explorer/hooks'
 import { useCurrentLibrary } from '@/lib/library'
-import { Folder_Light } from '@muse/assets/images'
+import { Folder_Light } from '@gendam/assets/images'
 import { create } from 'zustand'
 // import { useExplorerStore } from "@/Explorer/store";
 import { ExplorerItem } from '@/Explorer/types'

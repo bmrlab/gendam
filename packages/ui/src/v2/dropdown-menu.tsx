@@ -1,7 +1,7 @@
 'use client'
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import * as React from 'react'
-import { cn } from '@muse/tailwind/utils'
+import { cn } from '@gendam/tailwind/utils'
 
 const Content = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,

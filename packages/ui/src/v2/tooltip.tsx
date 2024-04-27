@@ -1,5 +1,5 @@
 'use client'
-import { cn } from '@muse/tailwind/utils'
+import { cn } from '@gendam/tailwind/utils'
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import * as React from 'react'
 

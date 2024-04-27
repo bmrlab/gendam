@@ -1,4 +1,4 @@
-# Muse Vector Database
+# GenDAM Vector Database
 
 **⚠️ 暂时不使用该 crate**
 

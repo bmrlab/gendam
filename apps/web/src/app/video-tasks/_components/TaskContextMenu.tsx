@@ -1,5 +1,5 @@
 import { useTaskActionOptions } from '@/app/video-tasks/_components/useTaskActionOptions'
-import { ContextMenu } from '@muse/ui/v2/context-menu'
+import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { PropsWithChildren } from 'react'
 import { useBoundStore } from '../_store'
 

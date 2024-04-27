@@ -1,5 +1,5 @@
 'use client'
-import { Button } from '@muse/ui/v2/button'
+import { Button } from '@gendam/ui/v2/button'
 
 export default function Buttons() {
   const buttons = []

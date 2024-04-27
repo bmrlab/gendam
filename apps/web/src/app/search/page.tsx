@@ -2,7 +2,7 @@
 import PageNav from '@/components/PageNav'
 import Viewport from '@/components/Viewport'
 import type { SearchRequestPayload, SearchResultPayload } from '@/lib/bindings'
-import { Video_Files } from '@muse/assets/images'
+import { Video_Files } from '@gendam/assets/images'
 import Image from 'next/image'
 import { rspc } from '@/lib/rspc'
 import classNames from 'classnames'
@@ -10,7 +10,7 @@ import { useSearchParams } from 'next/navigation'
 import React, { useCallback, useMemo, useState } from 'react'
 import SearchForm from './SearchForm'
 import SearchResults from './SearchResults'
-import { Checkbox } from '@muse/ui/v2/checkbox'
+import { Checkbox } from '@gendam/ui/v2/checkbox'
 
 const useSearchPayloadInURL: () => [
   SearchRequestPayload | null,

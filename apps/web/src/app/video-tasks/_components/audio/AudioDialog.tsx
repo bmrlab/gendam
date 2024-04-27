@@ -2,7 +2,7 @@
 import BatchExport from './batch-export'
 import AudioExport from './export'
 import { AudioDialogEnum } from '../../_store/audio-dialog'
-import { Dialog } from '@muse/ui/v2/dialog'
+import { Dialog } from '@gendam/ui/v2/dialog'
 import classNames from 'classnames'
 import { useBoundStore } from '../../_store'
 

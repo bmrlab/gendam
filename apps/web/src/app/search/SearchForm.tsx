@@ -1,7 +1,7 @@
 'use client'
 import Icon from '@/components/Icon'
 import { SearchRequestPayload } from '@/lib/bindings'
-import { CommandPrimitive } from '@muse/ui/v2/command'
+import { CommandPrimitive } from '@gendam/ui/v2/command'
 // import classNames from 'classnames'
 import { useCallback, useEffect, useRef, useState } from 'react'
 

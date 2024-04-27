@@ -5,14 +5,14 @@ import UploadButton from '@/components/UploadButton'
 import Viewport from '@/components/Viewport'
 import { rspc } from '@/lib/rspc'
 import { useUploadQueueStore } from '@/store/uploadQueue'
-import Icon from '@muse/ui/icons'
+import Icon from '@gendam/ui/icons'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import SearchForm from '../../search/SearchForm'  // TODO: 这样不大好，应该是一个公共组件
 import { useInspector } from './Inspector'
 import TitleDialog, { useTitleDialog } from './TitleDialog'
-import { Button } from '@muse/ui/v2/button'
+import { Button } from '@gendam/ui/v2/button'
 
 export default function Header() {
   const titleDialog = useTitleDialog()

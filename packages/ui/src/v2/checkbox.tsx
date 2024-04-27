@@ -1,5 +1,5 @@
 'use client'
-import { cn } from '@muse/tailwind/utils'
+import { cn } from '@gendam/tailwind/utils'
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox'
 import * as React from 'react'
 import Icon from '../icons'

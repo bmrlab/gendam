@@ -2,7 +2,7 @@
 import * as React from 'react'
 import * as ContextMenuPrimitive from '@radix-ui/react-context-menu'
 
-import { cn, twx } from '@muse/tailwind/utils'
+import { cn, twx } from '@gendam/tailwind/utils'
 import { Trigger } from '@radix-ui/react-dialog'
 
 const Content = React.forwardRef<

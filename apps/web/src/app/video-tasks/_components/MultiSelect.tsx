@@ -6,7 +6,7 @@ import {
   MultiSelectProps,
   MultiSelectTrigger,
   MultiSelectValue,
-} from '@muse/ui/v1/multi-select'
+} from '@gendam/ui/v1/multi-select'
 import { cn } from '@/lib/utils'
 import { FC } from 'react'
 import Icon from '@/components/Icon'

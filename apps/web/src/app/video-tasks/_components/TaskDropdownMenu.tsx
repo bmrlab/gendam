@@ -1,6 +1,6 @@
 import Icon from '@/components/Icon'
 import classNames from 'classnames'
-import { DropdownMenu } from '@muse/ui/v2/dropdown-menu'
+import { DropdownMenu } from '@gendam/ui/v2/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { PropsWithChildren, ReactNode } from 'react'
 

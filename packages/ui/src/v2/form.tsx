@@ -1,5 +1,5 @@
 'use client'
-import { cn } from '@muse/tailwind/utils'
+import { cn } from '@gendam/tailwind/utils'
 import * as FormPrimitive from '@radix-ui/react-form'
 import { Primitive, type ComponentPropsWithoutRef } from '@radix-ui/react-primitive'
 import { cva, type VariantProps } from 'class-variance-authority'

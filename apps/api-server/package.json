@@ -1,5 +1,5 @@
 {
-	"name": "@muse/api-server",
+	"name": "api-server",
   "private": true,
 	"scripts": {
 		"dev": "cargo watch -x 'run -p api-server'"

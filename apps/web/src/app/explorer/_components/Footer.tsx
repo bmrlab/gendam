@@ -2,7 +2,7 @@
 import { useExplorerContext } from '@/Explorer/hooks'
 import { ExplorerItem } from '@/Explorer/types'
 import Icon from '@/components/Icon'
-import { Document_Light, Folder_Light } from '@muse/assets/images'
+import { Document_Light, Folder_Light } from '@gendam/assets/images'
 import Image from 'next/image'
 import { useCallback, useMemo } from 'react'
 import Viewport from '@/components/Viewport'

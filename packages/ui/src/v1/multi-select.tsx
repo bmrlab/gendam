@@ -15,7 +15,7 @@ import {
   CommandSeparator,
 } from './command'
 import { Tooltip } from '../v2/tooltip'
-import { cn } from '@muse/tailwind/utils'
+import { cn } from '@gendam/tailwind/utils'
 import {
   ElementRef,
   FC,
