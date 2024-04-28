@@ -1,14 +1,10 @@
+pub mod artifacts;
 pub mod audio;
 pub mod caption;
 pub mod frame;
 
 use super::VideoHandler;
-use crate::{search::payload::SearchPayload, SearchRecordType};
-use qdrant_client::qdrant::{
-    point_id::PointIdOptions, points_selector::PointsSelectorOneOf, Condition, Filter, PointId,
-    PointStruct, PointsSelector,
-};
-use serde_json::json;
+use std::{io::Write, path::Path};
 
 pub(self) fn get_frame_timestamp_from_path(
     path: impl AsRef<std::path::Path>,
@@ -34,74 +30,23 @@ impl VideoHandler {
     pub(self) async fn save_text_embedding(
         &self,
         text: &str,
-        payload: SearchPayload,
+        path: impl AsRef<Path>,
     ) -> anyhow::Result<()> {
-        let qdrant = self.library.qdrant_client();
-
-        // if point exists, skip
-        match qdrant
-            .get_points(
-                self.language_collection_name()?,
-                None,
-                &[PointId {
-                    point_id_options: Some(PointIdOptions::Uuid(payload.get_uuid().to_string())),
-                }],
-                Some(false),
-                Some(false),
-                None,
-            )
-            .await
-        {
-            std::result::Result::Ok(res) if res.result.len() > 0 => {
-                return Ok(());
-            }
-            _ => {}
-        }
-
         let embedding = self
             .text_embedding()?
+            .0
             .get_texts_embedding_tx()
             .process_single(text.to_string())
             .await?;
 
-        let point = PointStruct::new(
-            payload.get_uuid().to_string(),
-            embedding,
-            json!(payload)
-                .try_into()
-                .map_err(|_| anyhow::anyhow!("invalid payload"))?,
-        );
-        qdrant
-            .upsert_points(self.language_collection_name()?, None, vec![point], None)
-            .await?;
+        let mut file = std::fs::File::create(path)?;
+        file.write_all(serde_json::to_string(&embedding)?.as_bytes())?;
 
         Ok(())
     }
 
-    pub(self) async fn delete_embedding(
-        &self,
-        record_type: SearchRecordType,
-    ) -> anyhow::Result<()> {
-        let file_identifier = self.file_identifier();
-        let qdrant = self.library.qdrant_client();
-
-        let points_selector = PointsSelector {
-            points_selector_one_of: Some(PointsSelectorOneOf::Filter(Filter::all(vec![
-                Condition::matches("file_identifier", file_identifier.to_string()),
-                Condition::matches("record_type", record_type.to_string()),
-            ]))),
-        };
-
-        let collection_name = match record_type {
-            SearchRecordType::FrameCaption => self.language_collection_name()?,
-            SearchRecordType::Transcript => self.language_collection_name()?,
-            SearchRecordType::Frame => self.vision_collection_name()?,
-        };
-
-        qdrant
-            .delete_points(collection_name.to_string(), None, &points_selector, None)
-            .await?;
-
-        Ok(())
+    pub fn get_embedding_from_file(&self, path: impl AsRef<Path>) -> anyhow::Result<Vec<f32>> {
+        let embedding = std::fs::read_to_string(path)?;
+        serde_json::from_str::<Vec<f32>>(&embedding).map_err(|e| anyhow::anyhow!(e))
     }
 }

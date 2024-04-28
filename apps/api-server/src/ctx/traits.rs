@@ -1,7 +1,7 @@
 use crate::{
     ai::AIHandler,
     download::{DownloadReporter, DownloadStatus},
-    task_queue::TaskPayload,
+    file_handler::TaskPayload,
 };
 use async_trait::async_trait;
 use content_library::{Library, QdrantServerInfo};

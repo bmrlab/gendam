@@ -62,10 +62,10 @@ impl AIHandler {
         let text_embedding = Self::get_text_embedding(ctx, &*multi_modal_embedding)?;
 
         Ok(Self {
-            multi_modal_embedding: multi_modal_embedding,
+            multi_modal_embedding,
             image_caption: Self::get_image_caption(ctx)?,
             audio_transcript: Self::get_audio_transcript(ctx)?,
-            text_embedding: text_embedding,
+            text_embedding,
         })
     }
 

@@ -1,6 +1,5 @@
-use crate::task_queue::create_video_task;
+use crate::file_handler::{create_file_handler_task, get_file_handler};
 use crate::CtxWithLibrary;
-use file_handler::delete_artifacts::handle_delete_artifacts;
 use prisma_client_rust::{operator, Direction};
 use prisma_lib::PrismaClient;
 use prisma_lib::{asset_object, file_handler_task, media_data};
@@ -47,7 +46,6 @@ struct TaskCancelRequestPayload {
 #[serde(rename_all = "camelCase")]
 struct TaskRedoRequestPayload {
     asset_object_id: i32,
-    preserve_artifacts: bool,
 }
 
 #[derive(Serialize, Type)]
@@ -183,7 +181,7 @@ impl VideoTaskHandler {
         let tx = ctx.task_tx()?;
         match input.task_types.as_ref() {
             Some(task_types) => task_types.iter().for_each(|t| {
-                if let Err(e) = tx.send(crate::task_queue::TaskPayload::CancelByAssetAndType(
+                if let Err(e) = tx.send(crate::file_handler::TaskPayload::CancelByAssetAndType(
                     asset_object_id,
                     t.to_string(),
                 )) {
@@ -192,7 +190,7 @@ impl VideoTaskHandler {
             }),
             _ => {
                 // cancel all tasks
-                tx.send(crate::task_queue::TaskPayload::CancelByAssetId(
+                tx.send(crate::file_handler::TaskPayload::CancelByAssetId(
                     asset_object_id,
                 ))?;
             }
@@ -227,25 +225,22 @@ impl VideoTaskHandler {
             .prisma_client
             .asset_object()
             .find_unique(asset_object::id::equals(payload.asset_object_id))
-            .with(asset_object::media_data::fetch())
             .exec()
             .await?;
-        let library = ctx.library()?;
-        let qdrant_info = ctx.qdrant_info()?;
 
         if let Some(asset_object_data) = asset_object_data {
-            if !payload.preserve_artifacts {
-                handle_delete_artifacts(
-                    &library,
-                    vec![(&asset_object_data.hash).into()],
-                    &qdrant_info.vision_collection.name,
-                    &qdrant_info.language_collection.name,
-                    false,
-                )
-                .await?;
+            let handler = get_file_handler(&asset_object_data, ctx)?;
+            for task_type in handler.get_supported_task_types() {
+                if let Err(e) = handler.delete_artifacts_by_task(task_type.0.as_str()).await {
+                    tracing::warn!(
+                        "delete_artifacts_by_task({}) error: {}",
+                        task_type.0,
+                        e
+                    );
+                }
             }
 
-            create_video_task(&asset_object_data, ctx, None)
+            create_file_handler_task(&asset_object_data, ctx, None, None)
                 .await
                 .map_err(|e| anyhow::anyhow!("failed to create video task: {e:?}"))?;
         }
@@ -260,16 +255,6 @@ where
     Router::<TCtx>::new()
         .mutation("create", |t| {
             t(|_ctx: TCtx, video_path: String| {
-                // let tx = ctx.get_task_tx();
-                // async move {
-                //     if let Ok(res) = create_video_task(&ctx, &video_path, tx).await {
-                //         return serde_json::to_value(res).unwrap();
-                //     } else {
-                //         return json!({
-                //             "error": "failed to create video task"
-                //         });
-                //     }
-                // }
                 if video_path.is_empty() {
                     return Err(rspc::Error::new(
                         rspc::ErrorCode::InternalServerError,

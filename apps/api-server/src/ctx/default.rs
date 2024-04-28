@@ -4,7 +4,7 @@ use crate::{
     ai::{models::get_model_info_by_id, AIHandler},
     download::{DownloadHub, DownloadReporter, DownloadStatus},
     library::get_library_settings,
-    task_queue::{init_task_pool, trigger_unfinished, TaskPayload},
+    file_handler::{init_task_pool, trigger_unfinished, TaskPayload},
 };
 use async_trait::async_trait;
 use content_library::{

@@ -1,5 +1,4 @@
-use crate::CtxWithLibrary;
-use file_handler::delete_artifacts::handle_delete_artifacts;
+use crate::{file_handler::get_file_handler, CtxWithLibrary};
 use prisma_client_rust::{Direction, QueryError};
 use prisma_lib::{asset_object, file_path};
 use std::{collections::HashSet, sync::Arc};
@@ -13,8 +12,8 @@ pub async fn delete_file_path(
 ) -> Result<(), rspc::Error> {
     let library = ctx.library()?;
 
-    let deleted_file_hashes = Arc::new(Mutex::new(vec![]));
-    let deleted_file_hashes_clone = deleted_file_hashes.clone();
+    let deleted_asset_objects = Arc::new(Mutex::new(vec![]));
+    let deleted_asset_objects_clone = deleted_asset_objects.clone();
 
     library
         .prisma_client()
@@ -93,10 +92,14 @@ pub async fn delete_file_path(
                             .delete(asset_object::id::equals(asset_object_id))
                             .exec()
                             .await?;
-                        deleted_file_hashes
+                        deleted_asset_objects
                             .lock()
                             .await
-                            .push(deleted_asset_object.hash);
+                            .push(deleted_asset_object);
+                        // deleted_file_hashes
+                        //     .lock()
+                        //     .await
+                        //     .push(deleted_asset_object.hash);
                     }
                 }
             }
@@ -112,38 +115,29 @@ pub async fn delete_file_path(
         })?;
 
     // delete from fs
-    deleted_file_hashes_clone
+    deleted_asset_objects_clone
         .lock()
         .await
         .iter()
-        .for_each(|file_hash| {
-            let file_path = library.file_path(file_hash);
+        .for_each(|data| {
+            let file_path = library.file_path(&data.hash);
             if let Err(e) = std::fs::remove_file(&file_path) {
                 error!("failed to delete file({}): {}", file_path.display(), e);
             };
         });
 
-    let qdrant_info = ctx.qdrant_info()?;
-
-    handle_delete_artifacts(
-        &library,
-        deleted_file_hashes_clone
-            .lock()
-            .await
-            .iter()
-            .map(|v| v.to_string())
-            .collect(),
-        &qdrant_info.vision_collection.name,
-        &qdrant_info.language_collection.name,
-        true,
-    )
-    .await
-    .map_err(|e| {
-        rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("failed to delete artifacts: {}", e),
-        )
-    })?;
+    for data in deleted_asset_objects_clone.lock().await.iter() {
+        match get_file_handler(data, ctx) {
+            Ok(handler) => {
+                if let Err(e) = handler.delete_artifacts().await {
+                    error!("failed to delete artifacts: {}", e);
+                }
+            }
+            _ => {
+                error!("failed to get file handler");
+            }
+        }
+    }
 
     Ok(())
 }

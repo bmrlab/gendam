@@ -24,6 +24,14 @@ pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
     TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
+    #[derive(Deserialize, Type, Debug)]
+    #[serde(rename_all = "camelCase")]
+    struct AssetObjectCreatePayload {
+        #[serde(deserialize_with = "validators::materialized_path_string")]
+        materialized_path: String,
+        name: String,
+        local_full_path: String,
+    }
     Router::<TCtx>::new()
         .mutation("create_dir", |t| {
             t({
@@ -44,14 +52,6 @@ where
         })
         .mutation("create_asset_object", |t| {
             t({
-                #[derive(Deserialize, Type, Debug)]
-                #[serde(rename_all = "camelCase")]
-                struct AssetObjectCreatePayload {
-                    #[serde(deserialize_with = "validators::materialized_path_string")]
-                    materialized_path: String,
-                    name: String,
-                    local_full_path: String,
-                }
                 |ctx: TCtx, input: AssetObjectCreatePayload| async move {
                     info!("received create_asset_object: {input:?}");
                     let library = ctx.library()?;
@@ -67,9 +67,46 @@ where
                     if !asset_object_existed {
                         process_video_metadata(&library, asset_object_data.id).await?;
                         info!("process video metadata finished");
-                        process_video_asset(&library, &ctx, file_path_data.id).await?;
+                        process_video_asset(&library, &ctx, file_path_data.id, None).await?;
                         info!("process video asset finished");
                     }
+                    Ok(())
+                }
+            })
+        })
+        .mutation("receive_asset", |t| {
+            t({
+                #[derive(Deserialize, Type, Debug)]
+                #[serde(rename_all = "camelCase")]
+                struct AssetObjectReceivePayload {
+                    // #[serde(deserialize_with = "validators::materialized_path_string")]
+                    hash: String,
+                }
+                |ctx, input: AssetObjectReceivePayload| async move {
+                    tracing::debug!("received receive_asset: {input:?}");
+
+                    let library = ctx.library()?;
+                    let (file_path_data, asset_object_data, asset_object_existed) =
+                        create_asset_object(
+                            &library,
+                            "/",
+                            &input.hash,
+                            &library
+                                .file_path(&input.hash)
+                                .to_string_lossy()
+                                .to_string()
+                                .as_str(),
+                        )
+                        .await?;
+
+                    if asset_object_existed {
+                        // TODO add artifacts merging logic
+                    } else {
+                        process_video_metadata(&library, asset_object_data.id).await?;
+                        info!("process video metadata finished");
+                        process_video_asset(&library, &ctx, file_path_data.id, Some(true)).await?;
+                    }
+
                     Ok(())
                 }
             })
@@ -183,7 +220,7 @@ where
             t(|ctx, input: i32| async move {
                 let library = ctx.library()?;
                 let file_path_id = input;
-                process_video_asset(&library, &ctx, file_path_id).await?;
+                process_video_asset(&library, &ctx, file_path_id, None).await?;
                 Ok(())
             })
         })

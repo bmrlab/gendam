@@ -1,4 +1,4 @@
-use crate::task_queue::create_video_task;
+use crate::file_handler::create_file_handler_task;
 use crate::CtxWithLibrary;
 use content_library::Library;
 use file_handler::video::VideoHandler;
@@ -10,6 +10,7 @@ pub async fn process_video_asset(
     library: &Library,
     ctx: &impl CtxWithLibrary,
     file_path_id: i32,
+    with_existing_artifacts: Option<bool>,
 ) -> Result<(), rspc::Error> {
     info!("process video asset for file_path_id: {file_path_id}");
     let file_path_data = library
@@ -42,7 +43,6 @@ pub async fn process_video_asset(
         .prisma_client()
         .asset_object()
         .find_unique(asset_object::id::equals(asset_object_id))
-        .with(asset_object::media_data::fetch())
         .exec()
         .await
         .map_err(|e| {
@@ -58,7 +58,7 @@ pub async fn process_video_asset(
             )
         })?;
 
-    match create_video_task(&asset_object_data, ctx, None).await {
+    match create_file_handler_task(&asset_object_data, ctx, None, with_existing_artifacts).await {
         Ok(_) => Ok(()),
         Err(_) => Err(rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
@@ -96,20 +96,14 @@ pub async fn process_video_metadata(
             ));
         }
     };
-    let local_video_file_full_path = library.file_path(&asset_object_data.hash);
-    let video_handler = VideoHandler::new(
-        &local_video_file_full_path,
-        &asset_object_data.hash,
-        &library,
-    )
-    .map_err(|e| {
+    let video_handler = VideoHandler::new(&asset_object_data.hash, &library).map_err(|e| {
         error!("Failed to create video handler: {e}");
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
             format!("failed to get video metadata: {}", e),
         )
     })?;
-    let metadata = video_handler.inner_metadata().map_err(|e| {
+    let metadata = video_handler.get_metadata().map_err(|e| {
         error!("failed to get video metadata from video handler: {e}");
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,

@@ -1,12 +1,12 @@
-mod users;
-mod assets;
-mod video;
-mod libraries;
+pub(self) mod assets;
 mod audio;
+mod libraries;
 mod p2p;
+mod users;
+mod video;
 
-use rspc::Router;
 use crate::CtxWithLibrary;
+use rspc::Router;
 
 pub fn get_routes<TCtx>() -> Router<TCtx>
 where

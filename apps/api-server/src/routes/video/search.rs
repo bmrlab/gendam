@@ -55,7 +55,6 @@ where
                     text,
                     record_type: Some(record_types),
                 },
-                library.prisma_client(),
                 library.qdrant_client(),
                 &qdrant_info.vision_collection.name,
                 &qdrant_info.language_collection.name,

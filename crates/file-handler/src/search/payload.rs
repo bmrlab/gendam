@@ -9,42 +9,38 @@ use uuid::Uuid;
 #[serde(tag = "record_type")]
 pub enum SearchPayload {
     Frame {
-        id: u64,
         file_identifier: String,
         timestamp: i64,
     },
     FrameCaption {
-        id: u64,
         file_identifier: String,
         timestamp: i64,
-        method: String
+        method: String,
     },
     Transcript {
-        id: u64,
         file_identifier: String,
         start_timestamp: i64,
         end_timestamp: i64,
+        method: String,
     },
 }
 
 impl SearchPayload {
-    pub fn get_id(&self) -> u64 {
-        match self {
-            SearchPayload::Frame { id, .. } => *id,
-            SearchPayload::FrameCaption { id, .. } => *id,
-            SearchPayload::Transcript { id, .. } => *id,
-        }
-    }
-
     pub fn get_uuid(&self) -> Uuid {
         Uuid::new_v5(&Uuid::NAMESPACE_OID, json!(self).to_string().as_bytes())
     }
 
     pub fn get_file_identifier(&self) -> &str {
         match self {
-            SearchPayload::Frame { file_identifier, .. } => file_identifier,
-            SearchPayload::FrameCaption { file_identifier, .. } => file_identifier,
-            SearchPayload::Transcript { file_identifier, .. } => file_identifier,
+            SearchPayload::Frame {
+                file_identifier, ..
+            } => file_identifier,
+            SearchPayload::FrameCaption {
+                file_identifier, ..
+            } => file_identifier,
+            SearchPayload::Transcript {
+                file_identifier, ..
+            } => file_identifier,
         }
     }
 }

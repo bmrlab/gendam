@@ -22,6 +22,7 @@ export type Procedures = {
         { key: "assets.move_file_path", input: FilePathMovePayload, result: null } | 
         { key: "assets.process_video_asset", input: number, result: null } | 
         { key: "assets.process_video_metadata", input: number, result: null } | 
+        { key: "assets.receive_asset", input: AssetObjectReceivePayload, result: null } | 
         { key: "assets.rename_file_path", input: FilePathRenamePayload, result: null } | 
         { key: "audio.batch_export", input: ExportInput[], result: AudioType[] } | 
         { key: "audio.export", input: ExportInput, result: AudioType[] } | 
@@ -48,29 +49,31 @@ export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsT
 
 export type ModelArtifact = { url: string; checksum: string }
 
-export type FilePathCreatePayload = { materializedPath: string; name: string }
-
 export type Auth = { id: string; name: string }
-
-export type TaskRedoRequestPayload = { assetObjectId: number; preserveArtifacts: boolean }
 
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
-export type Pagination = { pageSize: number; pageIndex: number }
-
-export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
-
-export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
+export type FilePathDeletePayload = { materializedPath: string; name: string }
 
 export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPath: string; oldName: string; newName: string }
 
-export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
+export type VideoWithTasksPageResult = { data: VideoWithTasksResult[]; pagination: Pagination; maxPage: number }
+
+export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
+
+export type AudioResp = { type: AudioType; content: string }
+
+export type TaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
 
 export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
 
+export type FilePathCreatePayload = { materializedPath: string; name: string }
+
 export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageCaption" | "AudioTranscript" | "TextEmbedding"
 
-export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
+export type TaskRedoRequestPayload = { assetObjectId: number }
+
+export type Pagination = { pageSize: number; pageIndex: number }
 
 export type SearchResultPayload = { name: string; materializedPath: string; assetObjectId: number; assetObjectHash: string; startTime: number; endTime: number; score: number }
 
@@ -82,48 +85,48 @@ export type LibrariesListResult = { id: string; dir: string; title: string }
 
 export type LibraryLoadResult = { id: string; dir: string }
 
-export type FilePathGetPayload = { materializedPath: string; name: string }
+export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: string[] | null }
 
 export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo"
 
-export type AudioResp = { type: AudioType; content: string }
+export type VideoWithTasksResult = { name: string; materializedPath: string; assetObject: AssetObject; tasks: FileHandlerTask[]; mediaData: MediaData | null }
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
-export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string }
-
-export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
+export type AssetObjectReceivePayload = { hash: string }
 
 export type SharePayload = { fileIdList: number[]; peerId: string }
 
+export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string }
+
+export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
+
+export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
+
 export type Result = { category: AIModelCategory; models: AIModelResult[] }
+
+export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
 
 export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
 
-export type TaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
-
-export type VideoWithTasksResult = { name: string; materializedPath: string; assetObject: AssetObject; tasks: FileHandlerTask[]; mediaData: MediaData | null }
+export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
 
 export type AIModelResult = { info: AIModel; status: AIModelStatus }
-
-export type VideoWithTasksPageResult = { data: VideoWithTasksResult[]; pagination: Pagination; maxPage: number }
 
 export type DownloadModelPayload = { modelId: string }
 
 export type TaskListRequestPayload = { pagination: Pagination; filter: TaskListRequestFilter }
 
+export type ExportInput = { types: AudioType[]; hash: string; path: string; fileName?: string | null }
+
 export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
 
-export type FilePathDeletePayload = { materializedPath: string; name: string }
+export type FilePathGetPayload = { materializedPath: string; name: string }
 
 export type AssetObject = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string }
 
+export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
+
 export type LibrarySettingsThemeEnum = "light" | "dark"
 
-export type ExportInput = { types: AudioType[]; hash: string; path: string; fileName?: string | null }
-
-export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: string[] | null }
-
 export type SearchRequestPayload = { text: string; recordType: string }
-
-export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"

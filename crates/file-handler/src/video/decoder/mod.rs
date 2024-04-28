@@ -10,12 +10,15 @@ pub struct VideoDecoder {
     video_file_path: std::path::PathBuf,
 }
 
-use crate::metadata::{audio::AudioMetadata, video::{VideoAvgFrameRate, VideoMetadata}};
+use crate::metadata::{
+    audio::AudioMetadata,
+    video::{VideoAvgFrameRate, VideoMetadata},
+};
 
 use super::FRAME_FILE_EXTENSION;
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
+use std::path::Path;
 
 #[cfg(feature = "ffmpeg-dylib")]
 impl VideoDecoder {
@@ -203,8 +206,6 @@ impl VideoDecoder {
     }
 
     pub async fn save_video_frames(&self, frames_dir: impl AsRef<Path>) -> anyhow::Result<()> {
-        fs::create_dir_all(frames_dir.as_ref())?;
-
         // 单独提取 timestamp 为 0 的帧
         match std::process::Command::new(&self.binary_file_path)
             .args([

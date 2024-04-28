@@ -1,6 +1,7 @@
 use crate::routes::audio::{downloader::DownloadHelper, reader::AudioReader};
 use crate::CtxWithLibrary;
-use file_handler::video::TRANSCRIPT_FILE_NAME;
+use content_library::Library;
+use file_handler::video::VideoHandler;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -33,19 +34,24 @@ where
         .query("find_by_hash", |t| {
             t(|ctx, hash: String| async move {
                 let library = ctx.library()?;
-                let artifacts_dir = library.artifacts_dir(&hash);
-                let path = artifacts_dir.join(TRANSCRIPT_FILE_NAME);
+                let video_handler = VideoHandler::new(&hash, &library).map_err(|e| {
+                    rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string())
+                })?;
+                let path = video_handler.get_transcript_path().map_err(|e| {
+                    tracing::error!("{}", e.to_string());
+                    rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string())
+                })?;
+                tracing::debug!("get path: {}", path.display());
                 Ok(get_all_audio_format(path))
             })
         })
         .mutation("export", |t| {
             t(|ctx, input: ExportInput| async move {
                 let library = ctx.library()?;
-                let export_result = audio_export(library.artifacts_dir(&input.hash), input)
-                    .unwrap_or_else(|err| {
-                        error!("Failed to export audio: {err}",);
-                        vec![]
-                    });
+                let export_result = audio_export(&library, input).unwrap_or_else(|err| {
+                    error!("Failed to export audio: {err}",);
+                    vec![]
+                });
                 Ok(export_result)
             })
         })
@@ -54,12 +60,10 @@ where
                 let library = ctx.library()?;
                 let mut error_list = vec![];
                 for item in input {
-                    let res = audio_export(library.artifacts_dir(&item.hash), item).unwrap_or_else(
-                        |err| {
-                            error!("Failed to export audio: {err}",);
-                            vec![]
-                        },
-                    );
+                    let res = audio_export(&library, item).unwrap_or_else(|err| {
+                        error!("Failed to export audio: {err}",);
+                        vec![]
+                    });
                     error_list.extend(res);
                 }
                 Ok(error_list)
@@ -114,10 +118,11 @@ fn get_all_audio_format(path: PathBuf) -> Vec<AudioResp> {
         .collect()
 }
 
-fn audio_export(artifacts_dir: PathBuf, input: ExportInput) -> anyhow::Result<Vec<AudioType>> {
+fn audio_export(library: &Library, input: ExportInput) -> anyhow::Result<Vec<AudioType>> {
     let save_dir = PathBuf::from(input.path);
     let types = input.type_group.clone();
-    let reader = AudioReader::new(artifacts_dir.join(TRANSCRIPT_FILE_NAME));
+    let video_handler = VideoHandler::new(&input.hash, library)?;
+    let reader = AudioReader::new(video_handler.get_transcript_path()?);
     let downloader = DownloadHelper::new(reader, save_dir.clone());
 
     let mut error_list = vec![];

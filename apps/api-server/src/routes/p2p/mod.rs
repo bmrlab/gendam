@@ -1,11 +1,6 @@
 mod generated;
 mod utils;
 
-use std::path::Path;
-use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, PoisonError};
-use std::time::Duration;
-
 use crate::routes::p2p::utils::create_requests::create_requests;
 use crate::routes::p2p::utils::find_all_path::find_all_path;
 use crate::CtxWithLibrary;
@@ -17,6 +12,10 @@ use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
 use serde_json::json;
 use specta::Type;
+use std::path::Path;
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, PoisonError};
+use std::time::Duration;
 use tokio::fs::File;
 use tokio::io::BufReader;
 use tokio::time::{sleep, Instant};
@@ -216,7 +215,11 @@ where
                         &requests,
                         |percent| {
                             node.events
-                                .send(p2p::Event::ShareProgress { id, percent })
+                                .send(p2p::Event::ShareProgress {
+                                    id,
+                                    percent,
+                                    files: file_paths.iter().map(|v| v.hash.to_owned()).collect(),
+                                })
                                 .ok();
                             tracing::info!("({id}): progress: {percent}%");
                         },
@@ -268,67 +271,72 @@ where
             })
         })
         .mutation("acceptFileShare", |t| {
-            t(|ctx, (id, hashes): (Uuid, Option<Vec<String>>)| async move {
-                // todo 这个path 应该是数据库的地址， 真实保存的地址是根据hash来的
-                let node = ctx.node()?;
+            t(
+                |ctx, (id, hashes): (Uuid, Option<Vec<String>>)| async move {
+                    // todo 这个path 应该是数据库的地址， 真实保存的地址是根据hash来的
+                    let node = ctx.node()?;
+                    let library = ctx.library()?;
 
-                match hashes {
-                    Some(hashes) => {
-                        // 真实路径
-                        let local_data_root = ctx.get_local_data_root();
+                    match hashes {
+                        Some(hashes) => {
+                            let mut file_paths = Vec::new();
 
-                        let library_id = ctx.library()?.id;
+                            for hash in hashes {
+                                // let local_data_root = local_data_root.display();
+                                // let data_path_string = format!(
+                                //     "{}/libraries/{}/files/{}/{}",
+                                //     local_data_root,
+                                //     library_id,
+                                //     &hash[0..3],
+                                //     hash
+                                // );
+                                let data_path_string =
+                                    library.file_path(&hash).to_string_lossy().to_string();
 
-                        let mut file_paths = Vec::new();
+                                // let artifact_path_string = format!(
+                                //     "{}/libraries/{}/artifacts/{}/{}.zip",
+                                //     local_data_root,
+                                //     library_id,
+                                //     &hash[0..3],
+                                //     hash
+                                // );
+                                let artifact_path_string = library
+                                    .artifacts_dir(&hash)
+                                    .with_extension("zip")
+                                    .to_string_lossy()
+                                    .to_string();
 
-                        for hash in hashes {
-                            let local_data_root = local_data_root.display();
-                            let data_path_string = format!(
-                                "{}/libraries/{}/files/{}/{}",
-                                local_data_root,
-                                library_id,
-                                &hash[0..3],
-                                hash
-                            );
+                                file_paths.push(FilePath {
+                                    hash,
+                                    file_path: data_path_string,
+                                    artifact_path: artifact_path_string,
+                                })
+                            }
 
-                            let artifact_path_string = format!(
-                                "{}/libraries/{}/artifacts/{}/{}.zip",
-                                local_data_root,
-                                library_id,
-                                &hash[0..3],
-                                hash
-                            );
-
-                            file_paths.push(FilePath {
-                                hash,
-                                file_path: data_path_string,
-                                artifact_path: artifact_path_string,
-                            })
+                            match node.accept_share(id, file_paths.clone()).await {
+                                Ok(_) => (),
+                                Err(error) => {
+                                    return Err(rspc::Error::new(
+                                        rspc::ErrorCode::InternalServerError,
+                                        format!("accept_share error: {error:?}"),
+                                    ))
+                                }
+                            }
                         }
-
-                        match node.accept_share(id, file_paths).await {
+                        None => match node.reject_share(id).await {
                             Ok(_) => (),
                             Err(error) => {
                                 return Err(rspc::Error::new(
                                     rspc::ErrorCode::InternalServerError,
-                                    format!("accept_share error: {error:?}"),
+                                    format!("reject_share error: {error:?}"),
                                 ))
                             }
-                        }
-                    }
-                    None => match node.reject_share(id).await {
-                        Ok(_) => (),
-                        Err(error) => {
-                            return Err(rspc::Error::new(
-                                rspc::ErrorCode::InternalServerError,
-                                format!("reject_share error: {error:?}"),
-                            ))
-                        }
-                    },
-                };
+                        },
+                    };
 
-                Ok(json!({ "status": "ok"}))
-            })
+                    Ok(json!({ "status": "ok"}))
+                },
+            )
         })
         .mutation("cancelFileShare", |t| {
             t(|ctx, id: Uuid| async move {
@@ -365,11 +373,12 @@ where
                                     "files": files,
                                 });
                             }
-                            p2p::Event::ShareProgress { id, percent } => {
+                            p2p::Event::ShareProgress { id, percent, files } => {
                                 yield json!({
                                     "type": "ShareProgress",
                                     "id": id,
                                     "percent": percent,
+                                    "files": files
                                 });
                             }
                             p2p::Event::ShareTimedOut { id } => {
