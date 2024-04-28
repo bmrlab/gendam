@@ -28,7 +28,7 @@ use crate::{
     Behaviour, Event, Node,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FilePath {
     pub hash: String,
     pub file_path: String,
@@ -450,16 +450,22 @@ impl EventLoop {
                                         }).unwrap();
 
 
-                                        let hashs: Vec<String> = share.requests.iter().map(|req| req.hash.clone()).collect::<Vec<_>>();
+                                        let hashes: Vec<String> = share.requests.iter().map(|req| req.hash.clone()).collect::<Vec<_>>();
 
-                                        tracing::info!("({id}): sending '{hashs:?}'");
+                                        tracing::info!("({id}): sending '{hashes:?}'");
+
+                                        let hashes_clone = hashes.clone();
 
                                         // 百分比
                                         let mut transfer = Transfer::new(&share, |percent| {
-                                            self.node.events.send(Event::ShareProgress { id, percent }).ok();
+                                            self.node.events.send(Event::ShareProgress {
+                                                id,
+                                                percent,
+                                                files: hashes_clone.clone()
+                                            }).ok();
                                         }, &cancelled);
 
-                                        for hash in hashs {
+                                        for hash in hashes {
                                             let file_path = match file_paths.iter()
                                                 .find(|file| file.hash == hash)
                                                 .map(|file| file.file_path.clone()) {

@@ -63,7 +63,6 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
       try {
         await regenerateTask({
           assetObjectId: param.id,
-          preserveArtifacts: false,
         })
         await taskListRefetch()
         toast.success('Successfully re-process job', {
@@ -136,8 +135,10 @@ export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
       },
     ]
 
-    if (videos
-        .map((v) => v.tasks).flat()
+    if (
+      videos
+        .map((v) => v.tasks)
+        .flat()
         .some((task) => [TaskStatus.None, TaskStatus.Processing].includes(getTaskStatus(task)))
     ) {
       /**

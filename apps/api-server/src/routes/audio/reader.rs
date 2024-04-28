@@ -1,3 +1,4 @@
+use ai::AudioTranscriptOutput;
 use csv::WriterBuilder;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize, Serializer};
@@ -85,7 +86,17 @@ impl AudioReader {
     fn parse(path: PathBuf) -> anyhow::Result<Vec<AudioData>> {
         debug!("audio parse path {}", path.display());
         let content = std::fs::read_to_string(path)?;
-        Ok(serde_json::from_str(&content)?)
+        let raw_content = serde_json::from_str::<AudioTranscriptOutput>(&content)?;
+
+        Ok(raw_content
+            .transcriptions
+            .iter()
+            .map(|v| AudioData {
+                start_timestamp: v.start_timestamp as u32,
+                end_timestamp: v.end_timestamp as u32,
+                text: v.text.clone(),
+            })
+            .collect())
     }
 
     pub fn read_to_srt(&self) -> anyhow::Result<String> {

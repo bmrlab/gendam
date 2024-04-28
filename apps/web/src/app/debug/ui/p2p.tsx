@@ -2,7 +2,7 @@
 
 import { useP2PEvents } from '@/hooks/useP2PEvents'
 import { rspc } from '@/lib/rspc'
-import { Button } from '@muse/ui/v2/button'
+import { Button } from '@gendam/ui/v2/button'
 
 export const P2P = () => {
   const { data, refetch } = rspc.useQuery(['p2p.state'])

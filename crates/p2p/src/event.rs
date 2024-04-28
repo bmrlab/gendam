@@ -15,6 +15,7 @@ pub enum Event {
     ShareProgress {
         id: Uuid,
         percent: u8,
+        files: Vec<String>
     },
     ShareTimedOut {
         id: Uuid,

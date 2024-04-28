@@ -14,7 +14,7 @@ pub struct Transcription {
 
 pub type AudioTranscriptInput = PathBuf;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct AudioTranscriptOutput {
     pub language: TranscriptionLanguage,
     pub transcriptions: Vec<Transcription>,

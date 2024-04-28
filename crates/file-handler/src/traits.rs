@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
 use strum_macros::AsRefStr;
 
 #[derive(AsRefStr, Clone, Copy, strum_macros::Display, Debug)]
@@ -12,22 +11,21 @@ pub enum TaskPriority {
     #[strum(serialize = "10")]
     High,
 }
-
-pub trait FileHandlerTaskType: Copy + Display + Send + Sync {
-    fn try_from_any_task_type(task_type: impl FileHandlerTaskType) -> anyhow::Result<Self>;
-    fn priority(&self) -> TaskPriority;
-}
-
 pub trait FileMetadata: Clone + Serialize + for<'a> Deserialize<'a> {}
 
 #[async_trait]
 pub trait FileHandler: Send + Sync {
-    async fn run_task(&self, task_type: &str) -> anyhow::Result<()>;
-    async fn delete_task_artifacts(&self, task_type: &str) -> anyhow::Result<()>;
-    async fn update_database(&self) -> anyhow::Result<()>;
+    async fn run_task(
+        &self,
+        task_type: &str,
+        with_existing_artifacts: Option<bool>,
+    ) -> anyhow::Result<()>;
+    async fn delete_artifacts_in_db(&self) -> anyhow::Result<()>;
+    async fn delete_artifacts(&self) -> anyhow::Result<()>;
+    async fn delete_artifacts_in_db_by_task(&self, task_type: &str) -> anyhow::Result<()>;
+    async fn delete_artifacts_by_task(&self, task_type: &str) -> anyhow::Result<()>;
 
     fn get_supported_task_types(&self) -> Vec<(String, TaskPriority)>;
-    // fn metadata(&self) -> anyhow::Result<impl FileMetadata>;
 }
 
 impl From<TaskPriority> for usize {

@@ -53,9 +53,9 @@ struct ClipRetrievalInfo {
 /// - 根据输入分别生成 CLIP 文本特征和 text-embedding
 /// - 数据召回（对于embedding类型，各召回最多`RETRIEVAL_COUNT` 个结果）
 ///   （frame_score_mapping 是视频帧和得分之间的对应关系 -> HashMap<VIDEO_ID-FRAME_ID, f32>）
-///     - 根据 CLIP 文本特征进行图像召回 (以 0.2 为过滤阈值)，得到 frame_score_mapping_1，得分为 cosine similarity + 0.4 (加分数量有待测试)
+///     - 根据 CLIP 文本特征进行图像召回 (以 0.2 为过滤阈值)，得到 frame_score_mapping_1，得分为 cosine similarity + 0.5 (加分数量有待测试)
 ///     - 根据 text-embedding 进行 caption 和 transcript 召回 (以 0.8 为过滤阈值)，得到 frame_score_mapping_2，得分为 cosine similarity
-///     - 根据文本匹配进行 transcript 召回，得到 frame_score_mapping_3，得分为 0.5 + 0.5 * (query.length / content.length)
+///     - (Deprecated) 根据文本匹配进行 transcript 召回，得到 frame_score_mapping_3，得分为 0.5 + 0.5 * (query.length / content.length)
 /// - 根据上述 frame_score_mapping 首先进行片段切分，得到 clip_frames_score_mapping
 ///   （clip_frames_score_mapping 是视频片段、视频帧和得分之间的对应关系 -> HaspMap<CLIP_ID, Vec<f32>> ）
 /// - 对 clip_frames_score_mapping 中的每个片段计算加权得分，得分规则如下：
@@ -64,7 +64,6 @@ struct ClipRetrievalInfo {
 ///     - （亟待进一步优化）POOL 取 log_5^(min(5, 召回数量))，lambda 取 0.15
 pub async fn handle_search(
     payload: SearchRequest,
-    client: Arc<PrismaClient>,
     qdrant: Arc<QdrantClient>,
     vision_collection_name: &str,
     language_collection_name: &str,
@@ -159,25 +158,25 @@ pub async fn handle_search(
         });
 
         // 对于 transcript 再进行精准匹配
-        if record_type == SearchRecordType::Transcript {
-            let results = client
-                .video_transcript()
-                .find_many(vec![video_transcript::text::contains(payload.text.clone())])
-                .take(RETRIEVAL_COUNT as i64)
-                .exec()
-                .await?;
+        // if record_type == SearchRecordType::Transcript {
+        //     let results = client
+        //         .video_transcript()
+        //         .find_many(vec![video_transcript::text::contains(payload.text.clone())])
+        //         .take(RETRIEVAL_COUNT as i64)
+        //         .exec()
+        //         .await?;
 
-            results.iter().for_each(|v| {
-                let target_file_frames = retrieval_results
-                    .entry(v.file_identifier.clone())
-                    .or_insert(vec![]);
+        //     results.iter().for_each(|v| {
+        //         let target_file_frames = retrieval_results
+        //             .entry(v.file_identifier.clone())
+        //             .or_insert(vec![]);
 
-                let score = (v.text.len() as f32) / (payload.text.len() as f32) * 0.5 + 0.5;
-                for timestamp in v.start_timestamp..=v.end_timestamp {
-                    target_file_frames.push((timestamp as i64, score));
-                }
-            });
-        }
+        //         let score = (v.text.len() as f32) / (payload.text.len() as f32) * 0.5 + 0.5;
+        //         for timestamp in v.start_timestamp..=v.end_timestamp {
+        //             target_file_frames.push((timestamp as i64, score));
+        //         }
+        //     });
+        // }
     }
 
     // 对于每个视频，对帧进行排序，再切割为片段

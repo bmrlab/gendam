@@ -19,6 +19,7 @@ use tracing::{error, info, warn};
 pub struct Task {
     pub handler: Arc<Box<dyn FileHandler>>,
     pub task_type: String,
+    pub with_existing_artifacts: Option<bool>,
     pub asset_object_id: i32,
     pub prisma_client: Arc<PrismaClient>,
 }
@@ -27,7 +28,11 @@ impl Task {
     async fn run(&self) -> anyhow::Result<()> {
         self.save_starts_at().await;
 
-        match self.handler.run_task(&self.task_type).await {
+        match self
+            .handler
+            .run_task(&self.task_type, self.with_existing_artifacts)
+            .await
+        {
             Ok(()) => {
                 self.save_ends_at(None).await;
             }
