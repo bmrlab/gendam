@@ -401,6 +401,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                     )
                 })?;
             tracing::info!(task = "init library", "Success");
+            library.register_table_as_crr(vec!["FilePath", "AssetObject", "MediaData"]);
             library
         };
 

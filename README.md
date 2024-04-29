@@ -102,3 +102,9 @@ generator client {
     - utils - 相关的工具函数
 - audio - 音频转文本（whisper.cpp）
 - search_payload - 向量数据库对应的 payload 定义
+
+
+### Update subtree quaint
+```bash
+git subtree pull --prefix=crates/quaint quaint main --squash
+```

@@ -68,6 +68,16 @@ impl Library {
 
         files_dir_with_shard.join(file_hash)
     }
+
+    pub fn register_table_as_crr(&self, tables: Vec<&str>) {
+        let raw_sql = tables
+            .iter()
+            .map(|table| format!("SELECT crsql_as_crr('{}');", table))
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        self.prisma_client()._query_raw::<()>(raw!(&raw_sql));
+    }
 }
 
 pub async fn load_library(
