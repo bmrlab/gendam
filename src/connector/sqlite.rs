@@ -135,6 +135,22 @@ impl TryFrom<&str> for Sqlite {
 
         let conn = rusqlite::Connection::open(file_path.as_str())?;
 
+        tracing::debug!("Loading extension");
+
+        unsafe {
+            conn.load_extension_enable()?;
+            match conn.load_extension("crsqlite", Some("sqlite3_crsqlite_init")) {
+                Ok(()) => {
+                    tracing::debug!("Loaded crsqlite extension successfully");
+                }
+                Err(e) => {
+                    tracing::error!("Failed to load extension: {e:?}");
+                }
+            }
+        }
+
+        tracing::debug!("Connected to SQLite database at '{}'", file_path);
+
         if let Some(timeout) = params.socket_timeout {
             conn.busy_timeout(timeout)?;
         };
