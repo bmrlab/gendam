@@ -57,3 +57,6 @@ opt-level = 3
 [profile.dev.package."*"]
 opt-level = 3
 incremental = false
+
+[patch."https://github.com/Brendonovich/quaint"]
+quaint = { path = "./crates/quaint" }
