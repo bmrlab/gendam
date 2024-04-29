@@ -13,3 +13,7 @@ node_modules
 .idea
 .vscode
 .history
+
+*.dylib
+*.so
+*.dll
