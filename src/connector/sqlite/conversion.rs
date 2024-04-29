@@ -132,9 +132,10 @@ impl TypeIdentifier for Column<'_> {
 
 impl<'a> GetRow for SqliteRow<'a> {
     fn get_result_row<'b>(&'b self) -> crate::Result<Vec<Value<'static>>> {
-        let mut row = Vec::with_capacity(self.columns().len());
+        let statement = self.as_ref();
+        let mut row = Vec::with_capacity(statement.columns().len());
 
-        for (i, column) in self.columns().iter().enumerate() {
+        for (i, column) in statement.columns().iter().enumerate() {
             let pv = match self.get_ref_unwrap(i) {
                 ValueRef::Null => match column {
                     // NOTE: A value without decl_type would be Int32(None)
@@ -241,8 +242,8 @@ impl<'a> GetRow for SqliteRow<'a> {
 
 impl<'a> ToColumnNames for SqliteRows<'a> {
     fn to_column_names(&self) -> Vec<String> {
-        match self.column_names() {
-            Some(columns) => columns.into_iter().map(|c| c.into()).collect(),
+        match self.as_ref() {
+            Some(statement) => statement.column_names().into_iter().map(|c| c.into()).collect(),
             None => vec![],
         }
     }
@@ -289,7 +290,7 @@ impl<'a> ToSql for Value<'a> {
             #[cfg(feature = "chrono")]
             Value::Date(date) => date
                 .and_then(|date| date.and_hms_opt(0, 0, 0))
-                .map(|dt| ToSqlOutput::from(dt.timestamp_millis())),
+                .map(|dt| ToSqlOutput::from(dt.and_utc().timestamp_millis())),
             #[cfg(feature = "chrono")]
             Value::Time(time) => time
                 .and_then(|time| chrono::NaiveDate::from_ymd_opt(1970, 1, 1).map(|d| (d, time)))
@@ -297,7 +298,7 @@ impl<'a> ToSql for Value<'a> {
                     use chrono::Timelike;
                     date.and_hms_opt(time.hour(), time.minute(), time.second())
                 })
-                .map(|dt| ToSqlOutput::from(dt.timestamp_millis())),
+                .map(|dt| ToSqlOutput::from(dt.and_utc().timestamp_millis())),
         };
 
         match value {
