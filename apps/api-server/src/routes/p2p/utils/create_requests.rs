@@ -95,7 +95,6 @@ pub async fn create_requests(
                 path: materialized_path,
                 size,
                 range: Range::Full,
-                artifact_size,
             },
         ))
     }))

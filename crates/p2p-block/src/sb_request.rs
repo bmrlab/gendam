@@ -152,9 +152,6 @@ pub struct SpaceblockRequest {
     pub size: u64,
     // TODO: Include file permissions
     pub range: Range,
-    // artifact zip的大小
-    pub artifact_size: u64,
-    // DB
 }
 
 #[derive(Debug, Error)]
@@ -167,8 +164,6 @@ pub enum SpaceblockRequestError {
     Path(decode::Error),
     #[error("SpaceblockRequestError::Size({0})")]
     Size(std::io::Error),
-    #[error("SpaceblockRequestError::ArtifactSize({0})")]
-    ArtifactSize(std::io::Error),
     // TODO: From outside. Probs remove?
     #[error("SpaceblockRequestError::RangeError({0:?})")]
     RangeError(io::Error),
@@ -210,22 +205,12 @@ impl SpaceblockRequest {
 
         tracing::info!("SpaceblockRequest::from_stream range: {:?}", range);
 
-        let artifact_size = read_u64_le(stream)
-            .await
-            .map_err(SpaceblockRequestError::ArtifactSize)?;
-
-        tracing::info!(
-            "SpaceblockRequest::from_stream artifact_size: {:?}",
-            artifact_size
-        );
-
         Ok(Self {
             name,
             hash,
             path,
             size,
             range,
-            artifact_size,
         })
     }
 
@@ -237,7 +222,6 @@ impl SpaceblockRequest {
             path,
             size,
             range,
-            artifact_size,
         } = self;
         let mut buf = Vec::new();
 
@@ -246,7 +230,6 @@ impl SpaceblockRequest {
         encode::string(&mut buf, path);
         buf.extend_from_slice(&self.size.to_le_bytes());
         buf.extend_from_slice(&self.range.to_bytes());
-        buf.extend_from_slice(&self.artifact_size.to_le_bytes());
         buf
     }
 }

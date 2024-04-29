@@ -102,7 +102,7 @@ where
                 // 总共要发送的大小
                 let total_length: u64 = requests
                     .iter()
-                    .map(|req| req.size + req.artifact_size)
+                    .map(|req| req.size)
                     .sum();
 
                 tracing::debug!("total_length: {:#?}", total_length);
@@ -242,7 +242,7 @@ where
 
                         // 先发送文件
                         if let Err(err) = transfer
-                            .send(&mut stream, file, artifact_zip_file_buf)
+                            .send(&mut stream, file)
                             .await
                         {
                             tracing::error!("({id}): failed to send file: {err}");

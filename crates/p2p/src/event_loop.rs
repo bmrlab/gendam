@@ -568,7 +568,7 @@ impl EventLoop {
 
                                             tracing::info!("({id}): f: '{:?}', artifact_f: '{:?}' ", f, artifact_f);
 
-                                            if let Err(err) = transfer.receive(&mut stream, f, artifact_f).await {
+                                            if let Err(err) = transfer.receive(&mut stream, f).await {
                                                 tracing::error!("({id}): error receiving file '{hash}': '{err:?}'");
 
                                                 // TODO: Send error to frontend
