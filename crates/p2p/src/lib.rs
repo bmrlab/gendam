@@ -9,7 +9,6 @@ mod node;
 mod peer;
 mod server;
 mod swarm;
-mod utils;
 
 pub use behaviour::Behaviour;
 pub use error::P2PError;

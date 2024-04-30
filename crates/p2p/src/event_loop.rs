@@ -1,9 +1,10 @@
-use std::collections::HashSet;
-use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
-use std::sync::PoisonError;
-use std::{collections::HashMap, io, sync::Arc};
-
+use crate::{
+    behaviour::BehaviourEvent,
+    constant::BLOCK_PROTOCOL,
+    error::P2PError,
+    peer::{Latency, Peer, PeerConnectionCandidate},
+    Behaviour, Event, Node,
+};
 use libp2p::futures::AsyncWriteExt;
 use libp2p::multiaddr::Protocol;
 use libp2p::swarm::dial_opts::DialOpts;
@@ -12,39 +13,33 @@ use libp2p::{
     futures::StreamExt, kad, mdns, ping, swarm::SwarmEvent, Multiaddr, PeerId, Stream, Swarm,
 };
 use p2p_block::message::Message;
-use p2p_block::Transfer;
-use tokio::fs::{create_dir_all, File};
+use p2p_block::{StreamData, Transfer};
+use std::collections::HashSet;
+use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
+use std::sync::PoisonError;
+use std::{collections::HashMap, io, sync::Arc};
+use tokio::fs::File;
 use tokio::io::BufWriter;
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::{mpsc, oneshot};
-
-use crate::event::ShareRequestFile;
-use crate::utils::{get_root_path, unzip_artifact};
-use crate::{
-    behaviour::BehaviourEvent,
-    constant::BLOCK_PROTOCOL,
-    error::P2PError,
-    peer::{Latency, Peer, PeerConnectionCandidate},
-    Behaviour, Event, Node,
-};
 
 #[derive(Debug, Clone)]
 pub struct FilePath {
     pub hash: String,
     pub file_path: String,
-    pub artifact_path: String,
 }
 
-pub struct EventLoop {
-    node: Arc<Node>,
+pub struct EventLoop<T: StreamData + core::fmt::Debug> {
+    node: Arc<Node<T>>,
     swarm: Swarm<Behaviour>,
     relay_rx: Receiver<Multiaddr>,
     // list of need reconnect
     reconnect_list: Arc<tokio::sync::RwLock<HashSet<PeerId>>>,
 }
 
-impl EventLoop {
-    pub fn new(node: Arc<Node>, swarm: Swarm<Behaviour>, relay_rx: Receiver<Multiaddr>) -> Self {
+impl<T: StreamData + core::fmt::Debug + 'static> EventLoop<T> {
+    pub fn new(node: Arc<Node<T>>, swarm: Swarm<Behaviour>, relay_rx: Receiver<Multiaddr>) -> Self {
         let reconnect_list: Arc<tokio::sync::RwLock<HashSet<PeerId>>> =
             Arc::new(tokio::sync::RwLock::new(HashSet::new()));
         Self {
@@ -377,46 +372,40 @@ impl EventLoop {
     }
 
     async fn handle_message(&mut self, mut stream: Stream, peer: PeerId) {
-        let message_res = Message::from_stream(&mut stream).await;
+        let message_res: Result<Message<T>, io::Error> = Message::from_stream(&mut stream).await;
         match message_res {
             Ok(message) => {
                 match message {
                     Message::Share(share) => {
                         tracing::info!("Received share request: {:?}", share);
-                        // receiver(share, stream, peer).await.unwrap();
                         // todo move to receiver
                         let id = share.id;
-                        let (tx, rx) = oneshot::channel::<Option<Vec<FilePath>>>();
+                        let (tx, rx) = oneshot::channel::<Option<Vec<PathBuf>>>();
                         tracing::info!(
-                            "({id}): received '{}' files from peer '{}' with block size '{:?}'",
-                            share.requests.len(),
+                            "({id}): received file from peer '{}' with block size '{:?}' with info '{:?}'",
                             peer,
-                            share.block_size
+                            share.block_size,
+                            share
                         );
-
-                        let root_path = get_root_path(&share.requests);
-                        tracing::debug!("root_path: {:#?}", root_path);
 
                         // 保存配对请求
                         self.node
-                            .spacedrop_pairing_reqs
+                            .share_pairing_reqs
                             .lock()
                             .unwrap_or_else(PoisonError::into_inner)
                             .insert(id, tx);
+                        self.node
+                            .share_payloads
+                            .lock()
+                            .unwrap_or_else(PoisonError::into_inner)
+                            .insert(id, share.clone());
 
                         let event = Event::ShareRequest {
                             id,
                             peer_id: peer,
                             peer_name: self.node.hostname(),
-                            files: share
-                                .requests
-                                .iter()
-                                .map(|req| ShareRequestFile {
-                                    name: req.name.clone(),
-                                    hash: req.hash.clone(),
-                                    path: req.path.clone(),
-                                })
-                                .collect::<Vec<_>>(),
+                            file_list: share.file_list.clone(),
+                            share_info: share.info.clone(),
                         };
 
                         tracing::info!("({id}): sending share request event : {:?}", event);
@@ -428,15 +417,19 @@ impl EventLoop {
 
                         // 接收请求
                         tokio::select! {
-                            file_paths = rx => {
-                                match file_paths {
-                                    Ok(Some(file_paths)) => {
+                            file_path_list = rx => {
+                                match file_path_list {
+                                    Ok(Some(file_path_list)) => {
+                                        if file_path_list.len() != share.file_list.len() {
+                                            tracing::error!("({id}): do not provider enough path to receive data");
+                                            return;
+                                        }
 
-                                        tracing::info!("({id}): accepted share request, {file_paths:?}");
+                                        tracing::info!("({id}): accepted share request, {file_path_list:?}");
 
                                         let cancelled = Arc::new(AtomicBool::new(false));
 
-                                        self.node.spacedrop_cancellations
+                                        self.node.share_cancellations
                                             .lock()
                                             .unwrap_or_else(PoisonError::into_inner)
                                             .insert(id, cancelled.clone());
@@ -449,135 +442,33 @@ impl EventLoop {
                                             // TODO: make sure the other peer times out or we retry???
                                         }).unwrap();
 
-
-                                        let hashes: Vec<String> = share.requests.iter().map(|req| req.hash.clone()).collect::<Vec<_>>();
-
-                                        tracing::info!("({id}): sending '{hashes:?}'");
-
-                                        let hashes_clone = hashes.clone();
-
                                         // 百分比
                                         let mut transfer = Transfer::new(&share, |percent| {
                                             self.node.events.send(Event::ShareProgress {
                                                 id,
                                                 percent,
-                                                files: hashes_clone.clone()
+                                                // files: hashes_clone.clone()
+                                                // file_path: file_path.to_string_lossy().to_string()
+                                                share_info: share.info.clone()
                                             }).ok();
                                         }, &cancelled);
 
-                                        for hash in hashes {
-                                            let file_path = match file_paths.iter()
-                                                .find(|file| file.hash == hash)
-                                                .map(|file| file.file_path.clone()) {
-                                                    Some(file_path) => file_path,
-                                                    None => return
-                                                };
-
-
-                                            let artifact_path = match file_paths.iter()
-                                                .find(|file| file.hash == hash)
-                                                .map(|file| file.artifact_path.clone()) {
-                                                    Some(artifact_path) => artifact_path,
-                                                    None => return
-                                                };
-
-
-
-
-                                            let file_path = PathBuf::from(file_path);
-                                            let artifact_path = PathBuf::from(artifact_path.clone());
-                                            // When transferring more than 1 file we wanna join the incoming file name to the directory provided by the user
-                                            // let mut path = file_path.clone();
-                                            let path = file_path.clone();
-                                            let artifact_path = artifact_path.clone();
-
-                                            // todo 之后再考虑文件夹问题
-                                            // if names_len != 1 {
-                                            //     // We know the `file_path` will be a directory so we can just push the file name to it
-                                            //     path.push(&file_name);
-                                            // }
-
-                                            tracing::debug!("({id}): accepting '{hash}' and saving to '{:?}'", path);
-
-                                            if let Some(parent) = path.parent() {
-                                                #[cfg(unix)]
-                                                {
-                                                    // 设置目录权限 todo macos windows
-                                                    use std::fs;
-                                                    use std::os::unix::fs::PermissionsExt;
-
-                                                    let grand_parent = parent.parent().unwrap();
-
-                                                    tracing::info!("({id}): file parent: '{:?}'", parent);
-
-                                                    fs::set_permissions(&grand_parent, fs::Permissions::from_mode(0o777)).expect("set file permission error");
+                                        // 前面已经判断过路径数量保持一致了
+                                        for i in 0..share.file_list.len() {
+                                            let target_file_path = file_path_list[i].clone();
+                                            match File::create(&target_file_path).await {
+                                                Ok(f) => {
+                                                    tracing::info!("({id}): create file at '{target_file_path:?}'");
+                                                    let f: BufWriter<File> = BufWriter::new(f);
+                                                    if let Err(err) = transfer.receive(&mut stream, f).await {
+                                                        tracing::error!("({id}): error receiving file: '{err:?}'");
+                                                        // TODO: Send error to frontend
+                                                    }
                                                 }
-
-                                                create_dir_all(&parent).await.map_err(|err| {
-                                                    tracing::error!("({id}): error creating parent directory '{parent:?}': '{err:?}'");
-
-                                                    // TODO: Send error to the frontend
-
-                                                    // TODO: Send error to remote peer
-                                                }).unwrap();
-                                            }
-
-                                            // 创建artifact_path的文件夹
-                                            if let Some(parent) = artifact_path.parent() {
-                                                #[cfg(unix)]
-                                                {
-                                                    // 设置目录权限 todo macos windows
-                                                    use std::fs;
-                                                    use std::os::unix::fs::PermissionsExt;
-
-                                                    let grand_parent = parent.parent().unwrap();
-
-                                                    tracing::info!("({id}): artifact parent: '{:?}'", parent);
-
-                                                    fs::set_permissions(&grand_parent, fs::Permissions::from_mode(0o777)).expect("set file permission error");
+                                                Err(err) => {
+                                                    tracing::error!("({id}): error creating file at '{target_file_path:?}': '{err:?}'");
                                                 }
-
-                                                create_dir_all(&parent).await.map_err(|err| {
-                                                    tracing::error!("({id}): error creating parent directory '{parent:?}': '{err:?}'");
-
-                                                    // TODO: Send error to the frontend
-
-                                                    // TODO: Send error to remote peer
-                                                }).unwrap();
                                             }
-
-
-                                            let f: File = File::create(&path).await.map_err(|err| {
-                                                tracing::error!("({id}): error creating file at '{path:?}': '{err:?}'");
-
-                                                // TODO: Send error to the frontend
-
-                                                // TODO: Send error to remote peer
-                                            }).unwrap();
-
-                                            // 在artifact_path创建zip文件
-                                            let artifact_f = File::create(&artifact_path).await.map_err(|err| {
-                                                tracing::error!("({id}): error creating artifact file at '{artifact_path:?}': '{err:?}'");
-                                                // TODO: Send error to the frontend
-                                                // TODO: Send error to remote peer
-                                            }).unwrap();
-
-                                            let f: BufWriter<File> = BufWriter::new(f);
-
-                                            let artifact_f: BufWriter<File> = BufWriter::new(artifact_f);
-
-                                            tracing::info!("({id}): f: '{:?}', artifact_f: '{:?}' ", f, artifact_f);
-
-                                            if let Err(err) = transfer.receive(&mut stream, f).await {
-                                                tracing::error!("({id}): error receiving file '{hash}': '{err:?}'");
-
-                                                // TODO: Send error to frontend
-
-                                                break;
-                                            }
-
-                                            // 解压 artifact_path 然后再删除zip文件
-                                            unzip_artifact(artifact_path.clone()).await.unwrap();
                                         }
 
                                         tracing::info!("({id}): complete");

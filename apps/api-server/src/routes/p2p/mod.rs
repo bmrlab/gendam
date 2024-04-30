@@ -1,24 +1,12 @@
-mod generated;
-mod utils;
+mod find_all;
+pub mod info;
 
-use crate::routes::p2p::utils::create_requests::create_requests;
-use crate::routes::p2p::utils::find_all_path::find_all_path;
+use crate::routes::p2p::info::ShareInfo;
 use crate::CtxWithLibrary;
-use futures::{AsyncReadExt, AsyncWriteExt};
-use p2p::{str_to_peer_id, FilePath};
-use p2p_block::Transfer;
-use p2p_block::{message::Message, BlockSize, SpaceblockRequests};
 use rspc::{Router, RouterBuilder};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use specta::Type;
-use std::path::Path;
-use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, PoisonError};
-use std::time::Duration;
-use tokio::fs::File;
-use tokio::io::BufReader;
-use tokio::time::{sleep, Instant};
 use uuid::Uuid;
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
@@ -59,286 +47,107 @@ where
 
                 let file_id_list = input.file_id_list.clone();
 
-                // 临时文件夹
-                let temp_dir = ctx.get_temp_dir();
+                let file_hashes = find_all::find_all_asset_object_hashes(
+                    file_id_list,
+                    library.clone().prisma_client(),
+                )
+                .await?;
 
-                let file_paths =
-                    find_all_path(file_id_list, library.clone().prisma_client()).await?;
+                let temp_bundle_path = ctx.get_temp_dir().join(Uuid::new_v4().to_string());
+                tracing::debug!("temp_bundle_path: {temp_bundle_path:?}");
 
-                tracing::info!("file_paths: {:#?}", file_paths);
-
-                let files: Vec<(
-                    String,
-                    String,
-                    std::path::PathBuf,
-                    std::path::PathBuf,
-                    String,
-                    String,
-                )> = file_paths
-                    .iter()
-                    .map(|file_path| {
-                        let name = file_path.name.clone();
-                        let hash = file_path.hash.clone();
-                        let path = file_path.path.clone();
-                        let files_dir = library.file_path(&hash);
-                        let artifacts_dir = library.artifacts_dir(&hash);
-                        let artifacts_dir_zip_path = format!("{}/{}.zip", temp_dir.display(), hash);
-                        (
-                            name,
-                            hash,
-                            files_dir,
-                            artifacts_dir,
-                            artifacts_dir_zip_path,
-                            path,
+                library
+                    .generate_bundle(&file_hashes, &temp_bundle_path)
+                    .map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("generate_bundle error: {e:?}"),
                         )
-                    })
-                    .into_iter()
-                    .collect::<Vec<_>>();
+                    })?;
 
-                tracing::debug!("files: {:#?}", files);
-
-                let (files, requests): (Vec<_>, Vec<_>) = create_requests(files).await?;
-
-                // 总共要发送的大小
-                let total_length: u64 = requests
-                    .iter()
-                    .map(|req| req.size)
-                    .sum();
-
-                tracing::debug!("total_length: {:#?}", total_length);
-
-                // 这次任务id
-                let id = Uuid::new_v4();
-
-                let peer_id = match str_to_peer_id(input.peer_id) {
-                    Ok(peer_id) => peer_id,
-                    Err(error) => {
-                        return Err(rspc::Error::new(
-                            rspc::ErrorCode::BadRequest,
-                            format!("str_to_peer_id error: {error:?}"),
-                        ))
-                    }
+                let share_info = ShareInfo {
+                    file_count: file_hashes.len(),
                 };
 
                 let node = ctx.node()?;
 
-                let peer = match node.get_peers().get(&peer_id) {
-                    Some(peer) => peer.clone(),
-                    None => {
-                        return Err(rspc::Error::new(
-                            rspc::ErrorCode::BadRequest,
-                            "peer no found".to_string(),
-                        ))
-                    }
-                };
-
-                tracing::debug!("starting file share with {peer:#?}");
-
-                tracing::debug!("({id}): starting Spacedrop with peer '{peer_id}, {total_length}");
-
-                // 开启stream
-                let mut stream = match node.open_stream(peer_id).await {
-                    Ok(stream) => stream,
-                    Err(error) => {
-                        return Err(rspc::Error::new(
-                            rspc::ErrorCode::InternalServerError,
-                            format!("open stream error: {error:?}"),
-                        ))
-                    }
-                };
-
-                tracing::debug!("open stream: {:#?}", stream);
-
-                // 提交线程池
-                tokio::spawn(async move {
-                    tracing::debug!("({id}): connected, sending message");
-                    let message = Message::Share(SpaceblockRequests {
-                        id,
-                        block_size: BlockSize::from_size(total_length),
-                        requests,
-                    });
-
-                    tracing::info!("sending message: {:#?}", message);
-
-                    let buf = &message.to_bytes();
-
-                    // tracing::info!("message {buf:#?}, len :{:#?}", buf.len());
-
-                    // 写入stream
-                    if let Err(err) = stream.write_all(buf).await {
-                        tracing::error!("({id}): failed to send header: {err}");
-                        return;
-                    }
-
-                    let Message::Share(requests) = message;
-
-                    tracing::debug!("({id}): waiting for response");
-
-                    let mut buf = [0u8; 1];
-                    // 结果
-                    let _ = tokio::select! {
-                        result = stream.read_exact(&mut buf) => result,
-                        _ = sleep(Duration::from_secs(60) + Duration::from_secs(5)) => {
-                            // 65秒超时
-                            tracing::debug!("({id}): timed out, cancelling");
-                            // todo websocket 发给前端 超时了
-                            return;
+                match node
+                    .start_share(
+                        &input.peer_id,
+                        vec![temp_bundle_path.clone()],
+                        share_info,
+                        move || async move {
+                            if let Err(e) = tokio::fs::remove_file(&temp_bundle_path).await {
+                                tracing::error!("failed to remove temp file: {e}");
+                            }
                         },
-                    }
-                    .expect("read_exact fail");
-
-                    tracing::info!("({id}): received response: {buf:?}");
-
-                    match buf[0] {
-                        0 => {
-                            tracing::debug!("({id}): Spacedrop was rejected from peer '{peer_id}'");
-                            // todo websocket 发给前端 被拒绝了
-                            node.events.send(p2p::Event::ShareRejected { id }).ok();
-                            return;
-                        }
-                        1 => {}       // Okay
-                        _ => todo!(), // TODO: Proper error
-                    }
-
-                    let cancelled = Arc::new(AtomicBool::new(false));
-                    node.spacedrop_cancellations
-                        .lock()
-                        .unwrap_or_else(PoisonError::into_inner)
-                        .insert(id, cancelled.clone());
-
-                    tracing::info!("({id}): starting transfer");
-
-                    // 记录开始时间
-                    let i = Instant::now();
-
-                    let mut transfer = Transfer::new(
-                        &requests,
-                        |percent| {
-                            node.events
-                                .send(p2p::Event::ShareProgress {
-                                    id,
-                                    percent,
-                                    files: file_paths.iter().map(|v| v.hash.to_owned()).collect(),
-                                })
-                                .ok();
-                            tracing::info!("({id}): progress: {percent}%");
-                        },
-                        &cancelled,
-                    );
-
-                    for (file_id, (path, file, artifact_zip_path)) in files.into_iter().enumerate()
-                    {
-                        tracing::debug!("({id}): transmitting '{file_id}' from '{path:?}'");
-
-                        let file = BufReader::new(file);
-
-                        let artifact_zip_file = File::open(Path::new(&artifact_zip_path))
-                            .await
-                            .expect("没有找到压缩文件");
-
-                        let artifact_zip_file_buf = BufReader::new(artifact_zip_file);
-
-                        tracing::debug!("artifact_zip_file_buf {:#?}", artifact_zip_file_buf);
-
-                        // 先发送文件
-                        if let Err(err) = transfer
-                            .send(&mut stream, file)
-                            .await
-                        {
-                            tracing::error!("({id}): failed to send file: {err}");
-                            // TODO: Error to frontend
-                            // p2p.events
-                            // 	.send(P2PEvent::SpacedropFailed { id, file_id })
-                            // 	.ok();
-                            // todo!("向前端websocket发送错误");
-                            return;
-                        }
-
-                        // 删除压缩文件
-                        tokio::fs::remove_file(artifact_zip_path)
-                            .await
-                            .expect("删除压缩文件失败");
-                    }
-
-                    // 传输完成
-                    tracing::debug!("({id}): finished; took '{:?}", i.elapsed());
-
-                    // 下个任务是发送 crdt的 同步信息
-                    // todo!("发送crdt的同步信息");
-                });
-
-                Ok(json!({"id": id}))
+                    )
+                    .await
+                {
+                    Ok(id) => Ok(json!({"id": id})),
+                    Err(e) => Err(rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("start_share error: {e:?}"),
+                    )),
+                }
             })
         })
-        .mutation("acceptFileShare", |t| {
-            t(
-                |ctx, (id, hashes): (Uuid, Option<Vec<String>>)| async move {
-                    // todo 这个path 应该是数据库的地址， 真实保存的地址是根据hash来的
-                    let node = ctx.node()?;
-                    let library = ctx.library()?;
+        .mutation("accept_file_share", |t| {
+            #[derive(Serialize, Type)]
+            #[serde(rename_all = "camelCase")]
+            struct AcceptShareOutput {
+                pub file_list: Vec<String>,
+            }
+            t(|ctx, id: Uuid| async move {
+                let node = ctx.node()?;
 
-                    match hashes {
-                        Some(hashes) => {
-                            let mut file_paths = Vec::new();
+                match node.get_payload(id) {
+                    Ok(Some(payload)) => {
+                        // 对于每个接收到的文件都创建一个对应的存放路径
+                        let mut accept_file_path_list = vec![];
+                        payload.file_list.iter().for_each(|_| {
+                            accept_file_path_list
+                                .push(ctx.get_temp_dir().join(Uuid::new_v4().to_string()));
+                        });
 
-                            for hash in hashes {
-                                // let local_data_root = local_data_root.display();
-                                // let data_path_string = format!(
-                                //     "{}/libraries/{}/files/{}/{}",
-                                //     local_data_root,
-                                //     library_id,
-                                //     &hash[0..3],
-                                //     hash
-                                // );
-                                let data_path_string =
-                                    library.file_path(&hash).to_string_lossy().to_string();
+                        tracing::debug!("accept_file_path_list: {accept_file_path_list:?}");
 
-                                // let artifact_path_string = format!(
-                                //     "{}/libraries/{}/artifacts/{}/{}.zip",
-                                //     local_data_root,
-                                //     library_id,
-                                //     &hash[0..3],
-                                //     hash
-                                // );
-                                let artifact_path_string = library
-                                    .artifacts_dir(&hash)
-                                    .with_extension("zip")
-                                    .to_string_lossy()
-                                    .to_string();
-
-                                file_paths.push(FilePath {
-                                    hash,
-                                    file_path: data_path_string,
-                                    artifact_path: artifact_path_string,
-                                })
-                            }
-
-                            match node.accept_share(id, file_paths.clone()).await {
-                                Ok(_) => (),
-                                Err(error) => {
-                                    return Err(rspc::Error::new(
-                                        rspc::ErrorCode::InternalServerError,
-                                        format!("accept_share error: {error:?}"),
-                                    ))
-                                }
-                            }
-                        }
-                        None => match node.reject_share(id).await {
+                        match node.accept_share(id, accept_file_path_list.clone()).await {
                             Ok(_) => (),
                             Err(error) => {
                                 return Err(rspc::Error::new(
                                     rspc::ErrorCode::InternalServerError,
-                                    format!("reject_share error: {error:?}"),
+                                    format!("accept_share error: {error:?}"),
                                 ))
                             }
-                        },
-                    };
+                        }
 
-                    Ok(json!({ "status": "ok"}))
-                },
-            )
+                        Ok(AcceptShareOutput {
+                            file_list: accept_file_path_list
+                                .iter()
+                                .map(|v| v.to_string_lossy().to_string())
+                                .collect(),
+                        })
+                    }
+                    _ => Err(rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("accept_share error: payload not found"),
+                    )),
+                }
+            })
         })
-        .mutation("cancelFileShare", |t| {
+        .mutation("reject_file_share", |t| {
+            t(|ctx, id: Uuid| async move {
+                match ctx.node()?.reject_share(id).await {
+                    Ok(_) => Ok(json!({ "status": "ok"})),
+                    Err(error) => Err(rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("reject_share error: {error:?}"),
+                    )),
+                }
+            })
+        })
+        .mutation("cancel_file_share", |t| {
             t(|ctx, id: Uuid| async move {
                 match ctx.node()?.cancel_share(id).await {
                     Ok(_) => Ok(json!({ "status": "ok"})),
@@ -346,6 +155,18 @@ where
                         rspc::ErrorCode::InternalServerError,
                         format!("cancel_share error: {error:?}"),
                     )),
+                }
+            })
+        })
+        .mutation("finish_file_share", |t| {
+            t(|ctx, file_path: String| async move {
+                let library = ctx.library()?;
+                match library.unpack_bundle(&file_path) {
+                    Ok(file_hashes) => Ok(file_hashes),
+                    Err(e) => {
+                        tracing::error!("failed to unpack bundle ({file_path}): {e}");
+                        Ok(vec![])
+                    }
                 }
             })
         })
@@ -363,22 +184,24 @@ where
                                 id,
                                 peer_id,
                                 peer_name,
-                                files,
+                                file_list,
+                                share_info
                             } => {
                                 yield json!({
                                     "type": "ShareRequest",
                                     "id": id,
                                     "peerId": peer_id,
                                     "peerName": peer_name,
-                                    "files": files,
+                                    "shareInfo": share_info,
+                                    "fileList": file_list,
                                 });
                             }
-                            p2p::Event::ShareProgress { id, percent, files } => {
+                            p2p::Event::ShareProgress { id, percent, share_info } => {
                                 yield json!({
                                     "type": "ShareProgress",
                                     "id": id,
                                     "percent": percent,
-                                    "files": files
+                                    "shareInfo": share_info
                                 });
                             }
                             p2p::Event::ShareTimedOut { id } => {

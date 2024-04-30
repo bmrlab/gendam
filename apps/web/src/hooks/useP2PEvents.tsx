@@ -1,3 +1,4 @@
+import { ExplorerItem } from '@/Explorer/types'
 import { rspc } from '@/lib/rspc'
 import { Button } from '@gendam/ui/v2/button'
 import { useCallback, useRef } from 'react'
@@ -5,18 +6,30 @@ import { toast } from 'sonner'
 import { useOpenFileSelection } from './useOpenFileSelection'
 
 type Event =
-  | { type: 'ShareRequest'; id: string; peerId: string; peerName: string; files: { name: string; hash: string }[] }
-  | { type: 'ShareProgress'; id: string; percent: number; files: string[] }
+  | {
+      type: 'ShareRequest'
+      id: string
+      peerId: string
+      peerName: string
+      shareInfo: { fileCount: number }
+      fileList: {
+        size: number
+        path: string
+      }[]
+    }
+  | { type: 'ShareProgress'; id: string; percent: number; shareInfo: { fileCount: number } }
   | { type: 'ShareTimedOut'; id: string }
   | { type: 'ShareRejected'; id: string }
 
 export const useP2PEvents = () => {
-  const { mutateAsync: acceptFileShare } = rspc.useMutation(['p2p.acceptFileShare'])
+  const { mutateAsync: acceptFileShare } = rspc.useMutation(['p2p.accept_file_share'])
+  const { mutateAsync: rejectFileShare } = rspc.useMutation(['p2p.reject_file_share'])
+  const { mutateAsync: finishFileShare } = rspc.useMutation(['p2p.finish_file_share'])
   const { mutateAsync: receiveAsset } = rspc.useMutation(['assets.receive_asset'])
-  const progressRef = useRef(new WeakMap())
 
-  // FIXME temporary test code
-  const receiveHashes = useRef(new Set())
+  const progressRef = useRef(new WeakMap())
+  const receivePathMap = useRef(new Map<string, string[]>())
+  const receiveDirMap = useRef(new Map<string, ExplorerItem | null>())
 
   const { openFileSelection } = useOpenFileSelection()
 
@@ -27,8 +40,8 @@ export const useP2PEvents = () => {
     (data: Event) => {
       if (data.type === 'ShareRequest') {
         // 弹提示窗口
-        const toastId = toast.info(`文件分享`, {
-          description: `来自${data.peerId.slice(0, 5)}的${data.files.length}个文件分享请求`,
+        const toastId = toast.info(`Asset Share`, {
+          description: `${data.peerId.slice(0, 5)} wants to share ${data.shareInfo.fileCount} assets to you`,
           duration: 60000,
           action: (
             <div className="flex items-center space-x-2">
@@ -36,12 +49,11 @@ export const useP2PEvents = () => {
                 size="sm"
                 onClick={() => {
                   openFileSelection().then((path) => {
-                    console.log('path', path)
-                    acceptFileShare([data.id, [...data.files.map((i) => i.hash)]])
-                    // FIXME temporary test code
-                    data.files.forEach((v) => {
-                      receiveHashes.current.add(v.hash)
+                    acceptFileShare(data.id).then((res) => {
+                      receivePathMap.current.set(data.id, res.fileList)
+                      receiveDirMap.current.set(data.id, path)
                     })
+
                     toast.dismiss(toastId)
                   })
                 }}
@@ -52,7 +64,7 @@ export const useP2PEvents = () => {
                 size="sm"
                 variant="destructive"
                 onClick={() => {
-                  acceptFileShare([data.id, null])
+                  rejectFileShare(data.id)
                   toast.dismiss(toastId)
                 }}
               >
@@ -64,21 +76,28 @@ export const useP2PEvents = () => {
       }
 
       if (data.type === 'ShareProgress') {
-        console.log('receiveHashes', receiveHashes.current)
         progressRef.current.set({ id: data.id }, { percent: data.percent, id: data.id, show: true })
         if (data.percent === 100) {
           progressRef.current.set({ id: data.id }, { percent: data.percent, id: data.id, show: false })
           toast.success('File share completed')
-          console.log('receiveHashes', receiveHashes.current)
-          // 触发文件处理任务
-          data.files.forEach((hash) => {
-            console.log('hash', hash)
-            if (receiveHashes.current.has(hash)) {
-              receiveHashes.current.delete(hash)
-              console.log("trigger receive asset")
-              receiveAsset({ hash })
-            }
-          })
+
+          const filePathList = receivePathMap.current.get(data.id)
+          if (filePathList) {
+            filePathList.forEach((filePath) => {
+              finishFileShare(filePath).then((res) => {
+                // 触发文件处理任务
+                const targetDir = receiveDirMap.current.get(data.id)
+                res.forEach((v) => {
+                  receiveAsset({
+                    hash: v,
+                    materializedPath: targetDir ? `${targetDir.materializedPath}${targetDir.name}/` : '/',
+                  })
+                })
+                receivePathMap.current.delete(data.id)
+                receiveDirMap.current.delete(data.id)
+              })
+            })
+          }
         }
       }
 
@@ -87,12 +106,11 @@ export const useP2PEvents = () => {
         toast.error('Share rejected')
       }
     },
-    [acceptFileShare],
+    [acceptFileShare, finishFileShare, openFileSelection, receiveAsset, rejectFileShare],
   )
 
   rspc.useSubscription(['p2p.events'], {
     onData(data: Event) {
-      console.log('useP2PEvents', data)
       handleShareRequest(data)
     },
   })

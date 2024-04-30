@@ -32,8 +32,10 @@ export type Procedures = {
         { key: "libraries.models.set_model", input: SetModelPayload, result: null } | 
         { key: "libraries.unload_library", input: any | null, result: null } | 
         { key: "libraries.update_library_settings", input: LibrarySettings, result: null } | 
-        { key: "p2p.acceptFileShare", input: [string, string[] | null], result: any } | 
-        { key: "p2p.cancelFileShare", input: string, result: any } | 
+        { key: "p2p.accept_file_share", input: string, result: AcceptShareOutput } | 
+        { key: "p2p.cancel_file_share", input: string, result: any } | 
+        { key: "p2p.finish_file_share", input: string, result: string[] } | 
+        { key: "p2p.reject_file_share", input: string, result: any } | 
         { key: "p2p.share", input: SharePayload, result: any } | 
         { key: "users.set", input: Auth, result: Auth } | 
         { key: "video.tasks.cancel", input: TaskCancelRequestPayload, result: null } | 
@@ -51,6 +53,8 @@ export type ModelArtifact = { url: string; checksum: string }
 
 export type Auth = { id: string; name: string }
 
+export type SharePayload = { fileIdList: number[]; peerId: string }
+
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
 export type FilePathDeletePayload = { materializedPath: string; name: string }
@@ -65,9 +69,9 @@ export type AudioResp = { type: AudioType; content: string }
 
 export type TaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
 
-export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
-
 export type FilePathCreatePayload = { materializedPath: string; name: string }
+
+export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
 
 export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageCaption" | "AudioTranscript" | "TextEmbedding"
 
@@ -91,11 +95,9 @@ export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbeddin
 
 export type VideoWithTasksResult = { name: string; materializedPath: string; assetObject: AssetObject; tasks: FileHandlerTask[]; mediaData: MediaData | null }
 
+export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
+
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
-
-export type AssetObjectReceivePayload = { hash: string }
-
-export type SharePayload = { fileIdList: number[]; peerId: string }
 
 export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string }
 
@@ -105,9 +107,9 @@ export type MediaData = { id: number; width: number | null; height: number | nul
 
 export type Result = { category: AIModelCategory; models: AIModelResult[] }
 
-export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
-
 export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
+
+export type AcceptShareOutput = { fileList: string[] }
 
 export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
 
@@ -124,6 +126,8 @@ export type AIModel = { id: string; title: string; description: string; categori
 export type FilePathGetPayload = { materializedPath: string; name: string }
 
 export type AssetObject = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string }
+
+export type AssetObjectReceivePayload = { hash: string; materializedPath: string }
 
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 

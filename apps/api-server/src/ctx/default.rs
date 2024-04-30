@@ -1,10 +1,11 @@
 // Ctx 和 Store 的默认实现，主要给 api_server/main 用，不过目前 CtxWithLibrary 的实现也是可以给 tauri 用的，就先用着
-use super::traits::{CtxStore, CtxWithLibrary, P2pTrait, StoreError};
+use super::traits::{CtxStore, CtxWithAI, CtxWithDownload, CtxWithLibrary, CtxWithP2P, StoreError};
 use crate::{
     ai::{models::get_model_info_by_id, AIHandler},
     download::{DownloadHub, DownloadReporter, DownloadStatus},
-    library::get_library_settings,
     file_handler::{init_task_pool, trigger_unfinished, TaskPayload},
+    library::get_library_settings,
+    routes::ShareInfo,
 };
 use async_trait::async_trait;
 use content_library::{
@@ -83,7 +84,7 @@ pub struct Ctx<S: CtxStore> {
     tx: Arc<Mutex<Option<Sender<TaskPayload>>>>,
     ai_handler: Arc<Mutex<Option<AIHandler>>>,
     download_hub: Arc<Mutex<Option<DownloadHub>>>,
-    node: Arc<Mutex<Node>>,
+    node: Arc<Mutex<Node<ShareInfo>>>,
 }
 
 impl<S: CtxStore> Clone for Ctx<S> {
@@ -127,7 +128,7 @@ impl<S: CtxStore> Ctx<S> {
         resources_dir: PathBuf,
         temp_dir: PathBuf,
         store: Arc<Mutex<S>>,
-        node: Arc<Mutex<Node>>,
+        node: Arc<Mutex<Node<ShareInfo>>>,
     ) -> Self {
         Self {
             local_data_root,
@@ -144,13 +145,51 @@ impl<S: CtxStore> Ctx<S> {
     }
 }
 
-impl<S: CtxStore + Send> P2pTrait for Ctx<S> {
-    fn node(&self) -> Result<Node, rspc::Error> {
+impl<S: CtxStore + Send> CtxWithP2P for Ctx<S> {
+    fn node(&self) -> Result<Node<ShareInfo>, rspc::Error> {
         match self.node.lock() {
             Ok(node) => Ok(node.clone()),
             Err(e) => Err(rspc::Error::new(
                 rspc::ErrorCode::InternalServerError,
                 e.to_string(),
+            )),
+        }
+    }
+}
+
+impl<S: CtxStore + Send> CtxWithAI for Ctx<S> {
+    fn ai_handler(&self) -> Result<AIHandler, rspc::Error> {
+        match self.ai_handler.lock().unwrap().as_ref() {
+            Some(ai_handler) => Ok(ai_handler.clone()),
+            None => Err(rspc::Error::new(
+                rspc::ErrorCode::BadRequest,
+                String::from("No ai handler is set"),
+            )),
+        }
+    }
+
+    fn ai_handler_mutex(&self) -> Arc<Mutex<Option<AIHandler>>> {
+        self.ai_handler.clone()
+    }
+}
+
+impl<S: CtxStore + Send> CtxWithDownload for Ctx<S> {
+    fn download_reporter(&self) -> Result<DownloadReporter, rspc::Error> {
+        match self.download_hub.lock().unwrap().as_ref() {
+            Some(download_hub) => Ok(download_hub.get_reporter()),
+            None => Err(rspc::Error::new(
+                rspc::ErrorCode::BadRequest,
+                String::from("No download reporter is set"),
+            )),
+        }
+    }
+
+    fn download_status(&self) -> Result<Vec<DownloadStatus>, rspc::Error> {
+        match self.download_hub.lock().unwrap().as_ref() {
+            Some(download_hub) => Ok(download_hub.get_file_list()),
+            None => Err(rspc::Error::new(
+                rspc::ErrorCode::BadRequest,
+                String::from("No download status is set"),
             )),
         }
     }
@@ -487,40 +526,6 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             None => Err(rspc::Error::new(
                 rspc::ErrorCode::BadRequest,
                 String::from("No task tx is set"),
-            )),
-        }
-    }
-
-    fn ai_handler(&self) -> Result<AIHandler, rspc::Error> {
-        match self.ai_handler.lock().unwrap().as_ref() {
-            Some(ai_handler) => Ok(ai_handler.clone()),
-            None => Err(rspc::Error::new(
-                rspc::ErrorCode::BadRequest,
-                String::from("No ai handler is set"),
-            )),
-        }
-    }
-
-    fn ai_handler_mutex(&self) -> Arc<Mutex<Option<AIHandler>>> {
-        self.ai_handler.clone()
-    }
-
-    fn download_reporter(&self) -> Result<DownloadReporter, rspc::Error> {
-        match self.download_hub.lock().unwrap().as_ref() {
-            Some(download_hub) => Ok(download_hub.get_reporter()),
-            None => Err(rspc::Error::new(
-                rspc::ErrorCode::BadRequest,
-                String::from("No download reporter is set"),
-            )),
-        }
-    }
-
-    fn download_status(&self) -> Result<Vec<DownloadStatus>, rspc::Error> {
-        match self.download_hub.lock().unwrap().as_ref() {
-            Some(download_hub) => Ok(download_hub.get_file_list()),
-            None => Err(rspc::Error::new(
-                rspc::ErrorCode::BadRequest,
-                String::from("No download status is set"),
             )),
         }
     }

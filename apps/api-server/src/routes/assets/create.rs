@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use super::utils::generate_file_hash;
 use content_library::Library;
 use prisma_client_rust::QueryError;
@@ -39,18 +41,16 @@ pub async fn create_asset_object(
     local_full_path: &str,
 ) -> Result<(file_path::Data, asset_object::Data, bool), rspc::Error> {
     let start_time = std::time::Instant::now();
-    // let bytes = std::fs::read(&local_full_path).unwrap();
-    // let file_sha256 = sha256::digest(&bytes);
     let fs_metadata = std::fs::metadata(&local_full_path).map_err(|e| {
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
             format!("failed to get video metadata: {}", e),
         )
     })?;
-    let guess = mime_guess::from_path(&local_full_path);
-    let file_mime_type = match guess.first() {
-        Some(mime) => Some(mime.to_string()),
-        None => None,
+    let kind = infer::get_from_path(&local_full_path);
+    let file_mime_type = match kind {
+        Ok(Some(mime)) => Some(mime.to_string()),
+        _ => None,
     };
     let file_size_in_bytes = fs_metadata.len() as i32;
     let file_hash = generate_file_hash(&local_full_path, fs_metadata.len() as u64)
@@ -63,19 +63,23 @@ pub async fn create_asset_object(
         })?;
     let duration = start_time.elapsed();
     tracing::info!(
-        "{:?}, hash: {:?}, duration: {:?}",
+        "{:?}, hash: {:?}, mime_type: {:?}, duration: {:?}",
         local_full_path,
         file_hash,
+        file_mime_type,
         duration
     );
 
     let destination_path = library.file_path(&file_hash);
-    std::fs::copy(local_full_path, destination_path).map_err(|e| {
-        rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("failed to copy file: {}", e),
-        )
-    })?;
+
+    if PathBuf::from(local_full_path) != destination_path {
+        std::fs::copy(local_full_path, destination_path).map_err(|e| {
+            rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                format!("failed to copy file: {}", e),
+            )
+        })?;
+    }
 
     let (asset_object_data, file_path_data, asset_object_existed) = library
         .prisma_client()

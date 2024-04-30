@@ -37,9 +37,15 @@ impl BlockSize {
 	}
 }
 
+impl Default for BlockSize {
+    fn default() -> Self {
+        Self(131_072) // 128 KiB
+    }
+}
+
 
 async fn read_u32_le(stream: &mut (impl AsyncRead + Unpin)) -> Result<u32, io::Error> {
-	let mut buf = [0; 4];  
+	let mut buf = [0; 4];
 	stream.read_exact(&mut buf).await?;
 	Ok(u32::from_le_bytes(buf))
   }

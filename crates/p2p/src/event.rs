@@ -1,21 +1,24 @@
 use libp2p::PeerId;
+use p2p_block::TransferFile;
 use serde::Serialize;
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
-pub enum Event {
+pub enum Event<T: core::fmt::Debug> {
     ShareRequest {
         id: Uuid,
         peer_id: PeerId,
         peer_name: String,
-        files: Vec<ShareRequestFile>,
+        file_list: Vec<TransferFile>,
+        share_info: T,
     },
     ShareProgress {
         id: Uuid,
         percent: u8,
-        files: Vec<String>
+        // file_path: String,
+        share_info: T,
     },
     ShareTimedOut {
         id: Uuid,
@@ -25,31 +28,24 @@ pub enum Event {
     },
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct ShareRequestFile {
-    pub name: String,
-    pub hash: String,
-    pub path: String,
-}
-
 #[derive(Debug)]
-pub struct Events {
-    events: (broadcast::Sender<Event>, broadcast::Receiver<Event>),
+pub struct Events<T: Clone + core::fmt::Debug> {
+    events: (broadcast::Sender<Event<T>>, broadcast::Receiver<Event<T>>),
 }
 
-impl Events {
+impl<T: Clone + core::fmt::Debug> Events<T> {
     pub fn new() -> Self {
         Self {
-            events: broadcast::channel::<Event>(15),
+            events: broadcast::channel::<Event<T>>(15),
         }
     }
 
-    pub fn subscribe(&self) -> broadcast::Receiver<Event> {
+    pub fn subscribe(&self) -> broadcast::Receiver<Event<T>> {
         self.events.0.subscribe()
     }
 
     #[allow(clippy::result_large_err)]
-    pub fn send(&self, event: Event) -> Result<usize, broadcast::error::SendError<Event>> {
+    pub fn send(&self, event: Event<T>) -> Result<usize, broadcast::error::SendError<Event<T>>> {
         self.events.0.send(event)
     }
 }
