@@ -12,3 +12,4 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["io-util", "fs"] }
 tracing.workspace = true
 uuid.workspace = true
+serde = { workspace = true }

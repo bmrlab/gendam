@@ -1,19 +1,12 @@
 use prisma_lib::{file_path, PrismaClient};
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
-#[derive(Debug)]
-pub struct FileWithPath {
-    pub name: String,
-    pub hash: String,
-    pub path: String,
-}
-
-pub async fn find_all_path(
+pub async fn find_all_asset_object_hashes(
     file_id_list: Vec<i32>,
     prisma_client: Arc<PrismaClient>,
-) -> Result<Vec<FileWithPath>, rspc::Error> {
+) -> Result<Vec<String>, rspc::Error> {
     let mut files = file_id_list.clone();
-    let mut file_with_path: Vec<FileWithPath> = Vec::new();
+    let mut results = HashSet::new();
 
     loop {
         if files.is_empty() {
@@ -47,11 +40,7 @@ pub async fn find_all_path(
                     match asset_object {
                         Some(asset_object) => {
                             // 是文件
-                            file_with_path.push(FileWithPath {
-                                name: file_path.name.clone(),
-                                hash: asset_object.hash.clone(),
-                                path: file_path.materialized_path.clone(),
-                            })
+                            results.insert(asset_object.hash.clone());
                         }
                         None => {
                             // 是文件夹
@@ -92,5 +81,5 @@ pub async fn find_all_path(
         }
     }
 
-    Ok(file_with_path)
+    Ok(results.into_iter().collect())
 }

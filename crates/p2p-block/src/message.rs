@@ -1,21 +1,20 @@
-// use tokio::io::{AsyncRead, AsyncReadExt, Error};
+use std::fmt::Display;
 use futures::io::{AsyncRead, AsyncReadExt, Error};
-
-use crate::SpaceblockRequests;
+use crate::{StreamData, TransferRequest};
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum Message {
-    Share(SpaceblockRequests),
+pub enum Message<T: StreamData> {
+    Share(TransferRequest<T>),
 }
 
-impl Message {
-    pub async fn from_stream(stream: &mut (impl AsyncRead + Unpin)) -> Result<Self, Error> {
+impl<T: StreamData> Message<T> {
+    pub async fn from_stream(stream: &mut (impl AsyncRead + Unpin + Send)) -> Result<Self, Error> {
         let mut buf = [0u8; 1];
         stream.read_exact(&mut buf).await?;
         let discriminator = buf[0];
         match discriminator {
             0 => Ok(Self::Share(
-                SpaceblockRequests::from_stream(stream).await.unwrap(),
+                TransferRequest::from_stream(stream).await.unwrap(),
             )),
             d => {
                 todo!("error")

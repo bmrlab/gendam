@@ -4,7 +4,6 @@ pub(crate) mod payload;
 use self::constants::RETRIEVAL_COUNT;
 use ai::{AsMultiModalEmbeddingModel, AsTextEmbeddingModel};
 use payload::{SearchPayload, SearchRecordType};
-use prisma_lib::{video_transcript, PrismaClient};
 use qdrant_client::{
     client::QdrantClient,
     qdrant::{Condition, Filter, SearchPoints},

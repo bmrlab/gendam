@@ -6,17 +6,16 @@ mod types;
 mod update;
 mod utils;
 
-use crate::CtxWithLibrary;
-use rspc::{Router, RouterBuilder};
-use serde::Deserialize;
-use specta::Type;
-use tracing::info;
-
 use crate::validators;
+use crate::CtxWithLibrary;
 use create::{create_asset_object, create_dir};
 use delete::delete_file_path;
 use process::{process_video_asset, process_video_metadata};
 use read::{get_file_path, list_file_path};
+use rspc::{Router, RouterBuilder};
+use serde::Deserialize;
+use specta::Type;
+use tracing::info;
 use types::FilePathRequestPayload;
 use update::{move_file_path, rename_file_path};
 
@@ -79,8 +78,9 @@ where
                 #[derive(Deserialize, Type, Debug)]
                 #[serde(rename_all = "camelCase")]
                 struct AssetObjectReceivePayload {
-                    // #[serde(deserialize_with = "validators::materialized_path_string")]
                     hash: String,
+                    #[serde(deserialize_with = "validators::materialized_path_string")]
+                    materialized_path: String,
                 }
                 |ctx, input: AssetObjectReceivePayload| async move {
                     tracing::debug!("received receive_asset: {input:?}");
@@ -89,7 +89,7 @@ where
                     let (file_path_data, asset_object_data, asset_object_existed) =
                         create_asset_object(
                             &library,
-                            "/",
+                            &input.materialized_path,
                             &input.hash,
                             &library
                                 .file_path(&input.hash)

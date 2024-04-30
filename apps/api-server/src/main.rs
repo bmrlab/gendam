@@ -1,7 +1,7 @@
 extern crate api_server; // 引入 lib.rs 里面的内容
 use api_server::{
     ctx::default::{Ctx, Store},
-    CtxStore, CtxWithLibrary,
+    CtxStore, CtxWithLibrary, ShareInfo,
 };
 use axum::{http::request::Parts, routing::get};
 use dotenvy::dotenv;
@@ -66,7 +66,7 @@ async fn main() {
     let store = Arc::new(Mutex::new(default_store));
     let router = api_server::get_routes::<Ctx<Store>>().arced();
 
-    let node = Arc::new(Mutex::<Node>::new(
+    let node = Arc::new(Mutex::<Node<ShareInfo>>::new(
         p2p::Node::new().expect("create node error"),
     ));
 

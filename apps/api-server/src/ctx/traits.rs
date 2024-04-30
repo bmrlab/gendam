@@ -2,6 +2,7 @@ use crate::{
     ai::AIHandler,
     download::{DownloadReporter, DownloadStatus},
     file_handler::TaskPayload,
+    routes::ShareInfo,
 };
 use async_trait::async_trait;
 use content_library::{Library, QdrantServerInfo};
@@ -23,7 +24,7 @@ pub trait CtxStore {
 }
 
 #[async_trait]
-pub trait CtxWithLibrary: Sync + P2pTrait {
+pub trait CtxWithLibrary: Sync + CtxWithP2P + CtxWithAI + CtxWithDownload {
     fn is_busy(&self) -> Arc<Mutex<std::sync::atomic::AtomicBool>>;
 
     fn get_local_data_root(&self) -> PathBuf;
@@ -37,13 +38,19 @@ pub trait CtxWithLibrary: Sync + P2pTrait {
 
     fn library(&self) -> Result<Library, rspc::Error>;
     fn task_tx(&self) -> Result<Sender<TaskPayload>, rspc::Error>;
-    fn ai_handler(&self) -> Result<AIHandler, rspc::Error>;
-    fn ai_handler_mutex(&self) -> Arc<Mutex<Option<AIHandler>>>;
-    fn download_reporter(&self) -> Result<DownloadReporter, rspc::Error>;
-    fn download_status(&self) -> Result<Vec<DownloadStatus>, rspc::Error>;
     fn qdrant_info(&self) -> Result<QdrantServerInfo, rspc::Error>;
 }
 
-pub trait P2pTrait {
-    fn node(&self) -> Result<Node, rspc::Error>;
+pub trait CtxWithP2P {
+    fn node(&self) -> Result<Node<ShareInfo>, rspc::Error>;
+}
+
+pub trait CtxWithAI {
+    fn ai_handler(&self) -> Result<AIHandler, rspc::Error>;
+    fn ai_handler_mutex(&self) -> Arc<Mutex<Option<AIHandler>>>;
+}
+
+pub trait CtxWithDownload {
+    fn download_reporter(&self) -> Result<DownloadReporter, rspc::Error>;
+    fn download_status(&self) -> Result<Vec<DownloadStatus>, rspc::Error>;
 }

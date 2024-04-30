@@ -1,6 +1,17 @@
 #![allow(unused)] // TODO: This module is still in heavy development!
 
+mod block;
+mod block_size;
+pub mod message;
+pub mod proto;
+mod request;
+
+pub use block::*;
+pub use block_size::*;
+use futures::{AsyncWrite, AsyncWriteExt};
+pub use proto::{decode, encode};
 use std::{
+    fmt::Display,
     io,
     marker::PhantomData,
     path::{Path, PathBuf},
@@ -10,26 +21,15 @@ use std::{
         Arc,
     },
 };
-
 use thiserror::Error;
 use tokio::{
     fs::File,
     io::{AsyncBufRead, AsyncBufReadExt, AsyncRead, AsyncReadExt, BufReader},
 };
-
-use futures::{AsyncWrite, AsyncWriteExt};
 use tracing::debug;
-
-mod block;
-mod block_size;
-pub mod message;
-pub mod proto;
-mod sb_request;
-
-pub use block::*;
-pub use block_size::*;
-pub use proto::{decode, encode};
-pub use sb_request::*;
+// pub use sb_request::*;
+pub use request::*;
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Msg<'a> {
@@ -69,29 +69,25 @@ impl<'a> Msg<'a> {
 }
 
 /// TODO
-pub struct Transfer<'a, F> {
-    reqs: &'a SpaceblockRequests,
+pub struct Transfer<'a, F, T: StreamData> {
+    request: &'a TransferRequest<T>,
     on_progress: F,
     total_offset: u64,
     total_bytes: u64,
-    // TODO: Remove `i` plz
-    i: usize,
     cancelled: &'a AtomicBool,
 }
 
-impl<'a, F> Transfer<'a, F>
+impl<'a, F, T: StreamData> Transfer<'a, F, T>
 where
     F: Fn(u8) + 'a,
 {
     // TODO: Handle `req.range` correctly in this code
-
-    pub fn new(req: &'a SpaceblockRequests, on_progress: F, cancelled: &'a AtomicBool) -> Self {
+    pub fn new(req: &'a TransferRequest<T>, on_progress: F, cancelled: &'a AtomicBool) -> Self {
         Self {
-            reqs: req,
+            request: req,
             on_progress,
             total_offset: 0,
-            total_bytes: req.requests.iter().map(|req| req.size).sum(),
-            i: 0,
+            total_bytes: req.file_list.iter().map(|file| file.size).sum(),
             cancelled,
         }
     }
@@ -104,7 +100,7 @@ where
     ) -> Result<(), io::Error> {
         tracing::debug!("Sending file with total size of {}", self.total_bytes);
         // We manually implement what is basically a `BufReader` so we have more control
-        let mut buf = vec![0u8; self.reqs.block_size.size() as usize];
+        let mut buf = vec![0u8; self.request.block_size.size() as usize];
         let mut offset: u64 = 0;
 
         loop {
@@ -126,7 +122,7 @@ where
                                         // The file may have been modified during sender on the sender and we don't account for that.
                                         // TODO: Error handling + send error to remote
                 assert!(
-                    (offset + read as u64) == self.reqs.requests[self.i].size,
+                    (offset + read as u64) == self.total_bytes,
                     "File sending has stopped but it doesn't match the expected length!"
                 );
 
@@ -173,11 +169,10 @@ where
         // TODO: Proper error type
     ) -> Result<(), io::Error> {
         // We manually implement what is basically a `BufReader` so we have more control
-        let mut data_buf = vec![0u8; self.reqs.block_size.size() as usize];
+        let mut data_buf = vec![0u8; self.request.block_size.size() as usize];
         let mut offset: u64 = 0;
 
-        if self.reqs.requests[self.i].size == 0 {
-            self.i += 1;
+        if self.total_bytes == 0 {
             return Ok(());
         }
 
@@ -209,12 +204,9 @@ where
 
                     file.write_all(&data_buf[..block.size as usize]).await?;
 
-                    let req = self.reqs.requests.get(self.i).ok_or_else(|| {
-                        debug!("Vector read out of bounds!");
-                        io::ErrorKind::Other
-                    })?;
+                    let req = self.request;
                     // TODO: Should this be `read == 0`
-                    if offset == req.size {
+                    if offset == self.total_bytes {
                         break;
                     }
 
@@ -233,7 +225,6 @@ where
         stream.write(&[2u8]).await?;
         stream.flush().await?;
         file.flush().await?;
-        self.i += 1;
 
         Ok(())
     }

@@ -10,6 +10,7 @@ use vector_db::QdrantServer;
 
 mod port;
 mod qdrant;
+pub mod bundle;
 
 #[derive(Clone, Debug)]
 pub struct Library {
