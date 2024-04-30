@@ -5,7 +5,7 @@ use prisma_lib::file_path;
 
 pub async fn rename_file_path(
     library: &Library,
-    id: i32,
+    id: String,
     is_dir: bool,
     materialized_path: &str,
     old_name: &str,
@@ -16,7 +16,7 @@ pub async fn rename_file_path(
         .prisma_client()
         .file_path()
         .find_first(vec![
-            file_path::id::equals(id),
+            file_path::id::equals(id.clone()),
             file_path::materialized_path::equals(materialized_path.to_string()),
             file_path::is_dir::equals(is_dir),
             file_path::name::equals(old_name.to_string()),
@@ -40,7 +40,7 @@ pub async fn rename_file_path(
         .prisma_client()
         .file_path()
         .update(
-            file_path::materialized_path_name(materialized_path.to_string(), old_name.to_string()),
+            file_path::id::equals(id.clone()),
             vec![file_path::name::set(new_name.to_string())],
         )
         .exec()
@@ -100,8 +100,16 @@ pub async fn move_file_path(
     // TODO: 所有 SQL 要放进一个 transaction 里面
 
     if let Some(target) = target.as_ref() {
-        let target_full_path = format!("{}{}/", target.materialized_path.as_str(), target.name.as_str());
-        let active_full_path = format!("{}{}/", active.materialized_path.as_str(), active.name.as_str());
+        let target_full_path = format!(
+            "{}{}/",
+            target.materialized_path.as_str(),
+            target.name.as_str()
+        );
+        let active_full_path = format!(
+            "{}{}/",
+            active.materialized_path.as_str(),
+            active.name.as_str()
+        );
         if target_full_path.starts_with(&active_full_path) {
             return Err(rspc::Error::new(
                 rspc::ErrorCode::BadRequest,
@@ -145,7 +153,7 @@ pub async fn move_file_path(
             .prisma_client()
             .file_path()
             .find_first(vec![
-                file_path::id::equals(target.id),
+                file_path::id::equals(target.id.clone()),
                 file_path::materialized_path::equals(target.materialized_path.clone()),
                 file_path::is_dir::equals(true),
                 file_path::name::equals(target.name.clone()),
@@ -165,7 +173,11 @@ pub async fn move_file_path(
     }
 
     let new_materialized_path = match target.as_ref() {
-        Some(target) => format!("{}{}/", target.materialized_path.as_str(), target.name.as_str()),
+        Some(target) => format!(
+            "{}{}/",
+            target.materialized_path.as_str(),
+            target.name.as_str()
+        ),
         None => "/".to_string(),
     };
     // 确保 target 下不存在相同名字的文件，不然移动失败
@@ -224,7 +236,11 @@ pub async fn move_file_path(
         ),
         None => format!("/{}/", active.name.as_str()),
     };
-    let old_materialized_path = format!("{}{}/", active.materialized_path.as_str(), active.name.as_str());
+    let old_materialized_path = format!(
+        "{}{}/",
+        active.materialized_path.as_str(),
+        active.name.as_str()
+    );
     let old_materialized_path_like = format!("{}%", &old_materialized_path);
     library
         .prisma_client()

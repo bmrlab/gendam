@@ -7,27 +7,28 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:dev.db?socket_timeout=1&connection_limit=10"
+  provider     = "sqlite"
+  url          = "file:dev.db?socket_timeout=1&connection_limit=10"
+  relationMode = "prisma"
   // for sqlite params, see https://prisma.github.io/quaint/quaint/connector/struct.SqliteParams.html
   // url      = env("LOCAL_DB_URL")
 }
 
 model FilePath {
-  id    Int     @id @default(autoincrement())
-  isDir Boolean
+  id    String  @id() @default(cuid())
+  isDir Boolean @default(false)
 
-  materializedPath String
-  name             String
+  materializedPath String  @default("")
+  name             String  @default("")
   description      String?
 
   assetObjectId Int?
-  assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: SetNull)
+  assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
 
-  @@unique([materializedPath, name])
+  // @@unique([materializedPath, name])
   @@index([materializedPath])
 }
 

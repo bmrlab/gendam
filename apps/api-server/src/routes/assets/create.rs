@@ -17,12 +17,11 @@ pub async fn create_dir(
     let res = library
         .prisma_client()
         .file_path()
-        .create(
-            true,
-            materialized_path.to_string(),
-            name.to_string(),
-            vec![],
-        )
+        .create(vec![
+            file_path::is_dir::set(true),
+            file_path::materialized_path::set(materialized_path.to_string()),
+            file_path::name::set(name.to_string()),
+        ])
         .exec()
         .await
         .map_err(|e| {

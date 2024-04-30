@@ -25,7 +25,7 @@ fn error_404(msg: &str) -> rspc::Error {
 pub async fn process_video_asset(
     library: &Library,
     ctx: &impl CtxWithLibrary,
-    file_path_id: i32,
+    file_path_id: String,
     with_existing_artifacts: Option<bool>,
 ) -> Result<(), rspc::Error> {
     info!("process video asset for file_path_id: {file_path_id}");

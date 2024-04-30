@@ -166,7 +166,7 @@ where
                 #[derive(Deserialize, Type, Debug)]
                 #[serde(rename_all = "camelCase")]
                 struct FilePathRenamePayload {
-                    id: i32,
+                    id: String,
                     is_dir: bool,
                     #[serde(deserialize_with = "validators::materialized_path_string")]
                     materialized_path: String,
@@ -210,19 +210,20 @@ where
                 #[derive(Deserialize, Type, Debug)]
                 #[serde(rename_all = "camelCase")]
                 struct FilePathDeletePayload {
+                    id: String,
                     #[serde(deserialize_with = "validators::materialized_path_string")]
                     materialized_path: String,
                     #[serde(deserialize_with = "validators::path_name_string")]
                     name: String,
                 }
                 |ctx, input: FilePathDeletePayload| async move {
-                    delete_file_path(&ctx, &input.materialized_path, &input.name).await?;
+                    delete_file_path(&ctx, input.id, &input.materialized_path, &input.name).await?;
                     Ok(())
                 }
             })
         })
         .mutation("process_video_asset", |t| {
-            t(|ctx, input: i32| async move {
+            t(|ctx, input: String| async move {
                 let library = ctx.library()?;
                 let file_path_id = input;
                 process_video_asset(&library, &ctx, file_path_id, None).await?;

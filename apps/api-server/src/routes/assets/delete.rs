@@ -1,12 +1,16 @@
 use crate::{file_handler::get_file_handler, CtxWithLibrary};
 use prisma_client_rust::{Direction, QueryError};
-use prisma_lib::{asset_object, file_path};
+use prisma_lib::{
+    asset_object::{self, id},
+    file_path,
+};
 use std::{collections::HashSet, sync::Arc};
 use tokio::sync::Mutex;
 use tracing::error;
 
 pub async fn delete_file_path(
     ctx: &dyn CtxWithLibrary,
+    id: String,
     materialized_path: &str,
     name: &str,
 ) -> Result<(), rspc::Error> {
@@ -23,10 +27,7 @@ pub async fn delete_file_path(
 
             let deleted_one = client
                 .file_path()
-                .delete(file_path::materialized_path_name(
-                    materialized_path.to_string(),
-                    name.to_string(),
-                ))
+                .delete(file_path::id::equals(id.clone()))
                 .exec()
                 .await
                 .map_err(|e| {
