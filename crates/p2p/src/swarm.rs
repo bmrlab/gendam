@@ -18,7 +18,7 @@ pub fn build_swarm(
         .with_quic()
         .with_relay_client(noise::Config::new, yamux::Config::default)?
         .with_behaviour(|key, relay_behaviour| {
-            Behaviour::new(key.public(), relay_behaviour, metadata)
+            Behaviour::new(key.clone(), key.public(), relay_behaviour, metadata)
         })?
         .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::from_secs(u64::MAX)))
         .build())

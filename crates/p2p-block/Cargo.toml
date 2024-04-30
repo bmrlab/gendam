@@ -13,3 +13,5 @@ tokio = { workspace = true, features = ["io-util", "fs"] }
 tracing.workspace = true
 uuid.workspace = true
 serde = { workspace = true }
+
+automerge = "0.5.9"

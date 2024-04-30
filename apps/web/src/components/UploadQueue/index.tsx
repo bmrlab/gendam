@@ -7,6 +7,7 @@ import { useEffect } from 'react'
 import CompletedQueueList from './CompletedQueueList'
 import QueueItem from './QueueItem'
 import QueueStatusHeader from './QueueStatusHeader'
+import { useTasksStore } from '@/hooks/useTasks'
 // import { twx } from '@/lib/utils'
 // const QueueItem = twx.div`flex items-center justify-start pl-2 pr-4 py-2`
 
@@ -52,6 +53,7 @@ const QueueList = () => {
 export default function UploadQueue({ close }: { close: () => void }) {
   const uploadQueueStore = useUploadQueueStore()
   const uploadMut = rspc.useMutation(['assets.create_asset_object'])
+  const taskStore = useTasksStore()
 
   useEffect(() => {
     // useUploadQueueStore.subscribe((e) => {})
@@ -61,7 +63,13 @@ export default function UploadQueue({ close }: { close: () => void }) {
       uploadMut
         .mutateAsync({ materializedPath, name, localFullPath })
         .then((filePathData) => {
+          console.log('filePathData', filePathData)
           uploadQueueStore.completeUploading(filePathData)
+          let assetObjectId = filePathData?.assetObject?.id;
+          taskStore.insert(assetObjectId, {
+            materializedPath,
+            name,
+          })
         })
         .catch(() => {
           uploadQueueStore.failedUploading()

@@ -1,7 +1,8 @@
 mod find_all;
 pub mod info;
+pub mod sync;
 
-pub use crate::routes::p2p::info::ShareInfo;
+pub use crate::routes::p2p::{info::ShareInfo, sync::init_sync};
 use crate::CtxWithLibrary;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
@@ -43,15 +44,31 @@ where
                     ));
                 };
 
+                // todo 检查文件ai任务是否完成
+
                 let library = ctx.library().expect("failed load library").clone();
 
                 let file_id_list = input.file_id_list.clone();
+
+                // 初始化同步
+                let (doc_id_hash_list, folder_doc_id_list) = init_sync(
+                    library.clone().prisma_client(),
+                    library.clone().sync(),
+                    file_id_list.clone(),
+                )
+                .await
+                .expect("fail init sync");
+
+                tracing::debug!("doc_id_hash_list: {doc_id_hash_list:#?}");
+                tracing::debug!("folder_doc_id_list: {folder_doc_id_list:?}");
 
                 let file_hashes = find_all::find_all_asset_object_hashes(
                     file_id_list,
                     library.clone().prisma_client(),
                 )
                 .await?;
+
+                tracing::debug!("file_hashes: {file_hashes:#?}");
 
                 let temp_bundle_path = ctx.get_temp_dir().join(Uuid::new_v4().to_string());
                 tracing::debug!("temp_bundle_path: {temp_bundle_path:?}");
@@ -67,6 +84,8 @@ where
 
                 let share_info = ShareInfo {
                     file_count: file_hashes.len(),
+                    doc_id_hash_list,
+                    folder_doc_id_list,
                 };
 
                 let node = ctx.node()?;
@@ -178,7 +197,7 @@ where
 
                 return async_stream::stream! {
                     while let Ok(event) = rx.recv().await {
-                        tracing::info!("p2p recv event: {:#?}", event);
+                        // tracing::info!("p2p recv event: {:#?}", event);
                         match event {
                             p2p::Event::ShareRequest {
                                 id,
@@ -187,6 +206,7 @@ where
                                 file_list,
                                 share_info
                             } => {
+                                tracing::info!("p2p recv share_info: {:#?}", share_info);
                                 yield json!({
                                     "type": "ShareRequest",
                                     "id": id,
@@ -216,6 +236,7 @@ where
                                     "id": id,
                                 });
                             }
+                            _ => {}
                         }
                     }
                 };

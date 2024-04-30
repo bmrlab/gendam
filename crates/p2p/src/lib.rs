@@ -9,6 +9,7 @@ mod node;
 mod peer;
 mod server;
 mod swarm;
+mod pubsub;
 
 pub use behaviour::Behaviour;
 pub use error::P2PError;
@@ -19,3 +20,4 @@ pub use metadata::HardwareModel;
 pub use node::Node;
 pub use server::AutonatServer;
 pub use swarm::build_swarm;
+pub use pubsub::PubsubMessage;

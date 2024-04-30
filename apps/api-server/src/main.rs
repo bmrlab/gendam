@@ -6,7 +6,6 @@ use api_server::{
 };
 use axum::{http::request::Parts, routing::get};
 use dotenvy::dotenv;
-use p2p::Node;
 use std::{
     env,
     path::Path,
@@ -67,11 +66,7 @@ async fn main() {
     let store = Arc::new(Mutex::new(default_store));
     let router = api_server::get_routes::<Ctx<Store>>().arced();
 
-    let node = Arc::new(Mutex::<Node<ShareInfo>>::new(
-        p2p::Node::new().expect("create node error"),
-    ));
-
-    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, temp_dir, store, node);
+    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, temp_dir, store);
 
     let app: axum::Router = axum::Router::new()
         .route("/", get(|| async { "Hello 'rspc'!" }))

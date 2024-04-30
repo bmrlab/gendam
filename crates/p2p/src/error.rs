@@ -1,6 +1,6 @@
 use std::{convert::Infallible, sync::PoisonError};
 
-use libp2p::{identity::DecodingError, multiaddr, swarm::DialError, TransportError};
+use libp2p::{gossipsub::PublishError, identity::DecodingError, multiaddr, swarm::DialError, TransportError};
 use libp2p_stream::OpenStreamError;
 use thiserror::Error;
 
@@ -47,6 +47,9 @@ pub enum P2PError<TErr = ()> {
     
     #[error("NoRelayAddress error")]
     NoRelayAddress,
+
+    #[error("Publish error: {0}")]
+    PublishError(#[from] PublishError),
 
     #[error("P2P O error")]
     Other,

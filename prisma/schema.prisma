@@ -24,6 +24,8 @@ model FilePath {
   assetObjectId Int?
   assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: SetNull)
 
+  docId String? @unique // 用于同步的文件夹或者文件的路径 用于快速查找
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -80,4 +82,16 @@ model FileHandlerTask {
   updatedAt DateTime  @updatedAt
 
   @@unique([assetObjectId, taskType])
+}
+
+model Sync {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  docId String @unique
+  doc   Bytes // 分享的doc，可能是文件夹或者文件
+
+  // 用于同步的文件夹或者文件的路径 用于快速查找
+  @@index([docId])
 }

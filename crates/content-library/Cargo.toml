@@ -8,6 +8,8 @@ prisma-client-rust = { workspace = true }
 prisma-lib = { path = "../prisma" }
 vector-db = { path = "../vector-db", features = ["qdrant"] }
 p2p = { path = "../p2p" }
+sync-lib = { path = "../sync" }
+
 tokio = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }

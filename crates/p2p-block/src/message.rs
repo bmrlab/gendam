@@ -1,10 +1,16 @@
-use std::fmt::Display;
+use crate::{RequestDocument, StreamData, SyncMessage, SyncRequest, TransferRequest};
 use futures::io::{AsyncRead, AsyncReadExt, Error};
-use crate::{StreamData, TransferRequest};
+use std::fmt::Display;
+use uuid::Uuid;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Message<T: StreamData> {
     Share(TransferRequest<T>),
+    Sync(SyncMessage),
+    SyncRequest(SyncRequest),
+
+    // 索要数据
+    RequestDocument(RequestDocument),
 }
 
 impl<T: StreamData> Message<T> {
@@ -16,6 +22,18 @@ impl<T: StreamData> Message<T> {
             0 => Ok(Self::Share(
                 TransferRequest::from_stream(stream).await.unwrap(),
             )),
+            1 => {
+                let sync = SyncMessage::from_stream(stream).await.unwrap();
+                Ok(Self::Sync(sync))
+            }
+            2 => {
+                let sync_request = SyncRequest::from_stream(stream).await.unwrap();
+                Ok(Self::SyncRequest(sync_request))
+            }
+            3 => {
+                let request_document = RequestDocument::from_stream(stream).await.unwrap();
+                Ok(Self::RequestDocument(request_document))
+            }
             d => {
                 todo!("error")
             }
@@ -27,6 +45,21 @@ impl<T: StreamData> Message<T> {
             Self::Share(transfer_request) => {
                 let mut bytes = vec![0];
                 bytes.extend_from_slice(&transfer_request.to_bytes());
+                bytes
+            }
+            Self::Sync(sync) => {
+                let mut bytes = vec![1];
+                bytes.extend_from_slice(&sync.to_bytes());
+                bytes
+            }
+            Self::SyncRequest(sync_request) => {
+                let mut bytes = vec![2];
+                bytes.extend_from_slice(&sync_request.to_bytes());
+                bytes
+            }
+            Self::RequestDocument(RequestDocument) => {
+                let mut bytes = vec![3];
+                bytes.extend_from_slice(&RequestDocument.to_bytes());
                 bytes
             }
         }

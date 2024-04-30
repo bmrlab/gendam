@@ -12,9 +12,11 @@ import Icon from '@gendam/ui/icons'
 import { convertFileSrc } from '@tauri-apps/api/tauri'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { useTasks } from "@/hooks/useTasks"
 
 const WebsocketLayout = () => {
   useP2PEvents()
+  useTasks()
   return <></>
 }
 

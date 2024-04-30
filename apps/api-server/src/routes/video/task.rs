@@ -1,6 +1,7 @@
 use crate::file_handler::{create_file_handler_task, get_file_handler};
 use crate::CtxWithLibrary;
 use prisma_client_rust::{operator, Direction};
+use prisma_lib::read_filters::IntFilter;
 use prisma_lib::PrismaClient;
 use prisma_lib::{asset_object, file_handler_task, media_data};
 use rspc::{Router, RouterBuilder};
@@ -41,6 +42,14 @@ struct TaskCancelRequestPayload {
     asset_object_id: i32,
     task_types: Option<Vec<String>>,
 }
+
+#[derive(Deserialize, Type, Debug)]
+#[serde(rename_all = "camelCase")]
+struct GetTasksRequestPayload {
+    asset_object_id_list: Vec<i32>,
+}
+
+
 
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -93,6 +102,24 @@ impl VideoTaskHandler {
     ) -> anyhow::Result<i32> {
         let count = self.count(task_filter).await?;
         Ok((count as f64 / page_size as f64).ceil() as i32)
+    }
+
+    // 通过asset_object id 获取一组任务状态列表
+    async fn get_tasks(
+        &self,
+        asset_object_id_list: Vec<i32>,
+    ) -> anyhow::Result<Vec<asset_object::Data>> {
+        let asset_object_data = self
+            .prisma_client
+            .asset_object()
+            .find_many(vec![asset_object::WhereParam::Id(IntFilter::InVec(
+                asset_object_id_list,
+            ))])
+            .with(asset_object::tasks::fetch(vec![]))
+            .exec()
+            .await
+            .unwrap();
+        Ok(asset_object_data)
     }
 
     async fn list(
@@ -232,11 +259,7 @@ impl VideoTaskHandler {
             let handler = get_file_handler(&asset_object_data, ctx)?;
             for task_type in handler.get_supported_task_types() {
                 if let Err(e) = handler.delete_artifacts_by_task(task_type.0.as_str()).await {
-                    tracing::warn!(
-                        "delete_artifacts_by_task({}) error: {}",
-                        task_type.0,
-                        e
-                    );
+                    tracing::warn!("delete_artifacts_by_task({}) error: {}", task_type.0, e);
                 }
             }
 
@@ -308,6 +331,21 @@ where
                         )
                     })?;
                 Ok(())
+            })
+        })
+        .query("get_tasks", |t| {
+            t(|ctx: TCtx, input: GetTasksRequestPayload| async move {
+                let library = ctx.library()?;
+                match VideoTaskHandler::new(library.prisma_client())
+                    .get_tasks(input.asset_object_id_list)
+                    .await
+                {
+                    Ok(list) => Ok(list),
+                    Err(e) => Err(rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("get tasks failed: {}", e),
+                    )),
+                }
             })
         })
 }

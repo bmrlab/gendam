@@ -1,4 +1,4 @@
-mod create;
+pub mod create;
 mod delete;
 mod process;
 mod read;
@@ -6,10 +6,16 @@ mod types;
 mod update;
 mod utils;
 
+use crate::routes::assets::update::update_doc_new_file;
+use crate::routes::assets::update::update_file_path_and_doc;
+use crate::routes::assets::update::update_folder_doc;
 use crate::validators;
 use crate::CtxWithLibrary;
 use create::{create_asset_object, create_dir};
 use delete::delete_file_path;
+use p2p::PubsubMessage;
+use prisma_lib::file_path;
+use prisma_lib::read_filters::IntNullableFilter;
 use process::{export_video_segment, process_video_asset, process_video_metadata};
 use read::{get_file_path, list_file_path};
 use rspc::{Router, RouterBuilder};
@@ -86,6 +92,7 @@ where
                     hash: String,
                     #[serde(deserialize_with = "validators::materialized_path_string")]
                     materialized_path: String,
+                    name: String,
                 }
                 |ctx, input: AssetObjectReceivePayload| async move {
                     tracing::debug!("received receive_asset: {input:?}");
@@ -95,7 +102,7 @@ where
                         create_asset_object(
                             &library,
                             &input.materialized_path,
-                            &input.hash,
+                            &input.name,
                             &library
                                 .file_path(&input.hash)
                                 .to_string_lossy()
@@ -110,6 +117,82 @@ where
                         process_video_metadata(&library, asset_object_data.id).await?;
                         info!("process video metadata finished");
                         process_video_asset(&library, &ctx, file_path_data.id, Some(true)).await?;
+                    }
+
+                    Ok(())
+                }
+            })
+        })
+        .mutation("update_file_and_doc", |t| {
+            t({
+                #[derive(Deserialize, Type, Debug)]
+                #[serde(rename_all = "camelCase")]
+                struct AssetUpdateFileAndDocPayload {
+                    path: String,
+                    doc_id: String,
+                    name: String,
+                }
+                |ctx, input: AssetUpdateFileAndDocPayload| async move {
+                    tracing::debug!("update_file_and_doc: {input:?}");
+                    let library = ctx.library()?;
+                    update_file_path_and_doc(&library, input.path, input.name, input.doc_id)
+                        .await?;
+                    Ok(())
+                }
+            })
+        })
+        .mutation("update_folder_doc", |t| {
+            t({
+                #[derive(Deserialize, Type, Debug)]
+                #[serde(rename_all = "camelCase")]
+                struct AssetUpdateFolderDocPayload {
+                    path: String,
+                    doc_id: String,
+                    name: String,
+                }
+                |ctx, input: AssetUpdateFolderDocPayload| async move {
+                    tracing::debug!("update_folder_doc: {input:?}");
+                    let library = ctx.library()?;
+                    update_folder_doc(&library, input.path, input.name, input.doc_id.clone())
+                        .await?;
+                    // 再触发一次同步
+                    if let Some(broadcast) = library.get_broadcast() {
+                        let _ = broadcast
+                            .send(PubsubMessage::Sync(input.doc_id))
+                            .await
+                            .unwrap();
+                    }
+                    Ok(())
+                }
+            })
+        })
+        // 用于文件任务完成，更新父级文件夹文档数据
+        .mutation("update_doc_new_file", |t| {
+            t({
+                #[derive(Deserialize, Type, Debug)]
+                #[serde(rename_all = "camelCase")]
+                struct AssetUpdateDocNewFilePayload {
+                    asset_object_id: i32,
+                }
+                |ctx, input: AssetUpdateDocNewFilePayload| async move {
+                    tracing::debug!("update_doc_new_file: {input:?}");
+                    let library = ctx.library()?;
+                    let file_path_list = library
+                        .prisma_client()
+                        .file_path()
+                        .find_many(vec![file_path::WhereParam::AssetObjectId(
+                            IntNullableFilter::Equals(Some(input.asset_object_id)),
+                        )])
+                        .exec()
+                        .await?;
+
+                    for file_path in file_path_list {
+                        let _ = update_doc_new_file(
+                            &library,
+                            file_path.materialized_path,
+                            file_path.name,
+                        )
+                        .await?;
                     }
 
                     Ok(())
@@ -177,6 +260,7 @@ where
                 }
                 |ctx, input: FilePathRenamePayload| async move {
                     let library = ctx.library()?;
+                    // let broadcast = ctx.get_broadcast();
                     rename_file_path(
                         &library,
                         input.id,

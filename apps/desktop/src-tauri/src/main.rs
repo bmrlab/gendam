@@ -92,18 +92,6 @@ async fn main() {
         // tracing::error!("This event will be logged in the root span.");
     }
 
-    // p2p
-    let node = p2p::Node::new().expect("create node fail");
-
-    let p2p = Arc::new(Mutex::new(node));
-
-    // let p2p_clone = p2p.clone();
-
-    // tauri::async_runtime::spawn(async move {
-    //     let mut node = p2p_clone.lock().unwrap().clone();
-    //     node.start_p2p().await.unwrap();
-    // });
-
     let window = app.get_window("main").unwrap();
     let local_data_root = window
         .app_handle()
@@ -139,7 +127,7 @@ async fn main() {
 
     let store = Arc::new(Mutex::new(Store::new(tauri_store)));
     let router = api_server::get_routes::<Ctx<Store>>();
-    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, temp_dir, store, p2p);
+    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, temp_dir, store);
 
     window.on_window_event({
         let ctx = ctx.clone();

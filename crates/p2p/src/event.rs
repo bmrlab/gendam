@@ -1,5 +1,5 @@
 use libp2p::PeerId;
-use p2p_block::TransferFile;
+use p2p_block::{SyncMessage, TransferFile};
 use serde::Serialize;
 use tokio::sync::broadcast;
 use uuid::Uuid;
@@ -23,9 +23,33 @@ pub enum Event<T: core::fmt::Debug> {
     ShareTimedOut {
         id: Uuid,
     },
+    
     ShareRejected {
         id: Uuid,
     },
+
+    // 索要文件  
+    RequestDocument {
+        id: Uuid,
+        peer_id: PeerId,
+        hash: String,
+    },
+
+    // 其他peer文档发生了变化
+    Sync {
+        id: Uuid,
+        peer_id: PeerId,
+        doc_id: String,
+    },
+
+    SyncRequest {
+        id: Uuid,
+        peer_id: String,
+        doc_id: String,
+    },
+
+    // 传输
+    SyncTransfer(SyncMessage),
 }
 
 #[derive(Debug)]

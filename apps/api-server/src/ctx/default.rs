@@ -3,6 +3,7 @@ use super::traits::{CtxStore, CtxWithAI, CtxWithDownload, CtxWithLibrary, CtxWit
 use crate::{
     ai::{models::get_model_info_by_id, AIHandler},
     download::{DownloadHub, DownloadReporter, DownloadStatus},
+    event::spawn,
     file_handler::{init_task_pool, trigger_unfinished, TaskPayload},
     library::get_library_settings,
     routes::p2p::ShareInfo,
@@ -11,7 +12,7 @@ use async_trait::async_trait;
 use content_library::{
     load_library, make_sure_collection_created, Library, QdrantCollectionInfo, QdrantServerInfo,
 };
-use p2p::Node;
+use p2p::{Node, PubsubMessage};
 use std::{
     boxed::Box,
     fmt::Debug,
@@ -85,6 +86,7 @@ pub struct Ctx<S: CtxStore> {
     ai_handler: Arc<Mutex<Option<AIHandler>>>,
     download_hub: Arc<Mutex<Option<DownloadHub>>>,
     node: Arc<Mutex<Node<ShareInfo>>>,
+    broadcast: Arc<Mutex<tokio::sync::mpsc::Sender<PubsubMessage>>>,
 }
 
 impl<S: CtxStore> Clone for Ctx<S> {
@@ -100,6 +102,7 @@ impl<S: CtxStore> Clone for Ctx<S> {
             download_hub: self.download_hub.clone(),
             temp_dir: self.temp_dir.clone(),
             node: Arc::clone(&self.node),
+            broadcast: Arc::clone(&self.broadcast),
         }
     }
 }
@@ -128,8 +131,11 @@ impl<S: CtxStore> Ctx<S> {
         resources_dir: PathBuf,
         temp_dir: PathBuf,
         store: Arc<Mutex<S>>,
-        node: Arc<Mutex<Node<ShareInfo>>>,
     ) -> Self {
+        let (p, s) = tokio::sync::mpsc::channel::<PubsubMessage>(100);
+        let node: Arc<Mutex<Node<ShareInfo>>> = Arc::new(Mutex::<Node<ShareInfo>>::new(
+            p2p::Node::new(s).expect("create node error"),
+        ));
         Self {
             local_data_root,
             resources_dir,
@@ -141,6 +147,7 @@ impl<S: CtxStore> Ctx<S> {
             is_busy: Arc::new(Mutex::new(AtomicBool::new(false))),
             download_hub: Arc::new(Mutex::new(None)),
             node,
+            broadcast: Arc::new(Mutex::new(p)),
         }
     }
 }
@@ -229,6 +236,10 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
     fn get_resources_dir(&self) -> PathBuf {
         self.resources_dir.clone()
     }
+
+    // fn get_broadcast(&self) -> tokio::sync::mpsc::Sender<PubsubMessage> {
+    //     self.broadcast.lock().unwrap().clone()
+    // }
 
     fn library(&self) -> Result<Library, rspc::Error> {
         match self.current_library.lock().unwrap().as_ref() {
@@ -359,6 +370,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
     async fn load_library(&self, library_id: &str) -> Result<Library, rspc::Error> {
+        // todo tokio::join! 优化
         {
             let mut is_busy = self.is_busy.lock().unwrap();
             if *is_busy.get_mut() {
@@ -391,7 +403,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
         /* init library */
         let library = {
-            let library = load_library(&self.local_data_root, &library_id)
+            let mut library = load_library(&self.local_data_root, &library_id)
                 .await
                 .map_err(|e| {
                     tracing::error!(task = "init library", "Failed: {:?}", e);
@@ -400,6 +412,8 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                         format!("Failed to init library: {:?}", e),
                     )
                 })?;
+            library.broadcast_mut(self.broadcast.clone());
+            library.set_temp_dir(self.temp_dir.clone());
             tracing::info!(task = "init library", "Success");
             library
         };
@@ -510,6 +524,15 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         {
             self.trigger_unfinished_tasks().await;
             tracing::info!(task = "trigger unfinished tasks", "Success");
+        }
+
+        /*
+            library 订阅 p2p, sync 事件
+        */
+        {
+            if let Ok(node) = self.node() {
+                let _ = spawn(node, library.clone()).await;
+            }
         }
 
         Ok(library)

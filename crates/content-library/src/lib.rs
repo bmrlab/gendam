@@ -1,17 +1,19 @@
+use p2p::PubsubMessage;
 use prisma_lib::PrismaClient;
 use qdrant::create_qdrant_server;
 pub use qdrant::{make_sure_collection_created, QdrantCollectionInfo, QdrantServerInfo};
 use qdrant_client::client::QdrantClient;
 use std::{
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
+use sync_lib::Sync;
 use vector_db::QdrantServer;
 
+pub mod bundle;
+mod database;
 mod port;
 mod qdrant;
-mod database;
-pub mod bundle;
 
 #[derive(Clone, Debug)]
 pub struct Library {
@@ -22,6 +24,9 @@ pub struct Library {
     // db_url: String,
     prisma_client: Arc<PrismaClient>,
     qdrant_server: Arc<QdrantServer>,
+    sync: Arc<Mutex<Sync>>,
+    broadcast: Option<Arc<Mutex<tokio::sync::mpsc::Sender<PubsubMessage>>>>,
+    temp_dir: Option<PathBuf>,
 }
 
 impl Library {
@@ -68,6 +73,29 @@ impl Library {
 
         files_dir_with_shard.join(file_hash)
     }
+
+    pub fn sync(&self) -> Sync {
+        self.sync.lock().unwrap().clone()
+    }
+
+    pub fn broadcast_mut(
+        &mut self,
+        broadcast: Arc<Mutex<tokio::sync::mpsc::Sender<PubsubMessage>>>,
+    ) -> () {
+        self.broadcast = Some(broadcast);
+    }
+
+    pub fn get_broadcast(&self) -> Option<tokio::sync::mpsc::Sender<PubsubMessage>> {
+        self.broadcast.as_ref().map(|b| b.lock().unwrap().clone())
+    }
+
+    pub fn get_temp_dir(&self) -> Option<PathBuf> {
+        self.temp_dir.clone()
+    }
+
+    pub fn set_temp_dir(&mut self, temp_dir: PathBuf) -> () {
+        self.temp_dir = Some(temp_dir);
+    }
 }
 
 pub async fn load_library(
@@ -86,6 +114,12 @@ pub async fn load_library(
 
     let qdrant_server = create_qdrant_server(qdrant_dir).await?;
 
+    let library_uuid = uuid::Uuid::parse_str(library_id).map_err(|_e| {
+        tracing::error!("failed to parse library id");
+    })?;
+
+    let sync = Sync::new(library_uuid, prisma_client.clone());
+
     let library = Library {
         id: library_id.to_string(),
         dir: library_dir,
@@ -93,6 +127,9 @@ pub async fn load_library(
         artifacts_dir,
         prisma_client,
         qdrant_server: Arc::new(qdrant_server),
+        sync: Arc::new(Mutex::new(sync)),
+        broadcast: None,
+        temp_dir: None,
     };
 
     Ok(library)

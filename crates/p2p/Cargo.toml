@@ -6,6 +6,7 @@ edition.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+sync-lib = { path = "../sync" }
 p2p-metadata = { path = "../p2p-metadata" }
 p2p-block = { path = "../p2p-block" }
 anyhow.workspace = true
@@ -23,7 +24,9 @@ libp2p = { version = "0.53.2", features = [
     "kad",
     "autonat",
     "ed25519",
-    "dcutr", "relay"
+    "dcutr", 
+    "relay",
+    "gossipsub"
 ] }
 rand_core = "0.6.4"
 serde.workspace = true

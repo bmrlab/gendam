@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use crate::sync::folder::create_folder_crdt;
+
 use super::utils::generate_file_hash;
 use content_library::Library;
 use prisma_client_rust::QueryError;
@@ -31,6 +33,10 @@ pub async fn create_dir(
                 format!("failed to create file_path: {}", e),
             )
         })?;
+    // 触发创建文件夹的crdt
+    create_folder_crdt(&library, materialized_path.to_owned(), name.to_owned())
+        .await
+        .expect("failed to create crdt");
     Ok(res)
 }
 

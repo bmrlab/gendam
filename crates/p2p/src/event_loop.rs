@@ -3,26 +3,27 @@ use crate::{
     constant::BLOCK_PROTOCOL,
     error::P2PError,
     peer::{Latency, Peer, PeerConnectionCandidate},
-    Behaviour, Event, Node,
+    Behaviour, Event, Node, PubsubMessage,
 };
-use libp2p::futures::AsyncWriteExt;
 use libp2p::multiaddr::Protocol;
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::{ConnectionError, DialError};
+use libp2p::{futures::AsyncWriteExt, gossipsub};
 use libp2p::{
     futures::StreamExt, kad, mdns, ping, swarm::SwarmEvent, Multiaddr, PeerId, Stream, Swarm,
 };
-use p2p_block::message::Message;
-use p2p_block::{StreamData, Transfer};
+use p2p_block::{self, BlockSize, StreamData, Transfer, TransferFile, TransferRequest};
+use p2p_block::{message::Message, SyncMessage};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::PoisonError;
 use std::{collections::HashMap, io, sync::Arc};
-use tokio::fs::File;
 use tokio::io::BufWriter;
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::{mpsc, oneshot};
+use tokio::{fs::File, io::BufReader};
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct FilePath {
@@ -36,10 +37,17 @@ pub struct EventLoop<T: StreamData + core::fmt::Debug> {
     relay_rx: Receiver<Multiaddr>,
     // list of need reconnect
     reconnect_list: Arc<tokio::sync::RwLock<HashSet<PeerId>>>,
+    // 广播
+    gossipsub_topic: gossipsub::IdentTopic,
 }
 
 impl<T: StreamData + core::fmt::Debug + 'static> EventLoop<T> {
-    pub fn new(node: Arc<Node<T>>, swarm: Swarm<Behaviour>, relay_rx: Receiver<Multiaddr>) -> Self {
+    pub fn new(
+        node: Arc<Node<T>>,
+        swarm: Swarm<Behaviour>,
+        relay_rx: Receiver<Multiaddr>,
+        gossipsub_topic: gossipsub::IdentTopic,
+    ) -> Self {
         let reconnect_list: Arc<tokio::sync::RwLock<HashSet<PeerId>>> =
             Arc::new(tokio::sync::RwLock::new(HashSet::new()));
         Self {
@@ -47,10 +55,14 @@ impl<T: StreamData + core::fmt::Debug + 'static> EventLoop<T> {
             swarm,
             relay_rx,
             reconnect_list,
+            gossipsub_topic,
         }
     }
 
-    pub async fn spawn(&mut self) -> Result<(), P2PError<io::Error>> {
+    pub async fn spawn(
+        &mut self,
+        mut s: tokio::sync::mpsc::Receiver<PubsubMessage>,
+    ) -> Result<(), P2PError<io::Error>> {
         // let mut swarm = build_swarm(self.identity.clone(), self.metadata()).unwrap();
         tracing::info!("Local peer id: {:?}", self.swarm.local_peer_id());
         // listen
@@ -78,6 +90,7 @@ impl<T: StreamData + core::fmt::Debug + 'static> EventLoop<T> {
                 event = self.swarm.select_next_some() => self.handle_event(event).await,
                 Some((peer, stream)) = incoming_streams.next() => self.handle_message(stream, peer).await,
                 Some(relay_address) = self.relay_rx.recv() => self.handle_add_relay(relay_address),
+                Some(message) = s.recv() => self.broadcast(message).await.unwrap(),
             }
         }
     }
@@ -323,6 +336,32 @@ impl<T: StreamData + core::fmt::Debug + 'static> EventLoop<T> {
                 _ => {}
             },
 
+            // gossipsub
+            SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(gossipsub::Event::Message {
+                propagation_source,
+                message_id,
+                message,
+            })) => {
+                tracing::info!(
+                    "Received message: {message_id:?} from {propagation_source:?} with data: {message:?}"
+                );
+                let message = PubsubMessage::from_bytes(&message.data);
+                if let Ok(message) = message {
+                    tracing::info!("Received message: {message:?}");
+                    match message {
+                        PubsubMessage::Sync(data) => {
+                            let id = Uuid::new_v4();
+                            let event = Event::Sync {
+                                id,
+                                doc_id: data,
+                                peer_id: propagation_source,
+                            };
+                            let _ = self.node.events.send(event).ok();
+                        }
+                    }
+                }
+            }
+
             // autonat
             // SwarmEvent::Behaviour(BehaviourEvent::AutoNat(event)) => {
             //     match event {
@@ -375,6 +414,7 @@ impl<T: StreamData + core::fmt::Debug + 'static> EventLoop<T> {
         let message_res: Result<Message<T>, io::Error> = Message::from_stream(&mut stream).await;
         match message_res {
             Ok(message) => {
+                tracing::info!("接收到的消息 {message:?}");
                 match message {
                     Message::Share(share) => {
                         tracing::info!("Received share request: {:?}", share);
@@ -394,6 +434,7 @@ impl<T: StreamData + core::fmt::Debug + 'static> EventLoop<T> {
                             .lock()
                             .unwrap_or_else(PoisonError::into_inner)
                             .insert(id, tx);
+
                         self.node
                             .share_payloads
                             .lock()
@@ -501,6 +542,133 @@ impl<T: StreamData + core::fmt::Debug + 'static> EventLoop<T> {
                             }
                         }
                     }
+                    Message::Sync(data) => {
+                        tracing::info!("接收到了文档数据，准备发给event");
+                        // 这里要做的事情是 收到这个消息，找到对应的文档，然后发送给对方，直到同步消息为空
+                        tracing::info!("Received sync request: {data:?}");
+                        // 这里要注意，把peer改了
+                        let event = Event::SyncTransfer(SyncMessage {
+                            peer_id: peer.to_base58(),
+                            doc_id: data.doc_id,
+                            message: data.message,
+                        });
+                        // 发送同步事件，拿到文档数据
+                        let _ = self.node.events.send(event).ok();
+                        // todo 还要把文档数据再发送回去
+                    }
+                    Message::SyncRequest(data) => {
+                        tracing::info!("收到了别人的同步请求");
+                        // 收到了别人发来的 文档同步请求，需要我把文档发送给他
+                        let id = Uuid::new_v4();
+                        let event = Event::SyncRequest {
+                            id,
+                            peer_id: peer.to_base58(),
+                            doc_id: data.doc_id,
+                        };
+                        let x = self
+                            .node
+                            .events
+                            .send(event)
+                            .expect("发送 同步请求 事件 失败");
+                        tracing::info!("发送 同步请求 事件, x : {x:?}");
+                    }
+                    Message::RequestDocument(data) => {
+                        // 这里是别人请求我发送文件数据
+                        tracing::info!("Received request document: {data:?}");
+                        let id = data.id;
+                        let file_hash = data.hash;
+                        // 这里因为没有library信息，所以发送event
+                        let (tx, rx) = oneshot::channel::<Option<Vec<PathBuf>>>();
+                        // 保存配对请求
+                        self.node
+                            .share_pairing_reqs
+                            .lock()
+                            .unwrap_or_else(PoisonError::into_inner)
+                            .insert(id.clone(), tx);
+
+                        let event = Event::RequestDocument {
+                            id: id.clone(),
+                            peer_id: peer,
+                            hash: file_hash,
+                        };
+                        let _ = self.node.events.send(event);
+
+                        tracing::info!("({id}): waiting for response");
+                        tokio::select! {
+                            temp_bundle_path_list = rx => {
+                                match temp_bundle_path_list {
+                                    Ok(Some(temp_bundle_path_list)) => {
+                                        // temp_bundle_path_list是零时文件夹路径
+
+                                        // 这里拿第一个，因为请求只要一个文件，之后再考虑多文件
+                                        let temp_bundle_path = temp_bundle_path_list[0].clone();
+                                        // 传输文件
+                                      
+
+                                        let cancelled = Arc::new(AtomicBool::new(false));
+
+                                        tracing::debug!("temp_bundle_path: {temp_bundle_path:?}");
+
+                                        let transfer_file = TransferFile {
+                                            path: temp_bundle_path.clone(),
+                                            size: std::fs::metadata(temp_bundle_path).unwrap().len(),
+                                        };
+
+                                        tracing::info!("transfer_file: {transfer_file:?}");
+
+                                        let requests = TransferRequest {
+                                            id,
+                                            block_size: BlockSize::default(),
+                                            file_list: vec![transfer_file.clone()],
+                                            info: "file".to_string(),
+                                        };
+
+                                        tracing::info!("requests: {requests:?}");
+
+                                        let requests_bytes = requests.to_bytes();
+
+                                        // 这里要把请求发送给对方
+                                        stream.write_all(&requests_bytes).await.map_err(|err| {
+                                            tracing::error!("({id}): error sending continuation bit: '{err:?}'");
+                                        }).unwrap();
+
+                                        // 这里是发送文件
+                                        let mut transfer = Transfer::new(
+                                            &requests,
+                                            |percent| {
+                                                tracing::info!("({id}): sending file: {percent}%");
+                                            },
+                                            &cancelled,
+                                        );
+
+                                        if let Ok(file) = File::open(&transfer_file.path).await {
+                                            let file = BufReader::new(file);
+                                            if let Err(e) = transfer.send(&mut stream, file).await {
+                                                tracing::error!("({id}): failed to send file: {e}");
+                                                // TODO error to frontend
+                                                // return;
+                                            }
+                                        }
+                                    },
+                                    Ok(None) => {
+                                        // 说明自己也没有这个文件
+                                        tracing::info!("({id}): rejected");
+
+                                        stream.write_all(&[0]).await.map_err(|err| {
+                                            tracing::error!("({id}): error sending rejection: '{err:?}'");
+                                        }).unwrap();
+
+                                        stream.flush().await.map_err(|err| {
+                                            tracing::error!("({id}): error flushing rejection: '{err:?}'");
+                                        }).unwrap();
+                                    },
+                                    Err(_) => {
+                                        tracing::warn!("({id}): error with Spacedrop pairing request receiver!");
+                                    }
+                                }
+                            }
+                        };
+                    }
                 }
             }
             Err(e) => {
@@ -528,5 +696,18 @@ impl<T: StreamData + core::fmt::Debug + 'static> EventLoop<T> {
                 }
             }
         });
+    }
+
+    // 广播消息
+    pub async fn broadcast(&mut self, message: PubsubMessage) -> Result<(), P2PError> {
+        tracing::info!("Broadcasting message: {message:?}");
+        let gossipsub_topic = self.gossipsub_topic.clone();
+        let message_id = self
+            .swarm
+            .behaviour_mut()
+            .gossipsub
+            .publish(gossipsub_topic.clone(), message.to_bytes())?;
+        tracing::info!("publish message_id: {message_id:?}");
+        Ok(())
     }
 }

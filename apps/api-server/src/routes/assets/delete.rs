@@ -1,4 +1,4 @@
-use crate::{file_handler::get_file_handler, CtxWithLibrary};
+use crate::{file_handler::get_file_handler, sync::file::delete_crdt, CtxWithLibrary};
 use prisma_client_rust::{Direction, QueryError};
 use prisma_lib::{asset_object, file_path};
 use std::{collections::HashSet, sync::Arc};
@@ -11,6 +11,9 @@ pub async fn delete_file_path(
     name: &str,
 ) -> Result<(), rspc::Error> {
     let library = ctx.library()?;
+
+    // 先触发删除文件或文件夹的crdt， 不然查不到数据
+    delete_crdt(&library, materialized_path.to_owned(),name.to_owned()).await.expect("failed to delete crdt");
 
     let deleted_asset_objects = Arc::new(Mutex::new(vec![]));
     let deleted_asset_objects_clone = deleted_asset_objects.clone();

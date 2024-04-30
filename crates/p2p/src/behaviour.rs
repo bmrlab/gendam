@@ -3,11 +3,12 @@ use std::collections::HashMap;
 use p2p_metadata;
 
 use libp2p::{
-    dcutr, identity,
+    dcutr, gossipsub, identity,
     kad::{self, store::MemoryStore},
     mdns, ping, relay,
     swarm::NetworkBehaviour,
 };
+use tokio::io;
 
 use crate::constant::PROTOCOL_VERSION;
 use libp2p_stream as stream;
@@ -33,10 +34,14 @@ pub struct Behaviour {
 
     dcutr: dcutr::Behaviour,
     relay_client: relay::client::Behaviour,
+
+    // 广播
+    pub(crate) gossipsub: gossipsub::Behaviour,
 }
 
 impl Behaviour {
     pub fn new(
+        key: identity::Keypair,
         local_public_key: identity::PublicKey,
         relay_behaviour: relay::client::Behaviour,
         metadata: HashMap<String, String>,
@@ -81,6 +86,19 @@ impl Behaviour {
                 .with_metadata(name, operating_system, device_model, version),
         );
 
+        // 广播
+        let gossipsub_config = gossipsub::ConfigBuilder::default()
+            .max_transmit_size(262144)
+            .build()
+            .map_err(|msg| io::Error::new(io::ErrorKind::Other, msg))
+            .expect("fail build gossipsub config");
+
+        let gossipsub = gossipsub::Behaviour::new(
+            gossipsub::MessageAuthenticity::Signed(key.clone()),
+            gossipsub_config,
+        )
+        .expect("Valid configuration");
+
         Self {
             mdns,
             metadata,
@@ -90,6 +108,7 @@ impl Behaviour {
             dcutr: dcutr::Behaviour::new(peer_id),
             kademlia: kad::Behaviour::new(peer_id, MemoryStore::new(peer_id)),
             // auto_nat,
+            gossipsub,
         }
     }
 }

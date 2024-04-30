@@ -7,6 +7,8 @@ pub(crate) mod p2p;
 mod users;
 mod video;
 
+pub use assets::create;
+
 use crate::CtxWithLibrary;
 use rspc::Router;
 

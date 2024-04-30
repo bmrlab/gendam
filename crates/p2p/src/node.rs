@@ -1,13 +1,14 @@
 use crate::event_loop::EventLoop;
 use crate::peer::NetworkType;
-use crate::str_to_peer_id;
 use crate::{build_swarm, peer::Peer};
 use crate::{
     constant::BLOCK_PROTOCOL, error::P2PError, metadata::get_hardware_model_name, Events,
     HardwareModel,
 };
+use crate::{str_to_peer_id, PubsubMessage};
 use anyhow::Result;
 use libp2p::futures::{AsyncReadExt, AsyncWriteExt};
+use libp2p::gossipsub;
 use libp2p::multiaddr::Protocol;
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::{core::Multiaddr, identity::Keypair, PeerId, Stream};
@@ -62,6 +63,8 @@ pub struct Node<T: StreamData + core::fmt::Debug> {
 
     // 分享请求的 id 和 是否已取消
     pub share_cancellations: Arc<Mutex<HashMap<Uuid, Arc<AtomicBool>>>>,
+    // broadcast
+    // pub broadcast: oneshot::Sender<PubsubMessage>
 }
 
 impl<T: StreamData + core::fmt::Debug> Debug for Node<T> {
@@ -79,14 +82,28 @@ impl<T: StreamData + core::fmt::Debug> Debug for Node<T> {
 }
 
 impl<T: StreamData + core::fmt::Debug + 'static> Node<T> {
-    pub fn new() -> Result<Self, P2PError<()>> {
+    pub fn new(s: tokio::sync::mpsc::Receiver<PubsubMessage>) -> Result<Self, P2PError<()>> {
         let identity = Keypair::generate_ed25519();
         let peer_id = identity.public().to_peer_id();
         tracing::debug!("local identity: {identity:#?}");
         tracing::info!("local peer_id: {peer_id:#?}");
 
         let metadata = Self::init_metadata();
-        let swarm = build_swarm(identity.clone(), metadata.clone())?;
+
+        let gossipsub_topic = gossipsub::IdentTopic::new("sync");
+
+        let mut swarm = build_swarm(identity.clone(), metadata.clone())?;
+
+        tracing::info!("Subscribing to {gossipsub_topic:?}");
+        swarm
+            .behaviour_mut()
+            .gossipsub
+            .subscribe(&gossipsub_topic)
+            .map_err(|e| {
+                tracing::error!("gossipsub fail subscribe: {e}");
+                e
+            })
+            .expect("gossipsub fail subscribe");
 
         let control = swarm.behaviour().block.new_control();
 
@@ -108,8 +125,8 @@ impl<T: StreamData + core::fmt::Debug + 'static> Node<T> {
 
         let node_clone = node.clone();
         tokio::spawn(async move {
-            let mut event_loop = EventLoop::new(Arc::new(node_clone), swarm, rx);
-            match event_loop.spawn().await {
+            let mut event_loop = EventLoop::new(Arc::new(node_clone), swarm, rx, gossipsub_topic);
+            match event_loop.spawn(s).await {
                 Ok(_) => {}
                 Err(e) => {
                     tracing::error!("event loop error: {e}");
@@ -269,12 +286,14 @@ impl<T: StreamData + core::fmt::Debug + 'static> Node<T> {
                 })
                 .collect::<Vec<_>>();
 
-            let message = Message::Share(TransferRequest {
+            let requests = TransferRequest {
                 id,
                 block_size: BlockSize::default(),
                 file_list: transfer_files.clone(),
                 info: share_info.clone(),
-            });
+            };
+
+            let message = Message::Share(requests.clone());
 
             tracing::info!("sending message: {:#?}", message);
 
@@ -284,8 +303,6 @@ impl<T: StreamData + core::fmt::Debug + 'static> Node<T> {
                 tracing::error!("({id}): failed to send header: {err}");
                 return;
             }
-
-            let Message::Share(requests) = message;
 
             tracing::debug!("({id}): waiting for response");
 
