@@ -97,7 +97,11 @@ impl VideoHandler {
             .models
             .insert(task_type.to_string(), current_model_name.clone());
 
-        let output_dir = PathBuf::from(format!("{}-{}", &task_type.to_string(), Uuid::new_v4()));
+        let output_dir = PathBuf::from(match task_type {
+            // 针对 frames 做一下特殊处理，因为前端需要读取里面的内容，不方便通过接口获取
+            VideoTaskType::Frame => "frames".into(),
+            _ => format!("{}-{}", &task_type.to_string(), Uuid::new_v4()),
+        });
 
         let input_path = self
             .get_task_parent_path_list(task_type)
