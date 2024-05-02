@@ -59,18 +59,14 @@ export default function Search() {
 
   return (
     <Viewport.Page>
-      <Viewport.Toolbar className="justify-start">
-        <PageNav
-          title={searchPayload ? `Searching "${searchPayload.text}"` : "Search"}
-          className="w-1/3"
-        />
-        <div className="w-1/3">
+      <Viewport.Toolbar className="relative">
+        <PageNav title={searchPayload ? `Searching "${searchPayload.text}"` : "Search"} />
+        <div className="absolute left-1/3 w-1/3">
           <SearchForm
             initialSearchPayload={searchPayloadInURL}
             onSubmit={(text: string, recordType: string) => handleSearch(text, recordType)}
           />
         </div>
-        <div className="ml-auto"></div>
       </Viewport.Toolbar>
       <Viewport.Content className="overflow-hidden flex flex-col items-stretch">
         {searchPayload ? (

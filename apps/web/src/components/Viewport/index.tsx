@@ -49,7 +49,8 @@ const Page = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>)
 
 const Toolbar = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
-    <div className={classNames(
+    // https://tauri.app/v1/guides/features/window-customization/
+    <div data-tauri-drag-region className={classNames(
       'h-12 w-full text-ink bg-toolbar border-b border-toolbar-line',
       'flex items-center px-4',  // default layout
       className

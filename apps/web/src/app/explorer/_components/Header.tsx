@@ -70,12 +70,9 @@ export default function Header() {
 
   return (
     <>
-      <Viewport.Toolbar className="justify-start">
-        <PageNav
-          title={explorer.materializedPath === '/' ? 'Home' : explorer.materializedPath}
-          className="w-1/3"
-        />
-        <div className="w-1/3">
+      <Viewport.Toolbar className="relative">
+        <PageNav title={explorer.materializedPath === '/' ? 'Home' : explorer.materializedPath} />
+        <div className="absolute left-1/3 w-1/3">
           <SearchForm
             initialSearchPayload={null}
             onSubmit={(text: string, recordType: string) => handleSearch(text, recordType)}
