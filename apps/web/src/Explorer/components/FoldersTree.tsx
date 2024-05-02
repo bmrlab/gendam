@@ -117,8 +117,11 @@ export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement
       className={cn('bg-sidebar py-2 overflow-auto', className)}
       // onClick={() => selectionState.set(null)}
     >
-      <div className="ml-5 text-xs font-medium text-ink/50 mb-2">Folders</div>
-      <div className="ml-5 flex items-center justify-start">
+      <div className="ml-5 text-xs font-medium text-ink/50 mb-1 flex">
+        <div className="p-1 rounded hover:bg-sidebar-hover"
+          onClick={(e) => router.push('/explorer')}>Folders</div>
+      </div>
+      {/* <div className="ml-5 flex items-center justify-start">
         <div
           className={cn(
             "my-1 pl-1 py-1 pr-2 flex items-center justify-start gap-2",
@@ -130,7 +133,7 @@ export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement
           <Image src={Folder_Light} alt="folder" priority className="w-5 h-auto"></Image>
           <div className="text-xs">Home</div>
         </div>
-      </div>
+      </div> */}
       <div className="ml-3.5">
         {dirs?.map((filePath) => (
           <FoldersBlock key={filePath.id} filePath={filePath} />

@@ -13,7 +13,7 @@ export default function Footer() {
   const explorer = useExplorerContext()
   const folders = useMemo(() => {
     const list = (explorer.materializedPath ?? '/').split('/').filter(Boolean)
-    list.unshift('home')
+    list.unshift('Library')
     return list
   }, [explorer.materializedPath])
 

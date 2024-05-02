@@ -71,7 +71,7 @@ export default function Header() {
   return (
     <>
       <Viewport.Toolbar className="relative">
-        <PageNav title={explorer.materializedPath === '/' ? 'Home' : explorer.materializedPath} />
+        <PageNav title={explorer.materializedPath === '/' ? 'Library' : explorer.materializedPath} />
         <div className="absolute left-1/3 w-1/3">
           <SearchForm
             initialSearchPayload={null}
