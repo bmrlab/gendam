@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ['latin'] })
 //   ssr: false,
 // });
 
-import ClientLayout from '@/components/ClientLayout'
+import ClientLayout from './ClientLayout'
 import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'GenDAM | A privacy first generative DAM.',
