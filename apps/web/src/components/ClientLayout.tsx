@@ -98,9 +98,9 @@ export default function ClientLayout({
     Promise.all([
       client.query(['users.get']),
       client.query(['libraries.status']),
-    ]).then(([
+    ]).then(async ([
       auth,
-      { id, isBusy },
+      { id, loaded, isBusy },
     ]) => {
       setAuth(auth)
       if (!id) {
@@ -111,7 +111,17 @@ export default function ClientLayout({
         toast.warning('App is busy, please try again later.')
         return
       }
-      loadLibrary(id).then(({ isBusy }) => {
+      if (!loaded) {
+        try {
+          // app 刚启动的时候 loaded 是 false, 先 unload 一下以 kill qdrant
+          await unloadLibrary()
+        } catch (error) {
+          console.error(error)
+        }
+      }
+      // loadLibrary 可以重复执行, 这里不需要判断 loaded 是否为 true
+      try {
+        const { isBusy } = await loadLibrary(id)
         if (isBusy) {
           toast.info('App is busy', {
             description: 'The library is being loaded, please wait until it is done.',
@@ -119,10 +129,10 @@ export default function ClientLayout({
           return
         }
         setPending(false)
-      }).catch((error: any) => {
+      } catch(error) {
         console.error(error)
         unloadLibrary().then(() => setPending(false)).catch(console.error)
-      })
+      }
     }).catch((error: any) => {
       console.error(error)
     })
