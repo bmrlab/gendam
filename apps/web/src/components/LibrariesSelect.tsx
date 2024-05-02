@@ -34,7 +34,7 @@ export default function LibrariesSelect({
   )
 
   return (
-    <div className="bg-app flex h-screen w-screen flex-col items-center justify-center">
+    <div className="flex flex-col items-center justify-center">
       <Image src={GenDAM_Logo} alt="GenDAM" className="mb-4 h-8 w-8"></Image>
       {librariesQuery.isSuccess ? (
         <div className="border-app-line bg-app-box my-4 w-80 rounded-md border p-1 shadow-sm">

@@ -105,7 +105,7 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="color-ink bg-sidebar relative flex h-screen w-60 flex-col items-stretch justify-start p-3">
+    <div className="h-full w-60 text-ink bg-sidebar relative flex flex-col items-stretch justify-start p-3">
       <section className="relative mb-6 mt-4">
         <div className="flex cursor-default items-center px-2" onClick={() => setSelectPanelOpen(true)}>
           <Image src={GenDAM_Logo} alt="GenDAM" className="h-8 w-8"></Image>

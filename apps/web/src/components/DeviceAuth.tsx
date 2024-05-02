@@ -1,7 +1,6 @@
 'use client'
 import { GenDAM_Logo } from '@gendam/assets/images'
 import Image from 'next/image'
-import Viewport from '@/components/Viewport'
 import { Button } from '@gendam/ui/v2/button'
 import { useCallback, useEffect, useState } from 'react'
 import { Auth } from '@/lib/bindings'
@@ -76,20 +75,16 @@ export default function DeviceAuth({ onSuccess }: {
   }, [checkForLoginStatus, code, onSuccess]);
 
   return (
-    <Viewport.Page>
-      <Viewport.Content>
-        <div className="flex flex-col h-screen w-screen items-center justify-center">
-          <div className="relative h-12 w-12">
-            <Image src={GenDAM_Logo.src} alt="GenDAM App Logo" fill={true} className="object-contain" />
-          </div>
-          <div className="mt-4">
-          Please log in to continue using <strong>GenDAM</strong>.
-          </div>
-          <div className="mt-16">
-            <Button variant="accent" size="md" onClick={openLogin}>Log in</Button>
-          </div>
-        </div>
-      </Viewport.Content>
-    </Viewport.Page>
+    <div className="flex flex-col items-center justify-center">
+      <div className="relative h-12 w-12">
+        <Image src={GenDAM_Logo.src} alt="GenDAM App Logo" fill={true} className="object-contain" />
+      </div>
+      <div className="mt-4">
+      Please log in to continue using <strong>GenDAM</strong>.
+      </div>
+      <div className="mt-16">
+        <Button variant="accent" size="md" onClick={openLogin}>Log in</Button>
+      </div>
+    </div>
   )
 }

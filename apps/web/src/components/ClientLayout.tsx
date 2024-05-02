@@ -1,5 +1,6 @@
 'use client'
-import SonnerToaster from '@/components/Shared/SonnerToaster'
+import Viewport from '@/components/Viewport'
+import SonnerToaster from '@/components/SonnerToaster'
 import LibrariesSelect from '@/components/LibrariesSelect'
 import DeviceAuth from '@/components/DeviceAuth'
 import Shared from '@/components/Shared'
@@ -210,40 +211,48 @@ export default function ClientLayout({
     [library],
   )
 
-  return pending ? (
-    <div className="text-ink/50 flex h-full w-full flex-col items-center justify-center">
-      <Icon.Loading className="h-8 w-8 animate-spin" />
-      <div className="mt-8 text-sm">Checking library data</div>
-      <SonnerToaster />
-    </div>
-  ) : !auth ? (
-    <DeviceAuth onSuccess={(auth) => setAuth(auth)} />
-  ) : !library || !librarySettings ? (
+  return (
     <rspc.Provider client={client} queryClient={queryClient}>
-      <>
-        <LibrariesSelect switchCurrentLibraryById={switchCurrentLibraryById} />
+      <Viewport>
+        {pending ? (
+          <Viewport.Page>
+            <Viewport.Content className="flex flex-col items-center justify-center">
+              <Icon.Loading className="text-ink/50 h-8 w-8 animate-spin" />
+              <div className="text-ink/50 mt-8 text-sm">Checking library data</div>
+            </Viewport.Content>
+          </Viewport.Page>
+        ) : !auth ? (
+          <Viewport.Page>
+            <Viewport.Content className="flex flex-col items-center justify-center">
+              <DeviceAuth onSuccess={(auth) => setAuth(auth)} />
+            </Viewport.Content>
+          </Viewport.Page>
+        ) : !library || !librarySettings ? (
+          <Viewport.Page>
+            <Viewport.Content className="flex flex-col items-center justify-center">
+              <LibrariesSelect switchCurrentLibraryById={switchCurrentLibraryById} />
+            </Viewport.Content>
+          </Viewport.Page>
+        ) : (
+          <CurrentLibrary.Provider
+            value={{
+              id: library.id,
+              dir: library.dir,
+              librarySettings: librarySettings,
+              updateLibrarySettings: updateLibrarySettings,
+              switchCurrentLibraryById: switchCurrentLibraryById,
+              getFileSrc,
+              getThumbnailSrc,
+            }}
+          >
+            <Viewport.Sidebar />
+            {children /* children should be a Viewport.Page element */}
+            <Shared />
+          </CurrentLibrary.Provider>
+        )}
         <SonnerToaster />
-      </>
+      </Viewport>
     </rspc.Provider>
-  ) : (
-    <CurrentLibrary.Provider
-      value={{
-        id: library.id,
-        dir: library.dir,
-        librarySettings: librarySettings,
-        updateLibrarySettings: updateLibrarySettings,
-        switchCurrentLibraryById: switchCurrentLibraryById,
-        getFileSrc,
-        getThumbnailSrc,
-      }}
-    >
-      <rspc.Provider client={client} queryClient={queryClient}>
-        <>
-          {children}
-          <Shared />
-        </>
-      </rspc.Provider>
-    </CurrentLibrary.Provider>
   )
 }
 

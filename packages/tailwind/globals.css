@@ -68,9 +68,7 @@ accent: 高亮色，我们是蓝色
 
 @layer base {
   body {
-    /* color: rgb(var(--foreground-rgb)); */
-    /* background: rgb(var(--background-rgb)); */
-    @apply text-ink bg-app;
+    background: transparent;
     /* 禁用选择，桌面应用的默认行为 */
     user-select: none;
     /* 禁用视口弹性溢出 */

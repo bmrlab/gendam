@@ -10,7 +10,6 @@ const inter = Inter({ subsets: ['latin'] })
 // });
 
 import ClientLayout from '@/components/ClientLayout'
-import Viewport from '@/components/Viewport'
 import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'GenDAM | A privacy first generative DAM.',
@@ -25,13 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ClientLayout>
-          <Viewport>
-            <Viewport.Sidebar />
-            {children}
-            {/* children should be a Viewport.Page element */}
-          </Viewport>
-        </ClientLayout>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   )

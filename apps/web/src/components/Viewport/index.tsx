@@ -12,11 +12,28 @@ import Sidebar from './Sidebar'
  *     <Viewport.StatusBar />
  *   </Viewport.Page>
  * </Viewport>
+ * -------------------------------------
+ * | Viewport                          |
+ * | --------------------------------- |
+ * | | Sidebar | Page                | |
+ * | |         | ------------------- | |
+ * | |         | | Toolbar         | | |
+ * | |         | |-----------------| | |
+ * | |         | |                 | | |
+ * | |         | |                 | | |
+ * | |         | | Content         | | |
+ * | |         | |                 | | |
+ * | |         | |                 | | |
+ * | |         | |-----------------| | |
+ * | |         | | StatusBar       | | |
+ * | |         | ------------------- | |
+ * | --------------------------------- |
+ * -------------------------------------
  */
 
 const Viewport = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
-    <main className={classNames('flex flex-row overflow-hidden', className)} {...props}>
+    <main className={classNames('h-screen w-screen overflow-hidden rounded-xl flex flex-row', className)} {...props}>
       {children}
     </main>
   )
@@ -24,7 +41,7 @@ const Viewport = ({ className, children, ...props }: HTMLAttributes<HTMLDivEleme
 
 const Page = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
-    <div className={classNames('flex h-screen flex-1 flex-col overflow-hidden', className)} {...props}>
+    <div className={classNames('h-full flex-1 flex flex-col overflow-hidden', className)} {...props}>
       {children}
     </div>
   )
@@ -56,7 +73,7 @@ const Content = ({ className, children, ...props }: HTMLAttributes<HTMLDivElemen
 const StatusBar = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
     <div className={classNames(
-      'h-8 w-full bg-toolbar border-t border-toolbar-line',
+      'h-8 w-full text-ink bg-toolbar border-t border-toolbar-line',
       'flex items-center px-4',  // default layout
       className
     )} {...props}>
