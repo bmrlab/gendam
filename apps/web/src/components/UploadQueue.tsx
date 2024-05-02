@@ -44,7 +44,7 @@ const QueueList = () => {
       {uploadQueueStore.queue.map((file, index) => (
         <QueueItem
           key={index} file={file}
-          status={<div className="text-ink/50">Wait for upload</div>}
+          status={<div className="text-ink/50">Wait for import</div>}
         />
       ))}
       {uploadQueueStore.failed.map((file, index) => (
@@ -65,7 +65,7 @@ const QueueList = () => {
         <QueueItem
           key={index} file={file}
           icon={<Icon.Check className="size-4 text-green-600"></Icon.Check>}
-          status={<div className="text-ink/50">Uploaded</div>}
+          status={<div className="text-ink/50">Imported</div>}
         />
       ))}
     </div>
@@ -89,7 +89,7 @@ const QueueStatus = function() {
         <Icon.Loading className="size-5 animate-spin text-orange-600"></Icon.Loading>
       </div>
       <div className="flex-1">
-        <span className="text-xs font-medium">Uploading</span>
+        <span className="text-xs font-medium">Importing</span>
         <span className="text-xs text-ink/50 ml-2">
           {counts.pending} of {counts.total} files left
         </span>
@@ -101,7 +101,7 @@ const QueueStatus = function() {
         <Icon.Close className="size-full"></Icon.Close>
       </div>
       <div className="flex-1">
-        <span className="text-xs font-medium">Upload failed</span>
+        <span className="text-xs font-medium">Import failed</span>
         <span className="text-xs text-ink/50 ml-2">
           {counts.failed} of {counts.total} files failed
         </span>
@@ -113,16 +113,16 @@ const QueueStatus = function() {
         <Icon.Check className="size-full"></Icon.Check>
       </div>
       <div className="flex-1">
-        <span className="text-xs font-medium">Upload completed</span>
+        <span className="text-xs font-medium">Import completed</span>
         <span className="text-xs text-ink/50 ml-2">
-          {counts.success} files uploaded
+          {counts.success} files imported
         </span>
       </div>
     </>
   } else {
     return <>
       <div className="flex-1">
-        <span className="text-xs font-medium">No files to upload</span>
+        <span className="text-xs font-medium">No files to import</span>
       </div>
     </>
   }
