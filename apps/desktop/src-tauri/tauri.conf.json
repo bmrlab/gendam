@@ -51,6 +51,17 @@
         ],
         "sidecar": true
       },
+      "window": {
+        "all": false,
+        "close": true,
+        "hide": true,
+        "show": true,
+        "maximize": true,
+        "minimize": true,
+        "unmaximize": true,
+        "unminimize": true,
+        "startDragging": true
+      },
       "process": {
         "all": false,
         "exit": true,
@@ -122,11 +133,14 @@
       "dialog": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVEN0E3MTE2RDM4OTY4RkMKUldUOGFJblRGbkY2WFJ4Q0VwVjErRytuSU1Eajl3ZTg4OGUrU2w2d0Y4VlNUQlJyb01wNVJGa24K"
     },
+    "macOSPrivateApi": true,
     "windows": [
       {
         "label": "main",
         "title": "GenDAM",
         "titleBarStyle":"Transparent",
+        "decorations": false,
+        "transparent": true,
         "height": 800,
         "width": 1400,
         "minHeight": 600,
