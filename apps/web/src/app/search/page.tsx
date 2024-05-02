@@ -60,7 +60,10 @@ export default function Search() {
   return (
     <Viewport.Page>
       <Viewport.Toolbar className="justify-start">
-        <PageNav title="Search" className="w-1/3" />
+        <PageNav
+          title={searchPayload ? `Searching "${searchPayload.text}"` : "Search"}
+          className="w-1/3"
+        />
         <div className="w-1/3">
           <SearchForm
             initialSearchPayload={searchPayloadInURL}
@@ -82,18 +85,18 @@ export default function Search() {
                 onClick={() => handleSearch(searchPayload.text, 'Transcript')}
               >Transcript</div>
             </div>
-            <div className="text-ink/50 ml-4 text-sm flex-1 truncate">{searchPayload.text}</div>
-            <form className='flex items-center gap-2 mr-3'>
-            <Checkbox.Root
-              id="--group-frames" checked={groupFrames}
-              onCheckedChange={(checked: boolean | 'indeterminate') => {
-                setGroupFrames(checked === true ? true : false)
-              }}
-            >
-              <Checkbox.Indicator />
-            </Checkbox.Root>
-            <label className="text-xs" htmlFor="--group-frames">Expand video frames</label>
-          </form>
+            {/* <div className="text-ink/50 ml-4 text-sm flex-1 truncate">{searchPayload.text}</div> */}
+            <form className='ml-auto flex items-center gap-2 mr-3'>
+              <Checkbox.Root
+                id="--group-frames" checked={groupFrames}
+                onCheckedChange={(checked: boolean | 'indeterminate') => {
+                  setGroupFrames(checked === true ? true : false)
+                }}
+              >
+                <Checkbox.Indicator />
+              </Checkbox.Root>
+              <label className="text-xs" htmlFor="--group-frames">Expand video frames</label>
+            </form>
           </div>
         ) : null}
         <div className="flex-1 overflow-auto p-8">
