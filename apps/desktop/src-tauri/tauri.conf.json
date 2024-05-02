@@ -138,8 +138,9 @@
       {
         "label": "main",
         "title": "GenDAM",
-        "titleBarStyle":"Transparent",
-        "decorations": false,
+        "hiddenTitle": true,
+        "titleBarStyle": "Overlay",
+        "decorations": true,
         "transparent": true,
         "height": 800,
         "width": 1400,

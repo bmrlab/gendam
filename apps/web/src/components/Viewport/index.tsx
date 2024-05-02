@@ -33,7 +33,8 @@ import Sidebar from './Sidebar'
 
 const Viewport = ({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) => {
   return (
-    <main className={classNames('h-screen w-screen overflow-hidden rounded-xl flex flex-row', className)} {...props}>
+    // rounded-xl is not necessary if decorations is true in tauri.conf.json
+    <main className={classNames('h-screen w-screen overflow-hidden flex flex-row', className)} {...props}>
       {children}
     </main>
   )

@@ -105,9 +105,10 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="h-full w-60 text-ink bg-sidebar relative flex flex-col items-stretch justify-start p-3">
-      <section className="relative mb-6 mt-4">
-        <div className="flex cursor-default items-center px-2" onClick={() => setSelectPanelOpen(true)}>
+    <div className="h-full w-60 text-ink bg-sidebar relative flex flex-col items-stretch justify-start">
+      <div data-tauri-drag-region className="h-10"></div>
+      <section className="relative mb-6 mt-2 mx-3">
+        <div className="flex cursor-default items-center" onClick={() => setSelectPanelOpen(true)}>
           <Image src={GenDAM_Logo} alt="GenDAM" className="h-8 w-8"></Image>
           <div className="mx-2 flex-1 overflow-hidden">
             <div className="truncate text-xs font-semibold">{selected?.title ?? 'Untitled'}</div>
@@ -139,7 +140,7 @@ export default function Sidebar() {
         ) : null}
       </section>
 
-      <section className="text-sm">
+      <section className="text-sm mx-3">
         <Link href="/explorer" className={menuClassNames('/explorer')}>
           <Icon.File className="text-ink/70 mr-2 h-4 w-4" />
           <span>Library</span>
@@ -157,9 +158,9 @@ export default function Sidebar() {
         </Link> */}
       </section>
 
-      <FoldersTree className="-mx-3 my-4 flex-1" />
+      <FoldersTree className="my-4 flex-1" />
 
-      <section className="relative mb-2 flex items-center justify-start gap-1 text-sm">
+      <section className="relative mb-2 mx-3 flex items-center justify-start gap-1 text-sm">
         <Link href="/settings" className="block">
           <Button variant="ghost" size="sm" className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none">
             <Icon.Settings className="h-full w-full" />
@@ -197,7 +198,9 @@ export default function Sidebar() {
         {uploadQueueOpen ? <UploadQueue close={() => setUploadQueueOpen(false)} /> : null}
       </section>
 
-      <Version />
+      <section className="mx-3 mb-3">
+        <Version />
+      </section>
     </div>
   )
 }

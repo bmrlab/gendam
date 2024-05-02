@@ -12,6 +12,15 @@ import { convertFileSrc } from '@tauri-apps/api/tauri'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
+const BlankPage = ({ children }: Readonly<{ children: React.ReactNode }>) => (
+  <Viewport.Page>
+    <Viewport.Toolbar className="border-none h-8" /> {/* for window drag */}
+    <Viewport.Content className="flex flex-col items-center justify-center">
+      {children}
+    </Viewport.Content>
+  </Viewport.Page>
+)
+
 export default function ClientLayout({
   children,
 }: Readonly<{
@@ -225,24 +234,18 @@ export default function ClientLayout({
     <rspc.Provider client={client} queryClient={queryClient}>
       <Viewport>
         {pending ? (
-          <Viewport.Page>
-            <Viewport.Content className="flex flex-col items-center justify-center">
-              <Icon.Loading className="text-ink/50 h-8 w-8 animate-spin" />
-              <div className="text-ink/50 mt-8 text-sm">Checking library data</div>
-            </Viewport.Content>
-          </Viewport.Page>
+          <BlankPage>
+            <Icon.Loading className="text-ink/50 h-8 w-8 animate-spin" />
+            <div className="text-ink/50 mt-8 text-sm">Checking library data</div>
+          </BlankPage>
         ) : !auth ? (
-          <Viewport.Page>
-            <Viewport.Content className="flex flex-col items-center justify-center">
-              <DeviceAuth onSuccess={(auth) => setAuth(auth)} />
-            </Viewport.Content>
-          </Viewport.Page>
+          <BlankPage>
+            <DeviceAuth onSuccess={(auth) => setAuth(auth)} />
+          </BlankPage>
         ) : !library || !librarySettings ? (
-          <Viewport.Page>
-            <Viewport.Content className="flex flex-col items-center justify-center">
-              <LibrariesSelect switchCurrentLibraryById={switchCurrentLibraryById} />
-            </Viewport.Content>
-          </Viewport.Page>
+          <BlankPage>
+            <LibrariesSelect switchCurrentLibraryById={switchCurrentLibraryById} />
+          </BlankPage>
         ) : (
           <CurrentLibrary.Provider
             value={{
