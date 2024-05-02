@@ -162,7 +162,7 @@ export default function Sidebar() {
       <section className="relative mb-2 flex items-center justify-start gap-1 text-sm">
         <Link href="/settings" className="block">
           <Button variant="ghost" size="sm" className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none">
-            <Icon.Gear className="h-full w-full" />
+            <Icon.Settings className="h-full w-full" />
           </Button>
         </Link>
         <Button

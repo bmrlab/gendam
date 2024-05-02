@@ -1,4 +1,5 @@
 import * as React from 'react'
+
 import Add from './jsx/Add'
 import ArrowClockwise from './jsx/ArrowClockwise'
 import ArrowDown from './jsx/ArrowDown'
@@ -7,6 +8,7 @@ import ArrowRight from './jsx/ArrowRight'
 import ArrowUp from './jsx/ArrowUp'
 import ArrowUpLeft from './jsx/ArrowUpLeft'
 import Briefcase from './jsx/Briefcase'
+import BulletList from './jsx/BulletList'
 import Check from './jsx/Check'
 import Clock from './jsx/Clock'
 import Close from './jsx/Close'
@@ -20,18 +22,23 @@ import EditPen from './jsx/EditPen'
 import EditSquare from './jsx/EditSquare'
 import File from './jsx/File'
 import Finder from './jsx/Finder'
+import FolderAdd from './jsx/FolderAdd'
 import FolderOpen from './jsx/FolderOpen'
 import Gallery from './jsx/Gallery'
 import Gear from './jsx/Gear'
 import Grid from './jsx/Grid'
 import Image from './jsx/Image'
+import Library from './jsx/Library'
 import List from './jsx/List'
 import Loading from './jsx/Loading'
 import MagnifyingGlass from './jsx/MagnifyingGlass'
 import Mic from './jsx/Mic'
 import Minus from './jsx/Minus'
+import Model from './jsx/Model'
+import Moon from './jsx/Moon'
 import MoreHorizontal from './jsx/MoreHorizontal'
 import MoreVertical from './jsx/MoreVertical'
+import Pinterest from './jsx/Pinterest'
 import Play from './jsx/Play'
 import QuestionMark from './jsx/QuestionMark'
 import RemoveFromList from './jsx/RemoveFromList'
@@ -39,21 +46,18 @@ import RemoveSquare from './jsx/RemoveSquare'
 import Rocket from './jsx/Rocket'
 import ScreenExpand from './jsx/ScreenExpand'
 import ScreenNarrow from './jsx/ScreenNarrow'
+import SelfAdapting from './jsx/SelfAdapting'
+import Settings from './jsx/Settings'
+import Sidebar from './jsx/Sidebar'
 import SkipBack from './jsx/SkipBack'
 import SkipForward from './jsx/SkipForward'
 import SpeakerHigh from './jsx/SpeakerHigh'
 import SpeakerSimpleX from './jsx/SpeakerSimpleX'
+import Sun from './jsx/Sun'
 import Tag from './jsx/Tag'
 import Trash from './jsx/Trash'
 import UpAndDownArrow from './jsx/UpAndDownArrow'
 import Upload from './jsx/Upload'
-import BulletList from './jsx/BulletList'
-import FolderAdd from './jsx/FolderAdd'
-import Moon from './jsx/Moon'
-import Pinterest from './jsx/Pinterest'
-import SelfAdapting from './jsx/SelfAdapting'
-import Sidebar from './jsx/Sidebar'
-import Sun from './jsx/Sun'
 
 // copied from radix
 import Person from './radix/Person'
@@ -69,6 +73,7 @@ export default {
   ArrowUp,
   ArrowUpLeft,
   Briefcase,
+  BulletList,
   Check,
   Clock,
   Close,
@@ -82,18 +87,23 @@ export default {
   EditSquare,
   File,
   Finder,
+  FolderAdd,
   FolderOpen,
   Gallery,
   Gear,
   Grid,
   Image,
+  Library,
   List,
   Loading,
   MagnifyingGlass,
   Mic,
   Minus,
+  Model,
+  Moon,
   MoreHorizontal,
   MoreVertical,
+  Pinterest,
   Play,
   QuestionMark,
   RemoveFromList,
@@ -101,21 +111,18 @@ export default {
   Rocket,
   ScreenExpand,
   ScreenNarrow,
+  SelfAdapting,
+  Settings,
+  Sidebar,
   SkipBack,
   SkipForward,
   SpeakerHigh,
   SpeakerSimpleX,
+  Sun,
   Tag,
   Trash,
   UpAndDownArrow,
   Upload,
-  BulletList,
-  FolderAdd,
-  Moon,
-  Pinterest,
-  SelfAdapting,
-  Sidebar,
-  Sun,
 
   // copied from radix
   Person,

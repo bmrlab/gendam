@@ -1,14 +1,7 @@
-import * as React from "react";
-import type { SVGProps } from "react";
+import * as React from 'react'
+import type { SVGProps } from 'react'
 const SvgRemoveSquare = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16px"
-    height="16px"
-    fill="none"
-    viewBox="0 0 16 16"
-    {...props}
-  >
+  <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" fill="none" viewBox="0 0 16 16" {...props}>
     <path
       stroke="currentColor"
       strokeLinecap="round"
@@ -26,5 +19,5 @@ const SvgRemoveSquare = (props: SVGProps<SVGSVGElement>) => (
       clipRule="evenodd"
     />
   </svg>
-);
-export default SvgRemoveSquare;
+)
+export default SvgRemoveSquare

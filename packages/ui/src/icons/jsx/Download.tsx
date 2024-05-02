@@ -1,14 +1,7 @@
-import * as React from "react";
-import type { SVGProps } from "react";
+import * as React from 'react'
+import type { SVGProps } from 'react'
 const SvgDownload = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16px"
-    height="16px"
-    fill="none"
-    viewBox="0 0 16 16"
-    {...props}
-  >
+  <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" fill="none" viewBox="0 0 16 16" {...props}>
     <path
       stroke="currentColor"
       strokeLinecap="round"
@@ -22,5 +15,5 @@ const SvgDownload = (props: SVGProps<SVGSVGElement>) => (
       d="M14 8.5V13a.5.5 0 0 1-.5.5h-11A.5.5 0 0 1 2 13V8.5"
     />
   </svg>
-);
-export default SvgDownload;
+)
+export default SvgDownload

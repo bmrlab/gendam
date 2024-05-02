@@ -1,21 +1,13 @@
-import * as React from "react";
-import type { SVGProps } from "react";
+import * as React from 'react'
+import type { SVGProps } from 'react'
 const SvgGallery = (props: SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16px"
-    height="16px"
-    fill="none"
-    viewBox="0 0 16 16"
-    {...props}
-  >
-    <path
-      fill="currentColor"
-      d="M2.227 10.666h11.546c1.473 0 2.227-.74 2.227-2.2v-4.44c0-1.46-.754-2.2-2.227-2.2H2.227C.761 1.826 0 2.566 0 4.026v4.44c0 1.46.76 2.2 2.227 2.2m.055-1.316c-.596 0-.918-.308-.918-.925V4.067c0-.617.322-.925.918-.925h11.436c.596 0 .918.308.918.925v4.358c0 .617-.322.925-.918.925zM.747 14.174h1.405c.246 0 .41-.158.41-.404v-1.384c0-.254-.157-.412-.41-.412H.747c-.26 0-.418.158-.418.412v1.384c0 .246.164.404.418.404m3.282 0h1.398c.247 0 .418-.158.418-.404v-1.384c0-.254-.164-.412-.418-.412H4.029c-.26 0-.425.158-.425.412v1.384c0 .246.172.404.425.404m3.276 0h1.397c.247 0 .418-.158.418-.404v-1.384c0-.254-.164-.412-.418-.412H7.305c-.26 0-.425.158-.425.412v1.384c0 .246.171.404.425.404m3.275 0h1.405c.246 0 .41-.158.41-.404v-1.384c0-.254-.157-.412-.41-.412H10.58c-.254 0-.418.158-.418.412v1.384c0 .246.171.404.418.404m3.282 0h1.405c.247 0 .41-.158.41-.404v-1.384c0-.254-.163-.412-.41-.412h-1.405c-.26 0-.425.158-.425.412v1.384c0 .246.172.404.425.404"
-      style={{
-        mixBlendMode: "luminosity",
-      }}
-    />
+  <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" fill="none" viewBox="0 0 16 16" {...props}>
+    <rect width={15} height={7.62} x={0.5} y={2.24} stroke="currentColor" rx={1.5} />
+    <rect width={2.4} height={2.4} y={11.86} fill="currentColor" rx={0.5} />
+    <rect width={2.4} height={2.4} x={3.4} y={11.86} fill="currentColor" rx={0.5} />
+    <rect width={2.4} height={2.4} x={6.8} y={11.86} fill="currentColor" rx={0.5} />
+    <rect width={2.4} height={2.4} x={10.2} y={11.86} fill="currentColor" rx={0.5} />
+    <rect width={2.4} height={2.4} x={13.6} y={11.86} fill="currentColor" rx={0.5} />
   </svg>
-);
-export default SvgGallery;
+)
+export default SvgGallery
