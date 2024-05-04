@@ -24,18 +24,31 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
     return explorer.isItemSelected(data) || isDroppable
   }, [data, explorer, isDroppable])
 
+  const [name1, name2] = useMemo(() => {
+    if (/\.[^.]{1,5}$/i.test(data.name)) {
+      return [data.name.slice(0, -8), data.name.slice(-8)]
+    } else {
+      return [data.name.slice(0, -4), data.name.slice(-4)]
+    }
+  }, [data.name])
+
   return (
     <div data-selecto-item={data.id}>
-      <div className={classNames('mb-1 h-28 w-28 rounded-lg p-2', highlight ? 'bg-app-hover' : null)}>
+      <div className={classNames('mb-1 h-28 w-32 rounded-lg p-2', highlight ? 'bg-app-hover' : null)}>
         <FileThumb data={data} className="h-full w-full" />
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
-        <div className="w-28">
+        <div className="w-32">
           <RenamableItemText data={data} className="text-center" />
         </div>
       ) : (
-        <div className={classNames('text-ink w-28 rounded-lg p-1', highlight ? 'bg-accent text-white' : null)}>
-          <div className="line-clamp-2 max-h-[2.8em] break-all text-center text-xs leading-[1.4em]">{data.name}</div>
+        <div className={classNames(
+          'text-ink text-xs w-32 overflow-hidden rounded-lg p-1 flex items-center justify-center',
+          highlight ? 'bg-accent text-white' : null
+        )}>
+          {/* <div className="line-clamp-2 max-h-[2.8em] break-all text-center leading-[1.4em]">{data.name}</div> */}
+          <div className="truncate">{name1}</div>
+          <div className="whitespace-nowrap">{name2}</div>
         </div>
       )}
     </div>
@@ -70,7 +83,6 @@ const GridItem: React.FC<{
 
   return (
     <div
-      id="explore-grid__item"
       data-component-hint="ViewItem(GridView)"
       onClick={(e) => {
         e.stopPropagation()
@@ -128,7 +140,7 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
   }, [explorerStore.isContextMenuOpen, lastSelectIndex])
 
   return (
-    <div className="flex flex-wrap content-start items-start justify-start gap-6 p-8">
+    <div className="flex flex-wrap content-start items-start justify-start gap-x-4 gap-y-8 p-8">
       {items.map((item) => (
         <GridItem key={item.id} data={item} onSelect={onSelect} />
       ))}

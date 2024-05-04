@@ -10,7 +10,7 @@ export default function FileThumb({ data, className }: { data: ExplorerItem; cla
   return (
     <div className={classNames('overflow-hidden relative', className)}>
       {data.isDir ? (
-        <Image src={Folder_Light} alt="folder" priority></Image>
+        <Image src={Folder_Light} alt="folder" priority fill={true} className="object-contain"></Image>
       ) : data.assetObject ? (
         // <video
         //   controls={false}
