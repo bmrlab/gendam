@@ -23,33 +23,7 @@
         "all": true
       },
       "shell": {
-        "all": false,
-        "execute": true,
-        "open": true,
-        "scope": [
-          {
-            "name": "sidecar/whisper",
-            "sidecar": true,
-            "args": [
-              "-m",
-              {
-                "validator": "\\S+"
-              },
-              "-f",
-              {
-                "validator": "\\S+"
-              },
-              "--language",
-              "auto",
-              "-oj",
-              "-of",
-              {
-                "validator": "\\S+"
-              }
-            ]
-          }
-        ],
-        "sidecar": true
+        "all": true
       },
       "window": {
         "all": false,

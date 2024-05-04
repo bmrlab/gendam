@@ -13,12 +13,10 @@ rust-version = "1.60"
 tauri-build = { version = "1.5.1", features = [] }
 
 [dependencies]
-tauri = { version = "1.5.4", features = [ "macos-private-api", "window-start-dragging", "window-minimize", "window-hide", "window-unminimize", "window-unmaximize", "window-show", "window-close", "window-maximize", "dialog-save", "dialog-confirm", "updater", "shell-open", "process-exit", "process-relaunch", "dialog-message", "os-all", "path-all",
+tauri = { version = "1.5.4", features = [ "shell-all", "macos-private-api", "window-start-dragging", "window-minimize", "window-hide", "window-unminimize", "window-unmaximize", "window-show", "window-close", "window-maximize", "dialog-save", "dialog-confirm", "updater", "process-exit", "process-relaunch", "dialog-message", "os-all", "path-all",
   "dialog-ask",
   "dialog-open",
   "protocol-all",
-  "shell-sidecar",
-  "shell-execute",
   "process-command-api",
   "fs-all",
   "devtools",
