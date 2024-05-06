@@ -1,6 +1,6 @@
 import FileThumb from '@/Explorer/components/View/FileThumb'
+import { ExplorerItem } from '@/Explorer/types'
 import Icon from '@/components/Icon'
-import { create } from 'zustand'
 import { client, rspc } from '@/lib/rspc'
 import { toast } from 'sonner'
 import { Folder_Light } from '@gendam/assets/images'
@@ -10,19 +10,23 @@ import { RSPCError } from '@rspc/client'
 import classNames from 'classnames'
 import Image from 'next/image'
 import { useCallback, useEffect, useState } from 'react'
-import { ExplorerItem } from '@/Explorer/types'
+import { create } from 'zustand'
 
 interface FoldersDialogState {
   open: boolean
   setOpen: (open: boolean) => void
+  confirm: (path: ExplorerItem | null) => void
+  setConfirm: (confirm: (path: ExplorerItem | null) => void) => void
 }
 
 export const useFoldersDialog = create<FoldersDialogState>((set) => ({
   open: false,
   setOpen: (open) => set({ open }),
+  confirm: (path: ExplorerItem | null) => undefined,
+  setConfirm: (confirm: (path: ExplorerItem | null) => void) => set({ confirm }),
 }))
 
-export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | null) => void }) {
+export function FoldersDialog() {
   const foldersDialog = useFoldersDialog()
   const [currentPath, setCurrentPath] = useState<string>('/')
   const [selectedFolder, setSelectedFolder] = useState<ExplorerItem | null>(null)
@@ -74,7 +78,7 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
         })
         .catch((error) => {
           toast.error(`Error fetch folder ${currentPath}`, {
-            description: error.message
+            description: error.message,
           })
         })
     } else {
@@ -99,10 +103,7 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
   )
 
   return (
-    <Dialog.Root
-      open={foldersDialog.open}
-      onOpenChange={(open) => foldersDialog.setOpen(open)}
-    >
+    <Dialog.Root open={foldersDialog.open} onOpenChange={(open) => foldersDialog.setOpen(open)}>
       <Dialog.Portal>
         <Dialog.Overlay onClick={(e) => e.stopPropagation()} />
         <Dialog.Content onClick={(e) => e.stopPropagation()} className="w-[40rem]">
@@ -150,7 +151,7 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
               <div className="w-full py-8 text-center text-xs text-ink/50">No folders</div>
             )}
           </div>
-          <div className="flex items-center justify-end gap-2 border-t border-app-line px-4 py-2 text-sm">
+          <div className="border-app-line flex items-center justify-end gap-2 border-t px-4 py-2 text-sm">
             <div className="h-6 w-6">
               <Image src={Folder_Light} alt="folder" priority></Image>
             </div>
@@ -161,9 +162,9 @@ export function FoldersDialog({ onConfirm }: { onConfirm: (path: ExplorerItem | 
             </Dialog.Close>
             <Dialog.Close asChild onClick={() => {
               if (selectedFolder) {
-                onConfirm(selectedFolder)
+                foldersDialog.confirm(selectedFolder)
               } else {
-                onConfirm(currentExplorerItem)
+                foldersDialog.confirm(currentExplorerItem)
               }
             }}>
               <Button variant="accent" size="sm">

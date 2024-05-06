@@ -1,5 +1,4 @@
 import { useExplorerContext } from '@/Explorer/hooks'
-import { ExplorerItem } from '@/Explorer/types'
 import { useExplorerStore } from '@/Explorer/store'
 import { rspc, queryClient } from '@/lib/rspc'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
@@ -7,9 +6,11 @@ import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback } from 'react'
 // import { twx } from '@/lib/utils'
-import { useInspector } from './Inspector'
-import { useFoldersDialog } from './FoldersDialog'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
+import { useMoveTargetSelected } from '@/hooks/useMoveTargetSelected'
+import { useOpenFileSelection } from '@/hooks/useOpenFileSelection'
+import { useInspector } from './Inspector'
+import { ExplorerItem } from '@/Explorer/types'
 
 type ItemContextMenuProps = {
   data: ExplorerItem
@@ -27,13 +28,15 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
 
   // Page Specific State and Context
   const inspector = useInspector()
-  const foldersDialog = useFoldersDialog()
 
   // Shared State and Context
   const quickViewStore = useQuickViewStore()
 
   const deleteMut = rspc.useMutation(['assets.delete_file_path'])
   const metadataMut = rspc.useMutation(['assets.process_video_metadata'])
+
+  const { openFileSelection } = useOpenFileSelection()
+  const { onMoveTargetSelected } = useMoveTargetSelected()
 
   /**
    * 这里都改成处理 selectedItems 而不只是处理当前的 item
@@ -122,7 +125,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       }>
         <div>Regen Thumbnail</div>
       </ContextMenu.Item>
-      <ContextMenu.Item onSelect={() => foldersDialog.setOpen(true)}>
+      <ContextMenu.Item onSelect={() => openFileSelection().then((path) => onMoveTargetSelected(path))}>
         <div>Move</div>
       </ContextMenu.Item>
       <ContextMenu.Item onSelect={handleRename} disabled={explorer.selectedItems.size > 1 }>
