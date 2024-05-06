@@ -1,10 +1,10 @@
 'use client'
-import Viewport from '@/components/Viewport'
-import SonnerToaster from '@/components/SonnerToaster'
-import LibrariesSelect from '@/components/LibrariesSelect'
 import DeviceAuth from '@/components/DeviceAuth'
+import LibrariesSelect from '@/components/LibrariesSelect'
 import Shared from '@/components/Shared'
-import { LibrarySettings, Auth } from '@/lib/bindings'
+import SonnerToaster from '@/components/SonnerToaster'
+import Viewport from '@/components/Viewport'
+import { Auth, LibrarySettings } from '@/lib/bindings'
 import { CurrentLibrary, type Library } from '@/lib/library'
 import { client, queryClient, rspc } from '@/lib/rspc'
 import Icon from '@gendam/ui/icons'
@@ -14,10 +14,8 @@ import { toast } from 'sonner'
 
 const BlankPage = ({ children }: Readonly<{ children: React.ReactNode }>) => (
   <Viewport.Page>
-    <Viewport.Toolbar className="border-none h-8" /> {/* for window drag */}
-    <Viewport.Content className="flex flex-col items-center justify-center">
-      {children}
-    </Viewport.Content>
+    <Viewport.Toolbar className="h-8 border-none" /> {/* for window drag */}
+    <Viewport.Content className="flex flex-col items-center justify-center">{children}</Viewport.Content>
   </Viewport.Page>
 )
 
@@ -40,27 +38,30 @@ export default function ClientLayout({
     }
   }, [librarySettings?.appearanceTheme])
 
-  const loadLibrary = useCallback(async (libraryId: string) => {
-    try {
-      const library = await client.mutation(['libraries.load_library', libraryId])
-      setLibrary(library)
-    } catch (error: any) {
-      if (error?.code === 409 && error?.message === 'App is busy') {
-        return { isBusy: true }
-      } else {
-        toast.error('Failed to load library', { description: error?.message || error })
+  const loadLibrary = useCallback(
+    async (libraryId: string) => {
+      try {
+        const library = await client.mutation(['libraries.load_library', libraryId])
+        setLibrary(library)
+      } catch (error: any) {
+        if (error?.code === 409 && error?.message === 'App is busy') {
+          return { isBusy: true }
+        } else {
+          toast.error('Failed to load library', { description: error?.message || error })
+          throw error
+        }
+      }
+      try {
+        const librarySettings = await client.query(['libraries.get_library_settings'])
+        setLibrarySettings(librarySettings)
+      } catch (error: any) {
+        toast.error('Failed to get library settings', { description: error?.message || error })
         throw error
       }
-    }
-    try {
-      const librarySettings = await client.query(['libraries.get_library_settings'])
-      setLibrarySettings(librarySettings)
-    } catch (error: any) {
-      toast.error('Failed to get library settings', { description: error?.message || error })
-      throw error
-    }
-    return {}
-  }, [setLibrary, setLibrarySettings])
+      return {}
+    },
+    [setLibrary, setLibrarySettings],
+  )
 
   const unloadLibrary = useCallback(async () => {
     try {
@@ -104,47 +105,45 @@ export default function ClientLayout({
     }
 
     setPending(true)
-    Promise.all([
-      client.query(['users.get']),
-      client.query(['libraries.status']),
-    ]).then(async ([
-      auth,
-      { id, loaded, isBusy },
-    ]) => {
-      setAuth(auth)
-      if (!id) {
-        setPending(false)
-        return
-      }
-      if (isBusy) {
-        toast.warning('App is busy, please try again later.')
-        return
-      }
-      if (!loaded) {
-        try {
-          // app 刚启动的时候 loaded 是 false, 先 unload 一下以 kill qdrant
-          await unloadLibrary()
-        } catch (error) {
-          console.error(error)
-        }
-      }
-      // loadLibrary 可以重复执行, 这里不需要判断 loaded 是否为 true
-      try {
-        const { isBusy } = await loadLibrary(id)
-        if (isBusy) {
-          toast.info('App is busy', {
-            description: 'The library is being loaded, please wait until it is done.',
-          })
+    Promise.all([client.query(['users.get']), client.query(['libraries.status'])])
+      .then(async ([auth, { id, loaded, isBusy }]) => {
+        setAuth(auth)
+        if (!id) {
+          setPending(false)
           return
         }
-        setPending(false)
-      } catch(error) {
+        if (isBusy) {
+          toast.warning('App is busy, please try again later.')
+          return
+        }
+        if (!loaded) {
+          try {
+            // app 刚启动的时候 loaded 是 false, 先 unload 一下以 kill qdrant
+            await unloadLibrary()
+          } catch (error) {
+            console.error(error)
+          }
+        }
+        // loadLibrary 可以重复执行, 这里不需要判断 loaded 是否为 true
+        try {
+          const { isBusy } = await loadLibrary(id)
+          if (isBusy) {
+            toast.info('App is busy', {
+              description: 'The library is being loaded, please wait until it is done.',
+            })
+            return
+          }
+          setPending(false)
+        } catch (error) {
+          console.error(error)
+          unloadLibrary()
+            .then(() => setPending(false))
+            .catch(console.error)
+        }
+      })
+      .catch((error: any) => {
         console.error(error)
-        unloadLibrary().then(() => setPending(false)).catch(console.error)
-      }
-    }).catch((error: any) => {
-      console.error(error)
-    })
+      })
 
     return () => {
       if (typeof window !== 'undefined') {

@@ -117,14 +117,11 @@ export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement
       </div>
       {/* <div className="ml-5 flex items-center justify-start">
         <div
-          className={cn(
-            "my-1 pl-1 py-1 pr-2 flex items-center justify-start gap-2",
-            "hover:bg-sidebar-hover",
-          )}
+          className={cn('my-1 flex items-center justify-start gap-2 py-1 pl-1 pr-2', 'hover:bg-sidebar-hover')}
           // onDoubleClick={(e) => router.push('/explorer')}
           onClick={(e) => router.push('/explorer')}
         >
-          <Image src={Folder_Light} alt="folder" priority className="w-5 h-auto"></Image>
+          <Image src={Folder_Light} alt="folder" priority className="h-auto w-5"></Image>
           <div className="text-xs">Home</div>
         </div>
       </div> */}
