@@ -1,14 +1,12 @@
 'use client'
-import { Folder_Light } from '@gendam/assets/images'
-import { create } from 'zustand'
-import Image from 'next/image'
-import { rspc } from '@/lib/rspc'
-import Icon from '@gendam/ui/icons'
-import { cn } from '@/lib/utils'
-import { HTMLAttributes, useCallback, useMemo, useState } from 'react'
 import { FilePath } from '@/lib/bindings'
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import path from 'path'
+import { rspc } from '@/lib/rspc'
+import { cn } from '@/lib/utils'
+import { Folder_Light } from '@gendam/assets/images'
+import Icon from '@gendam/ui/icons'
+import Image from 'next/image'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { HTMLAttributes, useCallback, useMemo, useState } from 'react'
 
 // interface SelectionState {
 //   id: number | null
@@ -30,15 +28,18 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
     return pathname === '/explorer' && filePath.materializedPath + filePath.name + '/' === searchParams.get('dir')
   }, [filePath.materializedPath, filePath.name, pathname, searchParams])
 
-  const { data: subDirs } = rspc.useQuery([
-    'assets.list',
+  const { data: subDirs } = rspc.useQuery(
+    [
+      'assets.list',
+      {
+        materializedPath: filePath.materializedPath + filePath.name + '/',
+        isDir: true,
+      },
+    ],
     {
-      materializedPath: filePath.materializedPath + filePath.name + '/',
-      isDir: true,
+      // enabled: open
     },
-  ], {
-    // enabled: open
-  })
+  )
 
   const onDoubleClick = useCallback(
     (e: React.FormEvent<HTMLDivElement>) => {
@@ -63,40 +64,32 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
       <div className="flex items-center justify-start">
         {/* caret */}
         <div
-          className={cn(
-            "w-4 h-5 py-1 pl-1 bg-sidebar text-ink/40",
-            !subDirs || !subDirs.length ? "invisible" : ""
-          )}
+          className={cn('bg-sidebar text-ink/40 h-5 w-4 py-1 pl-1', !subDirs || !subDirs.length ? 'invisible' : '')}
           onClick={() => setOpen(!open)}
         >
-          <Icon.ArrowRight className={cn(
-            "size-3 transition-all duration-200",
-            open ? "rotate-90" : "rotate-0"
-          )} />
+          <Icon.ArrowRight className={cn('size-3 transition-all duration-200', open ? 'rotate-90' : 'rotate-0')} />
         </div>
         {/* folder icon and name */}
         <div
           className={cn(
-            "my-1 pl-1 py-1 pr-2 rounded flex gap-2 items-center justify-start overflow-hidden",
+            'my-1 flex items-center justify-start gap-2 overflow-hidden rounded py-1 pl-1 pr-2',
             // selectionState.id === filePath.id ? "bg-sidebar-hover" : ""
-            highlight ? "bg-sidebar-hover" : "hover:bg-sidebar-hover"
+            highlight ? 'bg-sidebar-hover' : 'hover:bg-sidebar-hover',
           )}
           // onDoubleClick={(e) => onDoubleClick(e)}
           // onClick={(e) => onClick(e)}
           onClick={(e) => onDoubleClick(e)}
         >
-          <Image src={Folder_Light} alt="folder" priority className="w-5 h-auto"></Image>
+          <Image src={Folder_Light} alt="folder" priority className="h-auto w-5"></Image>
           <div className="truncate text-xs">{filePath.name}</div>
         </div>
       </div>
       {/* children */}
       {open ? (
-        <div className="ml-7 border-l border-ink/10">
-          {subDirs?.map((subFilePath) => (
-            <FoldersBlock key={subFilePath.id} filePath={subFilePath} />
-          ))}
+        <div className="border-ink/10 ml-7 border-l">
+          {subDirs?.map((subFilePath) => <FoldersBlock key={subFilePath.id} filePath={subFilePath} />)}
         </div>
-      ) : null }
+      ) : null}
     </div>
   )
 }
@@ -114,12 +107,13 @@ export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement
 
   return (
     <div
-      className={cn('bg-sidebar py-2 overflow-auto', className)}
+      className={cn('bg-sidebar overflow-auto py-2', className)}
       // onClick={() => selectionState.set(null)}
     >
-      <div className="ml-5 text-xs font-medium text-ink/50 mb-1 flex">
-        <div className="p-1 rounded hover:bg-sidebar-hover"
-          onClick={(e) => router.push('/explorer')}>Folders</div>
+      <div className="text-ink/50 mb-1 ml-5 flex text-xs font-medium">
+        <div className="hover:bg-sidebar-hover rounded p-1" onClick={(e) => router.push('/explorer')}>
+          Folders
+        </div>
       </div>
       {/* <div className="ml-5 flex items-center justify-start">
         <div
@@ -134,11 +128,7 @@ export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement
           <div className="text-xs">Home</div>
         </div>
       </div> */}
-      <div className="ml-3.5">
-        {dirs?.map((filePath) => (
-          <FoldersBlock key={filePath.id} filePath={filePath} />
-        ))}
-      </div>
+      <div className="ml-3.5">{dirs?.map((filePath) => <FoldersBlock key={filePath.id} filePath={filePath} />)}</div>
     </div>
   )
 }
