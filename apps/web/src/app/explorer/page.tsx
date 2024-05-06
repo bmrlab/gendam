@@ -14,7 +14,7 @@ import { Drop_To_Folder } from '@gendam/assets/images'
 import { RSPCError } from '@rspc/client'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FoldersDialog } from './_components/FoldersDialog'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
@@ -31,7 +31,7 @@ export default function ExplorerPage() {
   // currentPath 必须以 / 结尾, 调用 setCurrentPath 的地方自行确保格式正确
   // const [materializedPath, setMaterializedPath] = useState<string>(dirInSearchParams)
   const materializedPath = useMemo(() => dirInSearchParams, [dirInSearchParams])
-  const moveMut = rspc.useMutation(['assets.move_file_path'])
+
   const [items, setItems] = useState<ExplorerItem[] | null>(null)
   const [layout, setLayout] = useState<ExplorerValue['settings']['layout']>('grid')
 
@@ -75,47 +75,6 @@ export default function ExplorerPage() {
 
   const contextMenu = (data: ExplorerItem) => <ItemContextMenu data={data} />
 
-  const onMoveTargetSelected = useCallback(
-    async (target: ExplorerItem | null) => {
-      for (let active of Array.from(explorer.selectedItems)) {
-        // target 可以为空，为空就是根目录，这时候不需要检查 target.id !== active.id，因为根目录本身不会被移动
-        if (target && target.id === active.id) {
-          continue
-        }
-        try {
-          await moveMut.mutateAsync({
-            active: {
-              id: active.id,
-              materializedPath: active.materializedPath,
-              isDir: active.isDir,
-              name: active.name,
-            },
-            target: target
-              ? {
-                  id: target.id,
-                  materializedPath: target.materializedPath,
-                  isDir: target.isDir,
-                  name: target.name,
-                }
-              : null,
-          })
-        } catch (error) {}
-        queryClient.invalidateQueries({
-          queryKey: ['assets.list', { materializedPath: materializedPath }],
-        })
-        queryClient.invalidateQueries({
-          queryKey: [
-            'assets.list',
-            {
-              materializedPath: target ? target.materializedPath + target.name + '/' : '/',
-            },
-          ],
-        })
-      }
-    },
-    [explorer.selectedItems, materializedPath, moveMut],
-  )
-
   if (assetsQuery.isError) {
     return <Viewport.Page className="text-ink/50 flex items-center justify-center">Failed to load assets</Viewport.Page>
   }
@@ -139,7 +98,7 @@ export default function ExplorerPage() {
           )}
 
           <Footer />
-          <FoldersDialog onConfirm={onMoveTargetSelected} />
+          <FoldersDialog />
         </Viewport.Page>
       </ExplorerContextProvider>
     </ExplorerViewContextProvider>

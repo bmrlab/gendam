@@ -28,15 +28,14 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
 
   // Page Specific State and Context
   const inspector = useInspector()
+  const { openFileSelection } = useOpenFileSelection()
+  const { onMoveTargetSelected } = useMoveTargetSelected()
 
   // Shared State and Context
   const quickViewStore = useQuickViewStore()
 
   const deleteMut = rspc.useMutation(['assets.delete_file_path'])
   const metadataMut = rspc.useMutation(['assets.process_video_metadata'])
-
-  const { openFileSelection } = useOpenFileSelection()
-  const { onMoveTargetSelected } = useMoveTargetSelected()
 
   /**
    * 这里都改成处理 selectedItems 而不只是处理当前的 item
