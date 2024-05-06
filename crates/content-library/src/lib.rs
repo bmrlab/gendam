@@ -94,6 +94,14 @@ pub async fn load_library(
 
     let prisma_client = Arc::new(client);
 
+    let load_extension_res = client
+    ._execute_raw(raw!(".load"))
+    .exec()
+    .await
+    .expect("failed to load extension");
+
+    tracing::info!("loading extension status: {}", load_extension_res);
+
     let qdrant_server = create_qdrant_server(qdrant_dir).await?;
 
     let library = Library {

@@ -135,20 +135,6 @@ impl TryFrom<&str> for Sqlite {
 
         let conn = rusqlite::Connection::open(file_path.as_str())?;
 
-        tracing::debug!("Loading extension");
-
-        unsafe {
-            conn.load_extension_enable()?;
-            match conn.load_extension("crsqlite", Some("sqlite3_crsqlite_init")) {
-                Ok(()) => {
-                    tracing::debug!("Loaded crsqlite extension successfully");
-                }
-                Err(e) => {
-                    tracing::error!("Failed to load extension: {e:?}");
-                }
-            }
-        }
-
         tracing::debug!("Connected to SQLite database at '{}'", file_path);
 
         if let Some(timeout) = params.socket_timeout {
@@ -222,6 +208,26 @@ impl Queryable for Sqlite {
     }
 
     async fn execute_raw(&self, sql: &str, params: &[Value<'_>]) -> crate::Result<u64> {
+        // hack for load extension
+        if sql.starts_with(".load") {
+            tracing::info!("Loading extension");
+
+            unsafe {
+                let client_lock = self.client.lock().await;
+                client_lock.load_extension_enable()?;
+                match client_lock.load_extension("crsqlite", Some("sqlite3_crsqlite_init")) {
+                    Ok(()) => {
+                        tracing::info!("Loaded crsqlite extension successfully");
+                        return Ok(1);
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to load extension: {e:?}");
+                        return Ok(0);
+                    }
+                }
+            }
+        };
+
         metrics::query("sqlite.query_raw", sql, params, move || async move {
             let client = self.client.lock().await;
             let mut stmt = client.prepare_cached(sql)?;
