@@ -3,8 +3,7 @@ resolver = "2"
 members = [
   "crates/*",
   "apps/api-server",
-  "apps/desktop/src-tauri",
-  "apps/autonat",
+  "apps/desktop/src-tauri"
 ]
 
 [workspace.package]
