@@ -1,5 +1,3 @@
-mod models;
-
 use crate::CtxWithLibrary;
 use content_library::{create_library, list_library_dirs};
 use prisma_lib::raw;
@@ -34,7 +32,7 @@ struct MyDataType {
     table: String,
     pk: String,
     cid: String,
-    val: std::any::Any,
+    val: String,
     col_version: i32,
     db_version: i32,
     site_id: Option<String>,

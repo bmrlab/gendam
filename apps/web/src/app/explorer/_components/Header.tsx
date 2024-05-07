@@ -6,13 +6,13 @@ import Viewport from '@/components/Viewport'
 // import { rspc } from '@/lib/rspc'
 import { useUploadQueueStore } from '@/components/UploadQueue/store'
 import Icon from '@gendam/ui/icons'
+import { Button } from '@gendam/ui/v2/button'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import SearchForm from '../../search/SearchForm'  // TODO: 这样不大好，应该是一个公共组件
 import { useInspector } from '@/components/Inspector/store'
 import TitleDialog, { useTitleDialog } from './TitleDialog'
-import { Button } from '@gendam/ui/v2/button'
 
 export default function Header() {
   const titleDialog = useTitleDialog()
@@ -68,11 +68,14 @@ export default function Header() {
     }
   }, [handleSelectFiles])
 
+  const { mutateAsync: crrQuery } = rspc.useMutation(['crr.query'])
+
   return (
     <>
       <Viewport.Toolbar className="relative">
         <PageNav title={explorer.materializedPath === '/' ? 'Library' : explorer.materializedPath} />
-        <div className="absolute left-1/3 w-1/3">
+          <Button onClick={() => crrQuery()}>Get changes</Button>
+          <div className="absolute left-1/3 w-1/3">
           <SearchForm
             initialSearchPayload={null}
             onSubmit={(text: string, recordType: string) => handleSearch(text, recordType)}
