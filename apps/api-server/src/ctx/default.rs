@@ -401,8 +401,6 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                     )
                 })?;
             tracing::info!(task = "init library", "Success");
-            // TODO: 添加其他表
-            library.register_table_as_crr(vec!["FilePath"]);
             library
         };
 

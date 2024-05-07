@@ -70,13 +70,14 @@ impl Library {
     }
 
     pub fn register_table_as_crr(&self, tables: Vec<&str>) {
-        let raw_sql = tables
-            .iter()
-            .map(|table| format!("SELECT crsql_as_crr('{}');", table))
-            .collect::<Vec<String>>()
-            .join("\n");
-
-        self.prisma_client()._query_raw::<()>(raw!(&raw_sql));
+        tables.iter().for_each(|table: &&str| {
+            tracing::info!("Registering table {} as CRR", table);
+            self.prisma_client()._query_raw::<()>(raw!(format!(
+                "SELECT crsql_as_crr('{}');",
+                table
+            )
+            .as_str()));
+        });
     }
 }
 
@@ -112,6 +113,9 @@ pub async fn load_library(
         prisma_client,
         qdrant_server: Arc::new(qdrant_server),
     };
+
+    // TODO: 添加其他表
+    library.register_table_as_crr(vec!["FilePath"]);
 
     Ok(library)
 }

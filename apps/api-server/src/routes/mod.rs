@@ -6,6 +6,7 @@ mod libraries;
 pub(crate) mod p2p;
 mod users;
 mod video;
+mod crr;
 
 use crate::CtxWithLibrary;
 use rspc::Router;
@@ -29,6 +30,7 @@ where
         .merge("video.", video::get_routes::<TCtx>())
         .merge("audio.", audio::get_routes::<TCtx>())
         .merge("libraries.", libraries::get_routes::<TCtx>())
+        .merge("crr.", crr::get_routes::<TCtx>())
         .merge("p2p.", p2p::get_routes::<TCtx>())
         .query("version", |t| {
             t(|_ctx, _input: ()| env!("CARGO_PKG_VERSION"))
