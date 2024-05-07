@@ -1,0 +1,12 @@
+[package]
+name = "crdt"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rusqlite = { version = "0.29.0", features = ["bundled", "load_extension"] }
+
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+
+tracing = { workspace = true }
