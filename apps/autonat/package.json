@@ -1,8 +1,0 @@
-{
-	"name": "@muse/autonat",
-	"version": "0.1.0",
-    "private": true,
-	"scripts": {
-		"dev": "cargo run"
-	}
-}
