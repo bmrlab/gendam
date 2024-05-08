@@ -1,6 +1,11 @@
-use std::path::PathBuf;
+use hex;
+use std::{path::PathBuf, vec};
 
-use rusqlite::{params, types::ValueRef, Connection, Result, ToSql};
+use rusqlite::{
+    params,
+    types::{FromSql, ValueRef},
+    Connection, Params, Result, ToSql,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::constant::{CRDT_TABLE, CR_SQLITE_ENDPOIONT};
@@ -22,18 +27,30 @@ pub struct CrSqliteDB {
     conn: Connection,
 }
 
+// tear down the extension before closing the connection
+// https://sqlite.org/forum/forumpost/c94f943821
+impl Drop for CrSqliteDB {
+    fn drop(&mut self) {
+        let _ = self.conn.execute("SELECT crsql_finalize();", []);
+    }
+}
+
 impl CrSqliteDB {
-    // TODO: 实装 extension_path
-    pub fn new(path: PathBuf, extension_path: PathBuf) -> Result<Self> {
-        let conn = Connection::open(path).expect("failed to open sqlite db");
+    fn init_connection(path: PathBuf, extension_path: PathBuf) -> Result<Connection> {
+        let conn: Connection = Connection::open(path).expect("failed to open sqlite db");
 
         unsafe {
             conn.load_extension_enable()?;
-            conn.load_extension("./crsqlite", Some(CR_SQLITE_ENDPOIONT))?;
+            conn.load_extension(extension_path, Some(CR_SQLITE_ENDPOIONT))?;
         }
+        Ok(conn)
+    }
 
-        let select_sql = CRDT_TABLE
+    fn as_crr(conn: &Connection, crr_table: &[&str]) -> Result<()> {
+        let select_sql = crr_table
+            .into_iter()
             .map(|table| format!("SELECT crsql_as_crr('{}');", table))
+            .collect::<Vec<String>>()
             .join("\n");
 
         conn.execute_batch(
@@ -46,7 +63,25 @@ impl CrSqliteDB {
             )
             .as_str(),
         )?;
-        Ok(Self { conn })
+        Ok(())
+    }
+
+    pub fn new(path: PathBuf, extension_path: PathBuf) -> Result<Self> {
+        CrSqliteDB::init_connection(path, extension_path).map(|conn| {
+            let _ = CrSqliteDB::as_crr(&conn, &CRDT_TABLE);
+            CrSqliteDB { conn }
+        })
+    }
+
+    fn pack(&self, id: impl ToSql) -> Result<Vec<u8>> {
+        let sql = "SELECT crsql_pack_columns(?1);";
+        self.conn.query_row(sql, params![id], |row| row.get(0))
+    }
+
+    fn unpack<T: FromSql>(&self, id: String) -> Result<T> {
+        let sql = "SELECT cell from crsql_unpack_columns(?1);";
+        self.conn
+            .query_row(sql, params![id], |row: &rusqlite::Row| row.get(0))
     }
 
     fn get_changes(&self) -> Result<Vec<CrsqlChangesRowData>> {
@@ -143,5 +178,74 @@ impl CrSqliteDB {
         tx.commit()?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn load_extension() -> Connection {
+        let conn = CrSqliteDB::init_connection(
+            PathBuf::from("test.db"),
+            PathBuf::from("/Users/zingerbee/Desktop/crsqlite.dylib"),
+        )
+        .unwrap();
+        conn
+    }
+
+    fn setup() -> Connection {
+        let conn = load_extension();
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS todo ('id' primary key not null, 'list', 'text', 'complete', 'updateTime' DATETIME DEFAULT CURRENT_TIMESTAMP);",
+        ).unwrap();
+        CrSqliteDB::as_crr(&conn, &["todo"]).unwrap();
+        conn
+    }
+
+    #[test]
+    fn test_load_extension() {
+        let conn = setup();
+
+        let mut stmt = conn.prepare("SELECT crsql_db_version();").unwrap();
+        let mut rows: rusqlite::Rows = stmt.query(params![]).unwrap();
+        assert!(rows.next().unwrap().is_some());
+    }
+
+    #[test]
+    fn test_pack() {
+        let db: CrSqliteDB = CrSqliteDB { conn: setup() };
+
+        let res = db.pack("123").unwrap();
+
+        println!("res:{:?}", res);
+        // assert_eq!(res, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_unpack() {
+        let db: CrSqliteDB = CrSqliteDB { conn: setup() };
+
+        let res: String = db.unpack::<String>("010B0478787878".to_string()).unwrap();
+    }
+
+    #[test]
+    fn test_get_changes() {
+        let conn = setup();
+        let db: CrSqliteDB = CrSqliteDB { conn };
+        db.conn
+            .execute(
+                "INSERT INTO todo (id, list, text, complete) VALUES (?1, ?2, ?3, ?4)",
+                params![1, "list1", "text1", 0],
+            )
+            .unwrap();
+
+        db.conn
+            .execute("UPDATE todo SET complete = ?1 where id = 1;", params![1])
+            .unwrap();
+        db.conn
+            .execute("UPDATE todo SET list = ?1 where id = 1;", params!["list2"])
+            .unwrap();
+        assert!(db.get_changes().unwrap().len() > 0);
     }
 }
