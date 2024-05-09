@@ -123,9 +123,15 @@ impl CrSqliteDB {
     }
 
     fn unpack<T: FromSql>(&self, id: Vec<u8>) -> Result<T> {
-        let sql = format!("SELECT cell from crsql_unpack_columns(?1);");
+        let sql = "SELECT cell from crsql_unpack_columns(?1);";
         self.conn
             .query_row(&sql, params![id], |row: &rusqlite::Row| row.get(0))
+    }
+
+    fn get_db_version(&self) -> Result<usize> {
+        let sql = format!("SELECT crsql_db_version();");
+        self.conn
+            .query_row(&sql, params![], |row: &rusqlite::Row| row.get(0))
     }
 
     fn get_changes(&self) -> Result<Vec<CrsqlChangesRowData>> {
@@ -259,6 +265,18 @@ mod tests {
         let mut stmt = db.conn.prepare("SELECT crsql_db_version();").unwrap();
         let mut rows: rusqlite::Rows = stmt.query(params![]).unwrap();
         assert!(rows.next().unwrap().is_some());
+    }
+
+    #[test]
+    fn test_get_db_version() {
+        let db = CrSqliteDB { conn: setup() };
+
+        let version = db.get_db_version().unwrap();
+        assert_eq!(version, 0);
+
+        mock_data(&db.conn);
+        let version = db.get_db_version().unwrap();
+        assert!(version > 0);
     }
 
     #[test]
