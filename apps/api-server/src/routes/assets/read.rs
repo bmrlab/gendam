@@ -25,7 +25,7 @@ pub async fn list_file_path(
         .prisma_client()
         .file_path()
         .find_many(where_params)
-        .with(file_path::asset_object::fetch().with(asset_object::media_data::fetch()))
+        .with(file_path::asset_object::fetch().with(asset_object::media_data::fetch(vec![])))
         .exec()
         .await
         .map_err(|e| {
@@ -49,7 +49,7 @@ pub async fn get_file_path(
             file_path::materialized_path::equals(materialized_path.to_string()),
             file_path::name::equals(name.to_string()),
         ])
-        .with(file_path::asset_object::fetch().with(asset_object::media_data::fetch()))
+        .with(file_path::asset_object::fetch().with(asset_object::media_data::fetch(vec![])))
         .exec()
         .await
         .map_err(|e| {

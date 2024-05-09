@@ -22,7 +22,7 @@ model FilePath {
   name             String  @default("")
   description      String?
 
-  assetObjectId Int?
+  assetObjectId String?
   assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id])
 
   createdAt DateTime  @default(now())
@@ -30,26 +30,27 @@ model FilePath {
 
   // @@unique([materializedPath, name])
   @@index([materializedPath])
+  @@index([assetObjectId])
 }
 
 model AssetObject {
-  id Int @id @default(autoincrement())
+  id String @id() @default(cuid())
 
-  hash     String  @unique
-  size     Int // file size in bytes
+  hash     String?
+  size     Int?
   mimeType String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
 
-  mediaData MediaData?
+  mediaData MediaData[]
 
   filePaths FilePath[]
   tasks     FileHandlerTask[]
 }
 
 model MediaData {
-  id Int @id @default(autoincrement())
+  id String @id() @default(cuid())
 
   width    Int?
   height   Int?
@@ -57,17 +58,19 @@ model MediaData {
   bitRate  Int?
   hasAudio Boolean?
 
-  assetObjectId Int          @unique
-  assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: Cascade)
+  assetObjectId String?
+  assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  @@index([assetObjectId])
 }
 
 model FileHandlerTask {
   id Int @id @default(autoincrement())
 
-  assetObjectId Int
+  assetObjectId String
   assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: Cascade)
 
   taskType String
@@ -81,4 +84,63 @@ model FileHandlerTask {
   updatedAt DateTime  @updatedAt
 
   @@unique([assetObjectId, taskType])
+}
+
+model VideoFrame {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fileIdentifier String
+  timestamp      Int
+
+  caption VideoFrameCaption[]
+
+  videoClip   VideoClip? @relation(fields: [videoClipId], references: [id])
+  videoClipId Int?
+
+  @@unique([fileIdentifier, timestamp])
+  @@index([videoClipId])
+}
+
+model VideoTranscript {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fileIdentifier String
+  startTimestamp Int
+  endTimestamp   Int
+
+  text String
+
+  @@unique([fileIdentifier, startTimestamp, endTimestamp])
+}
+
+model VideoFrameCaption {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  caption String
+  method  String
+
+  frame        VideoFrame @relation(fields: [videoFrameId], references: [id], onDelete: Cascade)
+  videoFrameId Int
+
+  @@unique([videoFrameId, method])
+}
+
+model VideoClip {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fileIdentifier String
+  startTimestamp Int
+  endTimestamp   Int
+
+  frames VideoFrame[]
+
+  caption String?
 }

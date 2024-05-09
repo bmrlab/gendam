@@ -7,7 +7,7 @@ use rusqlite::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::constant::{CRDT_TABLE, CR_SQLITE_ENDPOIONT};
+use crate::constant::CR_SQLITE_ENDPOIONT;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct CrsqlChangesRowData {
@@ -68,7 +68,7 @@ impl TryFrom<&Row<'_>> for CrsqlChangesRowData {
 }
 
 pub struct CrSqliteDB {
-    conn: Connection,
+    pub(crate) conn: Connection,
 }
 
 // tear down the extension before closing the connection
@@ -110,9 +110,9 @@ impl CrSqliteDB {
         Ok(())
     }
 
-    pub fn new(path: PathBuf, extension_path: PathBuf) -> Result<Self> {
+    pub fn new(path: PathBuf, extension_path: PathBuf, crr_table: &[&str]) -> Result<Self> {
         CrSqliteDB::init_connection(path, extension_path).map(|conn| {
-            let _ = CrSqliteDB::as_crr(&conn, &CRDT_TABLE);
+            let _ = CrSqliteDB::as_crr(&conn, crr_table);
             CrSqliteDB { conn }
         })
     }

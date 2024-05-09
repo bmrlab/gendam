@@ -38,14 +38,15 @@ struct VideoTaskListRequestPayload {
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
 struct TaskCancelRequestPayload {
-    asset_object_id: i32,
+    asset_object_id: String,
     task_types: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
 struct TaskRedoRequestPayload {
-    asset_object_id: i32,
+    asset_object_id: String,
+    preserve_artifacts: bool,
 }
 
 #[derive(Serialize, Type)]
@@ -126,7 +127,7 @@ impl VideoTaskHandler {
             .with(asset_object::tasks::fetch(vec![]))
             .with(asset_object::file_paths::fetch(vec![]))
             // bindings 中不会自动生成 media_data 类型
-            .with(asset_object::media_data::fetch())
+            .with(asset_object::media_data::fetch(vec![]))
             .order_by(asset_object::created_at::order(Direction::Desc))
             .skip((page_size * (page_index - 1)).into())
             .take(page_size.into())
@@ -154,12 +155,11 @@ impl VideoTaskHandler {
                 let media_data = asset_object_data
                     .media_data
                     .take()
-                    .map(|data| data.map(|d| *d));
-                VideoWithTasksResult {
+                    .and_then(|data| data.into_iter().next());                VideoWithTasksResult {
                     name,
                     materialized_path,
                     asset_object: asset_object_data,
-                    media_data: media_data.unwrap_or(None),
+                    media_data,
                     tasks,
                 }
             })
@@ -182,16 +182,16 @@ impl VideoTaskHandler {
         match input.task_types.as_ref() {
             Some(task_types) => task_types.iter().for_each(|t| {
                 if let Err(e) = tx.send(crate::file_handler::TaskPayload::CancelByAssetAndType(
-                    asset_object_id,
+                    asset_object_id.clone(),
                     t.to_string(),
                 )) {
-                    tracing::warn!("cancel task({}-{}) error: {}", asset_object_id, t, e);
+                    tracing::warn!("cancel task({}-{}) error: {}", asset_object_id.clone(), t, e);
                 }
             }),
             _ => {
                 // cancel all tasks
                 tx.send(crate::file_handler::TaskPayload::CancelByAssetId(
-                    asset_object_id,
+                    asset_object_id.clone(),
                 ))?;
             }
         }

@@ -68,8 +68,6 @@ export default function Header() {
     }
   }, [handleSelectFiles])
 
-  const { mutateAsync: crrQuery } = rspc.useMutation(['crr.query'])
-
   return (
     <>
       <Viewport.Toolbar className="relative">

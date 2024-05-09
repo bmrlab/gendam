@@ -87,7 +87,7 @@ pub async fn create_asset_object(
             let mut asset_object_existed = false;
             let asset_object_data = match client
                 .asset_object()
-                .find_unique(asset_object::hash::equals(file_hash.clone()))
+                .find_first(vec![asset_object::hash::equals(Some(file_hash.clone()))])
                 .exec()
                 .await?
             {
@@ -98,11 +98,11 @@ pub async fn create_asset_object(
                 None => {
                     client
                         .asset_object()
-                        .create(
-                            file_hash.clone(),
-                            file_size_in_bytes,
-                            vec![asset_object::mime_type::set(file_mime_type)],
-                        )
+                        .create(vec![
+                            asset_object::hash::set(Some(file_hash.clone())),
+                            asset_object::size::set(Some(file_size_in_bytes)),
+                            asset_object::mime_type::set(file_mime_type.clone()),
+                        ])
                         .exec()
                         .await?
                 }

@@ -57,7 +57,7 @@ pub async fn delete_file_path(
                 }
 
                 data.iter().for_each(|v| {
-                    related_asset_object_ids.insert(v.asset_object_id);
+                    related_asset_object_ids.insert(v.asset_object_id.clone());
                 });
 
                 skip += data.len() as i64;
@@ -83,7 +83,7 @@ pub async fn delete_file_path(
                     let count = client
                         .file_path()
                         .count(vec![file_path::asset_object_id::equals(Some(
-                            asset_object_id,
+                            asset_object_id.clone(),
                         ))])
                         .exec()
                         .await?;
@@ -120,6 +120,7 @@ pub async fn delete_file_path(
         .lock()
         .await
         .iter()
+        .filter(|v| v.is_some())
         .for_each(|data| {
             let file_path = library.file_path(&data.hash);
             if let Err(e) = std::fs::remove_file(&file_path) {

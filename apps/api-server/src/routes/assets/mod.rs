@@ -231,7 +231,7 @@ where
             })
         })
         .mutation("process_video_metadata", |t| {
-            t(|ctx, input: i32| async move {
+            t(|ctx, input: String| async move {
                 let library = ctx.library()?;
                 let asset_object_id = input;
                 process_video_metadata(&library, asset_object_id).await?;
