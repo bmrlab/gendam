@@ -140,8 +140,7 @@ impl CrSqliteDB {
         let datas: Vec<CrsqlChangesRowData> =
             serde_json::from_str::<Vec<CrsqlChangesRowData>>(&json_string)
                 .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
-        let tx = self.conn.transaction()?;
-
+        let tx: rusqlite::Transaction = self.conn.transaction()?;
         for d in datas {
             let val: Box<dyn ToSql> = match d.val {
                 serde_json::Value::Bool(b) => Box::new(b),
@@ -182,12 +181,29 @@ impl CrSqliteDB {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use super::*;
     use rand::{distributions::Alphanumeric, Rng};
 
+    fn init_conn() -> Connection {
+        let conn: Connection =
+            Connection::open_in_memory().expect("failed to open sqlite in memory");
+
+        unsafe {
+            conn.load_extension_enable().unwrap();
+            conn.load_extension(
+                "/Users/zingerbee/Desktop/crsqlite.dylib",
+                Some(CR_SQLITE_ENDPOIONT),
+            )
+            .unwrap();
+        }
+        conn
+    }
+
     fn load_extension() -> Connection {
         let conn = CrSqliteDB::init_connection(
-            PathBuf::from("test.db"),
+            PathBuf::from(format!("test.db")),
             PathBuf::from("/Users/zingerbee/Desktop/crsqlite.dylib"),
         )
         .unwrap();
@@ -195,7 +211,7 @@ mod tests {
     }
 
     fn setup() -> Connection {
-        let conn = load_extension();
+        let conn = init_conn();
         conn.execute_batch(
             "
             BEGIN;
@@ -206,6 +222,19 @@ mod tests {
         ).unwrap();
         CrSqliteDB::as_crr(&conn, &["todo"]).unwrap();
         conn
+    }
+
+    fn mock_data(conn: &Connection) {
+        conn.execute(
+            "INSERT INTO todo (id, list, text, complete) VALUES (?1, ?2, ?3, ?4)",
+            params![1, "list1", "text1", 0],
+        )
+        .unwrap();
+
+        conn.execute("UPDATE todo SET complete = ?1 where id = 1;", params![1])
+            .unwrap();
+        conn.execute("UPDATE todo SET list = ?1 where id = 1;", params!["list2"])
+            .unwrap();
     }
 
     fn generate_random_string(length: usize) -> String {
@@ -219,9 +248,11 @@ mod tests {
 
     #[test]
     fn test_load_extension() {
-        let conn = setup();
+        let db = CrSqliteDB {
+            conn: load_extension(),
+        };
 
-        let mut stmt = conn.prepare("SELECT crsql_db_version();").unwrap();
+        let mut stmt = db.conn.prepare("SELECT crsql_db_version();").unwrap();
         let mut rows: rusqlite::Rows = stmt.query(params![]).unwrap();
         assert!(rows.next().unwrap().is_some());
     }
@@ -257,8 +288,8 @@ mod tests {
 
     #[test]
     fn test_get_changes() {
-        let conn = setup();
-        let db: CrSqliteDB = CrSqliteDB { conn };
+        let db = CrSqliteDB { conn: setup() };
+
         db.conn
             .execute(
                 "INSERT INTO todo (id, list, text, complete) VALUES (?1, ?2, ?3, ?4)",
@@ -273,5 +304,25 @@ mod tests {
             .execute("UPDATE todo SET list = ?1 where id = 1;", params!["list2"])
             .unwrap();
         assert!(db.get_changes().unwrap().len() > 0);
+    }
+
+    #[test]
+    fn test_apple_changes() {
+        let db_a = CrSqliteDB { conn: setup() };
+
+        mock_data(&db_a.conn);
+        let changes = db_a.get_changes_as_json().unwrap();
+
+        let mut db_b: CrSqliteDB = CrSqliteDB { conn: setup() };
+        db_b.apple_changes(changes).unwrap();
+
+        let list: String = db_b
+            .conn
+            .query_row("SELECT list from todo where id = ?1", params![1], |rows| {
+                rows.get(0)
+            })
+            .unwrap();
+
+        assert_eq!(list, "list2")
     }
 }
