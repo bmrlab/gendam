@@ -1,10 +1,9 @@
-use hex;
-use std::{path::PathBuf, vec};
+use std::path::PathBuf;
 
 use rusqlite::{
     params,
     types::{FromSql, ValueRef},
-    Connection, Params, Result, ToSql,
+    Connection, Result, ToSql,
 };
 use serde::{Deserialize, Serialize};
 
@@ -78,10 +77,10 @@ impl CrSqliteDB {
         self.conn.query_row(sql, params![id], |row| row.get(0))
     }
 
-    fn unpack<T: FromSql>(&self, id: String) -> Result<T> {
-        let sql = "SELECT cell from crsql_unpack_columns(?1);";
+    fn unpack<T: FromSql>(&self, id: Vec<u8>) -> Result<T> {
+        let sql = format!("SELECT cell from crsql_unpack_columns(?1);");
         self.conn
-            .query_row(sql, params![id], |row: &rusqlite::Row| row.get(0))
+            .query_row(&sql, params![id], |row: &rusqlite::Row| row.get(0))
     }
 
     fn get_changes(&self) -> Result<Vec<CrsqlChangesRowData>> {
@@ -184,6 +183,7 @@ impl CrSqliteDB {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::{distributions::Alphanumeric, Rng};
 
     fn load_extension() -> Connection {
         let conn = CrSqliteDB::init_connection(
@@ -197,10 +197,24 @@ mod tests {
     fn setup() -> Connection {
         let conn = load_extension();
         conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS todo ('id' primary key not null, 'list', 'text', 'complete', 'updateTime' DATETIME DEFAULT CURRENT_TIMESTAMP);",
+            "
+            BEGIN;
+            DROP TABLE IF EXISTS todo;
+            CREATE TABLE IF NOT EXISTS todo ('id' primary key not null, 'list', 'text', 'complete', 'updateTime' DATETIME DEFAULT CURRENT_TIMESTAMP);
+            COMMIT;
+            ",
         ).unwrap();
         CrSqliteDB::as_crr(&conn, &["todo"]).unwrap();
         conn
+    }
+
+    fn generate_random_string(length: usize) -> String {
+        let mut rng = rand::thread_rng();
+        std::iter::repeat(())
+            .map(|()| rng.sample(Alphanumeric))
+            .map(char::from)
+            .take(length)
+            .collect()
     }
 
     #[test]
@@ -216,17 +230,29 @@ mod tests {
     fn test_pack() {
         let db: CrSqliteDB = CrSqliteDB { conn: setup() };
 
-        let res = db.pack("123").unwrap();
+        let random_str = generate_random_string(8);
+        println!("random_str: ${}", random_str.clone());
+        let res: Vec<u8> = db.pack(random_str.clone()).unwrap();
 
-        println!("res:{:?}", res);
-        // assert_eq!(res, vec![1, 2, 3]);
+        let unpack_str: String = db.unpack::<String>(res).unwrap();
+        println!("unpack_str: ${unpack_str}");
+
+        assert_eq!(random_str, unpack_str);
     }
 
     #[test]
     fn test_unpack() {
         let db: CrSqliteDB = CrSqliteDB { conn: setup() };
 
-        let res: String = db.unpack::<String>("010B0478787878".to_string()).unwrap();
+        let random_str = generate_random_string(8);
+        println!("random_str: ${}", random_str.clone());
+
+        let pack_res = db.pack(random_str.clone()).unwrap();
+
+        let unpack_res: String = db.unpack::<String>(pack_res).unwrap();
+        println!("unpack_res: ${}", unpack_res.clone());
+
+        assert_eq!(random_str, unpack_res);
     }
 
     #[test]
