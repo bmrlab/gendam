@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use rusqlite::{
     params,
     types::{FromSql, ValueRef},
-    Connection, Result, ToSql,
+    Connection, Result, Row, ToSql,
 };
 use serde::{Deserialize, Serialize};
 
@@ -20,6 +20,51 @@ struct CrsqlChangesRowData {
     site_id: Vec<u8>,
     cl: i64,
     seq: i64,
+}
+
+impl TryFrom<&Row<'_>> for CrsqlChangesRowData {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &Row) -> Result<Self, Self::Error> {
+        let table: String = row.get(0)?;
+        let pk: Vec<u8> = row.get(1)?;
+        let cid: String = row.get(2)?;
+
+        let val = match row.get_ref(3)? {
+            ValueRef::Text(text) => {
+                serde_json::Value::String(String::from_utf8(text.to_vec()).unwrap())
+            }
+            ValueRef::Blob(blob) => serde_json::Value::Array(
+                blob.iter()
+                    .map(|&b| serde_json::Value::Number(b.into()))
+                    .collect(),
+            ),
+            ValueRef::Integer(int) => serde_json::Value::Number(int.into()),
+            ValueRef::Real(float) => {
+                serde_json::Value::Number(serde_json::Number::from_f64(float).unwrap())
+            }
+            ValueRef::Null => serde_json::Value::Null,
+        };
+
+        let col_version: i64 = row.get(4)?;
+        let db_version: i64 = row.get(5)?;
+        let site_id: Vec<u8> = row.get(6)?;
+
+        let cl: i64 = row.get(7)?;
+        let seq: i64 = row.get(8)?;
+
+        Ok(CrsqlChangesRowData {
+            table,
+            pk,
+            cid,
+            val,
+            col_version,
+            db_version,
+            site_id,
+            cl,
+            seq,
+        })
+    }
 }
 
 pub struct CrSqliteDB {
@@ -86,46 +131,7 @@ impl CrSqliteDB {
     fn get_changes(&self) -> Result<Vec<CrsqlChangesRowData>> {
         let mut stmt = self.conn.prepare(r#"select "table", "pk", "cid", "val", "col_version", "db_version", COALESCE("site_id", crsql_site_id()), "cl", "seq" from crsql_changes;"#)?;
 
-        let rows = stmt.query_map([], |row| {
-            let table: String = row.get(0)?;
-            let pk: Vec<u8> = row.get(1)?;
-            let cid: String = row.get(2)?;
-
-            let val = match row.get_ref(3)? {
-                ValueRef::Text(text) => {
-                    serde_json::Value::String(String::from_utf8(text.to_vec()).unwrap())
-                }
-                ValueRef::Blob(blob) => serde_json::Value::Array(
-                    blob.iter()
-                        .map(|&b| serde_json::Value::Number(b.into()))
-                        .collect(),
-                ),
-                ValueRef::Integer(int) => serde_json::Value::Number(int.into()),
-                ValueRef::Real(float) => {
-                    serde_json::Value::Number(serde_json::Number::from_f64(float).unwrap())
-                }
-                ValueRef::Null => serde_json::Value::Null,
-            };
-
-            let col_version: i64 = row.get(4)?;
-            let db_version: i64 = row.get(5)?;
-            let site_id: Vec<u8> = row.get(6)?;
-
-            let cl: i64 = row.get(7)?;
-            let seq: i64 = row.get(8)?;
-
-            Ok(CrsqlChangesRowData {
-                table,
-                pk,
-                cid,
-                val,
-                col_version,
-                db_version,
-                site_id,
-                cl,
-                seq,
-            })
-        })?;
+        let rows = stmt.query_map([], |row| CrsqlChangesRowData::try_from(row))?;
 
         Ok(rows.map(|r| r.unwrap()).collect())
     }
@@ -181,8 +187,6 @@ impl CrSqliteDB {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
-
     use super::*;
     use rand::{distributions::Alphanumeric, Rng};
 
