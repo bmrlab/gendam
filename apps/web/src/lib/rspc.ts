@@ -1,5 +1,5 @@
 'use client'
-import { FetchTransport, RSPCError, createClient } from '@rspc/client'
+import { FetchTransport, WebsocketTransport, RSPCError, createClient } from '@rspc/client'
 import { createReactQueryHooks } from '@rspc/react'
 import { QueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -12,7 +12,8 @@ export const client = createClient<Procedures>({
   transport:
     typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined'
       ? new TauriTransport()
-      : new FetchTransport('http://localhost:3001/rspc'),
+      // : new FetchTransport('http://localhost:3001/rspc'),
+      : new WebsocketTransport('ws://localhost:3001/rspc/ws'),
 })
 
 /**
