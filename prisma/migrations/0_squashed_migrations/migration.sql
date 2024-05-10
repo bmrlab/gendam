@@ -49,50 +49,6 @@ CREATE TABLE "FileHandlerTask" (
     CONSTRAINT "FileHandlerTask_assetObjectId_fkey" FOREIGN KEY ("assetObjectId") REFERENCES "AssetObject" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- CreateTable
-CREATE TABLE "VideoFrame" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "fileIdentifier" TEXT NOT NULL,
-    "timestamp" INTEGER NOT NULL,
-    "videoClipId" INTEGER,
-    CONSTRAINT "VideoFrame_videoClipId_fkey" FOREIGN KEY ("videoClipId") REFERENCES "VideoClip" ("id") ON DELETE SET NULL ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "VideoTranscript" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "fileIdentifier" TEXT NOT NULL,
-    "startTimestamp" INTEGER NOT NULL,
-    "endTimestamp" INTEGER NOT NULL,
-    "text" TEXT NOT NULL
-);
-
--- CreateTable
-CREATE TABLE "VideoFrameCaption" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "caption" TEXT NOT NULL,
-    "method" TEXT NOT NULL,
-    "videoFrameId" INTEGER NOT NULL,
-    CONSTRAINT "VideoFrameCaption_videoFrameId_fkey" FOREIGN KEY ("videoFrameId") REFERENCES "VideoFrame" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "VideoClip" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "fileIdentifier" TEXT NOT NULL,
-    "startTimestamp" INTEGER NOT NULL,
-    "endTimestamp" INTEGER NOT NULL,
-    "caption" TEXT
-);
-
 -- CreateIndex
 CREATE INDEX "FilePath_materializedPath_idx" ON "FilePath"("materializedPath");
 
@@ -107,12 +63,3 @@ CREATE UNIQUE INDEX "MediaData_assetObjectId_key" ON "MediaData"("assetObjectId"
 
 -- CreateIndex
 CREATE UNIQUE INDEX "FileHandlerTask_assetObjectId_taskType_key" ON "FileHandlerTask"("assetObjectId", "taskType");
-
--- CreateIndex
-CREATE UNIQUE INDEX "VideoFrame_fileIdentifier_timestamp_key" ON "VideoFrame"("fileIdentifier", "timestamp");
-
--- CreateIndex
-CREATE UNIQUE INDEX "VideoTranscript_fileIdentifier_startTimestamp_endTimestamp_key" ON "VideoTranscript"("fileIdentifier", "startTimestamp", "endTimestamp");
-
--- CreateIndex
-CREATE UNIQUE INDEX "VideoFrameCaption_videoFrameId_method_key" ON "VideoFrameCaption"("videoFrameId", "method");
