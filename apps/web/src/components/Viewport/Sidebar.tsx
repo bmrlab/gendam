@@ -99,7 +99,7 @@ export default function Sidebar() {
 
   const menuClassNames = (path: string) => {
     return classNames(
-      'mb-1 block cursor-default rounded-md px-2 py-2 hover:bg-sidebar-hover flex items-center justify-start',
+      'mb-1 block cursor-default rounded-md px-2 py-2 hover:bg-sidebar-hover gap-2 flex items-center justify-start',
       pathname === path && 'bg-sidebar-hover',
     )
   }
@@ -142,16 +142,18 @@ export default function Sidebar() {
 
       <section className="text-sm mx-3">
         <Link href="/explorer" className={menuClassNames('/explorer')}>
-          <Icon.File className="text-ink/70 mr-2 h-4 w-4" />
+          <Icon.File className="text-ink/70 h-4 w-4" />
           <span>Library</span>
         </Link>
         <Link href="/search" className={menuClassNames('/search')}>
-          <Icon.MagnifyingGlass className="text-ink/70 mr-2 h-4 w-4" />
+          <Icon.MagnifyingGlass className="text-ink/70 h-4 w-4" />
           <span>Search</span>
         </Link>
         <Link href="/video-tasks" className={menuClassNames('/video-tasks')}>
-          <Icon.Briefcase className="text-ink/70 mr-2 h-4 w-4" />
+          <Icon.Briefcase className="text-ink/70 h-4 w-4" />
           <span>All jobs</span>
+          <div className="border-2 border-orange-400 p-[2px] h-3 w-3 rounded-full
+                animate-[flashstroke] duration-1000 repeat-infinite"></div>
         </Link>
         {/* <Link href="/debug/ui" className={menuClassNames('/debug/ui')}>
           <span className="font-light text-neutral-400">Debug</span>

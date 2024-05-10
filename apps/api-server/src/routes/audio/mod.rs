@@ -8,7 +8,6 @@ use specta::Type;
 use std::{fmt, path::PathBuf};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
-use tracing::log::debug;
 use tracing::{error, warn};
 
 pub mod downloader;
@@ -109,7 +108,7 @@ fn get_all_audio_format(path: PathBuf) -> Vec<AudioResp> {
                 AudioType::Ale => reader.read_to_ale().unwrap_or_default(),
                 AudioType::Docx => reader.read_to_docx().unwrap_or_default(),
             };
-            debug!("audio type: {audio_type:?}, content: {content}",);
+            // tracing::debug!("audio type: {audio_type:?}, content: {content}",);
             AudioResp {
                 audio_type,
                 content,

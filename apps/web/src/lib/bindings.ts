@@ -65,8 +65,6 @@ export type VideoWithTasksPageResult = { data: VideoWithTasksResult[]; paginatio
 
 export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
-export type AudioResp = { type: AudioType; content: string }
-
 export type TaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
@@ -78,8 +76,6 @@ export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageC
 export type TaskRedoRequestPayload = { assetObjectId: number }
 
 export type Pagination = { pageSize: number; pageIndex: number }
-
-export type SearchResultPayload = { name: string; materializedPath: string; assetObjectId: number; assetObjectHash: string; startTime: number; endTime: number; score: number }
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
@@ -99,11 +95,19 @@ export type AssetObjectCreatePayload = { materializedPath: string; name: string;
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
+export type SearchResultPayload = { name: string; materializedPath: string; assetObjectId: number; assetObjectHash: string; startTime: number; endTime: number; score: number }
+
 export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string }
+
+export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
 
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
+
+export type SearchRequestPayload = { text: string; recordType: string }
+
+export type AudioResp = { type: AudioType; content: string }
 
 export type Result = { category: AIModelCategory; models: AIModelResult[] }
 
@@ -111,15 +115,11 @@ export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownload
 
 export type AcceptShareOutput = { fileList: string[] }
 
-export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
-
 export type AIModelResult = { info: AIModel; status: AIModelStatus }
 
 export type DownloadModelPayload = { modelId: string }
 
 export type TaskListRequestPayload = { pagination: Pagination; filter: TaskListRequestFilter }
-
-export type ExportInput = { types: AudioType[]; hash: string; path: string; fileName?: string | null }
 
 export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
 
@@ -133,4 +133,4 @@ export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean |
 
 export type LibrarySettingsThemeEnum = "light" | "dark"
 
-export type SearchRequestPayload = { text: string; recordType: string }
+export type ExportInput = { types: AudioType[]; hash: string; path: string; fileName?: string | null }

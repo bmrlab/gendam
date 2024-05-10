@@ -51,11 +51,11 @@ const useSearchPayloadInURL: () => [
 
 function validateSearchPayload(searchPayloadInURL: SearchPayloadInURL | null): TaskListProps {
   if (!searchPayloadInURL) {
-    return { pageSize: 10, pageIndex: 1, filter: 'excludeCompleted'}
+    return { pageSize: 10, pageIndex: 1, filter: 'all'}
   }
   const pageSize = Math.max(10, parseInt(''+searchPayloadInURL.pageSize) || 10)
   const pageIndex = Math.max(1, parseInt(''+searchPayloadInURL.pageIndex) || 1)
-  let filter = 'excludeCompleted' as TaskListRequestFilter
+  let filter = 'all' as TaskListRequestFilter
   if (searchPayloadInURL.filter === 'all' || searchPayloadInURL.filter === 'excludeCompleted') {
     filter = searchPayloadInURL.filter
   }

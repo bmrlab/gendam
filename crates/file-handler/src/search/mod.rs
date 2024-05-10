@@ -103,7 +103,7 @@ pub async fn handle_search(
                     })
                     .await?;
 
-                tracing::debug!("vision search result: {:?}", res);
+                // tracing::debug!("vision search result: {:?}", res);
 
                 res
             }
@@ -123,7 +123,7 @@ pub async fn handle_search(
                     })
                     .await?;
 
-                tracing::debug!("language search result: {:?}", res);
+                // tracing::debug!("language search result: {:?}", res);
 
                 res
             }

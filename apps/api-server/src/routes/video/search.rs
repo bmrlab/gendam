@@ -7,7 +7,6 @@ use prisma_lib::asset_object;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use tracing::{debug, error};
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -63,12 +62,12 @@ where
             )
             .await;
 
-            debug!("search result: {:?}", res);
+            // debug!("search result: {:?}", res);
 
             let search_results = match res {
                 Ok(res) => res,
                 Err(e) => {
-                    println!("error: {:?}", e);
+                    tracing::error!("failed to search: {}", e);
                     return Err(rspc::Error::new(
                         rspc::ErrorCode::InternalServerError,
                         format!("failed to search: {}", e),
@@ -121,7 +120,7 @@ where
                         let asset_object_data = match tasks_hash_map.get(file_identifier) {
                             Some(asset_object_data) => asset_object_data.to_owned(),
                             None => {
-                                error!(
+                                tracing::error!(
                                     "failed to find asset object data for file_identifier: {}",
                                     file_identifier
                                 );
