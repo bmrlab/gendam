@@ -8,6 +8,7 @@ prisma-lib = { path = "../../crates/prisma" }
 file-handler = { path = "../../crates/file-handler", features = [
   "ffmpeg-binary",
 ] }
+crdt = { path = "../../crates/crdt" }
 content-library = { path = "../../crates/content-library" }
 vector-db = { path = "../../crates/vector-db", features = ["qdrant"] }
 analytics-tracing = { path = "../../crates/analytics-tracing" }

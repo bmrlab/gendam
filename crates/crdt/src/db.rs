@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::constant::CR_SQLITE_ENDPOIONT;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct CrsqlChangesRowData {
+pub struct CrsqlChangesRowData {
     table: String,
     pk: Vec<u8>,
     cid: String,
@@ -117,7 +117,7 @@ impl CrSqliteDB {
         })
     }
 
-    fn pack(&self, id: impl ToSql) -> Result<Vec<u8>> {
+    pub(crate) fn pack(&self, id: impl ToSql) -> Result<Vec<u8>> {
         let sql = "SELECT crsql_pack_columns(?1);";
         self.conn.query_row(sql, params![id], |row| row.get(0))
     }
@@ -128,7 +128,7 @@ impl CrSqliteDB {
             .query_row(&sql, params![id], |row: &rusqlite::Row| row.get(0))
     }
 
-    fn get_db_version(&self) -> Result<usize> {
+    pub(crate) fn get_db_version(&self) -> Result<usize> {
         let sql = format!("SELECT crsql_db_version();");
         self.conn
             .query_row(&sql, params![], |row: &rusqlite::Row| row.get(0))
@@ -213,7 +213,7 @@ mod tests {
 
     fn load_extension() -> Connection {
         let conn = CrSqliteDB::init_connection(
-            PathBuf::from(format!("test.db")),
+            PathBuf::from("test.db"),
             PathBuf::from("/Users/zingerbee/Desktop/crsqlite.dylib"),
         )
         .unwrap();

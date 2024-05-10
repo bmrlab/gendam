@@ -264,6 +264,7 @@ dependencies = [
  "blake3",
  "chrono",
  "content-library",
+ "crdt",
  "csv",
  "dirs",
  "docx-rs",
