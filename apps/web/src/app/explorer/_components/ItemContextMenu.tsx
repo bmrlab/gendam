@@ -1,6 +1,7 @@
 import { useExplorerContext } from '@/Explorer/hooks'
 import { useExplorerStore } from '@/Explorer/store'
-import { rspc, queryClient } from '@/lib/rspc'
+import { ExplorerItem } from '@/Explorer/types'
+import { queryClient, rspc } from '@/lib/rspc'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback, useMemo } from 'react'
@@ -48,6 +49,8 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   const p2pStateQuery = rspc.useQuery(['p2p.state'])
   const p2pMut = rspc.useMutation(['p2p.share'])
 
+  const { mutateAsync: getChanges } = rspc.useMutation(['crr.pull'])
+
   /**
    * 这里都改成处理 selectedItems 而不只是处理当前的 item
    * ViewItem.tsx 里面的 handleContextMenuOpenChange 已经确保了当前 item 在 selectedItems 里
@@ -81,6 +84,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       for (let item of selectedFilePathItems) {
         try {
           await deleteMut.mutateAsync({
+            id: item.id,
             materializedPath: item.materializedPath,
             name: item.name,
           })
@@ -146,6 +150,16 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
     [selectedFilePathItems, p2pMut],
   )
 
+  const handleGetChanges = async () => {
+    if (explorer.selectedItems.size === 1) {
+      let id = Array.from(explorer.selectedItems)[0].id
+      const changes = await getChanges(id)
+      // 将 changes 复制到剪贴板
+      navigator.clipboard.writeText(JSON.stringify(changes, null, 2))
+      toast.success('Changes copied to clipboard')
+    }
+  }
+
   return (
     <ContextMenu.Content ref={forwardedRef as any} {...prpos} onClick={(e) => e.stopPropagation()}>
       <ContextMenu.Item onSelect={handleOpen} disabled={explorer.selectedItems.size > 1}>
@@ -158,6 +172,9 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
         <div>Quick view</div>
       </ContextMenu.Item> */}
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />
+        <ContextMenu.Item onSelect={handleGetChanges}>
+            <div>Get Changes</div>
+        </ContextMenu.Item>
       <ContextMenu.Item
         onSelect={handleProcessMetadata}
         disabled={selectedFilePathItems.some((item) => !item.assetObject)}
@@ -180,7 +197,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       <ContextMenu.Item onSelect={() => openFileSelection().then((path) => onMoveTargetSelected(path))}>
         <div>Move</div>
       </ContextMenu.Item>
-      <ContextMenu.Item onSelect={handleRename} disabled={explorer.selectedItems.size > 1}>
+      <ContextMenu.Item onSelect={handleRename} disabled={explorer.selectedItems.size > 1 }>
         <div>Rename</div>
       </ContextMenu.Item>
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />

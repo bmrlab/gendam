@@ -68,11 +68,24 @@ export default function Header() {
     }
   }, [handleSelectFiles])
 
+  const [changesInput, setChangesInput] = useState('')
+
+  const { mutateAsync: appleChanges } = rspc.useMutation(['crr.apply'])
+
+  const handleApplyChanges = async () => {
+    if (changesInput) {
+      console.log('apply changes', JSON.parse(changesInput))
+      await appleChanges(JSON.parse(changesInput))
+    }
+  }
   return (
     <>
       <Viewport.Toolbar className="relative">
         <PageNav title={explorer.materializedPath === '/' ? 'Library' : explorer.materializedPath} />
-          <Button onClick={() => crrQuery()}>Get changes</Button>
+          <div className="flex items-center">
+              <input value={changesInput} className="border" onChange={(e) => setChangesInput(e.target.value)} />
+              <button onClick={handleApplyChanges}>Apply</button>
+          </div>
           <div className="absolute left-1/3 w-1/3">
           <SearchForm
             initialSearchPayload={null}

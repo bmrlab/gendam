@@ -69,6 +69,10 @@ impl Library {
         files_dir_with_shard.join(file_hash)
     }
 
+    pub fn db_path(&self) -> PathBuf {
+        self.dir.join("databases").join("library.db")
+    }
+
     pub fn register_table_as_crr(&self, tables: Vec<&str>) {
         tables.iter().for_each(|table: &&str| {
             tracing::info!("Registering table {} as CRR", table);

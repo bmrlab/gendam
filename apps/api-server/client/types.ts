@@ -29,7 +29,8 @@ export type Procedures = {
         { key: "assets.rename_file_path", input: FilePathRenamePayload, result: null } | 
         { key: "audio.batch_export", input: ExportInput[], result: AudioType[] } | 
         { key: "audio.export", input: ExportInput, result: AudioType[] } | 
-        { key: "crr.query", input: never, result: string } | 
+        { key: "crr.apply", input: string, result: null } | 
+        { key: "crr.pull", input: string, result: string } | 
         { key: "libraries.create", input: string, result: null } | 
         { key: "libraries.load_library", input: string, result: LibraryLoadResult } | 
         { key: "libraries.models.download_model", input: DownloadModelPayload, result: null } | 
