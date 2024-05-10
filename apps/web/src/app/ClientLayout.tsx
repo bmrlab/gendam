@@ -1,4 +1,5 @@
 'use client'
+import { useP2PEvents } from "@/hooks/useP2PEvents"
 import DeviceAuth from '@/components/DeviceAuth'
 import LibrariesSelect from '@/components/LibrariesSelect'
 import Shared from '@/components/Shared'
@@ -11,6 +12,11 @@ import Icon from '@gendam/ui/icons'
 import { convertFileSrc } from '@tauri-apps/api/tauri'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+
+const WebsocketLayout = () => {
+  useP2PEvents()
+  return <></>
+}
 
 const BlankPage = ({ children }: Readonly<{ children: React.ReactNode }>) => (
   <Viewport.Page>
@@ -260,6 +266,7 @@ export default function ClientLayout({
             <Viewport.Sidebar />
             {children /* children should be a Viewport.Page element */}
             <Shared />
+            <WebsocketLayout />
           </CurrentLibrary.Provider>
         )}
         <SonnerToaster />

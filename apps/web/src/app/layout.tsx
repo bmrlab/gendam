@@ -10,7 +10,6 @@ const inter = Inter({ subsets: ['latin'] })
 // });
 
 import ClientLayout from './ClientLayout'
-import { WebsocketLayout } from '@/components/WebsocketLayout'
 import type { Metadata } from 'next'
 export const metadata: Metadata = {
   title: 'GenDAM | A privacy first generative DAM.',
@@ -27,7 +26,6 @@ export default function RootLayout({
       <body className={inter.className}>
         <ClientLayout>
           {children}
-          <WebsocketLayout />
         </ClientLayout>
       </body>
     </html>
