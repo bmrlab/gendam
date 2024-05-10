@@ -88,8 +88,9 @@ pub async fn load_library(
         tracing::error!("failed to create prisma client");
     })?;
     client
-        ._db_push()
-        .accept_data_loss() // --accept-data-loss in CLI
+        ._migrate_deploy()
+        // ._db_push()
+        // .accept_data_loss() // --accept-data-loss in CLI
         // .force_reset()      // --force-reset in CLI
         .await // apply migrations
         .map_err(|e| {
