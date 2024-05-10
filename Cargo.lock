@@ -1437,6 +1437,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "p2p",
+ "prisma-client-rust",
  "prisma-lib",
  "qdrant-client",
  "serde_json",

@@ -1,4 +1,4 @@
-use prisma_lib::{new_client_with_url, PrismaClient};
+use prisma_lib::PrismaClient;
 use qdrant::create_qdrant_server;
 pub use qdrant::{make_sure_collection_created, QdrantCollectionInfo, QdrantServerInfo};
 use qdrant_client::client::QdrantClient;
@@ -10,6 +10,7 @@ use vector_db::QdrantServer;
 
 mod port;
 mod qdrant;
+mod database;
 pub mod bundle;
 
 #[derive(Clone, Debug)]
@@ -79,23 +80,8 @@ pub async fn load_library(
     let files_dir = library_dir.join("files");
     let qdrant_dir = library_dir.join("qdrant");
 
-    let db_url = format!(
-        // "file:{}?socket_timeout=1&connection_limit=10",
-        "file:{}?socket_timeout=15&connection_limit=1",
-        db_dir.join("library.db").to_str().unwrap()
-    );
-    let client = new_client_with_url(db_url.as_str()).await.map_err(|_e| {
-        tracing::error!("failed to create prisma client");
-    })?;
-    client
-        ._migrate_deploy()
-        // ._db_push()
-        // .accept_data_loss() // --accept-data-loss in CLI
-        // .force_reset()      // --force-reset in CLI
-        .await // apply migrations
-        .map_err(|e| {
-            tracing::error!("failed to push db: {}", e);
-        })?;
+    let client = database::migrate_library(&db_dir).await?;
+
     let prisma_client = Arc::new(client);
 
     let qdrant_server = create_qdrant_server(qdrant_dir).await?;
