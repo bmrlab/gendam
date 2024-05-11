@@ -1,4 +1,5 @@
-use prisma_lib::PrismaClient;
+use crdt::constant::CRDT_TABLE;
+use prisma_lib::{new_client_with_url, raw, PrismaClient};
 use qdrant::create_qdrant_server;
 pub use qdrant::{make_sure_collection_created, QdrantCollectionInfo, QdrantServerInfo};
 use qdrant_client::client::QdrantClient;
@@ -119,7 +120,7 @@ pub async fn load_library(
     };
 
     // TODO: 添加其他表
-    library.register_table_as_crr(vec!["FilePath"]);
+    library.register_table_as_crr(CRDT_TABLE.to_vec());
 
     Ok(library)
 }

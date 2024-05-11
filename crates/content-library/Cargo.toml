@@ -14,5 +14,6 @@ uuid = { workspace = true }
 qdrant-client = { workspace = true }
 anyhow = { workspace = true }
 serde_json = { workspace = true }
+crdt = { path = '../crdt' }
 walkdir = "2.5.0"
 zip = "1.1.2"
