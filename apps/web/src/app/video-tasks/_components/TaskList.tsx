@@ -34,7 +34,7 @@ export default function VideoTasksList({ data, className }: VideoTasksListProps)
               videoFile={videoFile}
               items={data}
               isSelect={taskSelected.some((item) => item.assetObject.hash === videoFile.assetObject.hash)}
-              handleClick={() => {
+              handleSelect={() => {
                 // console.log(videoFile.assetObject.id, videoFile.assetObject.hash)
               }}
             />

@@ -57,7 +57,7 @@ export default function BatchExport() {
               <span>Apply export formats to all</span>
             </div>
           ),
-          handleClick: () => {
+          handleSelect: () => {
             const types = multiValues.find((v) => v.id === id)?.types || []
             data.filter((d) => d.id !== id).forEach((d) => updateItemTypes(d.id, types))
           },
@@ -69,7 +69,7 @@ export default function BatchExport() {
               <span>Reset export options</span>
             </div>
           ),
-          handleClick: () => updateItemTypes(id, []),
+          handleSelect: () => updateItemTypes(id, []),
         },
       ]
     },

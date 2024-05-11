@@ -14,10 +14,10 @@ import { useTaskActionOptions } from './useTaskActionOptions'
 export type VideoTaskItemProps = {
   videoFile: VideoWithTasksResult
   isSelect?: boolean
-  handleClick: () => void
+  handleSelect: () => void
 } & HTMLAttributes<HTMLDivElement>
 
-export default function VideoTaskItem({ videoFile, isSelect, handleClick, ...props }: VideoTaskItemProps) {
+export default function VideoTaskItem({ videoFile, isSelect, handleSelect, ...props }: VideoTaskItemProps) {
   const currentLibrary = useCurrentLibrary()
   const { mutateAsync } = rspc.useMutation('video.tasks.cancel')
 
@@ -37,7 +37,7 @@ export default function VideoTaskItem({ videoFile, isSelect, handleClick, ...pro
             ),
             disabled: v.disabled,
             variant: v.variant,
-            handleClick: v.handleClick,
+            handleSelect: v.handleSelect,
           },
     )
   }, [options])
@@ -54,7 +54,7 @@ export default function VideoTaskItem({ videoFile, isSelect, handleClick, ...pro
         <div
           className="bg-app-overlay relative flex size-9 cursor-default"
           onClick={(e) => {
-            handleClick()
+            handleSelect()
             // e.stopPropagation()
           }}
         >
