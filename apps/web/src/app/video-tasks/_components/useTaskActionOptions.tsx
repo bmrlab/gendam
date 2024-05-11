@@ -7,6 +7,7 @@ import type { ReactNode } from 'react'
 import { useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 import { TaskStatus, getTaskStatus } from './utils'
+import { useRouter } from 'next/navigation'
 
 export type TaskActionOption =
   | 'Separator'
@@ -19,6 +20,7 @@ export type TaskActionOption =
     }
 
 function useTaskAction(videos: VideoWithTasksResult[]) {
+  const router = useRouter()
   const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
   const setAudioDialogProps = useBoundStore.use.setAudioDialogProps()
   const setAudioDialogOpen = useBoundStore.use.setIsOpenAudioDialog()
@@ -28,6 +30,11 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
   const { mutateAsync: cancelTask } = rspc.useMutation(['video.tasks.cancel'])
 
   const isBatchSelected = useMemo(() => videos.length > 1, [videos])
+
+  const handleSingleReveal = useCallback(() => {
+    const item = videos[0];
+    router.push('/explorer?dir=' + item.materializedPath)
+  }, [router, videos])
 
   const handleSingleExport = useCallback(() => {
     setAudioDialogProps({
@@ -120,11 +127,12 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
     handleExport: isBatchSelected ? handleBatchExport : handleSingleExport,
     handleRegenerate: handleBatchRegenerate,
     handleCancel: handleBatchCancel,
+    handleReveal: handleSingleReveal,
   }
 }
 
 export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
-  const { handleExport, handleRegenerate, handleCancel } = useTaskAction(videos)
+  const { handleExport, handleRegenerate, handleCancel, handleReveal } = useTaskAction(videos)
 
   const options = useMemo(() => {
     const options: Array<TaskActionOption> = [
@@ -133,6 +141,12 @@ export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
         icon: <Icon.Cycle className="size-4" />,
         handleSelect: () => handleRegenerate(),
       },
+      {
+        disabled: videos.length > 1,
+        label: 'Reveal in explorer',
+        icon: <Icon.MagnifyingGlass className="size-4" />,
+        handleSelect: () => handleReveal(),
+      }
     ]
     if (
       videos
