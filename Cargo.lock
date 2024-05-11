@@ -252,7 +252,7 @@ checksum = "0952808a6c2afd1aa8947271f3a60f1a6763c7b912d210184c5149b5cf147247"
 
 [[package]]
 name = "api-server"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ai",
  "analytics-tracing",
@@ -2941,7 +2941,7 @@ dependencies = [
 
 [[package]]
 name = "gendam-desktop"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "analytics-tracing",
  "api-server",
