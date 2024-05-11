@@ -186,7 +186,7 @@ export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
         handleClick: () => console.log('Delete job'),
       },
     ] as Array<TaskActionOption>
-  }, [handleCancel, handleExport, handleRegenerate, videos])
+  }, [handleCancel, handleExport, handleRegenerate, handleReveal, videos])
 
   return {
     options,

@@ -55,9 +55,16 @@ export default function Sidebar() {
   const uploadQueueStore = useUploadQueueStore()
   const [uploadQueueOpen, setUploadQueueOpen] = useState(false)
 
+  const { data: inCompletedTasks } = rspc.useQuery(['video.tasks.list', {
+    pagination: { pageIndex: 1, pageSize: 1},
+    filter: 'excludeCompleted',
+  }], {
+    refetchInterval: 5000,
+  })
+
   const pathname = usePathname()
 
-  const selected = useMemo<LibrariesListResult | undefined>(() => {
+  const selectedLibrary = useMemo<LibrariesListResult | undefined>(() => {
     if (librariesQuery.isSuccess) {
       return librariesQuery.data.find((library) => library.id === currentLibrary.id)
     }
@@ -111,7 +118,7 @@ export default function Sidebar() {
         <div className="flex cursor-default items-center" onClick={() => setSelectPanelOpen(true)}>
           <Image src={GenDAM_Logo} alt="GenDAM" className="h-8 w-8"></Image>
           <div className="mx-2 flex-1 overflow-hidden">
-            <div className="truncate text-xs font-semibold">{selected?.title ?? 'Untitled'}</div>
+            <div className="truncate text-xs font-semibold">{selectedLibrary?.title ?? 'Untitled'}</div>
           </div>
           <Icon.UpAndDownArrow className="h-4 w-4"></Icon.UpAndDownArrow>
         </div>
@@ -152,8 +159,10 @@ export default function Sidebar() {
         <Link href="/video-tasks" className={menuClassNames('/video-tasks')}>
           <Icon.Briefcase className="text-ink/70 h-4 w-4" />
           <span>All jobs</span>
-          <div className="border-2 border-orange-400 p-[2px] h-3 w-3 rounded-full
-                animate-[flashstroke] duration-1000 repeat-infinite"></div>
+          {inCompletedTasks?.data.length ? (
+            <div className="border-2 border-orange-400 p-[2px] h-3 w-3 rounded-full
+                  animate-[flashstroke] duration-1000 repeat-infinite"></div>
+          ) : null}
         </Link>
         {/* <Link href="/debug/ui" className={menuClassNames('/debug/ui')}>
           <span className="font-light text-neutral-400">Debug</span>
