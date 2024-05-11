@@ -3,7 +3,7 @@ import VideoTaskItem, { type VideoTaskItemProps } from './TaskItem'
 import type { VideoWithTasksResult } from '@/lib/bindings'
 import useKeyPress, { KeyType } from '@/hooks/useKeyPress'
 import { useBoundStore } from '../_store'
-import React from 'react'
+import React, { useCallback } from 'react'
 
 type WithSelectProps = {
   items: VideoWithTasksResult[]
@@ -23,7 +23,7 @@ function withSelect<T extends WithSelectProps>(Component: React.ComponentType<T>
     const { videoFile } = props as WithSelectProps
     const { assetObject, materializedPath } = videoFile
 
-    const handleClick = async (e: React.MouseEvent) => {
+    const handleClick = useCallback(async (e: React.MouseEvent) => {
       e.stopPropagation()
       // 按住 shift 键，多选视频
       if (videoSelected.length >= 1 && isShiftPressed) {
@@ -58,7 +58,7 @@ function withSelect<T extends WithSelectProps>(Component: React.ComponentType<T>
       // 默认单选视频
       clearVideoSelected()
       addVideoSelected(videoFile)
-    }
+    }, [addVideoSelected, assetObject, clearVideoSelected, isCommandPressed, isShiftPressed, materializedPath, props.items, removeVideoSelected, videoFile, videoSelected])
 
     const handleRightClick = () => {
       const notSelect = videoSelected.every((item) => item.assetObject.hash !== assetObject.hash)
