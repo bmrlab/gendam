@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo } from 'react'
 import AudioDialog from './_components/audio/AudioDialog'
 import TaskFooter from './_components/footer'
 import VideoTasksList from './_components/TaskList'
+import { useBoundStore } from './_store'
 import useTaskList, { type TaskListProps } from './useTaskList'
 
 type SearchPayloadInURL = {
@@ -63,6 +64,7 @@ function validateSearchPayload(searchPayloadInURL: SearchPayloadInURL | null): T
 }
 
 export default function VideoTasksPage() {
+  const clearVideoSelected = useBoundStore.use.clearVideoSelected()
   const [searchPayloadInURL, updateSearchPayloadInURL] = useSearchPayloadInURL()
 
   const {
@@ -125,7 +127,7 @@ export default function VideoTasksPage() {
         <PageNav title="All jobs" />
         <ListFilter />
       </Viewport.Toolbar>
-      <Viewport.Content>
+      <Viewport.Content onClick={() => clearVideoSelected()}>
         {videos.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center">
             <Link href="/explorer" className="cursor-default">

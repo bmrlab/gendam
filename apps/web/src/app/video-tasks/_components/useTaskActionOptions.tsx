@@ -15,7 +15,7 @@ export type TaskActionOption =
       variant?: 'accent' | 'destructive'
       label: string
       icon: ReactNode
-      handleClick: () => void
+      handleSelect: () => void
     }
 
 function useTaskAction(videos: VideoWithTasksResult[]) {
@@ -129,12 +129,11 @@ export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
   const options = useMemo(() => {
     const options: Array<TaskActionOption> = [
       {
-        label: 'Re-process job ',
+        label: 'Re-process job',
         icon: <Icon.Cycle className="size-4" />,
-        handleClick: () => handleRegenerate(),
+        handleSelect: () => handleRegenerate(),
       },
     ]
-
     if (
       videos
         .map((v) => v.tasks)
@@ -148,7 +147,7 @@ export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
       options.push({
         label: 'Cancel job',
         icon: <Icon.CloseRounded className="size-4" />,
-        handleClick: () => handleCancel(),
+        handleSelect: () => handleCancel(),
       })
     }
 
@@ -158,7 +157,7 @@ export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
       options.push({
         label: 'Export transcript',
         icon: <Icon.Download className="size-4" />,
-        handleClick: () => handleExport(),
+        handleSelect: () => handleExport(),
       })
     }
 

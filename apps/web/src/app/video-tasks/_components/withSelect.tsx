@@ -23,7 +23,8 @@ function withSelect<T extends WithSelectProps>(Component: React.ComponentType<T>
     const { videoFile } = props as WithSelectProps
     const { assetObject, materializedPath } = videoFile
 
-    const handleClick = async () => {
+    const handleClick = async (e: React.MouseEvent) => {
+      e.stopPropagation()
       // 按住 shift 键，多选视频
       if (videoSelected.length >= 1 && isShiftPressed) {
         let newVideoSelected = [
@@ -43,10 +44,15 @@ function withSelect<T extends WithSelectProps>(Component: React.ComponentType<T>
         return
       }
 
-      // 如果按住 command 键，点击已选中的视频，取消选中
-      if (videoSelected.some((item) => item.assetObject.id === assetObject.id) && isCommandPressed) {
-        removeVideoSelected(assetObject.id)
-        return
+      if (isCommandPressed) {
+        // 如果按住 command 键，点击已选中的视频，取消选中
+        if (videoSelected.some((item) => item.assetObject.id === assetObject.id)) {
+          removeVideoSelected(assetObject.id)
+          return
+        } else {
+          addVideoSelected(videoFile)
+          return
+        }
       }
 
       // 默认单选视频

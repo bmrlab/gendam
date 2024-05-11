@@ -19,7 +19,7 @@ export default function TaskContextMenu({ children }: TaskContextMenuProps) {
             o === 'Separator' ? (
               <ContextMenu.Separator key={index} />
             ) : (
-              <ContextMenu.Item key={index} onClick={o.handleClick} variant={o.variant} disabled={o.disabled}>
+              <ContextMenu.Item key={index} onSelect={o.handleSelect} variant={o.variant} disabled={o.disabled}>
                 {o.icon}
                 <span>{o.label}</span>
               </ContextMenu.Item>
