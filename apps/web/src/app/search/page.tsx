@@ -60,7 +60,10 @@ export default function Search() {
   return (
     <Viewport.Page>
       <Viewport.Toolbar className="relative">
-        <PageNav title={searchPayload ? `Searching "${searchPayload.text}"` : "Search"} />
+        <PageNav
+          title={searchPayload ? `Searching "${searchPayload.text}"` : "Search"}
+          className="max-w-[25%] overflow-hidden"
+        />
         <div className="absolute left-1/3 w-1/3">
           <SearchForm
             initialSearchPayload={searchPayloadInURL}

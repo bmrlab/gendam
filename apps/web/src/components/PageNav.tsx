@@ -13,7 +13,7 @@ export default function PageNav({ title, className }: HTMLAttributes<HTMLDivElem
         className="p-1 rounded-md hover:bg-toolbar-hover"
         onClick={() => window.history.forward()}
       ><Icon.arrowRight className="h-4 w-4" /></div>
-      {title ? <div className="ml-2 text-sm">{title}</div> : null}
+      {title ? <div className="ml-2 text-sm truncate">{title}</div> : null}
     </div>
   )
 }
