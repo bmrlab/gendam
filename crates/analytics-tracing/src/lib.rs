@@ -1,4 +1,5 @@
 use std::{
+    io::prelude::*,
     path::PathBuf,
     sync::Mutex,
 };
@@ -42,6 +43,35 @@ pub fn init_tracing_to_stdout() {
 }
 
 pub fn init_tracing_to_file(log_dir: PathBuf) {
+    let log_file_full_path = log_dir.join(format!("app.{}.log", chrono::Utc::now().format("%Y-%m-%d")));
+
+    std::panic::set_hook({
+        let log_file_full_path = log_file_full_path.clone();
+        Box::new(move |panic_info| {
+            let mut file = match std::fs::OpenOptions::new()
+                .write(true)
+                .append(true)
+                .create(true)
+                .open(&log_file_full_path)
+            {
+                Ok(f) => f,
+                Err(e) => {
+                    eprintln!("Failed to create log file: {}", e);
+                    return;
+                }
+            };
+            let _ = writeln!(file, "Panic: {}", panic_info);
+            // if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+            //     let _ = writeln!(file, "Panic: {}", s);
+            // } else {
+            //     let _ = writeln!(file, "Panic: Unknown");
+            // }
+            // if let Some(location) = panic_info.location() {
+            //     let _ = writeln!(file, "Occurred at: {}:{}", location.file(), location.line());
+            // }
+        })
+    });
+
     let env_layer = init_env_layer();
 
     // let telemetry_layer = init_otel_layer();
@@ -58,7 +88,6 @@ pub fn init_tracing_to_file(log_dir: PathBuf) {
             init_tracing_to_stdout();  // fallback to stdout tracing
             return;
         }
-        let log_file_full_path = log_dir.join(format!("app.{}.log", chrono::Utc::now().format("%Y-%m-%d")));
         let file = match std::fs::OpenOptions::new()
             .append(true)
             .create(true)
