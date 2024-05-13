@@ -50,6 +50,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   const p2pMut = rspc.useMutation(['p2p.share'])
 
   const { mutateAsync: getChanges } = rspc.useMutation(['crr.pull'])
+  const { mutateAsync: getDirChanges } = rspc.useMutation(['crr.pull_dir'])
 
   /**
    * 这里都改成处理 selectedItems 而不只是处理当前的 item
@@ -151,8 +152,19 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   )
 
   const handleGetChanges = async () => {
-    if (explorer.selectedItems.size === 1) {
-      let id = Array.from(explorer.selectedItems)[0].id
+    let selectedItem = Array.from(explorer.selectedItems)[0]
+
+    if (selectedItem.isDir) {
+      let materializedPath = selectedItem.materializedPath
+      const dirChanges = await getDirChanges({
+        dir: `${materializedPath}${selectedItem.name}`,
+        dirFilePathId: selectedItem.id,
+      })
+      // 将 changes 复制到剪贴板
+      navigator.clipboard.writeText(JSON.stringify(dirChanges, null, 2))
+      toast.success('Changes copied to clipboard')
+    } else {
+      let id = selectedItem.id
       const changes = await getChanges(id)
       // 将 changes 复制到剪贴板
       navigator.clipboard.writeText(JSON.stringify(changes, null, 2))
@@ -172,9 +184,9 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
         <div>Quick view</div>
       </ContextMenu.Item> */}
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />
-        <ContextMenu.Item onSelect={handleGetChanges}>
-            <div>Get Changes</div>
-        </ContextMenu.Item>
+      <ContextMenu.Item onSelect={handleGetChanges} disabled={explorer.selectedItems.size > 1}>
+        <div>Get Changes</div>
+      </ContextMenu.Item>
       <ContextMenu.Item
         onSelect={handleProcessMetadata}
         disabled={selectedFilePathItems.some((item) => !item.assetObject)}

@@ -1,3 +1,6 @@
+mod association;
+
+use crate::routes::crr::association::get_file_path_ids_under_materialized_path;
 use crate::CtxWithLibrary;
 use asset_object::select;
 use content_library::{create_library, list_library_dirs};
@@ -64,6 +67,28 @@ where
                 Ok(changes)
             })
         })
+        .mutation("pull_dir", |t| {
+            #[derive(Deserialize, Type, Debug)]
+            #[serde(rename_all = "camelCase")]
+            struct PullDirPayload {
+                dir: String,
+                dir_file_path_id: String,
+            }
+
+            t(|ctx, payload: PullDirPayload| async move {
+                tracing::debug!("pull_dir pyload: {:?}", payload);
+                let file_path_ids = get_file_path_ids_under_materialized_path(
+                    ctx.library()?.prisma_client(),
+                    payload.dir,
+                )
+                .await?;
+                tracing::info!(
+                    "dir_file_path_id: {}, under dir file path ids: {file_path_ids:?}",
+                    payload.dir_file_path_id
+                );
+                Ok(())
+            })
+        })
         .mutation("apply", |t| {
             t(|ctx, changes: String| async move {
                 tracing::info!("api changes: {:?}", changes.clone());
@@ -76,17 +101,4 @@ where
                 Ok(())
             })
         })
-}
-
-#[derive(Debug, Deserialize)]
-struct MyDataType {
-    table: String,
-    pk: String,
-    cid: String,
-    val: String,
-    col_version: i32,
-    db_version: i32,
-    site_id: Option<String>,
-    cl: i32,
-    seq: i32,
 }
