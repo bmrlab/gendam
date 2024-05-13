@@ -11,7 +11,7 @@ import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 // import { useCurrentLibrary } from '@/lib/library'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { HTMLAttributes, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 // import styles from './GridView.module.css'
 
 const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
@@ -34,16 +34,16 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
 
   return (
     <div data-selecto-item={data.id}>
-      <div className={classNames('mb-1 h-28 w-32 rounded-lg p-2', highlight ? 'bg-app-hover' : null)}>
+      <div className={classNames('mb-1 h-28 w-full rounded-lg p-2', highlight ? 'bg-app-hover' : null)}>
         <FileThumb data={data} className="h-full w-full" />
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
-        <div className="w-32">
+        <div>
           <RenamableItemText data={data} className="text-center" />
         </div>
       ) : (
         <div className={classNames(
-          'text-ink text-xs w-32 overflow-hidden rounded-lg p-1 flex items-center justify-center',
+          'text-ink text-xs overflow-hidden rounded-lg py-1 px-2 flex items-center justify-center',
           highlight ? 'bg-accent text-white' : null
         )}>
           {/* <div className="line-clamp-2 max-h-[2.8em] break-all text-center leading-[1.4em]">{data.name}</div> */}
@@ -58,7 +58,9 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
 const GridItem: React.FC<{
   data: ExplorerItem
   onSelect: (e: React.MouseEvent, data: ExplorerItem) => void
-}> = ({ data, onSelect }) => {
+} & Omit<HTMLAttributes<HTMLDivElement>, "onSelect">> = ({
+  data, onSelect, ...props
+}) => {
   const router = useRouter()
   // const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
@@ -83,6 +85,7 @@ const GridItem: React.FC<{
 
   return (
     <div
+      {...props}
       data-component-hint="ViewItem(GridView)"
       onClick={(e) => {
         e.stopPropagation()
@@ -105,6 +108,38 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
+
+  const ref = useRef<HTMLDivElement>(null)
+  const gap = 10
+  const padding = 30 // container 左右 padding
+  const [containerWidth, setContainerWidth] = useState<number>(0)
+
+  useEffect(() => {
+    const $el = ref.current
+    if (!$el) {
+      return
+    }
+    // ref.current 必须在 useEffect 里面用, 不然还没有 mount, 它还是 undefined
+    const containerWidth = Math.max(0, ($el.clientWidth || 0) - padding * 2)
+    setContainerWidth(containerWidth)
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        if (entry.target === $el) {
+          const containerWidth = Math.max(0, ($el.clientWidth || 0) - padding * 2)
+          setContainerWidth(containerWidth)
+        }
+      }
+    })
+    resizeObserver.observe($el)
+    return () => {
+      resizeObserver.unobserve($el)
+    }
+  }, [])
+
+  const gridItemWidth = useMemo(() => {
+    const columns = Math.round(containerWidth / 175)
+    return Math.floor((containerWidth - gap * (columns - 1)) / columns)
+  }, [containerWidth])
 
   const onSelect = useCallback(
     (e: React.MouseEvent, data: ExplorerItem) => {
@@ -140,9 +175,13 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
   }, [explorerStore.isContextMenuOpen, lastSelectIndex])
 
   return (
-    <div className="flex flex-wrap content-start items-start justify-start gap-x-4 gap-y-8 p-8">
+    <div
+      ref={ref}
+      className="flex flex-wrap content-start items-start justify-start"
+      style={{ columnGap: `${gap}px`, rowGap: '30px', padding: `${padding}px` }}
+    >
       {items.map((item) => (
-        <GridItem key={item.id} data={item} onSelect={onSelect} />
+        <GridItem key={item.id} data={item} onSelect={onSelect} style={{width:`${gridItemWidth}px`}} />
       ))}
     </div>
   )
