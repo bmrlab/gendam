@@ -152,10 +152,7 @@ export default function UploadQueue({ close }: {
   }, [uploadQueueStore, uploadMut])
 
   return (
-    <div className={classNames(
-      "absolute z-10 bottom-9 left-0 overflow-hidden",
-      "rounded-md text-ink bg-app-box border border-app-line shadow-lg",
-    )}>
+    <>
       <div className="flex items-center justify-between gap-2 pl-4 pr-2 h-12 border-b border-app-line">
         <QueueStatus />
         <div onClick={() => uploadQueueStore.clear()} className="h-5 w-5 p-1 rounded hover:bg-app-hover">
@@ -166,6 +163,6 @@ export default function UploadQueue({ close }: {
         </div>
       </div>
       <QueueList />
-    </div>
+    </>
   )
 }

@@ -8,6 +8,7 @@ import { rspc } from '@/lib/rspc'
 import { GenDAM_Logo } from '@gendam/assets/images'
 import Icon from '@gendam/ui/icons'
 import { Button } from '@gendam/ui/v2/button'
+import { Popover } from '@gendam/ui/v2/popover'
 import classNames from 'classnames'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -195,28 +196,34 @@ export default function Sidebar() {
           <Icon.Sun className="block h-full w-full dark:hidden" />
           <Icon.Moon className="hidden h-full w-full dark:block" />
         </Button>
-        <div className="relative">
-          <Button
-            variant="ghost" size="sm" onClick={() => setUploadQueueOpen(!uploadQueueOpen)}
-            className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none"
-          >
-            {uploadQueueStore.uploading || uploadQueueStore.queue.length ? (
-              // <div className="border-2 border-orange-400 p-[2px] h-full w-full rounded-full
-              //   animate-[flashstroke] duration-1000 repeat-infinite"></div>
-              <div className="relative h-4 w-4">
-                <div className="absolute border-2 left-0 top-0 w-full h-full border-orange-400 rounded-full
-                      animate-[flashstroke] repeat-infinite" style={{animationDuration:"2s",animationDelay:"0s"}}></div>
-                <div className="absolute border-2 left-0 top-0 w-full h-full border-orange-400 rounded-full
-                      animate-[flashstroke] repeat-infinite" style={{animationDuration:"2s",animationDelay:"1s"}}></div>
-              </div>
-            ) : (
-              <div className="border border-current p-[2px] h-full w-full rounded-full scale-90">
-                <Icon.Check className="h-full w-full" />
-              </div>
-            )}
-          </Button>
-        </div>
-        {uploadQueueOpen ? <UploadQueue close={() => setUploadQueueOpen(false)} /> : null}
+        <Popover.Root open={uploadQueueOpen} onOpenChange={(open) => setUploadQueueOpen(open)}>
+          <Popover.Trigger asChild>
+            <Button
+              variant="ghost" size="sm" onClick={() => setUploadQueueOpen(!uploadQueueOpen)}
+              className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none"
+            >
+              {uploadQueueStore.uploading || uploadQueueStore.queue.length ? (
+                // <div className="border-2 border-orange-400 p-[2px] h-full w-full rounded-full
+                //   animate-[flashstroke] duration-1000 repeat-infinite"></div>
+                <div className="relative h-4 w-4">
+                  <div className="absolute border-2 left-0 top-0 w-full h-full border-orange-400 rounded-full
+                        animate-[flashstroke] repeat-infinite" style={{animationDuration:"2s",animationDelay:"0s"}}></div>
+                  <div className="absolute border-2 left-0 top-0 w-full h-full border-orange-400 rounded-full
+                        animate-[flashstroke] repeat-infinite" style={{animationDuration:"2s",animationDelay:"1s"}}></div>
+                </div>
+              ) : (
+                <div className="border border-current p-[2px] h-full w-full rounded-full scale-90">
+                  <Icon.Check className="h-full w-full" />
+                </div>
+              )}
+            </Button>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content side="bottom" sideOffset={8}>
+              <UploadQueue close={() => setUploadQueueOpen(false)} />
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
       </section>
 
       <section className="mx-3 mb-3">
