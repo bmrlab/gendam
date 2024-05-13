@@ -91,8 +91,8 @@ export default function ExplorerPage() {
               <div className="my-4 text-sm">Drag or paste videos here</div>
             </Viewport.Content>
           ) : (
-            <Viewport.Content className="h-full flex flex-row overflow-hidden" onClick={() => explorer.resetSelectedItems()}>
-              <ExplorerLayout className="h-full flex-1 w-auto overflow-scroll"></ExplorerLayout>
+            <Viewport.Content className="h-full flex flex-row overflow-hidden">
+              <ExplorerLayout className="h-full flex-1 w-auto overflow-scroll" />
               <Inspector />
             </Viewport.Content>
           )}

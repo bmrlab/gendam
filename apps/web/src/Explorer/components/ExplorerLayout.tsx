@@ -109,7 +109,11 @@ export default function Explorer({ ...props }: HTMLAttributes<HTMLDivElement>) {
   }
 
   return (
-    <div { ...props } data-selecto-container>
+    <div
+      data-selecto-container
+      onClick={() => explorer.resetSelectedItems()}
+      { ...props }
+    >
       <DndContext onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
         {/* <GridView items={explorer.items}></GridView> */}
         {/* <ListView items={explorer.items}></ListView> */}
