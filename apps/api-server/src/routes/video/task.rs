@@ -18,7 +18,7 @@ pub struct Pagination {
 
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
-pub enum TaskListRequestFilter {
+pub enum VideoTaskListRequestFilter {
     All,
     Processing,
     Completed,
@@ -30,9 +30,9 @@ pub enum TaskListRequestFilter {
 
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
-struct TaskListRequestPayload {
+struct VideoTaskListRequestPayload {
     pagination: Pagination,
-    filter: TaskListRequestFilter,
+    filter: VideoTaskListRequestFilter,
 }
 
 #[derive(Deserialize, Type, Debug)]
@@ -97,7 +97,7 @@ impl VideoTaskHandler {
 
     async fn list(
         &self,
-        payload: TaskListRequestPayload,
+        payload: VideoTaskListRequestPayload,
     ) -> anyhow::Result<VideoWithTasksPageResult> {
         let Pagination {
             page_size,
@@ -108,7 +108,7 @@ impl VideoTaskHandler {
         }
 
         let task_filter = match payload.filter {
-            TaskListRequestFilter::ExcludeCompleted => vec![operator::or(vec![
+            VideoTaskListRequestFilter::ExcludeCompleted => vec![operator::or(vec![
                 file_handler_task::exit_code::equals(None),
                 file_handler_task::exit_code::gte(1),
             ])],
@@ -266,7 +266,7 @@ where
             })
         })
         .query("list", |t| {
-            t(|ctx: TCtx, input: TaskListRequestPayload| async move {
+            t(|ctx: TCtx, input: VideoTaskListRequestPayload| async move {
                 let library = ctx.library()?;
                 match VideoTaskHandler::new(library.prisma_client())
                     .list(input)

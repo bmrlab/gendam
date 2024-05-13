@@ -11,10 +11,12 @@ export type Procedures = {
         { key: "libraries.models.list", input: never, result: Result[] } | 
         { key: "libraries.status", input: never, result: LibraryStatusResult } | 
         { key: "p2p.state", input: never, result: any } | 
+        { key: "tasks.list", input: TaskListRequestPayload, result: null } | 
+        { key: "tasks.test", input: never, result: string } | 
         { key: "users.get", input: never, result: Auth | null } | 
         { key: "version", input: never, result: string } | 
         { key: "video.search.all", input: SearchRequestPayload, result: SearchResultPayload[] } | 
-        { key: "video.tasks.list", input: TaskListRequestPayload, result: VideoWithTasksPageResult },
+        { key: "video.tasks.list", input: VideoTaskListRequestPayload, result: VideoWithTasksPageResult },
     mutations: 
         { key: "assets.create_asset_object", input: AssetObjectCreatePayload, result: null } | 
         { key: "assets.create_dir", input: FilePathCreatePayload, result: null } | 
@@ -57,15 +59,17 @@ export type SharePayload = { fileIdList: number[]; peerId: string }
 
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
+export type VideoTaskListRequestPayload = { pagination: Pagination; filter: VideoTaskListRequestFilter }
+
 export type FilePathDeletePayload = { materializedPath: string; name: string }
 
 export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPath: string; oldName: string; newName: string }
 
+export type VideoTaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
+
 export type VideoWithTasksPageResult = { data: VideoWithTasksResult[]; pagination: Pagination; maxPage: number }
 
 export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
-
-export type TaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
 
@@ -78,6 +82,8 @@ export type TaskRedoRequestPayload = { assetObjectId: number }
 export type Pagination = { pageSize: number; pageIndex: number }
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
+
+export type TaskListRequestFilter = { assetObjectId: number | null }
 
 export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
 
@@ -109,6 +115,8 @@ export type SearchRequestPayload = { text: string; recordType: string }
 
 export type AudioResp = { type: AudioType; content: string }
 
+export type TaskListRequestPayload = { filter: TaskListRequestFilter }
+
 export type Result = { category: AIModelCategory; models: AIModelResult[] }
 
 export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
@@ -118,8 +126,6 @@ export type AcceptShareOutput = { fileList: string[] }
 export type AIModelResult = { info: AIModel; status: AIModelStatus }
 
 export type DownloadModelPayload = { modelId: string }
-
-export type TaskListRequestPayload = { pagination: Pagination; filter: TaskListRequestFilter }
 
 export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
 

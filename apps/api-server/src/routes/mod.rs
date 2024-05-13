@@ -1,4 +1,5 @@
 pub(self) mod assets;
+pub(self) mod tasks;
 mod audio;
 mod libraries;
 mod p2p;
@@ -24,6 +25,7 @@ where
         // })
         .merge("users.", users::get_routes::<TCtx>())
         .merge("assets.", assets::get_routes::<TCtx>())
+        .merge("tasks.", tasks::get_routes::<TCtx>())
         .merge("video.", video::get_routes::<TCtx>())
         .merge("audio.", audio::get_routes::<TCtx>())
         .merge("libraries.", libraries::get_routes::<TCtx>())
