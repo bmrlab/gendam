@@ -73,6 +73,14 @@ export default function ExplorerPage() {
     setLayout(explorer.settings.layout)
   }, [explorer.settings.layout])
 
+  const inspectorItem = useMemo<ExplorerItem | null>(() => {
+    const selectedItems = explorer.selectedItems
+    if (selectedItems.size === 1) {
+      return Array.from(selectedItems)[0]
+    }
+    return null
+  }, [explorer.selectedItems])
+
   const contextMenu = (data: ExplorerItem) => <ItemContextMenu data={data} />
 
   if (assetsQuery.isError) {
@@ -93,7 +101,7 @@ export default function ExplorerPage() {
           ) : (
             <Viewport.Content className="h-full flex flex-row overflow-hidden">
               <ExplorerLayout className="h-full flex-1 w-auto overflow-scroll" />
-              <Inspector />
+              <Inspector data={inspectorItem} />
             </Viewport.Content>
           )}
 

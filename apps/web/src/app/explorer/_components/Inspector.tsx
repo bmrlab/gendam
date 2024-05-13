@@ -1,5 +1,4 @@
 'use client'
-import { useExplorerContext } from '@/Explorer/hooks'
 import { ExplorerItem } from '@/Explorer/types'
 import { FileHandlerTask } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
@@ -192,27 +191,19 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
   )
 }
 
-export default function Inspector() {
-  const explorer = useExplorerContext()
-  // const explorerStore = useExplorerStore()
+export default function Inspector({ data }: {
+  data: ExplorerItem | null
+}) {
   const inspector = useInspector()
-
-  const item = useMemo<ExplorerItem | null>(() => {
-    const selectedItems = explorer.selectedItems
-    if (selectedItems.size === 1) {
-      return Array.from(selectedItems)[0]
-    }
-    return null
-  }, [explorer.selectedItems])
 
   return inspector.show ? (
     <div className="border-app-line h-full w-64 overflow-auto border-l">
       {/* <div onClick={() => inspector.setShow(false)}>close</div> */}
-      {item ? (
-        item.isDir ? (
-          <FolderDetail data={item} />
-        ) : item.assetObject ? (
-          <AssetObjectDetail data={item} />
+      {data ? (
+        data.isDir ? (
+          <FolderDetail data={data} />
+        ) : data.assetObject ? (
+          <AssetObjectDetail data={data} />
         ) : null
       ) : null}
     </div>
