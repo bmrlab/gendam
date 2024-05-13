@@ -8,17 +8,7 @@ import { Folder_Light } from '@gendam/assets/images'
 import Icon from '@gendam/ui/icons'
 import Image from 'next/image'
 import { useEffect, useMemo, useRef } from 'react'
-import { create } from 'zustand'
-
-interface InspectorState {
-  show: boolean
-  setShow: (show: boolean) => void
-}
-
-export const useInspector = create<InspectorState>((set) => ({
-  show: false,
-  setShow: (show) => set({ show }),
-}))
+import { useInspector } from './store'
 
 const FolderDetail = ({ data }: { data: ExplorerItem }) => {
   return (

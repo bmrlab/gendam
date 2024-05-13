@@ -15,9 +15,9 @@ import { RSPCError } from '@rspc/client'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import Inspector from '@/components/Inspector'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
-import Inspector from './_components/Inspector'
 import ItemContextMenu from './_components/ItemContextMenu'
 
 export default function ExplorerPage() {
