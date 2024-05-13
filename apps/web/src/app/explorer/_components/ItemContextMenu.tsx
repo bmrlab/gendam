@@ -36,6 +36,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
 
   const deleteMut = rspc.useMutation(['assets.delete_file_path'])
   const metadataMut = rspc.useMutation(['assets.process_video_metadata'])
+  const processJobsMut = rspc.useMutation(['video.tasks.regenerate'])
   const { data: stateData } = rspc.useQuery(['p2p.state'])
   const p2pMut = rspc.useMutation(['p2p.share'])
 
@@ -109,6 +110,24 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
     [metadataMut, explorer],
   )
 
+  const handleProcessJobs = useCallback(
+    async (e: Event) => {
+      for (let item of Array.from(explorer.selectedItems)) {
+        if (!item.assetObject) {
+          return
+        }
+        const assetObjectId = item.assetObject.id
+        try {
+          await processJobsMut.mutateAsync({ assetObjectId })
+        } catch (error) {}
+        queryClient.invalidateQueries({
+          queryKey: ['tasks.list', { filter: { assetObjectId }}],
+        })
+      }
+    },
+    [processJobsMut, explorer],
+  )
+
   const handleShare = useCallback(
     (peerId: string) => {
       let idList = Array.from(explorer.selectedItems).map((item) => {
@@ -135,8 +154,15 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
         onSelect={handleProcessMetadata}
         disabled={Array.from(explorer.selectedItems).some((item) => !item.assetObject)}
       >
-        <div>Regen Thumbnail</div>
+        <div>Regen thumbnail</div>
       </ContextMenu.Item>
+      <ContextMenu.Item
+        onSelect={handleProcessJobs}
+        disabled={Array.from(explorer.selectedItems).some((item) => !item.assetObject)}
+      >
+        <div>Re-process jobs</div>
+      </ContextMenu.Item>
+      <ContextMenu.Separator className="bg-app-line my-1 h-px" />
       <ContextMenu.Item onSelect={() => openFileSelection().then((path) => onMoveTargetSelected(path))}>
         <div>Move</div>
       </ContextMenu.Item>
