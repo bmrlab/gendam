@@ -19,6 +19,7 @@ model FilePath {
   isDir Boolean @default(false)
 
   materializedPath String  @default("")
+  relativePath     String?
   name             String  @default("")
   description      String?
 
@@ -31,6 +32,7 @@ model FilePath {
   // @@unique([materializedPath, name])
   @@index([materializedPath])
   @@index([assetObjectId])
+  @@index([relativePath])
 }
 
 model AssetObject {
