@@ -160,8 +160,12 @@ export default function Sidebar() {
           <Icon.Briefcase className="text-ink/70 h-4 w-4" />
           <span>All jobs</span>
           {inCompletedTasks?.data.length ? (
-            <div className="border-2 border-orange-400 p-[2px] h-3 w-3 rounded-full
-                  animate-[flashstroke] duration-1000 repeat-infinite"></div>
+            <div className="relative h-3 w-3">
+              <div className="absolute border left-0 top-0 w-full h-full border-orange-400 rounded-full
+                    animate-[flashstroke] repeat-infinite" style={{animationDuration:"2s",animationDelay:"0s"}}></div>
+              <div className="absolute border left-0 top-0 w-full h-full border-orange-400 rounded-full
+                    animate-[flashstroke] repeat-infinite" style={{animationDuration:"2s",animationDelay:"1s"}}></div>
+            </div>
           ) : null}
         </Link>
         {/* <Link href="/debug/ui" className={menuClassNames('/debug/ui')}>
@@ -197,8 +201,14 @@ export default function Sidebar() {
             className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none"
           >
             {uploadQueueStore.uploading || uploadQueueStore.queue.length ? (
-              <div className="border-2 border-orange-400 p-[2px] h-full w-full rounded-full
-                animate-[flashstroke] duration-1000 repeat-infinite"></div>
+              // <div className="border-2 border-orange-400 p-[2px] h-full w-full rounded-full
+              //   animate-[flashstroke] duration-1000 repeat-infinite"></div>
+              <div className="relative h-4 w-4">
+                <div className="absolute border-2 left-0 top-0 w-full h-full border-orange-400 rounded-full
+                      animate-[flashstroke] repeat-infinite" style={{animationDuration:"2s",animationDelay:"0s"}}></div>
+                <div className="absolute border-2 left-0 top-0 w-full h-full border-orange-400 rounded-full
+                      animate-[flashstroke] repeat-infinite" style={{animationDuration:"2s",animationDelay:"1s"}}></div>
+              </div>
             ) : (
               <div className="border border-current p-[2px] h-full w-full rounded-full scale-90">
                 <Icon.Check className="h-full w-full" />

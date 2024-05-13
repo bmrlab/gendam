@@ -77,8 +77,8 @@ async fn main() {
         .nest("/rspc", {
             rspc_axum::endpoint(router.clone(), {
                 let ctx = ctx.clone();
-                move |parts: Parts| {
-                    tracing::info!("Client requested operation '{}'", parts.uri.path());
+                move |_parts: Parts| {
+                    // tracing::info!("Client requested operation '{}'", parts.uri.path());
                     // 不能每次 new 而应该是 clone，这样会保证 ctx 里面的每个元素每次只是新建了引用
                     ctx.clone()
                 }
