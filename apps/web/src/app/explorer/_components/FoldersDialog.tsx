@@ -1,6 +1,6 @@
 import FileThumb from '@/Explorer/components/View/FileThumb'
 import { ExplorerItem } from '@/Explorer/types'
-import Icon from '@/components/Icon'
+import Icon from '@gendam/ui/icons'
 import { client, rspc } from '@/lib/rspc'
 import { toast } from 'sonner'
 import { Folder_Light } from '@gendam/assets/images'
@@ -114,7 +114,7 @@ export function FoldersDialog() {
               size="xs"
               className="ml-2 gap-1 px-1"
               onClick={() => gotoFolder('-1')}>
-              <Icon.arrowUpLeft className="h-4 w-4" />
+              <Icon.ArrowUpLeft className="h-4 w-4" />
               <span>Back</span>
             </Button>
           </div>

@@ -1,4 +1,4 @@
-import Icon from '@/components/Icon'
+import Icon from '@gendam/ui/icons'
 import { useCurrentLibrary } from '@/lib/library'
 import { useEffect, useRef } from 'react'
 import { useQuickViewStore, type QuickViewItem } from './store'
@@ -62,7 +62,7 @@ export default function QuickView() {
           className="absolute right-0 top-0 flex h-12 w-12 items-center justify-center p-2 hover:opacity-70"
           onClick={() => quickViewStore.close()}
         >
-          <Icon.cross className="h-6 w-6 text-white/50" />
+          <Icon.Close className="h-6 w-6 text-white/50" />
         </div>
       </div>
     </div>

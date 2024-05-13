@@ -9,7 +9,7 @@ import {
 } from '@gendam/ui/v1/multi-select'
 import { cn } from '@/lib/utils'
 import { FC } from 'react'
-import Icon from '@/components/Icon'
+import Icon from '@gendam/ui/icons'
 
 export type MuseMultiSelectProps = MultiSelectProps & {
   options: { label: string; value: string }[]
@@ -25,7 +25,7 @@ const MuseMultiSelect: FC<MuseMultiSelectProps> = ({ showValue, options, placeho
     <MultiSelect {...props}>
       <MultiSelectTrigger
         icon={(open) => (
-          <Icon.arrowDown aria-hidden className={cn('h-4 w-4', open ? 'text-ink/50' : 'text-ink')} />
+          <Icon.ArrowDown aria-hidden className={cn('h-4 w-4', open ? 'text-ink/50' : 'text-ink')} />
         )}
         openClassName="ring-2 ring-accent"
         className="w-full cursor-pointer border-app-line px-2 py-2"
@@ -52,7 +52,7 @@ const MuseMultiSelect: FC<MuseMultiSelectProps> = ({ showValue, options, placeho
             <MultiSelectItem
               key={option.value}
               value={option.value}
-              checkIcon={<Icon.checked className="h-4 w-4" />}
+              checkIcon={<Icon.Check className="h-4 w-4" />}
               className="cursor-pointer rounded px-2 py-1 text-xs leading-4 aria-selected:bg-accent aria-selected:text-white"
             >
               {option.label}

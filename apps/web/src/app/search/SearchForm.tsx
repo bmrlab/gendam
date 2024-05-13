@@ -1,5 +1,5 @@
 'use client'
-import Icon from '@/components/Icon'
+import Icon from '@gendam/ui/icons'
 import { SearchRequestPayload } from '@/lib/bindings'
 import { CommandPrimitive } from '@gendam/ui/v2/command'
 // import classNames from 'classnames'
@@ -36,7 +36,7 @@ export default function SearchForm({
             onBlur={() => setTimeout(() => setTyping(false), 200)}
             autoFocus={false}
           />
-          <Icon.search className="text-ink/50 absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform" />
+          <Icon.MagnifyingGlass className="text-ink/50 absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform" />
         </div>
         {typing && (
           <div className="border-app-line bg-app-box absolute top-full z-10 w-full rounded-md border p-1 text-sm shadow-md">
@@ -47,7 +47,7 @@ export default function SearchForm({
                 onSelect={(e) => onSelectCommandItem('Frame')}
               >
                 <div className="text-ink/50">
-                  <Icon.image className="w-4" />
+                  <Icon.Image className="w-4" />
                 </div>
                 <div className='mx-2 flex-1 break-all'>
                   <span>Visual search for </span>
@@ -59,7 +59,7 @@ export default function SearchForm({
                 onSelect={(e) => onSelectCommandItem('Transcript')}
               >
                 <div className="text-ink/50">
-                  <Icon.microphone className="w-4" />
+                  <Icon.Mic className="w-4" />
                 </div>
                 <div className='mx-2 flex-1 break-all'>
                   <span>Transcript search for </span>

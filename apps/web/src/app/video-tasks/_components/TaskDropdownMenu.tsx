@@ -1,7 +1,7 @@
-import Icon from '@/components/Icon'
+import Icon from '@gendam/ui/icons'
 import classNames from 'classnames'
 import { DropdownMenu } from '@gendam/ui/v2/dropdown-menu'
-import { cn } from '@/lib/utils'
+// import { cn } from '@/lib/utils'
 import { PropsWithChildren, ReactNode } from 'react'
 
 export type DropdownMenuOptions =
@@ -34,7 +34,7 @@ export default function TaskDropdownMenu({
             'cursor-default data-[state=open]:bg-app-hover',
           )}>
             <span className="sr-only">Open menu</span>
-            {triggerIcon ? triggerIcon : <Icon.more />}
+            {triggerIcon ? triggerIcon : <Icon.MoreVertical />}
           </div>
         )}
       </DropdownMenu.Trigger>

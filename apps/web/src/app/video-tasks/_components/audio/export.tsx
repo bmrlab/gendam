@@ -1,7 +1,7 @@
 import { SingleExportProps } from '../../_store/audio-dialog'
 import { RoundedBadge } from '../Badge'
 import MuseRadio from '../Radio'
-import Icon from '@/components/Icon'
+import Icon from '@gendam/ui/icons'
 import { ScrollArea } from '@gendam/ui/v1/scroll-area'
 import { toast } from 'sonner'
 import { WithDownloadDialogButton } from '../withDownloadDialog'
@@ -115,7 +115,7 @@ export default function AudioExport() {
             onClick={() => navigator.clipboard.writeText(currentContent ?? '')}
           >
             <div className="flex gap-0.5">
-              <Icon.copy />
+              <Icon.CopySimple />
               <span className="select-none">Copy</span>
             </div>
           </RoundedBadge>
