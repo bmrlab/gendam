@@ -2,15 +2,16 @@
   "name": "gendam",
   "private": true,
   "scripts": {
-    "dev:prep": "bash scripts/download-sidecar.sh && cargo prisma generate && pnpm tauri build --debug",
-    "prisma": "cargo prisma --",
-    "web": "pnpm run --filter gendam-web --",
-    "dev:web": "pnpm web dev",
+    "prisma": "cargo prisma",
+    "web": "pnpm run --filter gendam-web",
+    "api-server": "pnpm run --filter api-server",
+    "tauri": "pnpm run --filter gendam-desktop tauri",
     "build:web": "pnpm web build",
-    "desktop": "pnpm run --filter gendam-desktop --",
-    "tauri": "pnpm desktop tauri",
-    "api-server": "pnpm run --filter api-server --",
-    "dev:api-server": "pnpm api-server dev"
+    "build:tauri": "pnpm tauri build",
+    "dev:web": "pnpm web dev",
+    "dev:tauri": "pnpm tauri dev",
+    "dev:api-server": "pnpm api-server dev",
+    "dev:prep": "bash scripts/download-sidecar.sh && cargo prisma generate && pnpm tauri build --debug"
   },
   "dependencies": {},
   "devDependencies": {
