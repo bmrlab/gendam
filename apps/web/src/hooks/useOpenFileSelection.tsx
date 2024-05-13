@@ -1,5 +1,5 @@
 import { ExplorerItem } from '@/Explorer/types'
-import { useFoldersDialog } from '@/app/explorer/_components/FoldersDialog'
+import { useFoldersDialog } from '@/components/Shared/FoldersDialog/store'
 
 export const useOpenFileSelection = () => {
   const foldersDialog = useFoldersDialog()

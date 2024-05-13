@@ -10,23 +10,9 @@ import { RSPCError } from '@rspc/client'
 import classNames from 'classnames'
 import Image from 'next/image'
 import { useCallback, useEffect, useState } from 'react'
-import { create } from 'zustand'
+import { useFoldersDialog } from './store'
 
-interface FoldersDialogState {
-  open: boolean
-  setOpen: (open: boolean) => void
-  confirm: (path: ExplorerItem | null) => void
-  setConfirm: (confirm: (path: ExplorerItem | null) => void) => void
-}
-
-export const useFoldersDialog = create<FoldersDialogState>((set) => ({
-  open: false,
-  setOpen: (open) => set({ open }),
-  confirm: (path: ExplorerItem | null) => undefined,
-  setConfirm: (confirm: (path: ExplorerItem | null) => void) => set({ confirm }),
-}))
-
-export function FoldersDialog() {
+export default function FoldersDialog() {
   const foldersDialog = useFoldersDialog()
   const [currentPath, setCurrentPath] = useState<string>('/')
   const [selectedFolder, setSelectedFolder] = useState<ExplorerItem | null>(null)

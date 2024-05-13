@@ -15,7 +15,6 @@ import { RSPCError } from '@rspc/client'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { FoldersDialog } from './_components/FoldersDialog'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
 import Inspector from './_components/Inspector'
@@ -106,7 +105,6 @@ export default function ExplorerPage() {
           )}
 
           <Footer />
-          <FoldersDialog />
         </Viewport.Page>
       </ExplorerContextProvider>
     </ExplorerViewContextProvider>
