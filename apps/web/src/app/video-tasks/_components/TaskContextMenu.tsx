@@ -14,7 +14,7 @@ export default function TaskContextMenu({ children }: TaskContextMenuProps) {
     <ContextMenu.Root>
       <ContextMenu.Trigger>{children}</ContextMenu.Trigger>
       <ContextMenu.Portal>
-        <ContextMenu.Content>
+        <ContextMenu.Content onClick={(e) => e.stopPropagation()}>
           {options.map((o, index) =>
             o === 'Separator' ? (
               <ContextMenu.Separator key={index} />

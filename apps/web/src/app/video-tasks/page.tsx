@@ -1,6 +1,6 @@
 'use client'
 import Viewport from '@/components/Viewport'
-import { type TaskListRequestFilter } from '@/lib/bindings'
+import { type VideoTaskListRequestFilter } from '@/lib/bindings'
 import { Drop_To_Folder } from '@gendam/assets/images'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -56,7 +56,7 @@ function validateSearchPayload(searchPayloadInURL: SearchPayloadInURL | null): T
   }
   const pageSize = Math.max(10, parseInt(''+searchPayloadInURL.pageSize) || 10)
   const pageIndex = Math.max(1, parseInt(''+searchPayloadInURL.pageIndex) || 1)
-  let filter = 'all' as TaskListRequestFilter
+  let filter = 'all' as VideoTaskListRequestFilter
   if (searchPayloadInURL.filter === 'all' || searchPayloadInURL.filter === 'excludeCompleted') {
     filter = searchPayloadInURL.filter
   }

@@ -1,5 +1,5 @@
 import TaskDropdownMenu from '../TaskDropdownMenu'
-import Icon from '@/components/Icon'
+import Icon from '@gendam/ui/icons'
 import MuseMultiSelect from '@/app/video-tasks/_components/MultiSelect'
 import { toast } from 'sonner'
 import { AudioType, ExportInput } from '@/lib/bindings'
@@ -53,7 +53,7 @@ export default function BatchExport() {
         {
           label: (
             <div className="flex items-center gap-1.5">
-              <Icon.regenerate />
+              <Icon.Cycle />
               <span>Apply export formats to all</span>
             </div>
           ),
@@ -65,7 +65,7 @@ export default function BatchExport() {
         {
           label: (
             <div className="flex items-center gap-1.5">
-              <Icon.arrowUpLeft />
+              <Icon.ArrowUpLeft />
               <span>Reset export options</span>
             </div>
           ),

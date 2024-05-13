@@ -9,7 +9,7 @@ import { forwardRef, useCallback } from 'react'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { useMoveTargetSelected } from '@/hooks/useMoveTargetSelected'
 import { useOpenFileSelection } from '@/hooks/useOpenFileSelection'
-import { useInspector } from '../../../components/Inspector'
+import { useInspector } from '@/components/Inspector/store'
 import { ExplorerItem } from '@/Explorer/types'
 
 type ItemContextMenuProps = {

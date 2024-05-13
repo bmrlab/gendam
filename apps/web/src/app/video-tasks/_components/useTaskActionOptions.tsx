@@ -49,7 +49,7 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
 
   const handleBatchExport = () => {
     let ordervideos = [
-      ...videos.filter((v) => v.tasks.some((t) => t.taskType === 'Transcript' && getTaskStatus(t) === TaskStatus.Done)),
+      ...videos.filter((v) => v.tasks.some((t) => t.taskType === 'transcript' && getTaskStatus(t) === TaskStatus.Done)),
     ]
     ordervideos.sort((a, b) => a.assetObject.id - b.assetObject.id)
     setAudioDialogProps({

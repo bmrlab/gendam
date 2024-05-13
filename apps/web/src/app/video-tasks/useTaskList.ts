@@ -1,4 +1,4 @@
-import { TaskListRequestFilter, VideoWithTasksResult, TaskListRequestPayload } from '@/lib/bindings'
+import type { VideoTaskListRequestFilter, VideoWithTasksResult, VideoTaskListRequestPayload } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useBoundStore } from './_store'
@@ -6,13 +6,13 @@ import { useBoundStore } from './_store'
 export type TaskListProps = {
   pageSize: number,
   pageIndex: number,
-  filter: TaskListRequestFilter
+  filter: VideoTaskListRequestFilter
 }
 
 export default function useTaskList(props: TaskListProps) {
   const pageSize = props.pageSize
   const [pageIndex, setPageIndex] = useState(props.pageIndex)
-  const [filter, setFilter] = useState<TaskListRequestFilter>(props.filter)
+  const [filter, setFilter] = useState<VideoTaskListRequestFilter>(props.filter)
   const setTaskListRefetch = useBoundStore.use.setTaskListRefetch()
 
   const { data, isLoading, refetch } = rspc.useQuery(
