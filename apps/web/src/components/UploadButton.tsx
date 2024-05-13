@@ -12,6 +12,7 @@ const TauriUploadButton: React.FC<
 > = ({ onSelectFiles, children, className, ...props }) => {
   let handleClick = useCallback(async () => {
     const results = await open({
+      title: "Select files to import",
       directory: false,
       multiple: true,
       filters: [
@@ -33,7 +34,7 @@ const TauriUploadButton: React.FC<
   return (
     <form className="block appearance-none">
       <label htmlFor="file-input-select-new-asset" className={cn("cursor-default", className)} onClick={() => handleClick()}>
-        {children ? children : <div className='text-xs'>Upload</div>}
+        {children ? children : <div className='text-xs'>Import medias</div>}
       </label>
     </form>
   )
@@ -73,7 +74,7 @@ const WebUploadButton: React.FC<
   return (
     <form className="block appearance-none">
       <label htmlFor="file-input-select-new-asset" className={cn("cursor-default", className)}>
-        {children ? children : <div className='text-xs'>Upload</div>}
+        {children ? children : <div className='text-xs'>Import medias</div>}
       </label>
       <input
         type="file"
