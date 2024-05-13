@@ -23,7 +23,7 @@ impl FileSync {
         }
     }
 
-    fn batch_pack(&self, data: Vec<String>) -> Vec<Vec<u8>> {
+    pub fn batch_pack(&self, data: Vec<String>) -> Vec<Vec<u8>> {
         data.iter()
             .map(|f| self.db.pack(f).unwrap_or_default())
             .collect()

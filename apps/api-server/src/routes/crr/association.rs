@@ -5,7 +5,37 @@ use prisma_lib::{
 };
 use std::sync::Arc;
 
-pub async fn get_ids(
+// TODO: The case where id may be None has not been processed for the time being.
+pub async fn get_ids_for_file(
+    prisma_client: Arc<PrismaClient>,
+    file_path_id: String,
+) -> Result<(String, String, String), QueryError> {
+    let file_path = prisma_client
+        .file_path()
+        .find_unique(file_path::UniqueWhereParam::IdEquals(file_path_id.clone()))
+        .exec()
+        .await?;
+
+    let asset_object_id = file_path.expect("file_path is None").asset_object_id;
+
+    let media_data = prisma_client
+        .media_data()
+        .find_first(vec![media_data::WhereParam::AssetObjectId(
+            prisma_lib::read_filters::StringNullableFilter::Equals(asset_object_id.clone()),
+        )])
+        .exec()
+        .await?;
+
+    let media_data_id = media_data.clone().expect("media_data is None").id;
+
+    Ok((
+        file_path_id,
+        asset_object_id.expect("asset_object_id is None"),
+        media_data_id,
+    ))
+}
+
+pub async fn get_ids_for_dir(
     prisma_client: Arc<PrismaClient>,
     dir: String,
 ) -> Result<(Vec<String>, Vec<String>, Vec<String>), QueryError> {

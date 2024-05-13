@@ -1,6 +1,6 @@
 mod association;
 
-use crate::routes::crr::association::get_ids;
+use crate::routes::crr::association::{get_ids_for_dir, get_ids_for_file};
 use crate::CtxWithLibrary;
 use crdt::sync::FileSync;
 use prisma_lib::{file_path, media_data};
@@ -16,48 +16,25 @@ where
     Router::<TCtx>::new()
         .mutation("pull", |t| {
             t(|ctx, file_path_id: String| async move {
-                debug!("asset_object_id: {:?}", file_path_id);
+                debug!("pull payload: {:?}", file_path_id);
 
                 let library = ctx.library()?;
 
-                let file_path = library
-                    .prisma_client()
-                    .file_path()
-                    .find_unique(file_path::UniqueWhereParam::IdEquals(file_path_id.clone()))
-                    .exec()
-                    .await?;
+                let (file_path_id, asset_object_id, media_data_id) =
+                    get_ids_for_file(library.prisma_client(), file_path_id.clone()).await?;
 
-                let asset_object_id = file_path.clone().unwrap().asset_object_id;
-
-                let media_data = library
-                    .prisma_client()
-                    .media_data()
-                    .find_first(vec![media_data::WhereParam::AssetObjectId(
-                        prisma_lib::read_filters::StringNullableFilter::Equals(
-                            asset_object_id.clone(),
-                        ),
-                    )])
-                    .exec()
-                    .await?;
-
-                let media_data_id = media_data.clone().unwrap().id;
-
-                tracing::warn!("file_path_id: {:?}", file_path_id.clone());
-                tracing::warn!("asset_object_id: {:?}", asset_object_id.clone());
-                tracing::warn!("media_data_id: {:?}", media_data_id.clone());
+                debug!(
+                    "file_path_id: {:?}, asset_object_id: {:?}, media_data_id: {:?}",
+                    file_path_id, asset_object_id, media_data_id
+                );
 
                 let file_sync = FileSync::new(library.db_path());
 
                 let changes = file_sync
-                    .pull_asset_object_changes(
-                        0,
-                        asset_object_id.expect("asset_object_id is None"),
-                        file_path_id,
-                        media_data_id,
-                    )
+                    .pull_asset_object_changes(0, asset_object_id, file_path_id, media_data_id)
                     .expect("Failed to pull asset object changes");
 
-                info!("changes: {:?}", changes);
+                debug!("pull changes: {changes:?}");
 
                 Ok(changes)
             })
@@ -72,10 +49,19 @@ where
 
             t(|ctx, payload: PullDirPayload| async move {
                 debug!("pull_dir payload: {:?}", payload);
-                let mut ids = get_ids(ctx.library()?.prisma_client(), payload.dir).await?;
+                let library = ctx.library()?;
+                let mut ids = get_ids_for_dir(library.prisma_client(), payload.dir).await?;
                 // add dir file path id
                 ids.0.push(payload.dir_file_path_id);
                 debug!("ids: {:?}", ids);
+
+                let file_sync = FileSync::new(library.db_path());
+
+                let packed_file_path_ids = file_sync.batch_pack(ids.0);
+                let packed_asset_object_ids = file_sync.batch_pack(ids.1);
+                let packed_media_data_ids = file_sync.batch_pack(ids.2);
+
+                // TODO:   4. 查询所有 ID 的变更集合（需要将 relativePath 字段的变化排除掉）
 
                 Ok(())
             })
