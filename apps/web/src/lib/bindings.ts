@@ -11,7 +11,7 @@ export type Procedures = {
         { key: "libraries.models.list", input: never, result: Result[] } | 
         { key: "libraries.status", input: never, result: LibraryStatusResult } | 
         { key: "p2p.state", input: never, result: any } | 
-        { key: "tasks.list", input: TaskListRequestPayload, result: null } | 
+        { key: "tasks.list", input: TaskListRequestPayload, result: FileHandlerTask[] } | 
         { key: "tasks.test", input: never, result: string } | 
         { key: "users.get", input: never, result: Auth | null } | 
         { key: "version", input: never, result: string } | 
@@ -79,11 +79,13 @@ export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageC
 
 export type TaskRedoRequestPayload = { assetObjectId: number }
 
+export type TaskListRequestPayload = { filter: TaskListRequestFilter }
+
 export type Pagination = { pageSize: number; pageIndex: number }
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
-export type TaskListRequestFilter = { assetObjectId: number | null }
+export type TaskListRequestFilter = { assetObjectId?: number | null }
 
 export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
 
@@ -114,8 +116,6 @@ export type MediaData = { id: number; width: number | null; height: number | nul
 export type SearchRequestPayload = { text: string; recordType: string }
 
 export type AudioResp = { type: AudioType; content: string }
-
-export type TaskListRequestPayload = { filter: TaskListRequestFilter }
 
 export type Result = { category: AIModelCategory; models: AIModelResult[] }
 

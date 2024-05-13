@@ -7,6 +7,7 @@ use specta::Type;
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
 struct TaskListRequestFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
     asset_object_id: Option<i32>,
 }
 
@@ -37,14 +38,14 @@ where
                         asset_object_id,
                     ));
                 }
-                library
+                let res = library
                     .prisma_client()
                     .file_handler_task()
                     .find_many(whera_params)
                     .exec()
                     .await
                     .map_err(sql_error)?;
-                Ok(())
+                Ok(res)
             })
         })
         .query("test", |t| {
