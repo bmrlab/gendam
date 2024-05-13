@@ -1,18 +1,13 @@
 mod association;
 
-use crate::routes::crr::association::get_file_path_ids_under_materialized_path;
+use crate::routes::crr::association::get_ids;
 use crate::CtxWithLibrary;
-use asset_object::select;
-use content_library::{create_library, list_library_dirs};
 use crdt::sync::FileSync;
-use crdt::CrsqlChangesRowData;
-use prisma_lib::raw;
-use prisma_lib::{asset_object, file_path, media_data};
+use prisma_lib::{file_path, media_data};
 use rspc::{Router, RouterBuilder};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use specta::Type;
-use std::path::PathBuf;
-use tracing::info;
+use tracing::{debug, info};
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -21,7 +16,7 @@ where
     Router::<TCtx>::new()
         .mutation("pull", |t| {
             t(|ctx, file_path_id: String| async move {
-                tracing::debug!("asset_object_id: {:?}", file_path_id);
+                debug!("asset_object_id: {:?}", file_path_id);
 
                 let library = ctx.library()?;
 
@@ -76,22 +71,18 @@ where
             }
 
             t(|ctx, payload: PullDirPayload| async move {
-                tracing::debug!("pull_dir pyload: {:?}", payload);
-                let file_path_ids = get_file_path_ids_under_materialized_path(
-                    ctx.library()?.prisma_client(),
-                    payload.dir,
-                )
-                .await?;
-                tracing::info!(
-                    "dir_file_path_id: {}, under dir file path ids: {file_path_ids:?}",
-                    payload.dir_file_path_id
-                );
+                debug!("pull_dir payload: {:?}", payload);
+                let mut ids = get_ids(ctx.library()?.prisma_client(), payload.dir).await?;
+                // add dir file path id
+                ids.0.push(payload.dir_file_path_id);
+                debug!("ids: {:?}", ids);
+
                 Ok(())
             })
         })
         .mutation("apply", |t| {
             t(|ctx, changes: String| async move {
-                tracing::info!("api changes: {:?}", changes.clone());
+                info!("api changes: {:?}", changes.clone());
                 let library = ctx.library()?;
 
                 let mut file_sync = FileSync::new(library.db_path());
