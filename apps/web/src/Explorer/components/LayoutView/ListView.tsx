@@ -35,7 +35,7 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
   return (
     <div
       className={classNames(
-        'text-ink flex items-center justify-start gap-2 px-6 py-2',
+        'text-ink flex items-center justify-start gap-2 px-6 py-2 rounded',
         index % 2 === 1 && !highlight ? 'bg-app-hover' : null,
         highlight ? 'bg-accent text-white' : null,
       )}
@@ -164,7 +164,11 @@ export default function ListView({ items }: { items: ExplorerItem[] }) {
       </div>
       <div className="px-4 py-2">
         {items.map((item, index) => (
-          <ListItem key={item.id} data={item} index={index} onSelect={onSelect} />
+          <ListItem
+            key={item.id}
+            data={item} index={index} onSelect={onSelect}
+            className="mb-px"
+          />
         ))}
       </div>
     </>
