@@ -1,6 +1,6 @@
-import TaskDropdownMenu from '../TaskDropdownMenu'
+import TaskDropdownMenu from '../../app/video-tasks/_components/TaskDropdownMenu'
 import Icon from '@gendam/ui/icons'
-import MuseMultiSelect from '@/app/video-tasks/_components/MultiSelect'
+import MuseMultiSelect from './ui/MultiSelect'
 import { toast } from 'sonner'
 import { AudioType, ExportInput } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
@@ -11,9 +11,9 @@ import { ScrollArea } from '@gendam/ui/v1/scroll-area'
 import Image from 'next/image'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
-import { useBoundStore } from '../../_store'
-import { WithDownloadDialogButton } from '../withDownloadDialog'
-import { FileTypeEnum } from './export'
+import { useBoundStore } from '../../app/video-tasks/_store'
+import { WithDownloadDialogButton } from './withDownloadDialog'
+import { FileTypeEnum } from './AudioExport'
 
 export type BatchExportProps = {
   id: string

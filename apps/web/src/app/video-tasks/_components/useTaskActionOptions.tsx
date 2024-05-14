@@ -1,5 +1,5 @@
 import { useBoundStore } from '@/app/video-tasks/_store'
-import { AudioDialogEnum } from '@/app/video-tasks/_store/audio-dialog'
+import { AudioDialogEnum } from '@/components/Audio/store/audio-dialog'
 import { VideoWithTasksResult } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import Icon from '@gendam/ui/icons'

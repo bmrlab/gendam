@@ -1,4 +1,4 @@
-import { BatchExportProps } from '../_components/audio/batch-export'
+import { BatchExportProps } from '../AudioBatchExport'
 import { type StateCreator } from 'zustand'
 
 export enum AudioDialogEnum {

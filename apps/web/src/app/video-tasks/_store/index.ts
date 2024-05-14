@@ -3,7 +3,7 @@ import { createTaskActionSlice, TaskActionSlice } from '@/app/video-tasks/_store
 import { createSelectors } from '@/store/createSelectors'
 import { create, type StateCreator } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
-import { AudioDialogSlice, createAudioDialogSlice } from './audio-dialog'
+import { AudioDialogSlice, createAudioDialogSlice } from '../../../components/Audio/store/audio-dialog'
 // import { createSearchSlice, SearchSlice } from './search'
 import { createTaskContextSlice, TaskContextSlice } from './task-context'
 
