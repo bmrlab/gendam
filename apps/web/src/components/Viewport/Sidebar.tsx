@@ -1,6 +1,6 @@
 'use client'
 import FoldersTree from '@/Explorer/components/FoldersTree'
-import { useUploadQueueStore } from '@/store/uploadQueue'
+import { useUploadQueueStore } from '@/components/UploadQueue/store'
 import UploadQueue from '@/components/UploadQueue'
 import { LibrariesListResult } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'

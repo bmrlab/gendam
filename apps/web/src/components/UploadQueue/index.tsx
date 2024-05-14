@@ -1,7 +1,7 @@
 'use client'
 import Icon from '@gendam/ui/icons'
 import { rspc, queryClient } from '@/lib/rspc'
-import { FileItem, useUploadQueueStore } from '@/store/uploadQueue'
+import { type FileItem, useUploadQueueStore } from '@/components/UploadQueue/store'
 import { Video_File } from '@gendam/assets/images'
 import classNames from 'classnames'
 import Image from 'next/image'
