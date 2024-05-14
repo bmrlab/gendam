@@ -10,6 +10,7 @@ import { Button } from '@gendam/ui/v2/button'
 import Image from 'next/image'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useInspector } from './store'
+import classNames from 'classnames'
 
 const FolderDetail = ({ data }: { data: ExplorerItem }) => {
   return (
@@ -173,6 +174,22 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
         <div className="mt-2 flex justify-between">
           <div className="text-ink/50">Asset Object ID</div>
           <div>{assetObject.id}</div>
+        </div>
+        <div className="mt-2 flex justify-between">
+          <div className="text-ink/50">Visual Search</div>
+          {sortedTasks.some(item => item.taskType === 'frame-content-embedding' && item.exitCode === 0) ? (
+            <div className="rounded-full px-2 text-xs text-green-600 bg-green-100">Ready</div>
+          ) : (
+            <div className="rounded-full px-2 text-xs text-orange-600 bg-orange-100">Not ready</div>
+          )}
+        </div>
+        <div className="mt-2 flex justify-between">
+          <div className="text-ink/50">Transcript Search</div>
+          {sortedTasks.some(item => item.taskType === 'transcript-embedding' && item.exitCode === 0) ? (
+            <div className="rounded-full px-2 text-xs text-green-600 bg-green-100">Ready</div>
+          ) : (
+            <div className="rounded-full px-2 text-xs text-orange-600 bg-orange-100">Not ready</div>
+          )}
         </div>
       </div>
       <div className="bg-app-line mb-3 mt-3 h-px"></div>
