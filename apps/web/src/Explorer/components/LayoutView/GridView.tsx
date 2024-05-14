@@ -33,7 +33,7 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
   }, [data.name])
 
   return (
-    <div data-selecto-item={data.id}>
+    <div>
       <div className={classNames('mb-1 h-28 w-full rounded-lg p-2', highlight ? 'bg-app-hover' : null)}>
         <FileThumb data={data} className="h-full w-full" />
       </div>
@@ -86,6 +86,7 @@ const GridItem: React.FC<{
   return (
     <div
       {...props}
+      data-selecto-item={data.id}
       data-component-hint="ViewItem(GridView)"
       onClick={(e) => {
         e.stopPropagation()
