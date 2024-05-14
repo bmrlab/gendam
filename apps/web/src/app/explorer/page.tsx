@@ -9,7 +9,8 @@ import {
 // import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
 import Viewport from '@/components/Viewport'
-import { queryClient, rspc } from '@/lib/rspc'
+import AudioDialog from '@/components/Audio/AudioDialog'
+import { rspc } from '@/lib/rspc'
 import { Drop_To_Folder } from '@gendam/assets/images'
 import { RSPCError } from '@rspc/client'
 import Image from 'next/image'
@@ -90,8 +91,7 @@ export default function ExplorerPage() {
     <ExplorerViewContextProvider value={{ contextMenu }}>
       <ExplorerContextProvider explorer={explorer}>
         <Viewport.Page>
-          <Header />
-
+          <Header /* Viewport.Toolbar */ />
           {assetsQuery.isSuccess && assetsQuery.data.length === 0 ? (
             <Viewport.Content className="flex flex-col items-center justify-center">
               <Image src={Drop_To_Folder} alt="drop to folder" priority className="h-60 w-60"></Image>
@@ -103,9 +103,9 @@ export default function ExplorerPage() {
               <Inspector data={inspectorItem} />
             </Viewport.Content>
           )}
-
-          <Footer />
+          <Footer /* Viewport.StatusBar */ />
         </Viewport.Page>
+        <AudioDialog />
       </ExplorerContextProvider>
     </ExplorerViewContextProvider>
   )

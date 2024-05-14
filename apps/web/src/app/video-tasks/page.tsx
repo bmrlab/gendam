@@ -10,7 +10,6 @@ import { Checkbox } from '@gendam/ui/v2/checkbox'
 import classNames from 'classnames'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo } from 'react'
-import AudioDialog from '../../components/Audio/AudioDialog'
 import TaskFooter from './_components/footer'
 import VideoTasksList from './_components/TaskList'
 import { useBoundStore } from './_store'
@@ -143,7 +142,6 @@ export default function VideoTasksPage() {
         )}
       </Viewport.Content>
       <TaskFooter total={videos.length} />
-      <AudioDialog />
     </Viewport.Page>
   )
 }

@@ -1,6 +1,4 @@
 import { useBoundStore } from '@/app/video-tasks/_store'
-import { useBoundStore as useAudioBoundStore } from '@/components/Audio/store'
-import { AudioDialogEnum } from '@/components/Audio/store/audio-dialog'
 import { VideoWithTasksResult } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import Icon from '@gendam/ui/icons'
@@ -22,9 +20,6 @@ export type TaskActionOption =
 
 function useTaskAction(videos: VideoWithTasksResult[]) {
   const router = useRouter()
-  const setIsOpenAudioDialog = useAudioBoundStore.use.setIsOpenAudioDialog()
-  const setAudioDialogProps = useAudioBoundStore.use.setAudioDialogProps()
-  const setAudioDialogOpen = useAudioBoundStore.use.setIsOpenAudioDialog()
   const taskListRefetch = useBoundStore.use.taskListRefetch()
 
   const { mutateAsync: regenerateTask } = rspc.useMutation(['video.tasks.regenerate'])
@@ -36,35 +31,6 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
     const item = videos[0];
     router.push('/explorer?dir=' + item.materializedPath)
   }, [router, videos])
-
-  const handleSingleExport = useCallback(() => {
-    setAudioDialogProps({
-      type: AudioDialogEnum.single,
-      title: 'Export Transcript',
-      params: {
-        fileHash: videos.at(0)?.assetObject.hash!,
-      },
-    })
-    setIsOpenAudioDialog(true)
-  }, [setAudioDialogProps, setIsOpenAudioDialog, videos])
-
-  const handleBatchExport = () => {
-    let ordervideos = [
-      ...videos.filter((v) => v.tasks.some((t) => t.taskType === 'transcript' && getTaskStatus(t) === TaskStatus.Done)),
-    ]
-    ordervideos.sort((a, b) => a.assetObject.id - b.assetObject.id)
-    setAudioDialogProps({
-      type: AudioDialogEnum.batch,
-      title: 'Bulk Transcript Export',
-      params: ordervideos.map((item) => ({
-        id: item.assetObject.hash, // TODO: 这里回头要改成 assetObjectId, 但是对 audio export 功能改动较大
-        label: item.name,
-        assetObjectId: item.assetObject.id,
-        assetObjectHash: item.assetObject.hash,
-      })),
-    })
-    setAudioDialogOpen(true)
-  }
 
   const handleSingleRegenerate = useCallback(
     async (param: { path: string; id: number }) => {
@@ -125,7 +91,6 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
   }, [handleSingleCancel, videos])
 
   return {
-    handleExport: isBatchSelected ? handleBatchExport : handleSingleExport,
     handleRegenerate: handleBatchRegenerate,
     handleCancel: handleBatchCancel,
     handleReveal: handleSingleReveal,
@@ -133,7 +98,7 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
 }
 
 export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
-  const { handleExport, handleRegenerate, handleCancel, handleReveal } = useTaskAction(videos)
+  const { handleRegenerate, handleCancel, handleReveal } = useTaskAction(videos)
 
   const options = useMemo(() => {
     const options: Array<TaskActionOption> = [
@@ -166,16 +131,6 @@ export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
       })
     }
 
-    if (
-      !!videos.find((v) => v.tasks.some((t) => t.taskType === 'transcript' && getTaskStatus(t) === TaskStatus.Done))
-    ) {
-      options.push({
-        label: 'Export transcript',
-        icon: <Icon.Download className="size-4" />,
-        handleSelect: () => handleExport(),
-      })
-    }
-
     return [
       ...options,
       'Separator',
@@ -187,7 +142,7 @@ export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
         handleClick: () => console.log('Delete job'),
       },
     ] as Array<TaskActionOption>
-  }, [handleCancel, handleExport, handleRegenerate, handleReveal, videos])
+  }, [handleCancel, handleRegenerate, handleReveal, videos])
 
   return {
     options,

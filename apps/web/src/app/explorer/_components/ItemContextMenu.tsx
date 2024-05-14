@@ -2,14 +2,13 @@ import { useExplorerContext } from '@/Explorer/hooks'
 import { useExplorerStore } from '@/Explorer/store'
 import { rspc, queryClient } from '@/lib/rspc'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
-// import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback } from 'react'
-// import { twx } from '@/lib/utils'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { useMoveTargetSelected } from '@/hooks/useMoveTargetSelected'
 import { useOpenFileSelection } from '@/hooks/useOpenFileSelection'
 import { useInspector } from '@/components/Inspector/store'
+import { useAudioDialog } from '@/components/Audio/AudioDialog'
 import { ExplorerItem } from '@/Explorer/types'
 
 type ItemContextMenuProps = {
@@ -30,6 +29,8 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   const inspector = useInspector()
   const { openFileSelection } = useOpenFileSelection()
   const { onMoveTargetSelected } = useMoveTargetSelected()
+
+  const audioDialog = useAudioDialog()
 
   // Shared State and Context
   const quickViewStore = useQuickViewStore()
@@ -161,6 +162,12 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
         disabled={Array.from(explorer.selectedItems).some((item) => !item.assetObject)}
       >
         <div>Re-process jobs</div>
+      </ContextMenu.Item>
+      <ContextMenu.Item onSelect={() => {
+        const items = Array.from(explorer.selectedItems)
+        return items.length === 1 ? audioDialog.singleExport(items[0]) : audioDialog.batchExport(items)
+      }}>
+        <div>Export transcript</div>
       </ContextMenu.Item>
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />
       <ContextMenu.Item onSelect={() => openFileSelection().then((path) => onMoveTargetSelected(path))}>
