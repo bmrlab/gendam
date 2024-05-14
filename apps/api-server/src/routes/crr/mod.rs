@@ -30,8 +30,9 @@ where
 
                 let file_sync = FileSync::new(library.db_path());
 
+                // TODO: replace db_version with real value
                 let changes = file_sync
-                    .pull_asset_object_changes(0, asset_object_id, file_path_id, media_data_id)
+                    .pull_file_changes(0, asset_object_id, file_path_id, media_data_id)
                     .expect("Failed to pull asset object changes");
 
                 debug!("pull changes: {changes:?}");
@@ -57,13 +58,15 @@ where
 
                 let file_sync = FileSync::new(library.db_path());
 
-                let packed_file_path_ids = file_sync.batch_pack(ids.0);
-                let packed_asset_object_ids = file_sync.batch_pack(ids.1);
-                let packed_media_data_ids = file_sync.batch_pack(ids.2);
+                // TODO: replace db_version with real value
+                let changes = file_sync.pull_dir_changes(0, ids.0, ids.1, ids.2);
 
-                // TODO:   4. 查询所有 ID 的变更集合（需要将 relativePath 字段的变化排除掉）
-
-                Ok(())
+                Ok(changes.map_err(|e| {
+                    rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("failed to pull dir changes: {e}"),
+                    )
+                })?)
             })
         })
         .mutation("apply", |t| {

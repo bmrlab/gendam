@@ -149,11 +149,11 @@ impl CrSqliteDB {
     }
 
     pub fn apple_changes(&mut self, json_string: String) -> Result<()> {
-        let datas: Vec<CrsqlChangesRowData> =
+        let data: Vec<CrsqlChangesRowData> =
             serde_json::from_str::<Vec<CrsqlChangesRowData>>(&json_string)
                 .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
         let tx: rusqlite::Transaction = self.conn.transaction()?;
-        for d in datas {
+        for d in data {
             let val: Box<dyn ToSql> = match d.val {
                 serde_json::Value::Bool(b) => Box::new(b),
                 serde_json::Value::Number(n) => {

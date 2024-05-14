@@ -62,7 +62,7 @@ async fn get_file_path_ids_under_dir(
     Ok(ids)
 }
 
-/// res: (AssetObjectIds, FilePathIds, MediaDataIds)
+/// res: (FilePathIds, AssetObjectIds, MediaDataIds)
 /// id: file path ids
 async fn get_id_combination(
     prisma_client: Arc<PrismaClient>,
