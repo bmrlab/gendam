@@ -1,5 +1,5 @@
 import { ExplorerItem } from '@/Explorer/types'
-import { rspc } from '@/lib/rspc'
+import { websocketClient, rspc } from '@/lib/rspc'
 import { Button } from '@gendam/ui/v2/button'
 import { useCallback, useRef } from 'react'
 import { toast } from 'sonner'
@@ -109,7 +109,12 @@ export const useP2PEvents = () => {
     [acceptFileShare, finishFileShare, openFileSelection, receiveAsset, rejectFileShare],
   )
 
-  rspc.useSubscription(['p2p.events'], {
+  // rspc.useSubscription(['p2p.events'], {
+  //   onData(data: Event) {
+  //     handleShareRequest(data)
+  //   },
+  // })
+  websocketClient.addSubscription(['p2p.events', undefined as any], {
     onData(data: Event) {
       handleShareRequest(data)
     },

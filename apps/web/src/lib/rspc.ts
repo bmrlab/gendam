@@ -8,13 +8,22 @@ import { TauriTransport } from './rspc-tauri'
 
 import type { Procedures } from '@/lib/bindings'
 
-export const client = createClient<Procedures>({
+export const websocketClient = createClient<Procedures>({
   transport:
     typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined'
       ? new TauriTransport()
       : typeof window !== 'undefined'
         ? new WebsocketTransport('ws://localhost:3001/rspc/ws')
-        // ? new FetchTransport('http://localhost:3001/rspc')
+        : new NoOpTransport(),
+})
+
+export const client = createClient<Procedures>({
+  transport:
+    typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined'
+      ? new TauriTransport()
+      : typeof window !== 'undefined'
+        // ? new WebsocketTransport('ws://localhost:3001/rspc/ws')
+        ? new FetchTransport('http://localhost:3001/rspc')
         : new NoOpTransport(),
 })
 
