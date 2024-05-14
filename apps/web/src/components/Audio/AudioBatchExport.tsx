@@ -7,7 +7,6 @@ import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
 import { Button } from '@gendam/ui/v2/button'
-import { ScrollArea } from '@gendam/ui/v1/scroll-area'
 import Image from 'next/image'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
@@ -64,14 +63,14 @@ export default function BatchExport() {
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex-1 flex flex-col overflow-hidden">
       <div className="grid grid-cols-10 border-b border-app-line px-6 py-2 text-xs font-normal leading-4">
         <p className="col-span-5">File</p>
         <p className="col-span-3">Formats</p>
         <p className="col-span-1">Quantity</p>
         <div className="col-span-1"></div>
       </div>
-      <ScrollArea className="h-[30rem]">
+      <div className="flex-1 pb-16 overflow-auto">
         {data.map(({ id, label, assetObjectHash }, index) => (
           <div
             key={id}
@@ -139,8 +138,8 @@ export default function BatchExport() {
             </div>
           </div>
         ))}
-      </ScrollArea>
-      <div className="flex flex-1 justify-end gap-2 border-t border-app-line px-6 py-2.5">
+      </div>
+      <div className="flex justify-end gap-2 border-t border-app-line px-6 py-2.5">
         <Button variant="outline" size="md" onClick={() => setIsOpenAudioDialog(false)}>
           Cancel
         </Button>

@@ -135,10 +135,10 @@ export default function VideoTasksPage() {
             </Link>
           </div>
         ) : (
-          <ScrollArea className="flex-1 rounded-[6px]">
+          <div className="flex-1 overflow-auto">
             <VideoTasksList data={videos} />
             {maxPage > 1 ? <Pagination /> : null}
-          </ScrollArea>
+          </div>
         )}
       </Viewport.Content>
       <TaskFooter total={videos.length} />

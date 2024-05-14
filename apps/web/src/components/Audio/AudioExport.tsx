@@ -2,7 +2,6 @@ import { SingleExportProps } from './store/audio-dialog'
 import { RoundedBadge } from './ui/Badge'
 import MuseRadio from './ui/Radio'
 import Icon from '@gendam/ui/icons'
-import { ScrollArea } from '@gendam/ui/v1/scroll-area'
 import { toast } from 'sonner'
 import { WithDownloadDialogButton } from './withDownloadDialog'
 import { AudioType } from '@/lib/bindings'
@@ -100,7 +99,7 @@ export default function AudioExport() {
           })}
         </div>
         <div className="flex-1 relative px-6 pb-6 overflow-hidden">
-          <ScrollArea className="h-full w-full rounded-md bg-app-overlay border border-app-line">
+          <div className="h-full w-full rounded-md bg-app-overlay border border-app-line overflow-auto">
             <p className="p-4 text-sm font-normal leading-8">
               {(currentContent || '').split('\n').map((line: string, index: number) => (
                 <Fragment key={index}>
@@ -109,7 +108,7 @@ export default function AudioExport() {
                 </Fragment>
               ))}
             </p>
-          </ScrollArea>
+          </div>
           <RoundedBadge
             className="absolute bottom-8 right-8"
             onClick={() => navigator.clipboard.writeText(currentContent ?? '')}
