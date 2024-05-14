@@ -11,7 +11,7 @@ import { ScrollArea } from '@gendam/ui/v1/scroll-area'
 import Image from 'next/image'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
-import { useBoundStore } from '../../app/video-tasks/_store'
+import { useBoundStore } from './store'
 import { WithDownloadDialogButton } from './withDownloadDialog'
 import { FileTypeEnum } from './AudioExport'
 

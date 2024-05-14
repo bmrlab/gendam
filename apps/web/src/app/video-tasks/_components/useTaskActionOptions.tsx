@@ -1,4 +1,5 @@
 import { useBoundStore } from '@/app/video-tasks/_store'
+import { useBoundStore as useAudioBoundStore } from '@/components/Audio/store'
 import { AudioDialogEnum } from '@/components/Audio/store/audio-dialog'
 import { VideoWithTasksResult } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
@@ -21,9 +22,9 @@ export type TaskActionOption =
 
 function useTaskAction(videos: VideoWithTasksResult[]) {
   const router = useRouter()
-  const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
-  const setAudioDialogProps = useBoundStore.use.setAudioDialogProps()
-  const setAudioDialogOpen = useBoundStore.use.setIsOpenAudioDialog()
+  const setIsOpenAudioDialog = useAudioBoundStore.use.setIsOpenAudioDialog()
+  const setAudioDialogProps = useAudioBoundStore.use.setAudioDialogProps()
+  const setAudioDialogOpen = useAudioBoundStore.use.setIsOpenAudioDialog()
   const taskListRefetch = useBoundStore.use.taskListRefetch()
 
   const { mutateAsync: regenerateTask } = rspc.useMutation(['video.tasks.regenerate'])

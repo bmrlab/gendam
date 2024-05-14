@@ -4,7 +4,7 @@ import AudioExport from './AudioExport'
 import { AudioDialogEnum } from './store/audio-dialog'
 import { Dialog } from '@gendam/ui/v2/dialog'
 import classNames from 'classnames'
-import { useBoundStore } from '../../app/video-tasks/_store'
+import { useBoundStore } from './store'
 
 export default function AudioDialog() {
   const isOpenAudioDialog = useBoundStore.use.isOpenAudioDialog()

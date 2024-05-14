@@ -8,7 +8,7 @@ import { WithDownloadDialogButton } from './withDownloadDialog'
 import { AudioType } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
-import { useBoundStore } from '../../app/video-tasks/_store'
+import { useBoundStore } from './store'
 import { Fragment, useMemo, useState } from 'react'
 
 export enum FileTypeEnum {
