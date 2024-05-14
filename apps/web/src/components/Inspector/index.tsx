@@ -2,12 +2,13 @@
 import { ExplorerItem } from '@/Explorer/types'
 import { FileHandlerTask } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
-import { rspc } from '@/lib/rspc'
+import { queryClient, rspc } from '@/lib/rspc'
 import { formatBytes, formatDateTime, formatDuration } from '@/lib/utils'
 import { Folder_Light } from '@gendam/assets/images'
 import Icon from '@gendam/ui/icons'
+import { Button } from '@gendam/ui/v2/button'
 import Image from 'next/image'
-import { useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useInspector } from './store'
 
 const FolderDetail = ({ data }: { data: ExplorerItem }) => {
@@ -65,19 +66,28 @@ export const TaskItemType: Record<string, [string, number]> = {
 const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
   const currentLibrary = useCurrentLibrary()
 
-  const tasksQuery = rspc.useQuery(
-    [
-      'tasks.list',
-      {
-        filter: {
-          assetObjectId: data.assetObject?.id,
-        },
-      },
-    ],
-    {
-      enabled: !!data.assetObject?.id,
-    },
-  )
+  const tasksQueryParams = useMemo(() => {
+    const filter = { assetObjectId: data.assetObject?.id }
+    return { filter }
+  }, [data.assetObject?.id])
+  const tasksQuery = rspc.useQuery(['tasks.list', tasksQueryParams], {
+    enabled: !!data.assetObject?.id,
+  })
+  const cancelJobsMut = rspc.useMutation(['video.tasks.cancel'])
+  const handleJobsCancel = useCallback(async () => {
+    if (!data.assetObject?.id) {
+      return
+    }
+    try {
+      await cancelJobsMut.mutateAsync({
+        assetObjectId: data.assetObject.id,
+        taskTypes: null,
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['tasks.list', tasksQueryParams],
+      })
+    } catch (error) {}
+  }, [data.assetObject?.id, cancelJobsMut, tasksQueryParams])
 
   const sortedTasks = useMemo(() => {
     if (!tasksQuery.data) {
@@ -167,10 +177,18 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
       </div>
       <div className="bg-app-line mb-3 mt-3 h-px"></div>
       <div className="text-xs">
-        <div className="text-md mt-2 font-medium">Jobs</div>
+        <div className="text-md mt-2 flex items-center justify-between font-medium">
+          <span>Jobs</span>
+          {sortedTasks.some(task => task.exitCode === null) ? (
+            <Button variant="ghost" size="xs" className="group px-[1px]" onClick={() => handleJobsCancel()}>
+              <Icon.Close className="h-3 w-3 group-hover:hidden" />
+              <span className="animate-in hidden px-1 group-hover:block">Cancel pending jobs</span>
+            </Button>
+          ) : null}
+        </div>
         {sortedTasks.map((task) => (
           <div key={task.id} className="mt-2 flex items-center justify-between">
-            <div className="text-ink/50">{(TaskItemType[task.taskType] ?? ['Unknown',])[0]}</div>
+            <div className="text-ink/50">{(TaskItemType[task.taskType] ?? ['Unknown'])[0]}</div>
             <TaskItemStatus task={task} />
           </div>
         ))}
@@ -181,9 +199,7 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
   )
 }
 
-export default function Inspector({ data }: {
-  data: ExplorerItem | null
-}) {
+export default function Inspector({ data }: { data: ExplorerItem | null }) {
   const inspector = useInspector()
 
   return inspector.show ? (
