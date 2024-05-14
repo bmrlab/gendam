@@ -1,4 +1,4 @@
-import TaskDropdownMenu from '../../app/video-tasks/_components/TaskDropdownMenu'
+import { DropdownMenu } from '@gendam/ui/v2/dropdown-menu'
 import Icon from '@gendam/ui/icons'
 import MuseMultiSelect from './ui/MultiSelect'
 import { toast } from 'sonner'
@@ -46,35 +46,6 @@ export default function BatchExport() {
       }),
     )
   }
-
-  const moreActionOptions = useCallback(
-    (id: string) => {
-      return [
-        {
-          label: (
-            <div className="flex items-center gap-1.5">
-              <Icon.Cycle />
-              <span>Apply export formats to all</span>
-            </div>
-          ),
-          handleSelect: () => {
-            const types = multiValues.find((v) => v.id === id)?.types || []
-            data.filter((d) => d.id !== id).forEach((d) => updateItemTypes(d.id, types))
-          },
-        },
-        {
-          label: (
-            <div className="flex items-center gap-1.5">
-              <Icon.ArrowUpLeft />
-              <span>Reset export options</span>
-            </div>
-          ),
-          handleSelect: () => updateItemTypes(id, []),
-        },
-      ]
-    },
-    [data, multiValues],
-  )
 
   const handleExport = async (dir: string) => {
     const input: ExportInput[] = multiValues.map(({ id, types }) => ({
@@ -140,7 +111,31 @@ export default function BatchExport() {
               {(multiValues.find((v) => v.id === id)?.types || []).length}
             </div>
             <div className="col-span-1 cursor-pointer">
-              <TaskDropdownMenu options={moreActionOptions(id)} />
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <div className="inline-flex items-center justify-center size-6 rounded border border-app-line cursor-default data-[state=open]:bg-app-hover">
+                    <span className="sr-only">Open menu</span>
+                    <Icon.MoreVertical />
+                  </div>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Content align="end">
+                  <DropdownMenu.Item onSelect={() => {
+                    const types = multiValues.find((v) => v.id === id)?.types || []
+                    data.filter((d) => d.id !== id).forEach((d) => updateItemTypes(d.id, types))
+                  }}>
+                    <div className="flex items-center gap-1.5">
+                      <Icon.Cycle />
+                      <span>Apply export formats to all</span>
+                    </div>
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item onSelect={() => updateItemTypes(id, [])}>
+                    <div className="flex items-center gap-1.5">
+                      <Icon.ArrowUpLeft />
+                      <span>Reset export options</span>
+                    </div>
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Root>
             </div>
           </div>
         ))}
