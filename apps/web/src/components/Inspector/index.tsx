@@ -42,15 +42,16 @@ const FolderDetail = ({ data }: { data: ExplorerItem }) => {
 
 function TaskItemStatus({ task }: { task: FileHandlerTask }) {
   if (task.exitCode !== null && task.exitCode > 1) {
-    return <Icon.Close className="h-4 w-4 text-red-500" /> // 出错
+    return <Icon.Close className="h-3 w-3 text-red-500" /> // 出错
   } else if (task.exitCode === 1) {
-    return <Icon.Close className="h-3 w-3 text-neutral-800" /> // 取消
+    return <Icon.Close className="h-3 w-3 text-neutral-500" /> // 取消
   } else if (task.exitCode === 0) {
-    return <Icon.Check className="h-4 w-4 text-green-500" /> // 已完成
+    return <Icon.Check className="h-3 w-3 text-green-500" /> // 已完成
   } else if (task.startsAt) {
-    return <Icon.Cycle className="h-4 w-4 animate-spin text-orange-500" /> // 已经开始但还没结束
+    // return <Icon.Cycle className="h-4 w-4 animate-spin text-orange-500" /> // 已经开始但还没结束
+    return <Icon.FlashStroke className="h-3 w-3 text-orange-400" />
   } else {
-    return <Icon.Clock className="h-4 w-4 text-neutral-900" />
+    return <Icon.Clock className="h-3 w-3 text-neutral-900" />
   }
 }
 
@@ -194,13 +195,15 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
       </div>
       <div className="bg-app-line mb-3 mt-3 h-px"></div>
       <div className="text-xs">
-        <div className="text-md mt-2 flex items-center justify-between font-medium">
-          <span>Jobs</span>
+        <div className="text-md mt-2 flex items-center justify-between">
+          <div className="font-medium">Jobs</div>
           {sortedTasks.some(task => task.exitCode === null) ? (
-            <Button variant="ghost" size="xs" className="group px-[1px]" onClick={() => handleJobsCancel()}>
-              <Icon.Close className="h-3 w-3 group-hover:hidden" />
-              <span className="animate-in hidden px-1 group-hover:block">Cancel pending jobs</span>
-            </Button>
+            <div className="group flex items-center gap-1 text-ink/60">
+              <div className="px-1 transition-opacity duration-300 opacity-0 group-hover:opacity-100">Cancel pending jobs</div>
+              <Button variant="ghost" size="xs" className="px-0" onClick={() => handleJobsCancel()}>
+                <Icon.Close className="h-3 w-3" />
+              </Button>
+            </div>
           ) : null}
         </div>
         {sortedTasks.map((task) => (
