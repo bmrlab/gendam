@@ -38,7 +38,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   const deleteMut = rspc.useMutation(['assets.delete_file_path'])
   const metadataMut = rspc.useMutation(['assets.process_video_metadata'])
   const processJobsMut = rspc.useMutation(['video.tasks.regenerate'])
-  const { data: stateData } = rspc.useQuery(['p2p.state'])
+  const p2pStateQuery = rspc.useQuery(['p2p.state'])
   const p2pMut = rspc.useMutation(['p2p.share'])
 
   /**
@@ -178,9 +178,9 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       </ContextMenu.Item>
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />
       <ContextMenu.Sub>
-        <ContextMenu.SubTrigger disabled={(stateData?.peers?.length ?? 0) === 0}>Share</ContextMenu.SubTrigger>
+        <ContextMenu.SubTrigger disabled={(p2pStateQuery.data?.peers?.length ?? 0) === 0}>Share</ContextMenu.SubTrigger>
         <ContextMenu.SubContent>
-          {stateData?.peers?.map((peer: { peer_id: string; metadata: { name?: string } }) => (
+          {p2pStateQuery.data?.peers?.map((peer: { peer_id: string; metadata: { name?: string } }) => (
             <ContextMenu.Item key={peer.peer_id} onSelect={() => handleShare(peer.peer_id)}>
               {peer.metadata.name || peer.peer_id}
             </ContextMenu.Item>

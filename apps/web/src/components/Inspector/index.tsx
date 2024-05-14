@@ -222,6 +222,22 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
 export default function Inspector({ data }: { data: ExplorerItem | null }) {
   const inspector = useInspector()
 
+  /**
+   * listen to meta + I to toggle inspector
+   * @todo 这个快捷键目前只是临时实现，之后应该统一的管理快捷键并且提供用户自定义的功能
+   */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey && e.key === 'i') {
+        inspector.setShow(!inspector.show)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [inspector])
+
   return inspector.show ? (
     <div className="border-app-line h-full w-64 overflow-auto border-l">
       {/* <div onClick={() => inspector.setShow(false)}>close</div> */}
