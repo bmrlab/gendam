@@ -46,7 +46,7 @@ const QueueItem = ({
   )
 }
 
-const QueueList = () => {
+const ComplatedQueueList = () => {
   const uploadQueueStore = useUploadQueueStore()
   const router = useRouter()
   const reveal = useCallback(
@@ -89,6 +89,36 @@ const QueueList = () => {
   }, [tasks, uploadQueueStore.completed])
 
   return (
+    <>
+      {completedItems.map((item, index) => (
+        <QueueItem
+          key={index}
+          file={item.file}
+          // icon={<Icon.Check className="size-4 text-green-600"></Icon.Check>}
+          icon={<></>}
+          status={
+            item.processing ? (
+              <div className="text-ink/50 flex items-center gap-2">
+                <div>being processed for search</div>
+                <Icon.FlashStroke className="h-3 w-3 text-orange-400" />
+              </div>
+            ) : (
+              <div className="text-ink/50 flex items-center gap-2">
+                <div>ready for search</div>
+                {/* <Icon.Check className="h-3 w-3 text-green-400" /> */}
+              </div>
+            )
+          }
+          onClick={() => reveal(item.file)}
+        />
+      ))}
+    </>
+  )
+}
+
+const QueueList = () => {
+  const uploadQueueStore = useUploadQueueStore()
+  return (
     <div className="h-80 w-80 overflow-y-auto overflow-x-hidden">
       {uploadQueueStore.uploading ? (
         <QueueItem
@@ -120,28 +150,7 @@ const QueueList = () => {
           status={<div className="text-ink/50">Failed</div>}
         />
       ))}
-      {completedItems.map((item, index) => (
-        <QueueItem
-          key={index}
-          file={item.file}
-          // icon={<Icon.Check className="size-4 text-green-600"></Icon.Check>}
-          icon={<></>}
-          status={
-            item.processing ? (
-              <div className="text-ink/50 flex items-center gap-2">
-                <div>being processed for search</div>
-                <Icon.FlashStroke className="h-3 w-3 text-orange-400" />
-              </div>
-            ) : (
-              <div className="text-ink/50 flex items-center gap-2">
-                <div>ready for search</div>
-                {/* <Icon.Check className="h-3 w-3 text-green-400" /> */}
-              </div>
-            )
-          }
-          onClick={() => reveal(item.file)}
-        />
-      ))}
+      <ComplatedQueueList />
     </div>
   )
 }
