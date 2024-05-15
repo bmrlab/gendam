@@ -41,7 +41,7 @@ const QueueItem = ({ file, children, icon, status, className, ...props }: PropsW
 const QueueList = () => {
   const router = useRouter()
   const reveal = useCallback((data: ExplorerItem) => {
-    router.push('/explorer?dir=' + data.materializedPath)
+    router.push(`/explorer?dir=${data.materializedPath}&id=${data.id}`)
   }, [router])
   const uploadQueueStore = useUploadQueueStore()
   return (

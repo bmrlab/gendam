@@ -8,18 +8,19 @@ import {
 } from '@/Explorer/hooks'
 // import { useExplorerStore } from '@/Explorer/store'
 import { ExplorerItem } from '@/Explorer/types'
-import Viewport from '@/components/Viewport'
 import AudioDialog from '@/components/Audio/AudioDialog'
+import Inspector from '@/components/Inspector'
+import Viewport from '@/components/Viewport'
 import { rspc } from '@/lib/rspc'
 import { Drop_To_Folder } from '@gendam/assets/images'
 import { RSPCError } from '@rspc/client'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import Inspector from '@/components/Inspector'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
 import ItemContextMenu from './_components/ItemContextMenu'
+import { useInspector } from '@/components/Inspector/store'
 
 export default function ExplorerPage() {
   // const explorerStore = useExplorerStore()
@@ -28,6 +29,16 @@ export default function ExplorerPage() {
   if (!/^\/([^/\\:*?"<>|]+\/)+$/.test(dirInSearchParams)) {
     dirInSearchParams = '/'
   }
+
+  // 进入 explorer 页面默认选中的 file path item
+  const filePathIdInSearchParams = searchParams.get('id')
+  const initialRevealedFilePathId = useMemo(() => {
+    return filePathIdInSearchParams ? +filePathIdInSearchParams : null
+  }, [filePathIdInSearchParams])
+  // const [initialRevealedFilePathId, setInitialRevealedFilePathId] = useState<number | null>(
+  //   filePathIdInSearchParams ? +filePathIdInSearchParams : null,
+  // )
+
   // currentPath 必须以 / 结尾, 调用 setCurrentPath 的地方自行确保格式正确
   // const [materializedPath, setMaterializedPath] = useState<string>(dirInSearchParams)
   const materializedPath = useMemo(() => dirInSearchParams, [dirInSearchParams])
@@ -35,39 +46,49 @@ export default function ExplorerPage() {
   const [items, setItems] = useState<ExplorerItem[] | null>(null)
   const [layout, setLayout] = useState<ExplorerValue['settings']['layout']>('grid')
 
-  const assetsQuery = rspc.useQuery(
-    [
-      'assets.list',
-      {
-        materializedPath: materializedPath,
-        includeSubDirs: layout === 'media' ? true : false,
-      },
-    ],
-    {
-      // refetchOnWindowFocus: true,
-      throwOnError: (e: RSPCError) => {
-        console.log(e)
-        return false // stop propagate throwing error
-      },
-    },
-  )
-
+  const inspector = useInspector()
   const explorer = useExplorerValue({
-    items: items,
-    materializedPath: materializedPath,
+    items,
+    materializedPath,
     settings: {
       layout,
     },
   })
 
+  const assetsQueryParams = {
+    materializedPath,
+    includeSubDirs: layout === 'media' ? true : false,
+  }
+  const assetsQuery = rspc.useQuery(['assets.list', assetsQueryParams], {
+    // refetchOnWindowFocus: true,
+    throwOnError: (e: RSPCError) => {
+      console.log(e)
+      return false // stop propagate throwing error
+    },
+  })
+
   const resetSelectedItems = explorer.resetSelectedItems
+  const setShowInspector = inspector.setShow
   useEffect(() => {
     if (assetsQuery.isSuccess) {
+      const revealedFilePath = assetsQuery.data.find((item) => item.id === initialRevealedFilePathId)
       setItems([...assetsQuery.data])
       // 重新获取数据要清空选中的项目，以免出现不在列表中但是还被选中的情况
-      resetSelectedItems()
+      if (revealedFilePath) {
+        resetSelectedItems([revealedFilePath])
+        setShowInspector(true)
+      } else {
+        resetSelectedItems()
+      }
     }
-  }, [assetsQuery.isLoading, assetsQuery.isSuccess, assetsQuery.data, resetSelectedItems])
+  }, [
+    assetsQuery.isLoading,
+    assetsQuery.isSuccess,
+    assetsQuery.data,
+    resetSelectedItems,
+    initialRevealedFilePathId,
+    setShowInspector,
+  ])
 
   useEffect(() => {
     setLayout(explorer.settings.layout)
@@ -98,8 +119,8 @@ export default function ExplorerPage() {
               <div className="my-4 text-sm">Drag or paste videos here</div>
             </Viewport.Content>
           ) : (
-            <Viewport.Content className="h-full flex flex-row overflow-hidden">
-              <ExplorerLayout className="h-full flex-1 w-auto overflow-scroll" />
+            <Viewport.Content className="flex h-full flex-row overflow-hidden">
+              <ExplorerLayout className="h-full w-auto flex-1 overflow-scroll" />
               <Inspector data={inspectorItem} />
             </Viewport.Content>
           )}

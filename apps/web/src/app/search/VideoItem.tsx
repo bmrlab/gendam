@@ -47,8 +47,8 @@ const VideoItem: React.FC<{ item: ItemsWithSize }> = ({ item }) => {
   )
 
   const reveal = useCallback(() => {
-    router.push('/explorer?dir=' + item.data.materializedPath)
-  }, [item.data.materializedPath, router])
+    router.push(`/explorer?dir=${item.data.materializedPath}&id=${item.data.filePathId}`)
+  }, [item.data.materializedPath, item.data.filePathId, router])
 
   return (
     <ContextMenu.Root>

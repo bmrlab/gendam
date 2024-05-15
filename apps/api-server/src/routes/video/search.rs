@@ -22,6 +22,7 @@ where
         #[derive(Serialize, Type)]
         #[serde(rename_all = "camelCase")]
         pub struct SearchResultPayload {
+            pub file_path_id: Option<i32>,
             pub name: String,
             pub materialized_path: String,
             pub asset_object_id: i32,
@@ -125,6 +126,7 @@ where
                                     file_identifier
                                 );
                                 return SearchResultPayload {
+                                    file_path_id: None,
                                     name: "".to_string(),
                                     materialized_path: "".to_string(),
                                     asset_object_id: 0,
@@ -135,20 +137,26 @@ where
                                 };
                             }
                         };
-                        let (materialized_path, name) = match asset_object_data.file_paths {
-                            Some(ref file_paths) => {
-                                if file_paths.len() > 0 {
-                                    let file_path = file_paths[0].clone();
-                                    (file_path.materialized_path.clone(), file_path.name.clone())
-                                } else {
-                                    ("".to_string(), "".to_string())
+                        let (file_path_id, materialized_path, name) =
+                            match asset_object_data.file_paths {
+                                Some(ref file_paths) => {
+                                    if file_paths.len() > 0 {
+                                        let file_path = file_paths[0].clone();
+                                        (
+                                            Some(file_path.id),
+                                            file_path.materialized_path.clone(),
+                                            file_path.name.clone(),
+                                        )
+                                    } else {
+                                        (None, "".to_string(), "".to_string())
+                                    }
                                 }
-                            }
-                            None => ("".to_string(), "".to_string()),
-                        };
+                                None => (None, "".to_string(), "".to_string()),
+                            };
                         let asset_object_hash = asset_object_data.hash.clone();
                         let asset_object_id = asset_object_data.id;
                         SearchResultPayload {
+                            file_path_id,
                             name,
                             materialized_path,
                             asset_object_id,
