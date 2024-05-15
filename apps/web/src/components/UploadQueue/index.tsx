@@ -3,22 +3,30 @@ import Icon from '@gendam/ui/icons'
 import { rspc, queryClient } from '@/lib/rspc'
 import { type FileItem, useUploadQueueStore } from '@/components/UploadQueue/store'
 import { Video_File } from '@gendam/assets/images'
-import classNames from 'classnames'
 import Image from 'next/image'
-import { PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react'
+import { HTMLAttributes, HtmlHTMLAttributes, PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@gendam/ui/v2/button'
+import { ExplorerItem } from '@/Explorer/types'
+import { useRouter } from 'next/navigation'
+import classNames from 'classnames'
 // import { twx } from '@/lib/utils'
 // const QueueItem = twx.div`flex items-center justify-start pl-2 pr-4 py-2`
 
-const QueueItem = ({ file, children, icon, status }: PropsWithChildren<{
+const QueueItem = ({ file, children, icon, status, className, ...props }: PropsWithChildren<{
   file: FileItem
   icon?: React.ReactNode
   status?: React.ReactNode
-}>) => {
+}> & HTMLAttributes<HTMLDivElement>) => {
   const splits = file.localFullPath.split('/')
   const fileName = splits.length > 0 ? splits[splits.length - 1] : file.localFullPath
   return (
-    <div className="group flex items-center justify-start gap-1 py-2 px-3 border-b border-app-line">
+    <div
+      {...props}
+      className={classNames(
+        "group flex items-center justify-start gap-1 py-2 px-3 border-b border-app-line",
+        className,
+      )}
+    >
       <Image src={Video_File} alt="document" className="w-6 h-6" priority></Image>
       <div className="flex-1 mx-1 text-xs overflow-hidden">
         <div className="mb-1 truncate">{fileName}</div>
@@ -31,6 +39,10 @@ const QueueItem = ({ file, children, icon, status }: PropsWithChildren<{
 }
 
 const QueueList = () => {
+  const router = useRouter()
+  const reveal = useCallback((data: ExplorerItem) => {
+    router.push('/explorer?dir=' + data.materializedPath)
+  }, [router])
   const uploadQueueStore = useUploadQueueStore()
   return (
     <div className="h-80 w-80 overflow-y-auto overflow-x-hidden">
@@ -66,6 +78,7 @@ const QueueList = () => {
           key={index} file={file}
           icon={<Icon.Check className="size-4 text-green-600"></Icon.Check>}
           status={<div className="text-ink/50">Imported</div>}
+          onClick={() => reveal(file)}
         />
       ))}
     </div>
@@ -139,8 +152,8 @@ export default function UploadQueue({ close }: {
     const uploading = uploadQueueStore.nextUploading()
     if (uploading) {
       const { materializedPath, name, localFullPath } = uploading
-      uploadMut.mutateAsync({ materializedPath, name, localFullPath }).then(() => {
-        uploadQueueStore.completeUploading()
+      uploadMut.mutateAsync({ materializedPath, name, localFullPath }).then((filePathData) => {
+        uploadQueueStore.completeUploading(filePathData)
       }).catch(() => {
         uploadQueueStore.failedUploading()
       }).finally(() => {

@@ -62,14 +62,19 @@ where
                             &input.local_full_path,
                         )
                         .await?;
-
                     if !asset_object_existed {
                         process_video_metadata(&library, asset_object_data.id).await?;
                         info!("process video metadata finished");
                         process_video_asset(&library, &ctx, file_path_data.id, None).await?;
                         info!("process video asset finished");
                     }
-                    Ok(())
+                    let file_path = get_file_path(
+                        &library,
+                        &file_path_data.materialized_path,
+                        &file_path_data.name,
+                    )
+                    .await?;
+                    Ok(file_path)
                 }
             })
         })
