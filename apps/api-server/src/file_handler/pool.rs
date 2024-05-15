@@ -52,7 +52,8 @@ impl Task {
     }
 
     async fn save_starts_at(&self) {
-        self.prisma_client
+        let res = self
+            .prisma_client
             .file_handler_task()
             .update(
                 file_handler_task::asset_object_id_task_type(
@@ -65,8 +66,15 @@ impl Task {
                 ))],
             )
             .exec()
-            .await
-            .expect(&format!("failed save_starts_at {}", &self.task_type,));
+            .await;
+        if let Err(e) = res {
+            tracing::error!(
+                asset_object_id = self.asset_object_id,
+                task_type = self.task_type,
+                "save_starts_at failed {}",
+                e
+            );
+        }
     }
 
     async fn save_ends_at(&self, error: Option<String>) {
@@ -75,7 +83,8 @@ impl Task {
             None => (Some(0), None),
         };
 
-        self.prisma_client
+        let res = self
+            .prisma_client
             .file_handler_task()
             .update(
                 file_handler_task::asset_object_id_task_type(
@@ -90,12 +99,15 @@ impl Task {
                 ],
             )
             .exec()
-            .await
-            .expect(&format!(
-                "failed save_ends_at {}",
-                // (&*self.task_type).as_ref()
-                &self.task_type,
-            ));
+            .await;
+        if let Err(e) = res {
+            tracing::error!(
+                asset_object_id = self.asset_object_id,
+                task_type = self.task_type,
+                "save_ends_at failed {}",
+                e
+            );
+        }
     }
 }
 
@@ -394,14 +406,15 @@ async fn loop_until_queue_empty(
                     if cancel_by_priority {
                         // current task need to be preserved
                         let mut task_queue = task_queue.write().await;
-                        task_queue.push(
-                            task_clone,
-                            current_task_priority
-                                .read()
-                                .await
-                                .clone()
-                                .expect("priority not set correctly"),
-                        );
+                        if let Some(priority) = current_task_priority.read().await.clone() {
+                            task_queue.push(task_clone, priority);
+                        } else {
+                            tracing::error!("priority not set correctly");
+                        }
+                        // task_queue.push(
+                        //     task_clone,
+                        //     current_task_priority.read().await.clone().expect("priority not set correctly"),
+                        // );
                     } else {
                         // remove data in task_mapping
                         // task_mapping_clone.write().await.remove(&task_id);
