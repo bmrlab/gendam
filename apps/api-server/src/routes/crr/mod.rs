@@ -3,7 +3,6 @@ mod association;
 use crate::routes::crr::association::{get_ids_for_dir, get_ids_for_file};
 use crate::CtxWithLibrary;
 use crdt::sync::FileSync;
-use prisma_lib::{file_path, media_data};
 use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
 use specta::Type;

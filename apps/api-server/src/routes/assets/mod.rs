@@ -16,6 +16,13 @@ use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
 use specta::Type;
 use tracing::info;
+
+use crate::routes::assets::utils::merge_shared_path;
+use crate::validators;
+use create::{create_asset_object, create_dir};
+use delete::delete_file_path;
+use process::{process_video_asset, process_video_metadata};
+use read::{get_file_path, list_file_path};
 use types::FilePathRequestPayload;
 use update::{move_file_path, rename_file_path};
 
@@ -132,14 +139,16 @@ where
                 }
                 |ctx, input: FilePathQueryPayload| async move {
                     let library = ctx.library()?;
-                    let res = list_file_path(
+                    let mut res = list_file_path(
                         &library,
                         &input.materialized_path,
                         input.is_dir,
                         input.include_sub_dirs,
                     )
                     .await?;
-                    Ok(res)
+                    let res = &mut res;
+                    merge_shared_path(res, vec![]);
+                    Ok(res.to_owned())
                 }
             })
         })
