@@ -85,13 +85,11 @@ export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageC
 
 export type TaskRedoRequestPayload = { assetObjectId: number }
 
-export type TaskListRequestPayload = { filter: TaskListRequestFilter }
-
 export type Pagination = { pageSize: number; pageIndex: number }
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
-export type TaskListRequestFilter = { assetObjectId?: number | null }
+export type TaskListRequestFilter = { assetObjectId?: number | null; assetObjectIds?: number[] | null }
 
 export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
 
@@ -136,6 +134,8 @@ export type AIModel = { id: string; title: string; description: string; categori
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
 
 export type AssetObject = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string }
+
+export type TaskListRequestPayload = { filter: TaskListRequestFilter }
 
 export type LibrarySettingsThemeEnum = "light" | "dark"
 

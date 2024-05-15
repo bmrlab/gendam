@@ -9,6 +9,8 @@ use specta::Type;
 struct TaskListRequestFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
     asset_object_id: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    asset_object_ids: Option<Vec<i32>>,
 }
 
 #[derive(Deserialize, Type, Debug)]
@@ -36,6 +38,11 @@ where
                 if let Some(asset_object_id) = payload.filter.asset_object_id {
                     whera_params.push(prisma_lib::file_handler_task::asset_object_id::equals(
                         asset_object_id,
+                    ));
+                }
+                if let Some(asset_object_ids) = payload.filter.asset_object_ids {
+                    whera_params.push(prisma_lib::file_handler_task::asset_object_id::in_vec(
+                        asset_object_ids,
                     ));
                 }
                 let res = library

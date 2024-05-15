@@ -47,7 +47,6 @@ export const useUploadQueueStore = create<UploadQueue>((set, get) => ({
           ...state.uploading,
           ...filePathData,
         }
-        console.log('newItem', newItem)
         return {
           completed: [newItem, ...state.completed],
           uploading: null,
