@@ -11,8 +11,8 @@ export type Procedures = {
         { key: "libraries.models.list", input: never, result: Result[] } | 
         { key: "libraries.status", input: never, result: LibraryStatusResult } | 
         { key: "p2p.state", input: never, result: any } | 
+        { key: "tasks.get_assets_in_process", input: never, result: FilePath[] } | 
         { key: "tasks.list", input: TaskListRequestPayload, result: FileHandlerTask[] } | 
-        { key: "tasks.test", input: never, result: string } | 
         { key: "users.get", input: never, result: Auth | null } | 
         { key: "version", input: never, result: string } | 
         { key: "video.search.all", input: SearchRequestPayload, result: SearchResultPayload[] } | 

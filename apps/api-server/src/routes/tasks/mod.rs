@@ -55,7 +55,46 @@ where
                 Ok(res)
             })
         })
-        .query("test", |t| {
-            t(|_ctx: TCtx, _: ()| async move { "".to_string() })
+        .query("get_assets_in_process", |t| {
+            t(|ctx: TCtx, _input: ()| async move {
+                let library = ctx.library()?;
+                let asset_object_data_list = library
+                    .prisma_client()
+                    .asset_object()
+                    .find_many(vec![prisma_lib::asset_object::tasks::some(vec![
+                        prisma_lib::file_handler_task::exit_code::equals(None),
+                    ])])
+                    .with(
+                        prisma_lib::asset_object::file_paths::fetch(vec![])
+                            .order_by(prisma_lib::file_path::created_at::order(
+                                prisma_client_rust::Direction::Desc,
+                            ))
+                            .take(1),
+                    )
+                    .exec()
+                    .await
+                    .map_err(sql_error)?;
+                let file_path_data_list = asset_object_data_list
+                    .into_iter()
+                    .filter_map(|mut asset_object_data| {
+                        let file_paths = asset_object_data.file_paths.take();
+                        // leave asset_object_data.file_paths as None
+                        match file_paths {
+                            Some(file_paths) => {
+                                if file_paths.len() > 0 {
+                                    let mut file_path_data = file_paths[0].clone();
+                                    file_path_data.asset_object =
+                                        Some(Some(Box::new(asset_object_data)));
+                                    Some(file_path_data)
+                                } else {
+                                    None
+                                }
+                            }
+                            None => None,
+                        }
+                    })
+                    .collect::<Vec<prisma_lib::file_path::Data>>();
+                Ok(file_path_data_list)
+            })
         })
 }
