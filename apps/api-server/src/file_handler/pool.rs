@@ -68,7 +68,7 @@ impl Task {
             .exec()
             .await;
         if let Err(e) = res {
-            tracing::error!(
+            tracing::warn!(
                 asset_object_id = self.asset_object_id,
                 task_type = self.task_type,
                 "save_starts_at failed {}",
@@ -101,7 +101,7 @@ impl Task {
             .exec()
             .await;
         if let Err(e) = res {
-            tracing::error!(
+            tracing::warn!(
                 asset_object_id = self.asset_object_id,
                 task_type = self.task_type,
                 "save_ends_at failed {}",

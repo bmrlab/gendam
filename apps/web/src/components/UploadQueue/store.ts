@@ -88,7 +88,7 @@ export const useUploadQueueStore = create<UploadQueue>((set, get) => ({
       completed: [],
       failed: [],
       queue: [],
-      uploading: null,
+      // uploading: null,
     })
   },
 }))
