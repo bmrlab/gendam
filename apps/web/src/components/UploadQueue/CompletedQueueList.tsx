@@ -1,13 +1,10 @@
 'use client'
 import { ExplorerItem } from '@/Explorer/types'
 import { useUploadQueueStore } from '@/components/UploadQueue/store'
-import { rspc } from '@/lib/rspc'
 import Icon from '@gendam/ui/icons'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 import QueueItem from './QueueItem'
-// import { twx } from '@/lib/utils'
-// const QueueItem = twx.div`flex items-center justify-start pl-2 pr-4 py-2`
 
 const CompletedQueueList = () => {
   const uploadQueueStore = useUploadQueueStore()
@@ -18,9 +15,7 @@ const CompletedQueueList = () => {
     },
     [router],
   )
-  const { data: filePathsInProcess } = rspc.useQuery(['tasks.get_assets_in_process'], {
-    refetchInterval: 5000,
-  })
+
   // 合并刚上传的 filePath 和正在处理中的 filePath
   const mergedCompletedItems = useMemo<
     {
@@ -29,19 +24,19 @@ const CompletedQueueList = () => {
     }[]
   >(() => {
     const completedIds = new Set(uploadQueueStore.completed.map((f) => f.id))
-    const processingIds = new Set(filePathsInProcess?.map((f) => f.id))
+    const processingIds = new Set(uploadQueueStore.inProcess.map((f) => f.id))
     const completed = uploadQueueStore.completed.map((f) => ({
       file: f,
       processing: processingIds.has(f.id),
     }))
-    const inProcess = (filePathsInProcess || [])
+    const inProcess = uploadQueueStore.inProcess
       .filter((f) => !completedIds.has(f.id))
       .map((f) => ({
         file: f,
         processing: true,
       }))
     return [...completed, ...inProcess]
-  }, [filePathsInProcess, uploadQueueStore.completed])
+  }, [uploadQueueStore.inProcess, uploadQueueStore.completed])
 
   return (
     <>

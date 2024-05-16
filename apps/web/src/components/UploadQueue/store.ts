@@ -10,10 +10,12 @@ export type FileItem = {
 }
 
 interface UploadQueue {
+  inProcess: ExplorerItem[]
   completed: (FileItem & ExplorerItem)[]
   failed: FileItem[]
   queue: FileItem[]
   uploading: FileItem | null
+  setInProcessItems: (items: ExplorerItem[]) => void
   nextUploading: () => FileItem | null
   completeUploading: (filePathData: ExplorerItem) => void
   failedUploading: () => void
@@ -23,10 +25,14 @@ interface UploadQueue {
 }
 
 export const useUploadQueueStore = create<UploadQueue>((set, get) => ({
+  inProcess: [],
   completed: [],
   failed: [],
   queue: [],
   uploading: null,
+  setInProcessItems: (items) => {
+    set({ inProcess: items })
+  },
   nextUploading: () => {
     const { queue, uploading } = get()
     if (uploading || queue.length === 0) {

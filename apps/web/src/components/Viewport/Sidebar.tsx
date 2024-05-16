@@ -1,7 +1,8 @@
 'use client'
 import FoldersTree from '@/Explorer/components/FoldersTree'
-import { useUploadQueueStore } from '@/components/UploadQueue/store'
 import UploadQueue from '@/components/UploadQueue'
+import { useUploadQueueStore } from '@/components/UploadQueue/store'
+import { useUpdater } from '@/hooks/useUpdater'
 import { LibrariesListResult } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
@@ -15,7 +16,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { useUpdater } from '@/hooks/useUpdater'
 
 const Version = () => {
   const { currentVersion, updateStatus, updateError } = useUpdater()
@@ -35,7 +35,7 @@ const Version = () => {
   }, [updateError, updateStatus])
 
   return (
-    <div className="px-1 text-xs text-ink/50 flex items-center justify-start gap-2">
+    <div className="text-ink/50 flex items-center justify-start gap-2 px-1 text-xs">
       <div>v{currentVersion}</div>
       {updateStatus === 'PENDING' ? (
         <>
@@ -48,6 +48,7 @@ const Version = () => {
 }
 
 export default function Sidebar() {
+  const pathname = usePathname()
   const currentLibrary = useCurrentLibrary()
   const librariesQuery = rspc.useQuery(['libraries.list'])
   const panelRef = useRef<HTMLDivElement>(null)
@@ -56,14 +57,13 @@ export default function Sidebar() {
   const uploadQueueStore = useUploadQueueStore()
   const [uploadQueueOpen, setUploadQueueOpen] = useState(false)
 
-  // const { data: inCompletedTasks } = rspc.useQuery(['video.tasks.list', {
-  //   pagination: { pageIndex: 1, pageSize: 1},
-  //   filter: 'excludeCompleted',
-  // }], {
-  //   refetchInterval: 5000,
-  // })
-
-  const pathname = usePathname()
+  const { data: filePathsInProcess } = rspc.useQuery(['tasks.get_assets_in_process'], {
+    refetchInterval: 5000,
+  })
+  const setInProcessItems = uploadQueueStore.setInProcessItems
+  useEffect(() => {
+    setInProcessItems(filePathsInProcess || [])
+  }, [setInProcessItems, filePathsInProcess])
 
   const selectedLibrary = useMemo<LibrariesListResult | undefined>(() => {
     if (librariesQuery.isSuccess) {
@@ -113,9 +113,9 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="h-full w-60 text-ink bg-sidebar relative flex flex-col items-stretch justify-start">
+    <div className="text-ink bg-sidebar relative flex h-full w-60 flex-col items-stretch justify-start">
       <div data-tauri-drag-region className="h-10"></div>
-      <section className="relative mb-6 mt-2 mx-3">
+      <section className="relative mx-3 mb-6 mt-2">
         <div className="flex cursor-default items-center" onClick={() => setSelectPanelOpen(true)}>
           <Image src={GenDAM_Logo} alt="GenDAM" className="h-8 w-8"></Image>
           <div className="mx-2 flex-1 overflow-hidden">
@@ -148,7 +148,7 @@ export default function Sidebar() {
         ) : null}
       </section>
 
-      <section className="text-sm mx-3">
+      <section className="mx-3 text-sm">
         <Link href="/explorer" className={menuClassNames('/explorer')}>
           <Icon.File className="text-ink/70 h-4 w-4" />
           <span>Library</span>
@@ -171,7 +171,7 @@ export default function Sidebar() {
 
       <FoldersTree className="my-4 flex-1" />
 
-      <section className="relative mb-2 mx-3 flex items-center justify-start gap-1 text-sm">
+      <section className="relative mx-3 mb-2 flex items-center justify-start gap-1 text-sm">
         <Link href="/settings" className="block">
           <Button variant="ghost" size="sm" className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none">
             <Icon.Settings className="h-full w-full" />
@@ -194,13 +194,15 @@ export default function Sidebar() {
         <Popover.Root open={uploadQueueOpen} onOpenChange={(open) => setUploadQueueOpen(open)}>
           <Popover.Trigger asChild>
             <Button
-              variant="ghost" size="sm" onClick={() => setUploadQueueOpen(!uploadQueueOpen)}
+              variant="ghost"
+              size="sm"
+              onClick={() => setUploadQueueOpen(!uploadQueueOpen)}
               className="hover:bg-sidebar-hover h-7 w-7 p-1 transition-none"
             >
-              {uploadQueueStore.uploading || uploadQueueStore.queue.length ? (
+              {uploadQueueStore.uploading || uploadQueueStore.queue.length || uploadQueueStore.inProcess.length ? (
                 <Icon.FlashStroke bold className="h-4 w-4 text-orange-400" />
               ) : (
-                <div className="border border-current p-[2px] h-full w-full rounded-full scale-90">
+                <div className="h-full w-full scale-90 rounded-full border border-current p-[2px]">
                   <Icon.Check className="h-full w-full" />
                 </div>
               )}
