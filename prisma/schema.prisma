@@ -26,8 +26,9 @@ model FilePath {
   assetObjectId String?
   assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id])
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime?     @updatedAt
+  SyncMetadata SyncMetadata?
 
   // @@unique([materializedPath, name])
   @@index([materializedPath])
@@ -145,4 +146,27 @@ model VideoClip {
   frames VideoFrame[]
 
   caption String?
+}
+
+model SyncMetadata {
+  id String @id() @default(cuid())
+
+  filePathId String   @unique
+  filePath   FilePath @relation(fields: [filePathId], references: [id])
+
+  // 用于标识同步源的设备标识
+  deviceId String
+
+  // 相对于本地而言
+  // 就是同步过来的文件、文件夹的父级目录
+  // 就是本地某个 materializedPath
+  relativePath String
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  // 上次同步时间
+  // 可以用于判断是否需要同步
+  lastSyncAt DateTime @default(now())
+
+  @@index([filePathId, deviceId, relativePath])
 }
