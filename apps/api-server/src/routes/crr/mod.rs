@@ -1,8 +1,11 @@
 mod association;
 
 use crate::routes::crr::association::{get_ids_for_dir, get_ids_for_file};
+use crate::validators;
 use crate::CtxWithLibrary;
 use crdt::sync::FileSync;
+use prisma_lib::sync_metadata::UniqueWhereParam::FilePathIdEquals;
+use prisma_lib::{file_path, sync_metadata};
 use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
 use specta::Type;
@@ -69,13 +72,37 @@ where
             })
         })
         .mutation("apply", |t| {
-            t(|ctx, changes: String| async move {
-                info!("api changes: {:?}", changes.clone());
+            #[derive(Deserialize, Type, Debug, Clone)]
+            #[serde(rename_all = "camelCase")]
+            struct ApplyPayload {
+                device_id: String,
+                changes: String,
+                file_path_id: String,
+                /// 这个就是 materialized_path 字段的值
+                #[serde(deserialize_with = "validators::materialized_path_string")]
+                relative_path: String,
+            }
+            t(|ctx, payload: ApplyPayload| async move {
+                info!("api changes: {:?}", payload);
                 let library = ctx.library()?;
+
+                library.prisma_client().sync_metadata().upsert(
+                    sync_metadata::UniqueWhereParam::FilePathIdEquals(payload.file_path_id.clone()),
+                    (
+                        file_path::UniqueWhereParam::IdEquals(payload.file_path_id),
+                        payload.device_id.clone(),
+                        payload.relative_path.clone(),
+                        vec![],
+                    ),
+                    vec![
+                        sync_metadata::device_id::set(payload.device_id),
+                        sync_metadata::relative_path::set(payload.relative_path),
+                    ],
+                );
 
                 let mut file_sync = FileSync::new(library.db_path());
                 file_sync
-                    .apple_changes(changes)
+                    .apple_changes(payload.changes.clone())
                     .expect("Failed to apply changes");
                 Ok(())
             })
