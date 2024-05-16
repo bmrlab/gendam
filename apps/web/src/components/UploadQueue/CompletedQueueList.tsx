@@ -18,42 +18,34 @@ const CompletedQueueList = () => {
     },
     [router],
   )
-  const completedAssetObjectIds = useMemo(() => {
-    // assetObject won't be null
-    return uploadQueueStore.completed.map((file) => file.assetObject?.id!)
-  }, [uploadQueueStore.completed])
-  const { data: tasks } = rspc.useQuery(
-    [
-      'tasks.list',
-      {
-        filter: { assetObjectIds: completedAssetObjectIds },
-      },
-    ],
+  const { data: filePathsInProcess } = rspc.useQuery(['tasks.get_assets_in_process'], {
+    refetchInterval: 5000,
+  })
+  // 合并刚上传的 filePath 和正在处理中的 filePath
+  const mergedCompletedItems = useMemo<
     {
-      refetchInterval: 5000,
-      enabled: completedAssetObjectIds.length > 0,
-    },
-  )
-  const completedItems = useMemo<
-    {
-      file: (typeof uploadQueueStore.completed)[number]
+      file: ExplorerItem
       processing: boolean
     }[]
   >(() => {
-    return uploadQueueStore.completed.map((file) => {
-      const processing = (tasks || []).some(
-        (task) => task.assetObjectId === file.assetObject?.id && task.exitCode === null,
-      )
-      return {
-        file,
-        processing,
-      }
-    })
-  }, [tasks, uploadQueueStore.completed])
+    const completedIds = new Set(uploadQueueStore.completed.map((f) => f.id))
+    const processingIds = new Set(filePathsInProcess?.map((f) => f.id))
+    const completed = uploadQueueStore.completed.map((f) => ({
+      file: f,
+      processing: processingIds.has(f.id),
+    }))
+    const inProcess = (filePathsInProcess || [])
+      .filter((f) => !completedIds.has(f.id))
+      .map((f) => ({
+        file: f,
+        processing: true,
+      }))
+    return [...completed, ...inProcess]
+  }, [filePathsInProcess, uploadQueueStore.completed])
 
   return (
     <>
-      {completedItems.map((item, index) => (
+      {mergedCompletedItems.map((item, index) => (
         <QueueItem
           key={index}
           file={item.file}

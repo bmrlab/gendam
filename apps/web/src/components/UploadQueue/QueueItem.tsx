@@ -1,4 +1,5 @@
 'use client'
+import { ExplorerItem } from '@/Explorer/types'
 import { type FileItem } from '@/components/UploadQueue/store'
 import { Video_File } from '@gendam/assets/images'
 import classNames from 'classnames'
@@ -13,13 +14,14 @@ const QueueItem = ({
   className,
   ...props
 }: PropsWithChildren<{
-  file: FileItem
+  file: FileItem | ExplorerItem
   icon?: React.ReactNode
   status?: React.ReactNode
 }> &
   HTMLAttributes<HTMLDivElement>) => {
-  const splits = file.localFullPath.split('/')
-  const fileName = splits.length > 0 ? splits[splits.length - 1] : file.localFullPath
+  // const splits = file.localFullPath.split('/')
+  // const fileName = splits.length > 0 ? splits[splits.length - 1] : file.localFullPath
+  const fileName = file.name
   return (
     <div
       {...props}
