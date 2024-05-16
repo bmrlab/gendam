@@ -154,6 +154,11 @@ model SyncMetadata {
   filePathId String   @unique
   filePath   FilePath @relation(fields: [filePathId], references: [id])
 
+  // 如果是文件夹，就是文件夹下的所有文件的 id（不包含文件夹本身）
+  // 如果是文件，这个字段为空
+  // 这个值的内容是 ["123", "456", "789]，是一个 JSON 字符串
+  subFilePathIds String?
+
   // 用于标识同步源的设备标识
   deviceId String
 
