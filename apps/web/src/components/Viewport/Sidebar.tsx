@@ -51,8 +51,6 @@ export default function Sidebar() {
   const pathname = usePathname()
   const currentLibrary = useCurrentLibrary()
   const librariesQuery = rspc.useQuery(['libraries.list'])
-  const panelRef = useRef<HTMLDivElement>(null)
-  const [selectPanelOpen, setSelectPanelOpen] = useState(false)
 
   const uploadQueueStore = useUploadQueueStore()
   const [uploadQueueOpen, setUploadQueueOpen] = useState(false)
@@ -84,19 +82,6 @@ export default function Sidebar() {
     [currentLibrary],
   )
 
-  useEffect(() => {
-    function handleClickOutside(event: any) {
-      // console.log(panelRef.current, event.target);
-      if (panelRef.current && !panelRef.current.contains(event.target)) {
-        setSelectPanelOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [])
-
   const [lastQueueLength, setLastQueueLength] = useState(0)
   useEffect(() => {
     if (uploadQueueStore.queue.length > lastQueueLength) {
@@ -115,37 +100,39 @@ export default function Sidebar() {
   return (
     <div className="text-ink bg-sidebar relative flex h-full w-60 flex-col items-stretch justify-start">
       <div data-tauri-drag-region className="h-10"></div>
-      <section className="relative mx-3 mb-6 mt-2">
-        <div className="flex cursor-default items-center" onClick={() => setSelectPanelOpen(true)}>
-          <Image src={GenDAM_Logo} alt="GenDAM" className="h-8 w-8"></Image>
-          <div className="mx-2 flex-1 overflow-hidden">
-            <div className="truncate text-xs font-semibold">{selectedLibrary?.title ?? 'Untitled'}</div>
-          </div>
-          <Icon.UpAndDownArrow className="h-4 w-4"></Icon.UpAndDownArrow>
-        </div>
-        {selectPanelOpen && librariesQuery.isSuccess ? (
-          <div
-            ref={panelRef}
-            className="border-app-line bg-app-box text-ink absolute left-32 top-3
-              z-10 w-72 rounded-md border p-1 shadow-sm"
-          >
-            {librariesQuery.data.map((library, index: number) => {
-              return (
-                <div
-                  key={library.id}
-                  className="hover:bg-app-hover/50 flex cursor-default items-center justify-start gap-2 rounded-md px-3 py-2"
-                  onClick={() => switchLibrary(library)}
-                >
-                  <Image src={GenDAM_Logo} alt="GenDAM" className="h-9 w-9"></Image>
-                  <div className="flex-1 overflow-hidden">
-                    <div className="truncate text-xs font-semibold">{library.title}</div>
-                    <div className="text-ink/50 truncate text-[0.6rem]">{library.id}</div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        ) : null}
+      <section className="mx-3 mb-6 mt-2">
+        <Popover.Root>
+          <Popover.Trigger asChild disabled={!librariesQuery.isSuccess || !librariesQuery.data.length}>
+            <div className="flex cursor-default items-center">
+              <Image src={GenDAM_Logo} alt="GenDAM" className="h-8 w-8"></Image>
+              <div className="mx-2 flex-1 overflow-hidden">
+                <div className="truncate text-xs font-semibold">{selectedLibrary?.title ?? 'Untitled'}</div>
+              </div>
+              <Icon.UpAndDownArrow className="h-4 w-4"></Icon.UpAndDownArrow>
+            </div>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content side="right" align="start" sideOffset={0} alignOffset={0}>
+              <div className="border-app-line bg-app-box text-ink w-72 rounded-md border p-1 shadow-sm">
+                {librariesQuery.data?.map((library, index: number) => {
+                  return (
+                    <div
+                      key={library.id}
+                      className="hover:bg-app-hover/50 flex cursor-default items-center justify-start gap-2 rounded-md px-3 py-2"
+                      onClick={() => switchLibrary(library)}
+                    >
+                      <Image src={GenDAM_Logo} alt="GenDAM" className="h-9 w-9"></Image>
+                      <div className="flex-1 overflow-hidden">
+                        <div className="truncate text-xs font-semibold">{library.title}</div>
+                        <div className="text-ink/50 truncate text-[0.6rem]">{library.id}</div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
       </section>
 
       <section className="mx-3 text-sm">
@@ -209,7 +196,7 @@ export default function Sidebar() {
             </Button>
           </Popover.Trigger>
           <Popover.Portal>
-            <Popover.Content side="bottom" sideOffset={8}>
+            <Popover.Content side="bottom" align="start" sideOffset={8}>
               <UploadQueue close={() => setUploadQueueOpen(false)} />
             </Popover.Content>
           </Popover.Portal>
