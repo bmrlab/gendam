@@ -1,5 +1,7 @@
 use blake3::Hasher;
-use prisma_lib::file_path;
+use content_library::Library;
+use futures::stream::{self, StreamExt};
+use prisma_lib::{file_path, sync_metadata};
 use std::path::Path;
 use tokio::{
     fs::{self, File},
@@ -80,29 +82,60 @@ pub async fn generate_file_hash(path: impl AsRef<Path>, size: u64) -> Result<Str
 /// - If the path is a file, return `relative_path.join(materialized_path)`
 /// - If the path is a folder
 ///    - Query all the file paths under the folder, replace relative_path with `root_path.join(materialized_path)`
-pub fn merge_shared_path(
-    data: &mut Vec<file_path::Data>,
-    sync_file_path_id_collection: Vec<String>,
-) {
-    // (relative_path, materialized_path)
-    let need_handle_tuple: Vec<(String, String)> = data
-        .iter()
-        .filter_map(|d| {
-            if !sync_file_path_id_collection.contains(&d.id) {
-                None
-            } else {
-                d.relative_path
-                    .as_ref()
-                    .map(|rp| (rp.clone(), d.materialized_path.clone()))
+pub async fn merge_shared_path(library: &Library, data: &mut Vec<file_path::Data>) {
+    // (file_path_id, relative_path, materialized_path, sub_file_path_ids)
+    let need_handle_tuple: Vec<(String, String, String, Vec<String>)> = stream::iter(data.clone())
+        .filter_map(|d| async move {
+            if d.relative_path.is_none() {
+                return None;
+            }
+            let relative_path = d.relative_path.clone().unwrap();
+
+            match library
+                .prisma_client()
+                .sync_metadata()
+                .find_unique(sync_metadata::UniqueWhereParam::FilePathIdEquals(
+                    d.id.clone(),
+                ))
+                .exec()
+                .await
+            {
+                Ok(sync_metadata) => {
+                    if let Some(sync_metadata) = sync_metadata {
+                        Some((
+                            d.id.clone(),
+                            relative_path,
+                            d.materialized_path,
+                            serde_json::from_str(
+                                &sync_metadata.sub_file_path_ids.unwrap_or("[]".into()),
+                            )
+                            .unwrap_or(vec![]),
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                // 查询失败，跳过
+                Err(_) => None,
             }
         })
-        .collect();
+        .collect()
+        .await;
 
+    _merge_shared_path(need_handle_tuple, data);
+}
+
+fn _merge_shared_path(
+    need_handle_tuple: Vec<(String, String, String, Vec<String>)>,
+    data: &mut Vec<file_path::Data>,
+) {
     for tuple in need_handle_tuple {
-        let (relative_path, materialized_path) = tuple;
+        let (file_path_id, relative_path, materialized_path, sub_file_path_ids) = tuple;
 
         for d in data.iter_mut() {
-            if !sync_file_path_id_collection.contains(&d.id)
+            // 当前 id 不包含在 sub_file_path_ids 中，并且当前 ID 不等于 file_path_id
+            // 当前实例不是子路径
+            if !(sub_file_path_ids.contains(&d.id) || file_path_id.eq(&d.id))
                 || !is_subpath(&materialized_path, &d.materialized_path)
             {
                 continue;
@@ -126,7 +159,7 @@ fn is_subpath(parent: &str, child: &str) -> bool {
 #[cfg(test)]
 mod test {
 
-    use crate::routes::assets::utils::merge_shared_path;
+    use crate::routes::assets::utils::{_merge_shared_path, merge_shared_path};
     use prisma_lib::file_path::Data;
 
     fn create_data(
@@ -147,6 +180,7 @@ mod test {
             asset_object: None,
             created_at: Default::default(),
             updated_at: None,
+            sync_metadata: None,
         }
     }
 
@@ -165,13 +199,19 @@ mod test {
             create_data("s_5", true, "/dir1/dir2/", None, "xx1_file"),
             create_data("s_6", true, "/dir1/dir2/", None, "xx2_file"),
         ];
-        let sync_file_path_id_collection = vec!["s_1", "s_2", "s_3", "s_4", "s_5", "s_6"]
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<String>>();
+        // (relative_path, materialized_path, sub_file_path_ids)
+        let need_handle_tuple = vec![(
+            "s_1".to_string(),
+            "/common_dir/sync_dir/".to_string(),
+            "/".to_string(),
+            vec!["s_2", "s_3", "s_4", "s_5", "s_6"]
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )];
 
         let data = &mut data;
-        merge_shared_path(data, sync_file_path_id_collection);
+        _merge_shared_path(need_handle_tuple, data);
 
         data.iter()
             .map(|d| {
