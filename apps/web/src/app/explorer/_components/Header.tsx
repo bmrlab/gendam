@@ -19,6 +19,7 @@ export default function Header() {
   const router = useRouter()
   const explorer = useExplorerContext()
   const uploadQueueStore = useUploadQueueStore()
+  const { openFileSelection } = useOpenFileSelection()
 
   const inspector = useInspector()
 
@@ -74,8 +75,16 @@ export default function Header() {
 
   const handleApplyChanges = async () => {
     if (changesInput) {
-      console.log('apply changes', JSON.parse(changesInput))
-      await appleChanges(JSON.parse(changesInput))
+      openFileSelection().then((path) => {
+        console.log('path', path)
+
+        // TODO: 当选择根目录的时候，path 为 null，以后可能会有变化
+        const dir = !path ? '/' : `${path.materializedPath}${path.name}`
+
+        const pullResult = JSON.parse(changesInput)
+        console.log(`apply changes to ${dir} with changes ${pullResult}`)
+        // await appleChanges({ relativePath: '', pullResult: JSON.parse(changesInput) })
+      })
     }
   }
   return (
