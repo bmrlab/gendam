@@ -5,6 +5,7 @@ use crate::validators;
 use crate::CtxWithLibrary;
 use crdt::sync::FileSync;
 use crdt::CrsqlChangesRowData;
+use prisma_lib::sync_metadata::sub_file_path_ids;
 use prisma_lib::{file_path, sync_metadata};
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
@@ -139,31 +140,56 @@ where
                         )
                     })?;
 
-                library.prisma_client().sync_metadata().upsert(
-                    sync_metadata::UniqueWhereParam::FilePathIdEquals(
-                        pull_result.file_path_id.clone(),
-                    ),
-                    (
-                        file_path::UniqueWhereParam::IdEquals(pull_result.file_path_id),
-                        pull_result.device_id.clone(),
-                        payload.relative_path.clone(),
-                        vec![sync_metadata::sub_file_path_ids::set(
-                            serde_json::to_string(&pull_result.sub_file_path_ids).ok(),
-                        )],
-                    ),
-                    vec![
-                        sync_metadata::device_id::set(pull_result.device_id),
-                        sync_metadata::relative_path::set(payload.relative_path),
-                        sync_metadata::sub_file_path_ids::set(
-                            serde_json::to_string(&pull_result.sub_file_path_ids).ok(),
-                        ),
-                    ],
-                );
-
                 let mut file_sync = FileSync::new(library.db_path());
                 file_sync
                     .apple_changes(pull_result.changes)
                     .expect("Failed to apply changes");
+
+                let sub_file_path_ids_string =
+                    serde_json::to_string(&pull_result.sub_file_path_ids).ok();
+
+                // 添加 sync metadata 信息
+                library
+                    .prisma_client()
+                    .sync_metadata()
+                    .upsert(
+                        sync_metadata::UniqueWhereParam::FilePathIdEquals(
+                            pull_result.file_path_id.clone(),
+                        ),
+                        (
+                            file_path::UniqueWhereParam::IdEquals(
+                                pull_result.file_path_id.clone(),
+                            ),
+                            pull_result.device_id.clone(),
+                            payload.relative_path.clone(),
+                            vec![sub_file_path_ids::set(
+                                sub_file_path_ids_string.clone(),
+                            )],
+                        ),
+                        vec![
+                            sync_metadata::device_id::set(pull_result.device_id),
+                            sync_metadata::relative_path::set(payload.relative_path.clone()),
+                            sub_file_path_ids::set(sub_file_path_ids_string),
+                        ],
+                    )
+                    .exec()
+                    .await?;
+
+                // 为同步的 file_path 添加 relative path
+                // 以便日后识别
+                // 如果不方便加，可以在 routes/assets/utils 中加以查询
+                library
+                    .prisma_client()
+                    .file_path()
+                    .update(
+                        file_path::UniqueWhereParam::IdEquals(pull_result.file_path_id.clone()),
+                        vec![file_path::SetParam::SetRelativePath(Some(
+                            payload.relative_path,
+                        ))],
+                    )
+                    .exec()
+                    .await?;
+
                 Ok(())
             })
         })

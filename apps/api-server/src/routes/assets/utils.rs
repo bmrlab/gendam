@@ -142,7 +142,7 @@ fn _merge_shared_path(
             }
 
             d.materialized_path = format!(
-                "{}{}",
+                "{}{}",`
                 relative_path,
                 d.materialized_path
                     .strip_prefix('/')

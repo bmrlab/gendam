@@ -148,6 +148,7 @@ where
                     .await?;
                     let res = &mut res;
                     merge_shared_path(&library, res).await;
+                    info!("res: {res:?}");
                     Ok(res.to_owned())
                 }
             })
