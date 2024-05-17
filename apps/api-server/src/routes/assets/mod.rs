@@ -147,7 +147,7 @@ where
                     )
                     .await?;
                     let res = &mut res;
-                    merge_shared_path(res, vec![]);
+                    merge_shared_path(&library, res).await;
                     Ok(res.to_owned())
                 }
             })

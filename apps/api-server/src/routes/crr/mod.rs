@@ -4,12 +4,36 @@ use crate::routes::crr::association::{get_ids_for_dir, get_ids_for_file};
 use crate::validators;
 use crate::CtxWithLibrary;
 use crdt::sync::FileSync;
-use prisma_lib::sync_metadata::UniqueWhereParam::FilePathIdEquals;
+use crdt::CrsqlChangesRowData;
 use prisma_lib::{file_path, sync_metadata};
 use rspc::{Router, RouterBuilder};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use specta::Type;
 use tracing::{debug, info};
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct PullResult {
+    device_id: String,
+    changes: Vec<CrsqlChangesRowData>,
+    file_path_id: String,
+    sub_file_path_ids: Vec<String>,
+}
+
+impl PullResult {
+    pub fn new(
+        changes: Vec<CrsqlChangesRowData>,
+        file_path_id: String,
+        sub_file_path_ids: Vec<String>,
+    ) -> Self {
+        Self {
+            // TODO: replace with real value
+            device_id: "".to_string(),
+            changes,
+            file_path_id,
+            sub_file_path_ids,
+        }
+    }
+}
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -34,12 +58,24 @@ where
 
                 // TODO: replace db_version with real value
                 let changes = file_sync
-                    .pull_file_changes(0, asset_object_id, file_path_id, media_data_id)
-                    .expect("Failed to pull asset object changes");
+                    .pull_file_changes(0, asset_object_id, file_path_id.clone(), media_data_id)
+                    .map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("failed to pull {file_path_id} changes: {e}"),
+                        )
+                    })?;
 
-                debug!("pull changes: {changes:?}");
+                // TODO: 序列化
+                let pull_result = PullResult::new(changes, file_path_id, vec![]);
+                debug!("pull result: {pull_result:?}");
 
-                Ok(changes)
+                Ok(serde_json::to_string(&pull_result).map_err(|e| {
+                    rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("failed to serialize pull result: {e}"),
+                    )
+                })?)
             })
         })
         .mutation("pull_dir", |t| {
@@ -54,19 +90,30 @@ where
                 debug!("pull_dir payload: {:?}", payload);
                 let library = ctx.library()?;
                 let mut ids = get_ids_for_dir(library.prisma_client(), payload.dir).await?;
+                let sub_file_path_ids = ids.0.clone();
                 // add dir file path id
-                ids.0.push(payload.dir_file_path_id);
+                ids.0.push(payload.dir_file_path_id.clone());
                 debug!("ids: {:?}", ids);
 
                 let file_sync = FileSync::new(library.db_path());
 
                 // TODO: replace db_version with real value
-                let changes = file_sync.pull_dir_changes(0, ids.0, ids.1, ids.2);
+                let changes = file_sync
+                    .pull_dir_changes(0, ids.0, ids.1, ids.2)
+                    .map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("failed to pull {} changes: {e}", payload.dir_file_path_id),
+                        )
+                    })?;
 
-                Ok(changes.map_err(|e| {
+                let pull_result =
+                    PullResult::new(changes, payload.dir_file_path_id, sub_file_path_ids);
+
+                Ok(serde_json::to_string(&pull_result).map_err(|e| {
                     rspc::Error::new(
                         rspc::ErrorCode::InternalServerError,
-                        format!("failed to pull dir changes: {e}"),
+                        format!("failed to serialize pull dir result: {e}"),
                     )
                 })?)
             })
@@ -75,34 +122,47 @@ where
             #[derive(Deserialize, Type, Debug, Clone)]
             #[serde(rename_all = "camelCase")]
             struct ApplyPayload {
-                device_id: String,
-                changes: String,
-                file_path_id: String,
                 /// 这个就是 materialized_path 字段的值
                 #[serde(deserialize_with = "validators::materialized_path_string")]
                 relative_path: String,
+                pull_result: String,
             }
             t(|ctx, payload: ApplyPayload| async move {
                 info!("api changes: {:?}", payload);
                 let library = ctx.library()?;
 
+                let pull_result: PullResult =
+                    serde_json::from_str(&payload.pull_result).map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("failed to deserialize pull result: {e}"),
+                        )
+                    })?;
+
                 library.prisma_client().sync_metadata().upsert(
-                    sync_metadata::UniqueWhereParam::FilePathIdEquals(payload.file_path_id.clone()),
+                    sync_metadata::UniqueWhereParam::FilePathIdEquals(
+                        pull_result.file_path_id.clone(),
+                    ),
                     (
-                        file_path::UniqueWhereParam::IdEquals(payload.file_path_id),
-                        payload.device_id.clone(),
+                        file_path::UniqueWhereParam::IdEquals(pull_result.file_path_id),
+                        pull_result.device_id.clone(),
                         payload.relative_path.clone(),
-                        vec![],
+                        vec![sync_metadata::sub_file_path_ids::set(
+                            serde_json::to_string(&pull_result.sub_file_path_ids).ok(),
+                        )],
                     ),
                     vec![
-                        sync_metadata::device_id::set(payload.device_id),
+                        sync_metadata::device_id::set(pull_result.device_id),
                         sync_metadata::relative_path::set(payload.relative_path),
+                        sync_metadata::sub_file_path_ids::set(
+                            serde_json::to_string(&pull_result.sub_file_path_ids).ok(),
+                        ),
                     ],
                 );
 
                 let mut file_sync = FileSync::new(library.db_path());
                 file_sync
-                    .apple_changes(payload.changes.clone())
+                    .apple_changes(pull_result.changes)
                     .expect("Failed to apply changes");
                 Ok(())
             })

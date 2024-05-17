@@ -36,7 +36,7 @@ impl FileSync {
         asset_object_id: String,
         file_path_id: String,
         media_data_id: String,
-    ) -> rusqlite::Result<String> {
+    ) -> rusqlite::Result<Vec<CrsqlChangesRowData>> {
         let packed_data = self.batch_pack(vec![asset_object_id, file_path_id, media_data_id]);
         let packed_asset_object_id = &packed_data[0];
         let packed_file_path_id = &packed_data[1];
@@ -65,8 +65,7 @@ impl FileSync {
         )?;
 
         let changes: Vec<CrsqlChangesRowData> = rows.map(|r| r.expect("")).collect();
-        Ok(serde_json::to_string(&changes)
-            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?)
+        Ok(changes)
     }
 
     pub fn pull_dir_changes(
@@ -75,7 +74,7 @@ impl FileSync {
         file_path_ids: Vec<String>,
         asset_object_ids: Vec<String>,
         media_data_ids: Vec<String>,
-    ) -> rusqlite::Result<String> {
+    ) -> rusqlite::Result<Vec<CrsqlChangesRowData>> {
         let packed_file_path_ids = self.batch_pack(file_path_ids);
         let packed_asset_object_ids = self.batch_pack(asset_object_ids);
         let packed_media_data_ids = self.batch_pack(media_data_ids);
@@ -120,11 +119,10 @@ impl FileSync {
         let changes: Vec<CrsqlChangesRowData> =
             rows.map(|r| r.expect("failed to get row")).collect();
 
-        Ok(serde_json::to_string(&changes)
-            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?)
+        Ok(changes)
     }
 
-    pub fn apple_changes(&mut self, changes: String) -> rusqlite::Result<()> {
+    pub fn apple_changes(&mut self, changes: Vec<CrsqlChangesRowData>) -> rusqlite::Result<()> {
         self.db.apple_changes(changes)
     }
 }

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::constant::CR_SQLITE_ENDPOIONT;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CrsqlChangesRowData {
     table: String,
     pk: Vec<u8>,
@@ -117,6 +117,11 @@ impl CrSqliteDB {
         })
     }
 
+    pub(crate) fn get_site_id(&self) -> Result<Vec<u8>> {
+        let sql = "SELECT crsql_site_id();";
+        self.conn.query_row(sql, [], |row| row.get(0))
+    }
+
     pub(crate) fn pack(&self, id: impl ToSql) -> Result<Vec<u8>> {
         let sql = "SELECT crsql_pack_columns(?1);";
         self.conn.query_row(sql, params![id], |row| row.get(0))
@@ -134,7 +139,7 @@ impl CrSqliteDB {
             .query_row(&sql, params![], |row: &rusqlite::Row| row.get(0))
     }
 
-    fn get_changes(&self) -> Result<Vec<CrsqlChangesRowData>> {
+    pub fn get_changes(&self) -> Result<Vec<CrsqlChangesRowData>> {
         let mut stmt = self.conn.prepare(r#"select "table", "pk", "cid", "val", "col_version", "db_version", COALESCE("site_id", crsql_site_id()), "cl", "seq" from crsql_changes;"#)?;
 
         let rows = stmt.query_map([], |row| CrsqlChangesRowData::try_from(row))?;
@@ -148,10 +153,7 @@ impl CrSqliteDB {
             .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))
     }
 
-    pub fn apple_changes(&mut self, json_string: String) -> Result<()> {
-        let data: Vec<CrsqlChangesRowData> =
-            serde_json::from_str::<Vec<CrsqlChangesRowData>>(&json_string)
-                .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+    pub fn apple_changes(&mut self, data: Vec<CrsqlChangesRowData>) -> Result<()> {
         let tx: rusqlite::Transaction = self.conn.transaction()?;
         for d in data {
             let val: Box<dyn ToSql> = match d.val {
@@ -306,6 +308,14 @@ mod tests {
         println!("unpack_res: ${}", unpack_res.clone());
 
         assert_eq!(random_str, unpack_res);
+    }
+    #[test]
+    fn test_get_site_id() {
+        let db: CrSqliteDB = CrSqliteDB { conn: setup() };
+        let site_id: Vec<u8> = db.get_site_id().unwrap();
+        println!("site_id: {:?}", site_id);
+
+        assert!(site_id.len() > 0);
     }
 
     #[test]

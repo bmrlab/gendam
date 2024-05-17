@@ -151,6 +151,8 @@ model VideoClip {
 model SyncMetadata {
   id String @id() @default(cuid())
 
+  // 如果是文件夹，就是文件夹的 id
+  // 如果是文件，就是文件的 id
   filePathId String   @unique
   filePath   FilePath @relation(fields: [filePathId], references: [id])
 
