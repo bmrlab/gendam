@@ -1,13 +1,11 @@
-pub(self) mod assets;
+mod assets;
 mod tasks;
 mod search;
 mod audio;
 mod libraries;
-mod p2p;
+pub(crate) mod p2p;
 mod users;
 mod video;
-
-pub use p2p::info::ShareInfo;
 
 use crate::CtxWithLibrary;
 use rspc::Router;

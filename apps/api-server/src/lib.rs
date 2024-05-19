@@ -6,7 +6,8 @@ mod download;
 mod library;
 
 mod routes;
-pub use routes::{get_routes, ShareInfo};
+pub use routes::p2p::ShareInfo;
+pub use routes::get_routes;
 
 pub mod ctx;
 pub use ctx::traits::{CtxWithLibrary, StoreError, CtxStore};

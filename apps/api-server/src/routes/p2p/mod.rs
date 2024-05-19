@@ -1,7 +1,7 @@
 mod find_all;
 pub mod info;
 
-use crate::routes::p2p::info::ShareInfo;
+pub use crate::routes::p2p::info::ShareInfo;
 use crate::CtxWithLibrary;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};

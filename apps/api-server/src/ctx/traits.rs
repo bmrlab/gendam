@@ -2,7 +2,7 @@ use crate::{
     ai::AIHandler,
     download::{DownloadReporter, DownloadStatus},
     file_handler::TaskPayload,
-    routes::ShareInfo,
+    routes::p2p::ShareInfo,
 };
 use async_trait::async_trait;
 use content_library::{Library, QdrantServerInfo};

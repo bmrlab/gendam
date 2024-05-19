@@ -5,7 +5,7 @@ use crate::{
     download::{DownloadHub, DownloadReporter, DownloadStatus},
     file_handler::{init_task_pool, trigger_unfinished, TaskPayload},
     library::get_library_settings,
-    routes::ShareInfo,
+    routes::p2p::ShareInfo,
 };
 use async_trait::async_trait;
 use content_library::{
