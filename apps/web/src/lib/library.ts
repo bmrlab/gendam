@@ -12,8 +12,8 @@ type CurrentLibraryContext = {
   librarySettings: LibrarySettings
   updateLibrarySettings: (partialSettingssettings: Partial<LibrarySettings>) => Promise<void>
   switchCurrentLibraryById: (libraryId: string) => Promise<void>
-  getFileSrc: (assetObjectId: string) => string
-  getThumbnailSrc: (assetObjectId: string, timestampInSecond?: number) => string
+  getFileSrc: (assetObjectHash: string) => string
+  getThumbnailSrc: (assetObjectHash: string, timestampInSecond?: number) => string
 }
 
 export const CurrentLibrary = createContext<CurrentLibraryContext | null>(

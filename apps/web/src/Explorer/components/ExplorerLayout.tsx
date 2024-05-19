@@ -144,14 +144,14 @@ export default function Explorer({ ...props }: HTMLAttributes<HTMLDivElement>) {
         selectableTargets={['[data-selecto-item]']}
         onSelect={(e) => {
           e.added.forEach((el) => {
-            const id = Number(el.getAttribute('data-selecto-item'))
+            const id = el.getAttribute('data-selecto-item')
             if (id) {
               explorer.addSelectedItemById(id)
               explorerStore.reset()
             }
           })
           e.removed.forEach((el) => {
-            const id = Number(el.getAttribute('data-selecto-item'))
+            const id = el.getAttribute('data-selecto-item')
             if (id) {
               explorer.removeSelectedItemById(id)
               explorerStore.reset()

@@ -22,9 +22,9 @@ function useSettings(defaultSettings: UseExplorerSettings) {
 }
 
 function useSelectedItems(items: ExplorerItem[] | null) {
-  const itemIdsWeakMap = useRef(new WeakMap<ExplorerItem, number>())
+  const itemIdsWeakMap = useRef(new WeakMap<ExplorerItem, string>())
   const [selectedItemIds, setSelectedItemIds] = useState(() => ({
-    value: new Set<number>(),
+    value: new Set<string>(),
   }))
 
   const updateIds = useCallback(() => setSelectedItemIds((h) => ({ ...h })), [setSelectedItemIds])
@@ -36,7 +36,7 @@ function useSelectedItems(items: ExplorerItem[] | null) {
         itemIdsWeakMap.current.set(item, id)
         items.set(id, item)
         return items
-      }, new Map<number, ExplorerItem>()),
+      }, new Map<string, ExplorerItem>()),
     [items],
   )
 
@@ -54,7 +54,7 @@ function useSelectedItems(items: ExplorerItem[] | null) {
     selectedItems,
     selectedItemIds,
     addSelectedItemById: useCallback(
-      (newId: number) => {
+      (newId: string) => {
         selectedItemIds.value.add(newId)
         updateIds()
       },
@@ -68,7 +68,7 @@ function useSelectedItems(items: ExplorerItem[] | null) {
       [selectedItemIds.value, updateIds],
     ),
     removeSelectedItemById: useCallback(
-      (removeId: number) => {
+      (removeId: string) => {
         selectedItemIds.value.delete(removeId)
         updateIds()
       },
