@@ -1,32 +1,27 @@
-export type ExplorerItem = {
-  id: number
-  name: string
-  materializedPath: string
-  isDir: boolean
-  assetObject?: {
-    id: number;
-    hash: string;
-    size: number;
-    mimeType?: string;
-    mediaData?: {
-      width: number;
-      height: number;
-      duration: number;
-      bitRate: number;
-      hasAudio: boolean;
-    } | null;
-    note: string | null;
-    createdAt: string;
-    updatedAt: string;
-  } | null;
-  createdAt: string;
-  updatedAt: string;
+import type { FilePath, SearchResultMetadata } from '@/lib/bindings'
+
+export type ExplorerItem =
+  | {
+      type: 'FilePath'
+      filePath: FilePath
+    }
+  | {
+      type: 'SearchResult'
+      filePath: FilePath
+      metadata: SearchResultMetadata
+    }
+  | {
+      // ensure there is no default case
+      type: 'Unknown'
+    }
+
+export function uniqueId(item: ExplorerItem): string {
+  switch (item.type) {
+    case 'FilePath':
+      return `FilePath:${item.filePath.id}`
+    case 'SearchResult':
+      return `SearchResult:${item.filePath.id}`
+    case 'Unknown':
+      return `Unknown:${Math.random()}`
+  }
 }
-
-export type AssetObject = { id: number; note: string | null; hash: string; createdAt: string; updatedAt: string }
-
-/**
- * FilePath 上面没有 assetObject，主要是 prisma.rs 里面对这个字段设置了 #[specta(skip)]，
- * 但实际返回数据里面这个字段改有的时候还是会有，
- * 这里就先加上 ?，除了 null，还允许 undefined
- */
