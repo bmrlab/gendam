@@ -11,11 +11,11 @@ export type Procedures = {
         { key: "libraries.models.list", input: never, result: Result[] } | 
         { key: "libraries.status", input: never, result: LibraryStatusResult } | 
         { key: "p2p.state", input: never, result: any } | 
+        { key: "search.all", input: SearchRequestPayload, result: SearchResultPayload[] } | 
         { key: "tasks.get_assets_in_process", input: never, result: FilePath[] } | 
         { key: "tasks.list", input: TaskListRequestPayload, result: FileHandlerTask[] } | 
         { key: "users.get", input: never, result: Auth | null } | 
         { key: "version", input: never, result: string } | 
-        { key: "video.search.all", input: SearchRequestPayload, result: SearchResultPayload[] } | 
         { key: "video.tasks.list", input: VideoTaskListRequestPayload, result: VideoWithTasksPageResult },
     mutations: 
         { key: "assets.create_asset_object", input: AssetObjectCreatePayload, result: FilePath } | 
@@ -49,8 +49,6 @@ export type Procedures = {
 
 export type SetModelPayload = { category: AIModelCategory; modelId: string }
 
-export type SearchRequestPayload = { text: string; recordType: string }
-
 export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum; models: LibraryModels }
 
 export type ModelArtifact = { url: string; checksum: string }
@@ -59,7 +57,7 @@ export type Auth = { id: string; name: string }
 
 export type SharePayload = { fileIdList: number[]; peerId: string }
 
-export type SearchResultMetadata = { startTime: number; endTime: number; score: number }
+export type SearchRequestPayload = { text: string; recordType: string }
 
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
@@ -75,11 +73,11 @@ export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPa
 
 export type AssetObjectReceivePayload = { hash: string; materializedPath: string }
 
-export type SearchResultPayload = { filePath: FilePath; metadata: SearchResultMetadata }
-
 export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type FilePathDeletePayload = { materializedPath: string; name: string }
+
+export type SearchResultPayload = { filePath: FilePath; metadata: SearchResultMetadata }
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
 
@@ -122,6 +120,8 @@ export type MediaData = { id: number; width: number | null; height: number | nul
 export type AudioResp = { type: AudioType; content: string }
 
 export type Result = { category: AIModelCategory; models: AIModelResult[] }
+
+export type SearchResultMetadata = { startTime: number; endTime: number; score: number }
 
 export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
 

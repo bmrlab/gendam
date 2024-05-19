@@ -49,7 +49,7 @@ const useSearchPayloadInURL: () => [
 export default function Search() {
   const [searchPayloadInURL, updateSearchPayloadInURL] = useSearchPayloadInURL()
   const [searchPayload, setSearchPayload] = useState<SearchRequestPayload | null>(searchPayloadInURL)
-  const queryRes = rspc.useQuery(['video.search.all', searchPayload!], {
+  const queryRes = rspc.useQuery(['search.all', searchPayload!], {
     enabled: !!searchPayload,
   })
   const [groupFrames, setGroupFrames] = useState(false)
@@ -170,7 +170,7 @@ export default function Search() {
             </ExplorerContextProvider>
           </ExplorerViewContextProvider>
         ) : (
-          <div>Something went wrong</div>
+          <div className="flex-1 text-ink/50 flex items-center justify-center">Something went wrong</div>
         )}
       </Viewport.Content>
     </Viewport.Page>

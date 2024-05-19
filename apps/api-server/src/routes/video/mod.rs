@@ -1,4 +1,3 @@
-pub mod search;
 pub mod task;
 
 use crate::CtxWithLibrary;
@@ -10,5 +9,4 @@ where
 {
     Router::new()
         .merge("tasks.", task::get_routes::<TCtx>())
-        .merge("search.", search::get_routes::<TCtx>())
 }
