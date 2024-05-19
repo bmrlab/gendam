@@ -3,10 +3,16 @@ use file_handler::{
     search::{SearchRequest, SearchResult},
     SearchRecordType,
 };
-use prisma_lib::asset_object;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
+
+fn sql_error(e: prisma_client_rust::QueryError) -> rspc::Error {
+    rspc::Error::new(
+        rspc::ErrorCode::InternalServerError,
+        format!("sql query failed: {}", e),
+    )
+}
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -21,16 +27,17 @@ where
         }
         #[derive(Serialize, Type)]
         #[serde(rename_all = "camelCase")]
-        pub struct SearchResultPayload {
-            pub file_path_id: Option<i32>,
-            pub name: String,
-            pub materialized_path: String,
-            pub asset_object_id: i32,
-            pub asset_object_hash: String,
+        pub struct SearchResultMetadata {
             // #[serde(rename = "startTime")]
             pub start_time: i32,
             pub end_time: i32,
             pub score: f32,
+        }
+        #[derive(Serialize, Type)]
+        #[serde(rename_all = "camelCase")]
+        pub struct SearchResultPayload {
+            file_path: prisma_lib::file_path::Data,
+            metadata: SearchResultMetadata,
         }
         t(move |ctx: TCtx, input: SearchRequestPayload| async move {
             let library = ctx.library()?;
@@ -94,15 +101,24 @@ where
             let asset_objects = library
                 .prisma_client()
                 .asset_object()
-                .find_many(vec![asset_object::hash::in_vec(file_identifiers)])
-                .with(asset_object::file_paths::fetch(vec![]))
+                .find_many(vec![prisma_lib::asset_object::hash::in_vec(
+                    file_identifiers,
+                )])
+                .with(
+                    prisma_lib::asset_object::file_paths::fetch(vec![])
+                        .order_by(prisma_lib::file_path::created_at::order(
+                            prisma_client_rust::Direction::Desc,
+                        ))
+                        .take(1),
+                )
+                .with(prisma_lib::asset_object::media_data::fetch())
                 .exec()
                 .await
-                .expect("failed to list asset objects");
+                .map_err(sql_error)?;
 
             // println!("tasks: {:?}", tasks);
             let mut tasks_hash_map =
-                std::collections::HashMap::<String, &asset_object::Data>::new();
+                std::collections::HashMap::<String, &prisma_lib::asset_object::Data>::new();
             asset_objects.iter().for_each(|asset_object_data| {
                 let hash = asset_object_data.hash.clone();
                 tasks_hash_map.insert(hash, asset_object_data);
@@ -110,63 +126,51 @@ where
 
             let search_result = search_results
                 .iter()
-                .map(
-                    |SearchResult {
-                         file_identifier,
-                         start_timestamp,
-                         end_timestamp,
-                         score,
-                         ..
-                     }| {
-                        let asset_object_data = match tasks_hash_map.get(file_identifier) {
-                            Some(asset_object_data) => asset_object_data.to_owned(),
-                            None => {
-                                tracing::error!(
-                                    "failed to find asset object data for file_identifier: {}",
-                                    file_identifier
-                                );
-                                return SearchResultPayload {
-                                    file_path_id: None,
-                                    name: "".to_string(),
-                                    materialized_path: "".to_string(),
-                                    asset_object_id: 0,
-                                    asset_object_hash: "".to_string(),
-                                    start_time: 0,
-                                    end_time: 0,
-                                    score: *score,
-                                };
-                            }
-                        };
-                        let (file_path_id, materialized_path, name) =
-                            match asset_object_data.file_paths {
-                                Some(ref file_paths) => {
-                                    if file_paths.len() > 0 {
-                                        let file_path = file_paths[0].clone();
-                                        (
-                                            Some(file_path.id),
-                                            file_path.materialized_path.clone(),
-                                            file_path.name.clone(),
-                                        )
-                                    } else {
-                                        (None, "".to_string(), "".to_string())
-                                    }
-                                }
-                                None => (None, "".to_string(), "".to_string()),
-                            };
-                        let asset_object_hash = asset_object_data.hash.clone();
-                        let asset_object_id = asset_object_data.id;
-                        SearchResultPayload {
-                            file_path_id,
-                            name,
-                            materialized_path,
-                            asset_object_id,
-                            asset_object_hash,
-                            start_time: (*start_timestamp).clone(),
-                            end_time: (*end_timestamp).clone(),
-                            score: *score,
+                .filter_map(|search_result| {
+                    let SearchResult {
+                        file_identifier,
+                        start_timestamp,
+                        end_timestamp,
+                        score,
+                        ..
+                    } = search_result;
+                    let metadata = SearchResultMetadata {
+                        start_time: (*start_timestamp).clone(),
+                        end_time: (*end_timestamp).clone(),
+                        score: *score,
+                    };
+                    let mut asset_object_data = match tasks_hash_map.get(file_identifier) {
+                        Some(asset_object_data) => (**asset_object_data).clone(),
+                        None => {
+                            tracing::error!(
+                                "failed to find asset object data for file_identifier: {}",
+                                file_identifier
+                            );
+                            return None;
                         }
-                    },
-                )
+                    };
+                    let file_paths = asset_object_data.file_paths.take();
+                    let file_path = match file_paths {
+                        Some(file_paths) => {
+                            if file_paths.len() > 0 {
+                                let mut file_path_data = file_paths[0].clone();
+                                file_path_data.asset_object =
+                                    Some(Some(Box::new(asset_object_data)));
+                                file_path_data
+                            } else {
+                                return None;
+                            }
+                        }
+                        None => {
+                            return None;
+                        }
+                    };
+                    let result = SearchResultPayload {
+                        file_path,
+                        metadata,
+                    };
+                    Some(result)
+                })
                 .collect::<Vec<_>>();
             Ok(search_result)
         })

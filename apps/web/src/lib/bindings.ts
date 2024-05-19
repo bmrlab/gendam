@@ -49,6 +49,8 @@ export type Procedures = {
 
 export type SetModelPayload = { category: AIModelCategory; modelId: string }
 
+export type SearchRequestPayload = { text: string; recordType: string }
+
 export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum; models: LibraryModels }
 
 export type ModelArtifact = { url: string; checksum: string }
@@ -56,6 +58,8 @@ export type ModelArtifact = { url: string; checksum: string }
 export type Auth = { id: string; name: string }
 
 export type SharePayload = { fileIdList: number[]; peerId: string }
+
+export type SearchResultMetadata = { startTime: number; endTime: number; score: number }
 
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
@@ -70,6 +74,8 @@ export type VideoWithTasksPageResult = { data: VideoWithTasksResult[]; paginatio
 export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPath: string; oldName: string; newName: string }
 
 export type AssetObjectReceivePayload = { hash: string; materializedPath: string }
+
+export type SearchResultPayload = { filePath: FilePath; metadata: SearchResultMetadata }
 
 export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
@@ -107,15 +113,11 @@ export type AssetObjectCreatePayload = { materializedPath: string; name: string;
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
-export type SearchResultPayload = { filePathId: number | null; name: string; materializedPath: string; assetObjectId: number; assetObjectHash: string; startTime: number; endTime: number; score: number }
-
 export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string }
 
 export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
-
-export type SearchRequestPayload = { text: string; recordType: string }
 
 export type AudioResp = { type: AudioType; content: string }
 
