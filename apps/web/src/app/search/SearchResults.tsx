@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import VideoItem from './VideoItem'
 
 export type ItemsWithSize = {
-  data: SearchResultPayload
+  filePath: SearchResultPayload['filePath']
+  metadata: SearchResultPayload['metadata']
   width: number // width in px
   height: number // height in px
   frames: number[] // frame timestamps
@@ -39,9 +40,9 @@ export default function SearchResults({ items, groupFrames }: { items: SearchRes
   }, [])
 
   const framesWidth = useCallback(
-    (item: SearchResultPayload, singleWidth: number) => {
-      const startTime = Math.floor(item.startTime / 1e3)
-      const endTime = Math.floor(item.endTime / 1e3)
+    (metadata: SearchResultPayload['metadata'], singleWidth: number) => {
+      const startTime = Math.floor(metadata.startTime / 1e3)
+      const endTime = Math.floor(metadata.endTime / 1e3)
       const duration = endTime - startTime
       let repeat = 1
       let frames = [startTime]
@@ -67,9 +68,9 @@ export default function SearchResults({ items, groupFrames }: { items: SearchRes
     let itemsTotalWidth = 0
     let itemsWithSize: ItemsWithSize[] = []
     let queue: ItemsWithSize[] = []
-    for (let data of items) {
+    for (let { filePath, metadata } of items) {
       /* 单个 frame: 高度 100px, 宽度 150px */
-      const { frames, width } = framesWidth(data, 240)
+      const { frames, width } = framesWidth(metadata, 240)
       const height = 160
       const maxTotalWidth = containerWidth - gap * (queue.length - 1)
       if (itemsTotalWidth + width > maxTotalWidth) {
@@ -83,7 +84,7 @@ export default function SearchResults({ items, groupFrames }: { items: SearchRes
         queue.length = 0
       }
       itemsTotalWidth += width
-      queue.push({ data, width, height, frames })
+      queue.push({ filePath, metadata, width, height, frames })
     }
     itemsWithSize = [...itemsWithSize, ...queue]
     return itemsWithSize
@@ -96,7 +97,7 @@ export default function SearchResults({ items, groupFrames }: { items: SearchRes
       style={{ columnGap: `${gap}px`, rowGap: '30px' }}
     >
       {itemsWithSize.map((item: ItemsWithSize, index: number) => (
-        <VideoItem key={`${item.data.assetObjectId}-${index}`} item={item}></VideoItem>
+        <VideoItem key={`${item.filePath.id}-${index}`} item={item}></VideoItem>
       ))}
     </div>
   )

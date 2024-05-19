@@ -3,15 +3,19 @@
  */
 declare module '@/lib/bindings' {
 
-  import { AssetObject as AssetObjectSimple, FilePath as FilePathSimple, MediaData } from 'api-server/client/types'
+  import type * as T from 'api-server/client/types'
   export type * from 'api-server/client/types'
 
-  export type AssetObject = AssetObjectSimple & {
-    mediaData?: MediaData | null
+  export type AssetObject = T.AssetObject & {
+    mediaData?: T.MediaData | null
   }
 
-  export type FilePath = FilePathSimple & {
+  export type FilePath = T.FilePath & {
     assetObject?: AssetObject | null
+  }
+
+  export type SearchResultPayload = Omit<T.SearchResultPayload, 'filePath'> & {
+    filePath: FilePath
   }
 
   /**
