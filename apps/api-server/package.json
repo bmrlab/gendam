@@ -2,6 +2,6 @@
 	"name": "api-server",
   "private": true,
 	"scripts": {
-		"dev": "cargo watch -x 'run -p api-server'"
+		"dev": "cargo watch --ignore client/* -x 'run -p api-server'"
 	}
 }
