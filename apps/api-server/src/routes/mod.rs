@@ -39,7 +39,7 @@ where
     {
         use std::path::PathBuf;
         if let Err(e) = router.export_ts(
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../apps/web/src/lib/bindings.ts"),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("client/types.ts"),
         ) {
             tracing::error!("Failed to export typescript bindings: {}", e);
         }
