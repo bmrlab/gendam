@@ -1,6 +1,5 @@
 'use client'
-import ExplorerDraggable from '@/Explorer/components/Draggable/ExplorerDraggable'
-import ExplorerDroppable, { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
+import { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
 import FileThumb from '@/Explorer/components/View/FileThumb'
 import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
@@ -14,10 +13,14 @@ import { useRouter } from 'next/navigation'
 import { HTMLAttributes, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 // import styles from './GridView.module.css'
 
-type WithFilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" | "SearchResult" }>
+type WithFilePathExplorerItem = Extract<ExplorerItem, { type: 'FilePath' | 'SearchResult' }>
 // type WithFilePathExplorerItem = Extract<ExplorerItem, { filePath: FilePath }>
 
-const DroppableInner: React.FC<{ data: WithFilePathExplorerItem }> = ({ data }) => {
+const DroppableInner: React.FC<
+  {
+    data: WithFilePathExplorerItem
+  } & HTMLAttributes<HTMLDivElement>
+> = ({ data, ...props }) => {
   // const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
@@ -36,7 +39,7 @@ const DroppableInner: React.FC<{ data: WithFilePathExplorerItem }> = ({ data }) 
   }, [data.filePath.name])
 
   return (
-    <div>
+    <div {...props}>
       <div className={classNames('mb-1 h-28 w-full rounded-lg p-2', highlight ? 'bg-app-hover' : null)}>
         <FileThumb data={data} className="h-full w-full" />
       </div>
@@ -45,10 +48,12 @@ const DroppableInner: React.FC<{ data: WithFilePathExplorerItem }> = ({ data }) 
           <RenamableItemText data={data} className="text-center" />
         </div>
       ) : (
-        <div className={classNames(
-          'text-ink text-xs overflow-hidden rounded-lg py-1 px-2 flex items-center justify-center',
-          highlight ? 'bg-accent text-white' : null
-        )}>
+        <div
+          className={classNames(
+            'text-ink flex items-center justify-center overflow-hidden rounded-lg px-2 py-1 text-xs',
+            highlight ? 'bg-accent text-white' : null,
+          )}
+        >
           {/* <div className="line-clamp-2 max-h-[2.8em] break-all text-center leading-[1.4em]">{data.name}</div> */}
           <div className="truncate">{name1}</div>
           <div className="whitespace-nowrap">{name2}</div>
@@ -58,12 +63,12 @@ const DroppableInner: React.FC<{ data: WithFilePathExplorerItem }> = ({ data }) 
   )
 }
 
-const GridItem: React.FC<{
-  data: WithFilePathExplorerItem
-  onSelect: (e: React.MouseEvent, data: WithFilePathExplorerItem) => void
-} & Omit<HTMLAttributes<HTMLDivElement>, "onSelect">> = ({
-  data, onSelect, ...props
-}) => {
+const GridItem: React.FC<
+  {
+    data: WithFilePathExplorerItem
+    onSelect: (e: React.MouseEvent, data: WithFilePathExplorerItem) => void
+  } & Omit<HTMLAttributes<HTMLDivElement>, 'onSelect'>
+> = ({ data, onSelect, ...props }) => {
   const router = useRouter()
   // const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
@@ -87,24 +92,9 @@ const GridItem: React.FC<{
   )
 
   return (
-    <div
-      {...props}
-      data-selecto-item={uniqueId(data)}
-      data-component-hint="ViewItem(GridView)"
-      onClick={(e) => {
-        e.stopPropagation()
-        onSelect(e, data)
-      }}
-      onDoubleClick={handleDoubleClick}
-    >
-      <ViewItem data={data}>
-        <ExplorerDroppable droppable={{ data: data }}>
-          <ExplorerDraggable draggable={{ data: data }}>
-            <DroppableInner data={data} />
-          </ExplorerDraggable>
-        </ExplorerDroppable>
-      </ViewItem>
-    </div>
+    <ViewItem data={data} onClick={(e) => onSelect(e, data)} onDoubleClick={handleDoubleClick}>
+      <DroppableInner data={data} {...props} />
+    </ViewItem>
   )
 }
 
@@ -185,7 +175,7 @@ export default function GridView({ items }: { items: WithFilePathExplorerItem[] 
       style={{ columnGap: `${gap}px`, rowGap: '30px', padding: `${padding}px` }}
     >
       {items.map((item) => (
-        <GridItem key={uniqueId(item)} data={item} onSelect={onSelect} style={{width:`${gridItemWidth}px`}} />
+        <GridItem key={uniqueId(item)} data={item} onSelect={onSelect} style={{ width: `${gridItemWidth}px` }} />
       ))}
     </div>
   )

@@ -1,9 +1,11 @@
 'use client'
 import { useExplorerContext, useExplorerViewContext } from '@/Explorer/hooks'
 import { useExplorerStore } from '@/Explorer/store'
-import { type ExplorerItem } from '@/Explorer/types'
+import { uniqueId, type ExplorerItem } from '@/Explorer/types'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { PropsWithChildren, useCallback, type HTMLAttributes } from 'react'
+import ExplorerDroppable from '../Draggable/ExplorerDroppable'
+import ExplorerDraggable from '../Draggable/ExplorerDraggable'
 
 // see spacedrive's `interface/app/$libraryId/Explorer/View/ViewItem.tsx`
 
@@ -11,7 +13,7 @@ interface ViewItemProps extends PropsWithChildren, HTMLAttributes<HTMLDivElement
   data: ExplorerItem
 }
 
-export default function ViewItem({ data, children, ...props }: ViewItemProps) {
+export default function ViewItem({ data, children, onClick, ...props }: ViewItemProps) {
   const explorerStore = useExplorerStore()
   const explorer = useExplorerContext()
   const explorerViewContext = useExplorerViewContext()
@@ -29,13 +31,30 @@ export default function ViewItem({ data, children, ...props }: ViewItemProps) {
   }, [explorerStore, explorer, data])
 
   return (
-    <ContextMenu.Root onOpenChange={handleContextMenuOpenChange}>
-      <ContextMenu.Trigger>
-        {children}
-      </ContextMenu.Trigger>
-      <ContextMenu.Portal>
-        {explorerViewContext.contextMenu && explorerViewContext.contextMenu(data)}
-      </ContextMenu.Portal>
-    </ContextMenu.Root>
+    <div
+      {...props}
+      data-selecto-item={uniqueId(data)}
+      data-component-hint='ViewItem'
+      onClick={(e) => {
+        // ExplorerLayout 上面有一个 onClick={resetSelectedItems} 会清空选中的项目, 这里一定要 stop 一下
+        e.stopPropagation()
+        if (onClick) {
+          onClick(e)
+        }
+      }}
+    >
+      <ContextMenu.Root onOpenChange={handleContextMenuOpenChange}>
+        <ContextMenu.Trigger>
+          <ExplorerDroppable droppable={{ data: data }}>
+            <ExplorerDraggable draggable={{ data: data }}>
+              {children}
+            </ExplorerDraggable>
+          </ExplorerDroppable>
+        </ContextMenu.Trigger>
+        <ContextMenu.Portal>
+          {explorerViewContext.contextMenu && explorerViewContext.contextMenu(data)}
+        </ContextMenu.Portal>
+      </ContextMenu.Root>
+    </div>
   )
 }

@@ -1,5 +1,5 @@
 'use client'
-import ExplorerDroppable, { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
+import { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
 import FileThumb from '@/Explorer/components/View/FileThumb'
 import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
@@ -31,7 +31,9 @@ const DroppableInner: React.FC<{ data: WithFilePathExplorerItem }> = ({ data }) 
         </div>
       ) : (
         <div className={classNames('text-ink w-28 rounded-lg p-1', highlight ? 'bg-accent text-white' : null)}>
-          <div className="line-clamp-2 max-h-[2.8em] break-all text-center text-xs leading-[1.4em]">{data.filePath.name}</div>
+          <div className="line-clamp-2 max-h-[2.8em] break-all text-center text-xs leading-[1.4em]">
+            {data.filePath.name}
+          </div>
         </div>
       )}
     </>
@@ -63,20 +65,9 @@ const FolderItem: React.FC<{ data: WithFilePathExplorerItem }> = ({ data }) => {
   )
 
   return (
-    <div
-      data-component-hint='ViewItem(MediaView,Folder)'
-      onClick={(e) => {
-        e.stopPropagation()
-        onSelect(e, data)
-      }}
-      onDoubleClick={handleDoubleClick}
-    >
-      <ViewItem data={data}>
-        <ExplorerDroppable droppable={{ data: data }}>
-          <DroppableInner data={data} />
-        </ExplorerDroppable>
-      </ViewItem>
-    </div>
+    <ViewItem data={data} onClick={(e) => onSelect(e, data)} onDoubleClick={handleDoubleClick}>
+      <DroppableInner data={data} />
+    </ViewItem>
   )
 }
 

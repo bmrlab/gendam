@@ -24,7 +24,10 @@ const ExplorerDraggable = ({
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: uniqueId(draggable.data),
     data: draggable.data,
-    disabled: false, // itemIsBeingRenamed,
+    disabled: !(
+      // 只有 FilePath 类型的才能拖动
+      draggable.data.type === 'FilePath'
+    )
   })
 
   // attributes.role 默认是 button, 浏览器自带样式 cursor: pointer

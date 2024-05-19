@@ -1,6 +1,5 @@
 'use client'
-import ExplorerDraggable from '@/Explorer/components/Draggable/ExplorerDraggable'
-import ExplorerDroppable, { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
+import { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
 import FileThumb from '@/Explorer/components/View/FileThumb'
 import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
@@ -12,53 +11,62 @@ import classNames from 'classnames'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { type WithFilePathExplorerItem } from './index'
 
-type ItemsWithSize = {
+type ItemWithSize = {
   data: WithFilePathExplorerItem
   width: number
   height: number
 }
 
-const DroppableInner: React.FC<ItemsWithSize> = ({ data, width, height }) => {
+const DroppableInner: React.FC<ItemWithSize> = ({ data, width, height }) => {
+  // className 和 props 没有用到
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
-
-  width = Math.floor(width)
-  height = Math.floor(height)
 
   const { isDroppable } = useExplorerDroppableContext()
   const highlight = useMemo(() => {
     return explorer.isItemSelected(data) || isDroppable
   }, [data, explorer, isDroppable])
 
+  const [name1, name2] = useMemo(() => {
+    if (/\.[^.]{1,5}$/i.test(data.filePath.name)) {
+      return [data.filePath.name.slice(0, -8), data.filePath.name.slice(-8)]
+    } else {
+      return [data.filePath.name.slice(0, -4), data.filePath.name.slice(-4)]
+    }
+  }, [data.filePath.name])
+
   return (
-    <>
+    <div style={{ width: `${width}px` }}>
       <div
-        className={classNames('mb-1 overflow-hidden', highlight ? 'bg-app-hover' : null)}
-        style={{ width: `${width}px`, height: `${height}px` }}
+        className={classNames('mb-1', highlight ? 'bg-app-hover' : null)}
+        style={{ width: `100%`, height: `${height}px` }}
       >
         <FileThumb data={data} className="h-full w-full" />
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
-        <div style={{ width: `${width}px` }}>
+        <div>
           <RenamableItemText data={data} className="text-center" />
         </div>
       ) : (
         <div
-          style={{ width: `${width}px` }}
-          className={classNames('text-ink rounded p-1', highlight ? 'bg-accent text-white' : null)}
+          className={classNames(
+            'text-ink flex items-center justify-center overflow-hidden rounded-lg px-2 py-1 text-xs',
+            highlight ? 'bg-accent text-white' : null,
+          )}
         >
-          <div className="line-clamp-2 max-h-[2.8em] break-all text-center text-xs leading-[1.4em]">{data.filePath.name}</div>
+          <div className="truncate">{name1}</div>
+          <div className="whitespace-nowrap">{name2}</div>
         </div>
       )}
-    </>
+    </div>
   )
 }
 
 const MediaItem: React.FC<
-  ItemsWithSize & {
+  ItemWithSize & {
     onSelect: (e: React.MouseEvent, data: WithFilePathExplorerItem) => void
   }
-> = ({ data, width, height, onSelect }) => {
+> = ({ data, onSelect, ...props }) => {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const quickViewStore = useQuickViewStore()
@@ -76,23 +84,9 @@ const MediaItem: React.FC<
   )
 
   return (
-    <div
-      data-selecto-item={uniqueId(data)}
-      data-component-hint="ViewItem(MediaView,Media)"
-      onClick={(e) => {
-        e.stopPropagation()
-        onSelect(e, data)
-      }}
-      onDoubleClick={handleDoubleClick}
-    >
-      <ViewItem data={data}>
-        <ExplorerDroppable droppable={{ data: data }}>
-          <ExplorerDraggable draggable={{ data: data }}>
-            <DroppableInner data={data} width={width} height={height} />
-          </ExplorerDraggable>
-        </ExplorerDroppable>
-      </ViewItem>
-    </div>
+    <ViewItem data={data} onClick={(e) => onSelect(e, data)} onDoubleClick={handleDoubleClick}>
+      <DroppableInner data={data} {...props} />
+    </ViewItem>
   )
 }
 
@@ -128,13 +122,13 @@ export default function Medias({ items }: { items: WithFilePathExplorerItem[] })
     }
   }, [])
 
-  const itemsWithSize = useMemo<ItemsWithSize[]>(() => {
+  const itemsWithSize = useMemo<ItemWithSize[]>(() => {
     if (!containerWidth) {
       return []
     }
     let itemsTotalWidth = 0
-    let itemsWithSize: ItemsWithSize[] = []
-    let queue: ItemsWithSize[] = []
+    let itemsWithSize: ItemWithSize[] = []
+    let queue: ItemWithSize[] = []
     for (let data of items) {
       const mediaWidth = data.filePath.assetObject?.mediaData?.width || 100 // px
       const mediaHeight = data.filePath.assetObject?.mediaData?.height || 100 // px
@@ -200,7 +194,13 @@ export default function Medias({ items }: { items: WithFilePathExplorerItem[] })
       style={{ columnGap: `${gap}px`, rowGap: '30px', padding: `${padding}px` }}
     >
       {itemsWithSize.map(({ data, width, height }) => (
-        <MediaItem key={uniqueId(data)} data={data} width={width} height={height} onSelect={onSelect} />
+        <MediaItem
+          key={uniqueId(data)}
+          data={data}
+          onSelect={onSelect}
+          width={Math.floor(width)}
+          height={Math.floor(height)}
+        />
       ))}
     </div>
   )

@@ -1,6 +1,5 @@
 'use client'
-import ExplorerDraggable from '@/Explorer/components/Draggable/ExplorerDraggable'
-import ExplorerDroppable, { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
+import { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
 import FileThumb from '@/Explorer/components/View/FileThumb'
 import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
@@ -14,9 +13,14 @@ import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { HTMLAttributes, useCallback, useMemo, useState } from 'react'
 
-type WithFilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" | "SearchResult" }>
+type WithFilePathExplorerItem = Extract<ExplorerItem, { type: 'FilePath' | 'SearchResult' }>
 
-const DroppableInner: React.FC<{ data: WithFilePathExplorerItem; index: number }> = ({ data, index }) => {
+const DroppableInner: React.FC<
+  {
+    data: WithFilePathExplorerItem
+    index: number
+  } & HTMLAttributes<HTMLDivElement>
+> = ({ data, index, className, ...props }) => {
   // const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
@@ -36,10 +40,12 @@ const DroppableInner: React.FC<{ data: WithFilePathExplorerItem; index: number }
 
   return (
     <div
+      {...props}
       className={classNames(
-        'text-ink flex items-center justify-start gap-2 px-6 py-2 rounded',
+        'text-ink flex items-center justify-start gap-2 rounded px-6 py-2',
         index % 2 === 1 && !highlight ? 'bg-app-hover' : null,
         highlight ? 'bg-accent text-white' : null,
+        className,
       )}
     >
       <div className="h-8 w-8">
@@ -104,24 +110,9 @@ const ListItem: React.FC<
   )
 
   return (
-    <div
-      {...props}
-      data-selecto-item={uniqueId(data)}
-      data-component-hint="ViewItem(ListView)"
-      onClick={(e) => {
-        e.stopPropagation()
-        onSelect(e, data)
-      }}
-      onDoubleClick={handleDoubleClick}
-    >
-      <ViewItem data={data}>
-        <ExplorerDroppable droppable={{ data: data }}>
-          <ExplorerDraggable draggable={{ data: data }}>
-            <DroppableInner data={data} index={index} />
-          </ExplorerDraggable>
-        </ExplorerDroppable>
-      </ViewItem>
-    </div>
+    <ViewItem data={data} onClick={(e) => onSelect(e, data)} onDoubleClick={handleDoubleClick}>
+      <DroppableInner data={data} index={index} {...props} />
+    </ViewItem>
   )
 }
 
@@ -166,11 +157,7 @@ export default function ListView({ items }: { items: WithFilePathExplorerItem[] 
       </div>
       <div className="px-4 py-2">
         {items.map((item, index) => (
-          <ListItem
-            key={uniqueId(item)}
-            data={item} index={index} onSelect={onSelect}
-            className="mb-px"
-          />
+          <ListItem key={uniqueId(item)} data={item} index={index} onSelect={onSelect} className="mb-px" />
         ))}
       </div>
     </>
