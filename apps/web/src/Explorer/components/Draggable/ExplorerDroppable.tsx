@@ -1,5 +1,5 @@
 import { useExplorerStore } from '@/Explorer/store'
-import { ExplorerItem } from '@/Explorer/types'
+import { uniqueId, type ExplorerItem } from '@/Explorer/types'
 import { useDroppable, UseDroppableArguments } from '@dnd-kit/core'
 import { createContext, HTMLAttributes, useContext, useMemo } from 'react'
 
@@ -24,16 +24,19 @@ const ExplorerDroppable = ({
 
   const itemIsBeingDragged = useMemo<boolean>(() => {
     if (explorerStore.drag?.type === 'dragging') {
-      return explorerStore.drag?.items.some((item) => item.id === droppable.data.id) || false
+      return explorerStore.drag?.items.some((item) => uniqueId(item) === uniqueId(droppable.data)) || false
     } else {
       return false
     }
   }, [droppable, explorerStore])
 
   const { isOver, setNodeRef } = useDroppable({
-    id: droppable.data.id.toString(),
+    id: uniqueId(droppable.data),
     data: droppable.data,
-    disabled: !droppable.data.isDir || itemIsBeingDragged,
+    disabled: itemIsBeingDragged || !(
+      droppable.data.type === 'FilePath' &&
+      droppable.data.filePath.isDir
+    ),
   })
 
   /**

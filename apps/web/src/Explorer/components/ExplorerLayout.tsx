@@ -10,7 +10,10 @@ import { queryClient, rspc } from '@/lib/rspc'
 import { DragCancelEvent, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { HTMLAttributes, useCallback } from 'react'
 import Selecto from 'react-selecto'
-import { ExplorerItem } from '../types'
+import { uniqueId, type ExplorerItem } from '../types'
+
+type FilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" }>
+type SearchResultExplorerItem = Extract<ExplorerItem, { type: "SearchResult" }>
 
 export default function Explorer({ ...props }: HTMLAttributes<HTMLDivElement>) {
   const explorer = useExplorerContext()
@@ -19,20 +22,24 @@ export default function Explorer({ ...props }: HTMLAttributes<HTMLDivElement>) {
 
   const handleMoveRequest = useCallback(
     async (active: ExplorerItem, target: ExplorerItem | null) => {
+      if (active.type !== 'FilePath' || (target && target.type !== 'FilePath')) {
+        // 现阶段只支持 FilePath 可以被移动
+        return
+      }
       try {
         await moveMut.mutateAsync({
           active: {
-            id: active.id,
-            materializedPath: active.materializedPath,
-            isDir: active.isDir,
-            name: active.name,
+            id: active.filePath.id,
+            materializedPath: active.filePath.materializedPath,
+            isDir: active.filePath.isDir,
+            name: active.filePath.name,
           },
           target: target
             ? {
-                id: target.id,
-                materializedPath: target.materializedPath,
-                isDir: target.isDir,
-                name: target.name,
+                id: target.filePath.id,
+                materializedPath: target.filePath.materializedPath,
+                isDir: target.filePath.isDir,
+                name: target.filePath.name,
               }
             : null,
         })
@@ -44,7 +51,7 @@ export default function Explorer({ ...props }: HTMLAttributes<HTMLDivElement>) {
         queryKey: [
           'assets.list',
           {
-            materializedPath: target ? target.materializedPath + target.name + '/' : '/',
+            materializedPath: target ? target.filePath.materializedPath + target.filePath.name + '/' : '/',
           },
         ],
       })
@@ -78,7 +85,7 @@ export default function Explorer({ ...props }: HTMLAttributes<HTMLDivElement>) {
       const target = (e.over?.data?.current as ExplorerItem) ?? null
       if (target && explorerStore.drag?.type === 'dragging') {
         for (let active of explorerStore.drag.items) {
-          if (target.id !== active.id) {
+          if (uniqueId(target) !== uniqueId(active)) {
             // console.log('move item', active, 'to', target)
             handleMoveRequest(active, target)
           } else {
@@ -118,13 +125,14 @@ export default function Explorer({ ...props }: HTMLAttributes<HTMLDivElement>) {
         {/* <GridView items={explorer.items}></GridView> */}
         {/* <ListView items={explorer.items}></ListView> */}
         {(function renderLayout() {
+          const items = explorer.items.filter(item => item.type === 'FilePath') as FilePathExplorerItem[]
           switch (explorer.settings.layout) {
             case 'grid':
-              return <GridView items={explorer.items} />
+              return <GridView items={items} />
             case 'list':
-              return <ListView items={explorer.items} />
+              return <ListView items={items} />
             case 'media':
-              return <MediaView items={explorer.items} />
+              return <MediaView items={items} />
             default:
               return null
           }

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import type { ExplorerItem } from '../types'
+import { uniqueId, type ExplorerItem } from '../types'
 
 type UseExplorerSettings = {
   layout: 'grid' | 'list' | 'media'
@@ -32,7 +32,7 @@ function useSelectedItems(items: ExplorerItem[] | null) {
   const itemsMap = useMemo(
     () =>
       (items ?? []).reduce((items, item) => {
-        const id = itemIdsWeakMap.current.get(item) ?? item.id
+        const id = itemIdsWeakMap.current.get(item) ?? uniqueId(item)
         itemIdsWeakMap.current.set(item, id)
         items.set(id, item)
         return items
@@ -62,7 +62,7 @@ function useSelectedItems(items: ExplorerItem[] | null) {
     ),
     addSelectedItem: useCallback(
       (item: ExplorerItem) => {
-        selectedItemIds.value.add(item.id)
+        selectedItemIds.value.add(uniqueId(item))
         updateIds()
       },
       [selectedItemIds.value, updateIds],
@@ -76,7 +76,7 @@ function useSelectedItems(items: ExplorerItem[] | null) {
     ),
     removeSelectedItem: useCallback(
       (item: ExplorerItem) => {
-        selectedItemIds.value.delete(item.id)
+        selectedItemIds.value.delete(uniqueId(item))
         updateIds()
       },
       [selectedItemIds.value, updateIds],
@@ -84,7 +84,7 @@ function useSelectedItems(items: ExplorerItem[] | null) {
     resetSelectedItems: useCallback(
       (items?: ExplorerItem[]) => {
         selectedItemIds.value.clear()
-        items?.forEach((item) => selectedItemIds.value.add(item.id))
+        items?.forEach((item) => selectedItemIds.value.add(uniqueId(item)))
         updateIds()
       },
       [selectedItemIds.value, updateIds],

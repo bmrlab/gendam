@@ -6,7 +6,7 @@ import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
-import { ExplorerItem } from '@/Explorer/types'
+import { uniqueId, type ExplorerItem } from '@/Explorer/types'
 // import { useCurrentLibrary } from '@/lib/library'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { formatBytes, formatDateTime } from '@/lib/utils'
@@ -14,7 +14,9 @@ import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { HTMLAttributes, useCallback, useMemo, useState } from 'react'
 
-const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data, index }) => {
+type FilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" }>
+
+const DroppableInner: React.FC<{ data: FilePathExplorerItem; index: number }> = ({ data, index }) => {
   // const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
@@ -25,12 +27,12 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
   }, [data, explorer, isDroppable])
 
   const [name1, name2] = useMemo(() => {
-    if (/\.[^.]{1,5}$/i.test(data.name)) {
-      return [data.name.slice(0, -8), data.name.slice(-8)]
+    if (/\.[^.]{1,5}$/i.test(data.filePath.name)) {
+      return [data.filePath.name.slice(0, -8), data.filePath.name.slice(-8)]
     } else {
-      return [data.name.slice(0, -4), data.name.slice(-4)]
+      return [data.filePath.name.slice(0, -4), data.filePath.name.slice(-4)]
     }
-  }, [data.name])
+  }, [data.filePath.name])
 
   return (
     <div
@@ -61,13 +63,13 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
       )}
       <div className="ml-auto" />
       <div className={classNames('w-40 text-xs text-neutral-500', highlight ? 'text-white' : null)}>
-        {formatDateTime(data.createdAt)}
+        {formatDateTime(data.filePath.createdAt)}
       </div>
       <div className={classNames('w-24 text-xs text-neutral-500', highlight ? 'text-white' : null)}>
-        {data.assetObject ? formatBytes(data.assetObject.size) : null}
+        {data.filePath.assetObject ? formatBytes(data.filePath.assetObject.size) : null}
       </div>
       <div className={classNames('w-24 text-xs text-neutral-500', highlight ? 'text-white' : null)}>
-        {data.isDir ? 'Folder' : data.assetObject?.mimeType ?? 'unknown'}
+        {data.filePath.isDir ? 'Folder' : data.filePath.assetObject?.mimeType ?? 'unknown'}
       </div>
     </div>
   )
@@ -75,9 +77,9 @@ const DroppableInner: React.FC<{ data: ExplorerItem; index: number }> = ({ data,
 
 const ListItem: React.FC<
   {
-    data: ExplorerItem
+    data: FilePathExplorerItem
     index: number
-    onSelect: (e: React.MouseEvent, data: ExplorerItem) => void
+    onSelect: (e: React.MouseEvent, data: FilePathExplorerItem) => void
   } & Omit<HTMLAttributes<HTMLDivElement>, 'onSelect'>
 > = ({ data, index, onSelect, ...props }) => {
   const router = useRouter()
@@ -90,11 +92,11 @@ const ListItem: React.FC<
       // e.stopPropagation()
       explorer.resetSelectedItems()
       explorerStore.reset()
-      if (data.isDir) {
-        let newPath = data.materializedPath + data.name + '/'
+      if (data.filePath.isDir) {
+        let newPath = data.filePath.materializedPath + data.filePath.name + '/'
         router.push('/explorer?dir=' + newPath)
-      } else if (data.assetObject) {
-        const { name, assetObject } = data
+      } else if (data.filePath.assetObject) {
+        const { name, assetObject } = data.filePath
         quickViewStore.open({ name, assetObject })
       }
     },
@@ -104,7 +106,7 @@ const ListItem: React.FC<
   return (
     <div
       {...props}
-      data-selecto-item={data.id}
+      data-selecto-item={uniqueId(data)}
       data-component-hint="ViewItem(ListView)"
       onClick={(e) => {
         e.stopPropagation()
@@ -123,13 +125,13 @@ const ListItem: React.FC<
   )
 }
 
-export default function ListView({ items }: { items: ExplorerItem[] }) {
+export default function ListView({ items }: { items: FilePathExplorerItem[] }) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
 
   const onSelect = useCallback(
-    (e: React.MouseEvent, data: ExplorerItem) => {
+    (e: React.MouseEvent, data: FilePathExplorerItem) => {
       const selectIndex = items.indexOf(data)
       if (e.metaKey) {
         if (explorer.isItemSelected(data)) {
@@ -165,7 +167,7 @@ export default function ListView({ items }: { items: ExplorerItem[] }) {
       <div className="px-4 py-2">
         {items.map((item, index) => (
           <ListItem
-            key={item.id}
+            key={uniqueId(item)}
             data={item} index={index} onSelect={onSelect}
             className="mb-px"
           />

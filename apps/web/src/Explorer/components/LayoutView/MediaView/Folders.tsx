@@ -5,12 +5,13 @@ import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
-import { ExplorerItem } from '@/Explorer/types'
+import { uniqueId } from '@/Explorer/types'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
+import { type FilePathExplorerItem } from './index'
 
-const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
+const DroppableInner: React.FC<{ data: FilePathExplorerItem }> = ({ data }) => {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
 
@@ -30,14 +31,14 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
         </div>
       ) : (
         <div className={classNames('text-ink w-28 rounded-lg p-1', highlight ? 'bg-accent text-white' : null)}>
-          <div className="line-clamp-2 max-h-[2.8em] break-all text-center text-xs leading-[1.4em]">{data.name}</div>
+          <div className="line-clamp-2 max-h-[2.8em] break-all text-center text-xs leading-[1.4em]">{data.filePath.name}</div>
         </div>
       )}
     </>
   )
 }
 
-const FolderItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
+const FolderItem: React.FC<{ data: FilePathExplorerItem }> = ({ data }) => {
   const router = useRouter()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
@@ -47,14 +48,14 @@ const FolderItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
     (e: React.FormEvent<HTMLDivElement>) => {
       explorer.resetSelectedItems()
       explorerStore.reset()
-      let newPath = data.materializedPath + data.name + '/'
+      let newPath = data.filePath.materializedPath + data.filePath.name + '/'
       router.push('/explorer?dir=' + newPath)
     },
     [data, explorer, router, explorerStore],
   )
 
   const onSelect = useCallback(
-    (e: React.MouseEvent, data: ExplorerItem) => {
+    (e: React.MouseEvent, data: FilePathExplorerItem) => {
       explorer.resetSelectedItems([data])
       explorerStore.reset()
     },
@@ -79,12 +80,12 @@ const FolderItem: React.FC<{ data: ExplorerItem }> = ({ data }) => {
   )
 }
 
-export default function Folders({ items }: { items: ExplorerItem[] }) {
+export default function Folders({ items }: { items: FilePathExplorerItem[] }) {
   return (
     // <div className="w-full overflow-hidden">
     <div className="flex flex-wrap content-start items-start justify-start gap-6 overflow-scroll p-8">
       {items.map((item) => (
-        <FolderItem key={item.id} data={item} />
+        <FolderItem key={uniqueId(item)} data={item} />
       ))}
     </div>
     // </div>

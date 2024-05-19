@@ -6,13 +6,14 @@ import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
-import { ExplorerItem } from '@/Explorer/types'
+import { uniqueId } from '@/Explorer/types'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import classNames from 'classnames'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type FilePathExplorerItem } from './index'
 
 type ItemsWithSize = {
-  data: ExplorerItem
+  data: FilePathExplorerItem
   width: number
   height: number
 }
@@ -46,7 +47,7 @@ const DroppableInner: React.FC<ItemsWithSize> = ({ data, width, height }) => {
           style={{ width: `${width}px` }}
           className={classNames('text-ink rounded p-1', highlight ? 'bg-accent text-white' : null)}
         >
-          <div className="line-clamp-2 max-h-[2.8em] break-all text-center text-xs leading-[1.4em]">{data.name}</div>
+          <div className="line-clamp-2 max-h-[2.8em] break-all text-center text-xs leading-[1.4em]">{data.filePath.name}</div>
         </div>
       )}
     </>
@@ -55,7 +56,7 @@ const DroppableInner: React.FC<ItemsWithSize> = ({ data, width, height }) => {
 
 const MediaItem: React.FC<
   ItemsWithSize & {
-    onSelect: (e: React.MouseEvent, data: ExplorerItem) => void
+    onSelect: (e: React.MouseEvent, data: FilePathExplorerItem) => void
   }
 > = ({ data, width, height, onSelect }) => {
   const explorer = useExplorerContext()
@@ -66,8 +67,8 @@ const MediaItem: React.FC<
     (e: React.FormEvent<HTMLDivElement>) => {
       explorer.resetSelectedItems()
       explorerStore.reset()
-      if (data.assetObject) {
-        const { name, assetObject } = data
+      if (data.filePath.assetObject) {
+        const { name, assetObject } = data.filePath
         quickViewStore.open({ name, assetObject })
       }
     },
@@ -76,7 +77,7 @@ const MediaItem: React.FC<
 
   return (
     <div
-      data-selecto-item={data.id}
+      data-selecto-item={uniqueId(data)}
       data-component-hint="ViewItem(MediaView,Media)"
       onClick={(e) => {
         e.stopPropagation()
@@ -95,7 +96,7 @@ const MediaItem: React.FC<
   )
 }
 
-export default function Medias({ items }: { items: ExplorerItem[] }) {
+export default function Medias({ items }: { items: FilePathExplorerItem[] }) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
@@ -135,8 +136,8 @@ export default function Medias({ items }: { items: ExplorerItem[] }) {
     let itemsWithSize: ItemsWithSize[] = []
     let queue: ItemsWithSize[] = []
     for (let data of items) {
-      const mediaWidth = data.assetObject?.mediaData?.width || 100 // px
-      const mediaHeight = data.assetObject?.mediaData?.height || 100 // px
+      const mediaWidth = data.filePath.assetObject?.mediaData?.width || 100 // px
+      const mediaHeight = data.filePath.assetObject?.mediaData?.height || 100 // px
       /* 高度 100px, 宽度 100 ~ 300 px */
       const height = 150
       const width = Math.min(Math.min(450, containerWidth), Math.max(100, (height * mediaWidth) / mediaHeight))
@@ -159,7 +160,7 @@ export default function Medias({ items }: { items: ExplorerItem[] }) {
   }, [containerWidth, items])
 
   const onSelect = useCallback(
-    (e: React.MouseEvent, data: ExplorerItem) => {
+    (e: React.MouseEvent, data: FilePathExplorerItem) => {
       // 只处理 medias 的选择
       const selectIndex = items.indexOf(data)
       if (e.metaKey) {
@@ -199,7 +200,7 @@ export default function Medias({ items }: { items: ExplorerItem[] }) {
       style={{ columnGap: `${gap}px`, rowGap: '30px', padding: `${padding}px` }}
     >
       {itemsWithSize.map(({ data, width, height }) => (
-        <MediaItem key={data.id} data={data} width={width} height={height} onSelect={onSelect} />
+        <MediaItem key={uniqueId(data)} data={data} width={width} height={height} onSelect={onSelect} />
       ))}
     </div>
   )

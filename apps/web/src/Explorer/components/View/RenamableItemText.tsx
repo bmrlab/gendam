@@ -1,14 +1,16 @@
 'use client'
 // import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
-import { ExplorerItem } from '@/Explorer/types'
+import { type ExplorerItem } from '@/Explorer/types'
 import { rspc, queryClient } from '@/lib/rspc'
 import { HTMLAttributes, useCallback, useEffect, useRef } from 'react'
 import classNames from 'classnames'
 
+type FilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" }>
+
 export default function RenamableItemText({
   data, className
-}: HTMLAttributes<HTMLDivElement> & { data: ExplorerItem }) {
+}: HTMLAttributes<HTMLDivElement> & { data: FilePathExplorerItem }) {
   const explorerStore = useExplorerStore()
   // const explorer = useExplorerContext()
   const renameMut = rspc.useMutation(['assets.rename_file_path'])
@@ -17,14 +19,14 @@ export default function RenamableItemText({
   useEffect(() => {
     if (inputRef.current) {
       const el = inputRef.current
-      el.value = data.name
+      el.value = data.filePath.name
       // context menu 有个 transition, 要过大约 200ms 才消失, 如果提前 focus input 会立马 blur
       setTimeout(() => {
         el.focus()
         el.select()
       }, 200)
     }
-  }, [inputRef, data.name])
+  }, [inputRef, data.filePath.name])
 
   const handleInputSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -40,15 +42,15 @@ export default function RenamableItemText({
        */
       try {
         await renameMut.mutateAsync({
-          id: data.id,
-          materializedPath: data.materializedPath,
-          isDir: data.isDir,
-          oldName: data.name,
+          id: data.filePath.id,
+          materializedPath: data.filePath.materializedPath,
+          isDir: data.filePath.isDir,
+          oldName: data.filePath.name,
           newName: inputRef.current.value,
         })
       } catch (error) {}
       queryClient.invalidateQueries({
-        queryKey: ['assets.list', { materializedPath: data.materializedPath }]
+        queryKey: ['assets.list', { materializedPath: data.filePath.materializedPath }]
       })
     },
     [explorerStore, renameMut, data],

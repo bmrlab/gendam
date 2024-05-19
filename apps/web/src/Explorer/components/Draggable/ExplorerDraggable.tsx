@@ -1,6 +1,6 @@
 import { useExplorerContext } from '@/Explorer/hooks'
 import { useExplorerStore } from '@/Explorer/store'
-import { ExplorerItem } from '@/Explorer/types'
+import { uniqueId, type ExplorerItem } from '@/Explorer/types'
 import { useDraggable, UseDraggableArguments } from '@dnd-kit/core'
 import { HTMLAttributes } from 'react'
 
@@ -22,7 +22,7 @@ const ExplorerDraggable = ({
   // }, [draggable.data, explorer, explorerStore.isRenaming])
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
-    id: draggable.data.id.toString(),
+    id: uniqueId(draggable.data),
     data: draggable.data,
     disabled: false, // itemIsBeingRenamed,
   })

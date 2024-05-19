@@ -1,9 +1,10 @@
 import { useExplorerStore } from '@/Explorer/store'
+import { uniqueId, type ExplorerItem } from '@/Explorer/types'
 import { DragOverlay as DragOverlayPrimitive, Modifier, type ClientRect } from '@dnd-kit/core'
 import { getEventCoordinates } from '@dnd-kit/utilities'
 import { Document_Light, Folder_Light } from '@gendam/assets/images'
 import Image from 'next/image'
-import { PropsWithChildren, useEffect, useRef } from 'react'
+import { PropsWithChildren, useEffect, useMemo, useRef } from 'react'
 
 const useSnapToCursorModifier = () => {
   const explorerStore = useExplorerStore()
@@ -45,21 +46,24 @@ export default function DragOverlay({ children }: PropsWithChildren) {
   const explorerStore = useExplorerStore()
   const modifier = useSnapToCursorModifier()
 
+  type T = Extract<ExplorerItem, { type: 'FilePath' }>
+  const filePathItems = useMemo(() => {
+    return (explorerStore.drag?.items || []).filter((item) => item.type === 'FilePath') as T[]
+  }, [explorerStore.drag?.items])
+
   return explorerStore.drag ? (
-    <DragOverlayPrimitive
-      modifiers={[modifier]}
-    >
-      {explorerStore.drag.items.map((data) => (
-        <div key={data.id} className="mb-2 flex w-60 items-center justify-start">
+    <DragOverlayPrimitive modifiers={[modifier]}>
+      {filePathItems.map((data) => (
+        <div key={uniqueId(data)} className="mb-2 flex w-60 items-center justify-start">
           <div className="h-6 w-6">
-            {data.isDir ? (
+            {data.type === 'FilePath' && data.filePath.isDir ? (
               <Image src={Folder_Light} alt="folder" priority></Image>
             ) : (
               <Image src={Document_Light} alt="document" priority></Image>
             )}
           </div>
-          <div className="ml-2 flex-1 overflow-hidden flex justify-start">
-            <div className="py-1 px-2 truncate text-xs rounded-lg bg-blue-500 text-white">{data.name}</div>
+          <div className="ml-2 flex flex-1 justify-start overflow-hidden">
+            <div className="truncate rounded-lg bg-blue-500 px-2 py-1 text-xs text-white">{data.filePath.name}</div>
           </div>
         </div>
       ))}

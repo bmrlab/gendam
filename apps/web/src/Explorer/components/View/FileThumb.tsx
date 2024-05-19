@@ -5,13 +5,15 @@ import { Document_Light, Folder_Light } from '@gendam/assets/images'
 import classNames from 'classnames'
 import Image from 'next/image'
 
-export default function FileThumb({ data, className }: { data: ExplorerItem; className?: string }) {
+type FilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" }>
+
+export default function FileThumb({ data, className }: { data: FilePathExplorerItem; className?: string }) {
   const currentLibrary = useCurrentLibrary()
   return (
     <div className={classNames('overflow-hidden relative', className)}>
-      {data.isDir ? (
+      {data.filePath.isDir ? (
         <Image src={Folder_Light} alt="folder" priority fill={true} className="object-contain"></Image>
-      ) : data.assetObject ? (
+      ) : data.filePath.assetObject ? (
         // <video
         //   controls={false}
         //   autoPlay={false}
@@ -22,8 +24,8 @@ export default function FileThumb({ data, className }: { data: ExplorerItem; cla
         //   <source src={currentLibrary.getFileSrc(data.assetObject.hash)} />
         // </video>
         <Image
-          src={currentLibrary.getThumbnailSrc(data.assetObject.hash)}
-          alt={data.name}
+          src={currentLibrary.getThumbnailSrc(data.filePath.assetObject.hash)}
+          alt={data.filePath.name}
           fill={true}
           className="object-contain"
           priority

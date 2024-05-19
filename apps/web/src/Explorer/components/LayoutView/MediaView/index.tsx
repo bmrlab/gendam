@@ -1,14 +1,16 @@
 'use client'
-import { ExplorerItem } from '@/Explorer/types'
+import { type ExplorerItem } from '@/Explorer/types'
 import { useMemo } from 'react'
 import Folders from './Folders'
 import Medias from './Medias'
 
-export default function MediaView({ items }: { items: ExplorerItem[] }) {
+export type FilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" }>
+
+export default function MediaView({ items }: { items: FilePathExplorerItem[] }) {
   const [folders, medias] = useMemo(() => {
-    return items.reduce<[ExplorerItem[], ExplorerItem[]]>(
+    return items.reduce<[FilePathExplorerItem[], FilePathExplorerItem[]]>(
       ([folders, medias], item) => {
-        if (item.isDir) {
+        if (item.filePath.isDir) {
           folders.push(item)
         } else {
           medias.push(item)

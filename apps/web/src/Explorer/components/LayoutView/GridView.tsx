@@ -6,7 +6,7 @@ import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
-import { ExplorerItem } from '@/Explorer/types'
+import { uniqueId, type ExplorerItem } from '@/Explorer/types'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 // import { useCurrentLibrary } from '@/lib/library'
 import classNames from 'classnames'
@@ -14,7 +14,9 @@ import { useRouter } from 'next/navigation'
 import { HTMLAttributes, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 // import styles from './GridView.module.css'
 
-const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
+type FilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" }>
+
+const DroppableInner: React.FC<{ data: FilePathExplorerItem }> = ({ data }) => {
   // const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
@@ -25,12 +27,12 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
   }, [data, explorer, isDroppable])
 
   const [name1, name2] = useMemo(() => {
-    if (/\.[^.]{1,5}$/i.test(data.name)) {
-      return [data.name.slice(0, -8), data.name.slice(-8)]
+    if (/\.[^.]{1,5}$/i.test(data.filePath.name)) {
+      return [data.filePath.name.slice(0, -8), data.filePath.name.slice(-8)]
     } else {
-      return [data.name.slice(0, -4), data.name.slice(-4)]
+      return [data.filePath.name.slice(0, -4), data.filePath.name.slice(-4)]
     }
-  }, [data.name])
+  }, [data.filePath.name])
 
   return (
     <div>
@@ -56,8 +58,8 @@ const DroppableInner: React.FC<{ data: ExplorerItem }> = ({ data }) => {
 }
 
 const GridItem: React.FC<{
-  data: ExplorerItem
-  onSelect: (e: React.MouseEvent, data: ExplorerItem) => void
+  data: FilePathExplorerItem
+  onSelect: (e: React.MouseEvent, data: FilePathExplorerItem) => void
 } & Omit<HTMLAttributes<HTMLDivElement>, "onSelect">> = ({
   data, onSelect, ...props
 }) => {
@@ -72,11 +74,11 @@ const GridItem: React.FC<{
       // e.stopPropagation()
       explorer.resetSelectedItems()
       explorerStore.reset()
-      if (data.isDir) {
-        let newPath = data.materializedPath + data.name + '/'
+      if (data.filePath.isDir) {
+        let newPath = data.filePath.materializedPath + data.filePath.name + '/'
         router.push('/explorer?dir=' + newPath)
-      } else if (data.assetObject) {
-        const { name, assetObject } = data
+      } else if (data.filePath.assetObject) {
+        const { name, assetObject } = data.filePath
         quickViewStore.open({ name, assetObject })
       }
     },
@@ -86,7 +88,7 @@ const GridItem: React.FC<{
   return (
     <div
       {...props}
-      data-selecto-item={data.id}
+      data-selecto-item={uniqueId(data)}
       data-component-hint="ViewItem(GridView)"
       onClick={(e) => {
         e.stopPropagation()
@@ -105,7 +107,7 @@ const GridItem: React.FC<{
   )
 }
 
-export default function GridView({ items }: { items: ExplorerItem[] }) {
+export default function GridView({ items }: { items: FilePathExplorerItem[] }) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
@@ -143,7 +145,7 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
   }, [containerWidth])
 
   const onSelect = useCallback(
-    (e: React.MouseEvent, data: ExplorerItem) => {
+    (e: React.MouseEvent, data: FilePathExplorerItem) => {
       // 按住 cmd 键多选
       const selectIndex = items.indexOf(data)
       if (e.metaKey) {
@@ -182,7 +184,7 @@ export default function GridView({ items }: { items: ExplorerItem[] }) {
       style={{ columnGap: `${gap}px`, rowGap: '30px', padding: `${padding}px` }}
     >
       {items.map((item) => (
-        <GridItem key={item.id} data={item} onSelect={onSelect} style={{width:`${gridItemWidth}px`}} />
+        <GridItem key={uniqueId(item)} data={item} onSelect={onSelect} style={{width:`${gridItemWidth}px`}} />
       ))}
     </div>
   )
