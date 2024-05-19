@@ -1,103 +1,101 @@
 'use client'
-import { ContextMenu } from '@gendam/ui/v2/context-menu'
+import ViewItem from '@/Explorer/components/View/ViewItem'
+import { useExplorerContext } from '@/Explorer/hooks'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { useCurrentLibrary } from '@/lib/library'
 import { formatDuration } from '@/lib/utils'
 import classNames from 'classnames'
 import Image from 'next/image'
-import { useCallback, useEffect, useRef } from 'react'
-import { type ItemsWithSize } from './SearchResults'
-import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { type ItemWithSize } from './SearchResults'
+import { uniqueId } from '@/Explorer/types'
 
-const VideoItem: React.FC<{ item: ItemsWithSize }> = ({ item }) => {
-  const router = useRouter()
+const VideoItem: React.FC<ItemWithSize> = ({ data, width, height, frames }) => {
+  const explorer = useExplorerContext()
   const quickViewStore = useQuickViewStore()
   const currentLibrary = useCurrentLibrary()
-  const videoRef = useRef<HTMLVideoElement>(null)
 
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-    let startTime = Math.max(0, item.metadata.startTime / 1e3 - 0.5)
-    let endTime = Math.max(startTime, item.metadata.endTime / 1e3 + 1.5)
-    video.currentTime = startTime
-    video.ontimeupdate = () => {
-      if (video.currentTime >= endTime) {
-        // video.pause();
-        // video.ontimeupdate = null;
-        video.currentTime = startTime
+  const { filePath, metadata } = data
+
+  const highlight = useMemo(() => {
+    return explorer.isItemSelected(data)
+  }, [data, explorer])
+
+  const quickview = useCallback(() => {
+    quickViewStore.open({
+      name: filePath.name,
+      assetObject: filePath.assetObject!,
+      video: {
+        currentTime: metadata.startTime / 1e3,
+      },
+    })
+  }, [quickViewStore, filePath, metadata])
+
+  const onSelect = useCallback(
+    (e: React.MouseEvent) => {
+      // ExplorerLayout 上面有一个 onClick={resetSelectedItems} 会清空选中的项目, 这里一定要 stop 一下
+      e.stopPropagation()
+      // 按住 cmd 键多选
+      if (e.metaKey) {
+        if (explorer.isItemSelected(data)) {
+          explorer.removeSelectedItem(data)
+        } else {
+          explorer.addSelectedItem(data)
+        }
+      } else {
+        explorer.resetSelectedItems([data])
       }
-    }
-  }, [item.metadata])
-
-  const quickview = useCallback(
-    () => {
-      quickViewStore.open({
-        name: item.filePath.name,
-        assetObject: item.filePath.assetObject!,
-        video: {
-          currentTime: item.metadata.startTime / 1e3,
-        },
-      })
+      // explorerStore.reset()
     },
-    [quickViewStore, item.filePath, item.metadata],
+    [explorer, data],
   )
 
-  const reveal = useCallback(() => {
-    router.push(`/explorer?dir=${item.filePath.materializedPath}&id=${item.filePath.id}`)
-  }, [item.filePath, router])
-
   return (
-    <ContextMenu.Root>
-      <ContextMenu.Trigger>
+    <ViewItem data={data}>
+      <div
+        data-selecto-item={uniqueId(data)}
+        data-component-hint="ViewItem(SearchResultItem)"
+        onDoubleClick={() => quickview()}
+        onClick={onSelect}
+        className={classNames(
+          'group relative overflow-hidden rounded-xl border-4',
+          // 'transition-all duration-200 ease-in-out',
+          highlight ? 'border-accent' : 'border-app-line/75',
+        )}
+        // style={{ minWidth: `${width}rem`, height: '10rem', flex: frames.length }}
+        style={{ width: `${width}px`, height: `${height}px` }}
+      >
+        <div className="flex h-full items-stretch justify-between">
+          {frames.map((frame, index) => (
+            <div key={index} className="visible relative flex-1 cursor-pointer bg-neutral-100">
+              <Image
+                src={currentLibrary.getThumbnailSrc(filePath.assetObject?.hash!, frame)}
+                alt={filePath.name}
+                fill={true}
+                className="object-cover"
+                priority
+              ></Image>
+            </div>
+          ))}
+        </div>
         <div
-          className={classNames('border-app-line/75 group relative overflow-hidden rounded-xl border-4')}
-          // style={{ minWidth: `${width}rem`, height: '10rem', flex: frames.length }}
-          style={{ width: `${item.width}px`, height: `${item.height}px` }}
-          onClick={() => quickview()}
+          className={classNames(
+            'absolute left-0 top-0 flex h-full w-full flex-col justify-between bg-black/60 px-4 py-2 text-neutral-300',
+            'invisible group-hover:visible',
+          )}
         >
-          <div className="flex h-full items-stretch justify-between">
-            {item.frames.map((frame, index) => (
-              <div key={index} className="visible relative flex-1 cursor-pointer bg-neutral-100">
-                <Image
-                  src={currentLibrary.getThumbnailSrc(item.filePath.assetObject?.hash!, frame)}
-                  alt={item.filePath.name}
-                  fill={true}
-                  className="object-cover"
-                  priority
-                ></Image>
-              </div>
-            ))}
+          <div className="truncate text-xs">
+            {filePath.materializedPath}
+            {filePath.name}
           </div>
-          <div
-            className={classNames(
-              'absolute left-0 top-0 flex h-full w-full flex-col justify-between bg-black/60 px-4 py-2 text-neutral-300',
-              'invisible group-hover:visible',
-            )}
-          >
-            <div className="truncate text-xs">
-              {item.filePath.materializedPath}
-              {item.filePath.name}
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <div>{formatDuration(item.metadata.startTime / 1000)}</div>
-              <div>→</div>
-              <div>{formatDuration(item.metadata.endTime / 1000 + 1)}</div>
-            </div>
+          <div className="flex items-center justify-between text-xs">
+            <div>{formatDuration(metadata.startTime / 1000)}</div>
+            <div>→</div>
+            <div>{formatDuration(metadata.endTime / 1000 + 1)}</div>
           </div>
         </div>
-      </ContextMenu.Trigger>
-      <ContextMenu.Portal>
-        <ContextMenu.Content onClick={(e) => e.stopPropagation()}>
-          <ContextMenu.Item onSelect={() => quickview()}>
-            <div>Quick view</div>
-          </ContextMenu.Item>
-          <ContextMenu.Item onSelect={() => reveal()}>
-            <div>Reveal in explorer</div>
-          </ContextMenu.Item>
-        </ContextMenu.Content>
-      </ContextMenu.Portal>
-    </ContextMenu.Root>
+      </div>
+    </ViewItem>
   )
 }
 

@@ -7,10 +7,18 @@ import Image from 'next/image'
 import { rspc } from '@/lib/rspc'
 import classNames from 'classnames'
 import { useSearchParams } from 'next/navigation'
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import SearchForm from './SearchForm'
 import SearchResults from './SearchResults'
 import { Checkbox } from '@gendam/ui/v2/checkbox'
+import SearchItemContextMenu from './SearchItemContextMenu'
+import ExplorerLayout from '@/Explorer/components/ExplorerLayout'
+import {
+  ExplorerContextProvider,
+  ExplorerViewContextProvider,
+  useExplorerValue,
+} from '@/Explorer/hooks'
+import { ExplorerItem } from '@/Explorer/types'
 
 const useSearchPayloadInURL: () => [
   SearchRequestPayload | null,
@@ -45,6 +53,7 @@ export default function Search() {
     enabled: !!searchPayload,
   })
   const [groupFrames, setGroupFrames] = useState(false)
+  const [items, setItems] = useState<SearchResultPayload[] | null>(null)
 
   const handleSearch = useCallback(
     (text: string, recordType: string) => {
@@ -56,6 +65,44 @@ export default function Search() {
     },
     [setSearchPayload, updateSearchPayloadInURL],
   )
+
+  const explorer = useExplorerValue({
+    items: items ? items.map((item) => ({
+      type: 'SearchResult',
+      filePath: item.filePath,
+      metadata: item.metadata,
+    })) : null,
+    settings: {
+      layout: 'grid',
+    },
+  })
+
+  const resetSelectedItems = explorer.resetSelectedItems
+  useEffect(() => {
+    if (queryRes.isSuccess) {
+      setItems([...queryRes.data])
+      // 重新获取数据要清空选中的项目，以免出现不在列表中但是还被选中的情况
+      resetSelectedItems()
+    }
+  }, [queryRes.isSuccess, queryRes.data, resetSelectedItems])
+
+  const renderLayout = () => {
+    if (!queryRes.data) {
+      return <></>
+    }
+    return <SearchResults groupFrames={groupFrames} />
+  }
+
+  const contextMenu = (data: ExplorerItem) => {
+    return data.type === 'SearchResult' ? (
+      <SearchItemContextMenu
+        data={{
+          filePath: data.filePath,
+          metadata: data.metadata,
+        }}
+      />
+    ) : null
+  }
 
   return (
     <Viewport.Page>
@@ -71,7 +118,7 @@ export default function Search() {
           />
         </div>
       </Viewport.Toolbar>
-      <Viewport.Content className="overflow-hidden flex flex-col items-stretch">
+      <Viewport.Content className="flex flex-col items-stretch">
         {searchPayload ? (
           <div className="border-app-line flex items-center justify-start border-b px-8 py-2">
             <div className="border-app-line flex items-center overflow-hidden rounded-lg border text-xs">
@@ -98,27 +145,33 @@ export default function Search() {
             </form>
           </div>
         ) : null}
-        <div className="flex-1 overflow-auto p-8">
-          {!searchPayload ? (
-            <div className="h-full flex flex-col items-center justify-center">
-              <Image src={Video_Files} alt="video files" priority className="w-60 h-60"></Image>
-              <div className="my-4 text-sm">Search for visual objects or processed transcripts</div>
+
+        {!searchPayload ? (
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <Image src={Video_Files} alt="video files" priority className="w-60 h-60"></Image>
+            <div className="my-4 text-sm">Search for visual objects or processed transcripts</div>
+          </div>
+        ) : queryRes.isLoading ? (
+          <div className="flex-1 text-ink/50 flex items-center justify-center px-2 py-8 text-sm">Searching...</div>
+        ) : queryRes.isSuccess && queryRes.data.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <Image src={Video_Files} alt="video files" priority className="w-60 h-60"></Image>
+            <div className="my-4 text-sm">
+              No results found for <span className="font-medium">{searchPayload.text}</span>
             </div>
-          ) : queryRes.isLoading ? (
-            <div className="text-ink/50 flex items-center justify-center px-2 py-8 text-sm">Searching...</div>
-          ) : queryRes.isSuccess && queryRes.data.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center">
-              <Image src={Video_Files} alt="video files" priority className="w-60 h-60"></Image>
-              <div className="my-4 text-sm">
-                No results found for <span className="font-medium">{searchPayload.text}</span>
-              </div>
-            </div>
-          ) : queryRes.isSuccess && queryRes.data.length > 0 ? (
-            <SearchResults items={queryRes.data} groupFrames={groupFrames} />
-          ) : (
-            <div>Something went wrong</div>
-          )}
-        </div>
+          </div>
+        ) : queryRes.isSuccess && queryRes.data.length > 0 ? (
+          <ExplorerViewContextProvider value={{ contextMenu }}>
+            <ExplorerContextProvider explorer={explorer}>
+              <ExplorerLayout
+                className="flex-1 p-8"
+                renderLayout={renderLayout}
+              ></ExplorerLayout>
+            </ExplorerContextProvider>
+          </ExplorerViewContextProvider>
+        ) : (
+          <div>Something went wrong</div>
+        )}
       </Viewport.Content>
     </Viewport.Page>
   )

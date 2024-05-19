@@ -1,21 +1,28 @@
 'use client'
+import { useExplorerContext } from '@/Explorer/hooks'
+import { uniqueId, type ExplorerItem } from '@/Explorer/types'
 import type { SearchResultPayload } from '@/lib/bindings'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import VideoItem from './VideoItem'
 
-export type ItemsWithSize = {
-  filePath: SearchResultPayload['filePath']
-  metadata: SearchResultPayload['metadata']
+type SearchResultExplorerItem = Extract<ExplorerItem, { type: 'SearchResult' }>
+
+export type ItemWithSize = {
+  data: SearchResultExplorerItem,
   width: number // width in px
   height: number // height in px
   frames: number[] // frame timestamps
 }
 
-export default function SearchResults({ items, groupFrames }: { items: SearchResultPayload[]; groupFrames: boolean }) {
+export default function SearchResults({ groupFrames }: { groupFrames: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
   const gap = 10
   const padding = 0 // container 左右 padding
   const [containerWidth, setContainerWidth] = useState<number>(0)
+
+  const explorer = useExplorerContext()
+
+  const items = (explorer.items || []).filter((item) => item.type === 'SearchResult') as SearchResultExplorerItem[]
 
   useEffect(() => {
     const $el = ref.current
@@ -61,16 +68,16 @@ export default function SearchResults({ items, groupFrames }: { items: SearchRes
     [groupFrames],
   )
 
-  const itemsWithSize = useMemo<ItemsWithSize[]>(() => {
+  const itemsWithSize = useMemo<ItemWithSize[]>(() => {
     if (!containerWidth) {
       return []
     }
     let itemsTotalWidth = 0
-    let itemsWithSize: ItemsWithSize[] = []
-    let queue: ItemsWithSize[] = []
-    for (let { filePath, metadata } of items) {
+    let itemsWithSize: ItemWithSize[] = []
+    let queue: ItemWithSize[] = []
+    for (let data of items) {
       /* 单个 frame: 高度 100px, 宽度 150px */
-      const { frames, width } = framesWidth(metadata, 240)
+      const { frames, width } = framesWidth(data.metadata, 240)
       const height = 160
       const maxTotalWidth = containerWidth - gap * (queue.length - 1)
       if (itemsTotalWidth + width > maxTotalWidth) {
@@ -84,7 +91,7 @@ export default function SearchResults({ items, groupFrames }: { items: SearchRes
         queue.length = 0
       }
       itemsTotalWidth += width
-      queue.push({ filePath, metadata, width, height, frames })
+      queue.push({ data, width, height, frames })
     }
     itemsWithSize = [...itemsWithSize, ...queue]
     return itemsWithSize
@@ -96,8 +103,8 @@ export default function SearchResults({ items, groupFrames }: { items: SearchRes
       className="flex min-h-full flex-wrap content-start pb-8"
       style={{ columnGap: `${gap}px`, rowGap: '30px' }}
     >
-      {itemsWithSize.map((item: ItemsWithSize, index: number) => (
-        <VideoItem key={`${item.filePath.id}-${index}`} item={item}></VideoItem>
+      {itemsWithSize.map((item: ItemWithSize, index: number) => (
+        <VideoItem key={uniqueId(item.data)} {...item}></VideoItem>
       ))}
     </div>
   )
