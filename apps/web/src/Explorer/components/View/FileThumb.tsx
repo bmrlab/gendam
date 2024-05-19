@@ -1,13 +1,14 @@
 'use client'
-import { ExplorerItem } from '@/Explorer/types'
+import { type FilePath } from '@/lib/bindings'
+import { type ExplorerItem } from '@/Explorer/types'
 import { useCurrentLibrary } from '@/lib/library'
 import { Document_Light, Folder_Light } from '@gendam/assets/images'
 import classNames from 'classnames'
 import Image from 'next/image'
 
-type FilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" }>
+type T = Extract<ExplorerItem, { filePath: FilePath }>
 
-export default function FileThumb({ data, className }: { data: FilePathExplorerItem; className?: string }) {
+export default function FileThumb({ data, className }: { data: T; className?: string }) {
   const currentLibrary = useCurrentLibrary()
   return (
     <div className={classNames('overflow-hidden relative', className)}>

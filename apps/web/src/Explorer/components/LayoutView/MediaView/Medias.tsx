@@ -10,10 +10,10 @@ import { uniqueId } from '@/Explorer/types'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import classNames from 'classnames'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { type FilePathExplorerItem } from './index'
+import { type WithFilePathExplorerItem } from './index'
 
 type ItemsWithSize = {
-  data: FilePathExplorerItem
+  data: WithFilePathExplorerItem
   width: number
   height: number
 }
@@ -56,7 +56,7 @@ const DroppableInner: React.FC<ItemsWithSize> = ({ data, width, height }) => {
 
 const MediaItem: React.FC<
   ItemsWithSize & {
-    onSelect: (e: React.MouseEvent, data: FilePathExplorerItem) => void
+    onSelect: (e: React.MouseEvent, data: WithFilePathExplorerItem) => void
   }
 > = ({ data, width, height, onSelect }) => {
   const explorer = useExplorerContext()
@@ -96,7 +96,7 @@ const MediaItem: React.FC<
   )
 }
 
-export default function Medias({ items }: { items: FilePathExplorerItem[] }) {
+export default function Medias({ items }: { items: WithFilePathExplorerItem[] }) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
@@ -160,7 +160,7 @@ export default function Medias({ items }: { items: FilePathExplorerItem[] }) {
   }, [containerWidth, items])
 
   const onSelect = useCallback(
-    (e: React.MouseEvent, data: FilePathExplorerItem) => {
+    (e: React.MouseEvent, data: WithFilePathExplorerItem) => {
       // 只处理 medias 的选择
       const selectIndex = items.indexOf(data)
       if (e.metaKey) {

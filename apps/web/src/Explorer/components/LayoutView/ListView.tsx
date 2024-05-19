@@ -14,9 +14,9 @@ import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { HTMLAttributes, useCallback, useMemo, useState } from 'react'
 
-type FilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" }>
+type WithFilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" | "SearchResult" }>
 
-const DroppableInner: React.FC<{ data: FilePathExplorerItem; index: number }> = ({ data, index }) => {
+const DroppableInner: React.FC<{ data: WithFilePathExplorerItem; index: number }> = ({ data, index }) => {
   // const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
@@ -77,9 +77,9 @@ const DroppableInner: React.FC<{ data: FilePathExplorerItem; index: number }> = 
 
 const ListItem: React.FC<
   {
-    data: FilePathExplorerItem
+    data: WithFilePathExplorerItem
     index: number
-    onSelect: (e: React.MouseEvent, data: FilePathExplorerItem) => void
+    onSelect: (e: React.MouseEvent, data: WithFilePathExplorerItem) => void
   } & Omit<HTMLAttributes<HTMLDivElement>, 'onSelect'>
 > = ({ data, index, onSelect, ...props }) => {
   const router = useRouter()
@@ -125,13 +125,13 @@ const ListItem: React.FC<
   )
 }
 
-export default function ListView({ items }: { items: FilePathExplorerItem[] }) {
+export default function ListView({ items }: { items: WithFilePathExplorerItem[] }) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
 
   const onSelect = useCallback(
-    (e: React.MouseEvent, data: FilePathExplorerItem) => {
+    (e: React.MouseEvent, data: WithFilePathExplorerItem) => {
       const selectIndex = items.indexOf(data)
       if (e.metaKey) {
         if (explorer.isItemSelected(data)) {

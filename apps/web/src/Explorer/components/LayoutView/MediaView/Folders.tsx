@@ -9,9 +9,9 @@ import { uniqueId } from '@/Explorer/types'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
-import { type FilePathExplorerItem } from './index'
+import { type WithFilePathExplorerItem } from './index'
 
-const DroppableInner: React.FC<{ data: FilePathExplorerItem }> = ({ data }) => {
+const DroppableInner: React.FC<{ data: WithFilePathExplorerItem }> = ({ data }) => {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
 
@@ -38,7 +38,7 @@ const DroppableInner: React.FC<{ data: FilePathExplorerItem }> = ({ data }) => {
   )
 }
 
-const FolderItem: React.FC<{ data: FilePathExplorerItem }> = ({ data }) => {
+const FolderItem: React.FC<{ data: WithFilePathExplorerItem }> = ({ data }) => {
   const router = useRouter()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
@@ -55,7 +55,7 @@ const FolderItem: React.FC<{ data: FilePathExplorerItem }> = ({ data }) => {
   )
 
   const onSelect = useCallback(
-    (e: React.MouseEvent, data: FilePathExplorerItem) => {
+    (e: React.MouseEvent, data: WithFilePathExplorerItem) => {
       explorer.resetSelectedItems([data])
       explorerStore.reset()
     },
@@ -80,7 +80,7 @@ const FolderItem: React.FC<{ data: FilePathExplorerItem }> = ({ data }) => {
   )
 }
 
-export default function Folders({ items }: { items: FilePathExplorerItem[] }) {
+export default function Folders({ items }: { items: WithFilePathExplorerItem[] }) {
   return (
     // <div className="w-full overflow-hidden">
     <div className="flex flex-wrap content-start items-start justify-start gap-6 overflow-scroll p-8">

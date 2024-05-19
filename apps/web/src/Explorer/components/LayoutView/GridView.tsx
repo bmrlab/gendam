@@ -14,9 +14,10 @@ import { useRouter } from 'next/navigation'
 import { HTMLAttributes, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 // import styles from './GridView.module.css'
 
-type FilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" }>
+type WithFilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" | "SearchResult" }>
+// type WithFilePathExplorerItem = Extract<ExplorerItem, { filePath: FilePath }>
 
-const DroppableInner: React.FC<{ data: FilePathExplorerItem }> = ({ data }) => {
+const DroppableInner: React.FC<{ data: WithFilePathExplorerItem }> = ({ data }) => {
   // const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
@@ -58,8 +59,8 @@ const DroppableInner: React.FC<{ data: FilePathExplorerItem }> = ({ data }) => {
 }
 
 const GridItem: React.FC<{
-  data: FilePathExplorerItem
-  onSelect: (e: React.MouseEvent, data: FilePathExplorerItem) => void
+  data: WithFilePathExplorerItem
+  onSelect: (e: React.MouseEvent, data: WithFilePathExplorerItem) => void
 } & Omit<HTMLAttributes<HTMLDivElement>, "onSelect">> = ({
   data, onSelect, ...props
 }) => {
@@ -107,7 +108,7 @@ const GridItem: React.FC<{
   )
 }
 
-export default function GridView({ items }: { items: FilePathExplorerItem[] }) {
+export default function GridView({ items }: { items: WithFilePathExplorerItem[] }) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
@@ -145,7 +146,7 @@ export default function GridView({ items }: { items: FilePathExplorerItem[] }) {
   }, [containerWidth])
 
   const onSelect = useCallback(
-    (e: React.MouseEvent, data: FilePathExplorerItem) => {
+    (e: React.MouseEvent, data: WithFilePathExplorerItem) => {
       // 按住 cmd 键多选
       const selectIndex = items.indexOf(data)
       if (e.metaKey) {
