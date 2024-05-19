@@ -12,10 +12,9 @@ import { HTMLAttributes, useCallback } from 'react'
 import Selecto from 'react-selecto'
 import { uniqueId, type ExplorerItem } from '../types'
 
-type FilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" }>
-type SearchResultExplorerItem = Extract<ExplorerItem, { type: "SearchResult" }>
-
-export default function Explorer({ ...props }: HTMLAttributes<HTMLDivElement>) {
+export default function ExplorerLayout({ renderLayout, ...props }: {
+  renderLayout?: () => JSX.Element,
+} & HTMLAttributes<HTMLDivElement>) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const moveMut = rspc.useMutation(['assets.move_file_path'])
@@ -107,10 +106,32 @@ export default function Explorer({ ...props }: HTMLAttributes<HTMLDivElement>) {
     [explorerStore],
   )
 
+  function renderLayoutFromSettings() {
+    if (!explorer.items) {
+      return null
+    }
+    function filtered<K extends ExplorerItem['type'], T extends Extract<ExplorerItem, K>>(
+      items: ExplorerItem[],
+      types: ExplorerItem['type'][],
+    ): T[] {
+      return items.filter((item) => types.includes(item.type)) as T[]
+    }
+    switch (explorer.settings.layout) {
+      case 'grid':
+        return <GridView items={filtered(explorer.items, ['FilePath', 'SearchResult'])} />
+      case 'list':
+        return <ListView items={filtered(explorer.items, ['FilePath', 'SearchResult'])} />
+      case 'media':
+        return <MediaView items={filtered(explorer.items, ['FilePath', 'SearchResult'])} />
+      default:
+        return null
+    }
+  }
+
   if (!explorer.items || explorer.items.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-neutral-400">当前文件夹为空</p>
+        <p className="text-sm text-neutral-400">No items</p>
       </div>
     )
   }
@@ -122,21 +143,7 @@ export default function Explorer({ ...props }: HTMLAttributes<HTMLDivElement>) {
       { ...props }
     >
       <DndContext onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
-        {/* <GridView items={explorer.items}></GridView> */}
-        {/* <ListView items={explorer.items}></ListView> */}
-        {(function renderLayout() {
-          const items = explorer.items.filter(item => item.type === 'FilePath') as FilePathExplorerItem[]
-          switch (explorer.settings.layout) {
-            case 'grid':
-              return <GridView items={items} />
-            case 'list':
-              return <ListView items={items} />
-            case 'media':
-              return <MediaView items={items} />
-            default:
-              return null
-          }
-        })()}
+        {renderLayout ? renderLayout() : renderLayoutFromSettings()}
         <DragOverlay />
       </DndContext>
       <Selecto
