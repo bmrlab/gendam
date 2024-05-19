@@ -1,5 +1,5 @@
 'use client'
-import { ExplorerItem } from '@/Explorer/types'
+import { type FilePath } from '@/lib/bindings'
 import { type FileItem } from '@/components/UploadQueue/store'
 import { Video_File } from '@gendam/assets/images'
 import classNames from 'classnames'
@@ -16,7 +16,7 @@ const QueueItem = ({
   className,
   ...props
 }: PropsWithChildren<{
-  file: FileItem | ExplorerItem
+  file: FileItem | FilePath
   icon?: React.ReactNode
   status?: React.ReactNode
 }> &

@@ -1,6 +1,5 @@
 'use client'
-import { ExplorerItem } from '@/Explorer/types'
-import { FileHandlerTask } from '@/lib/bindings'
+import type { FilePath, FileHandlerTask } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { queryClient, rspc } from '@/lib/rspc'
 import { formatBytes, formatDateTime, formatDuration } from '@/lib/utils'
@@ -10,9 +9,8 @@ import { Button } from '@gendam/ui/v2/button'
 import Image from 'next/image'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useInspector } from './store'
-import classNames from 'classnames'
 
-const FolderDetail = ({ data }: { data: ExplorerItem }) => {
+const FolderDetail = ({ data }: { data: FilePath }) => {
   return (
     <div className="p-4">
       <div className="flex items-start justify-start">
@@ -65,7 +63,7 @@ export const TaskItemType: Record<string, [string, number]> = {
   'transcript-embedding': ['Transcript Indexing', 7],
 }
 
-const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
+const AssetObjectDetail = ({ data }: { data: FilePath }) => {
   const currentLibrary = useCurrentLibrary()
 
   const tasksQueryParams = useMemo(() => {
@@ -219,7 +217,7 @@ const AssetObjectDetail = ({ data }: { data: ExplorerItem }) => {
   )
 }
 
-export default function Inspector({ data }: { data: ExplorerItem | null }) {
+export default function Inspector({ data }: { data: FilePath | null }) {
   const inspector = useInspector()
 
   /**

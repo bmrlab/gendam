@@ -1,5 +1,6 @@
 import { useExplorerContext } from '@/Explorer/hooks'
-import { ExplorerItem } from '@/Explorer/types'
+import { type FilePath } from '@/lib/bindings'
+import { type ExplorerItem } from '@/Explorer/types'
 import { queryClient, rspc } from '@/lib/rspc'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
@@ -18,8 +19,11 @@ export const useMoveTargetSelected = () => {
   const explorer = useExplorerContext()
 
   const onMoveTargetSelected = useCallback(
-    async (target: ExplorerItem | null) => {
-      for (let active of Array.from(explorer.selectedItems)) {
+    async (target: FilePath | null) => {
+      // 目前只允许 FilePath 数据被移动，搜索结果等不能被移动
+      type T = Extract<ExplorerItem, { type: 'FilePath' }>
+      const selected = Array.from(explorer.selectedItems).filter((item) => item.type === 'FilePath') as T[]
+      for (let active of selected.map(item => item.filePath)) {
         // target 可以为空，为空就是根目录，这时候不需要检查 target.id !== active.id，因为根目录本身不会被移动
         if (target && target.id === active.id) {
           continue

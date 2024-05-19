@@ -1,6 +1,5 @@
 'use client'
 import { useExplorerContext } from '@/Explorer/hooks'
-import { ExplorerItem } from '@/Explorer/types'
 import Icon from '@gendam/ui/icons'
 import { Document_Light, Folder_Light } from '@gendam/assets/images'
 import Image from 'next/image'
@@ -17,9 +16,9 @@ export default function Footer() {
     return list
   }, [explorer.materializedPath])
 
-  const theFirstSelectedItem = useMemo<ExplorerItem|null>(() => {
-    let arr = Array.from(explorer.selectedItems)
-    return arr[0] ?? null
+  const theFirstSelectedItem = useMemo(() => {
+    const first = Array.from(explorer.selectedItems)[0]
+    return first && first.type === 'FilePath' ? first.filePath : null
   }, [explorer])
 
   const goToFolder = useCallback((index: number) => {

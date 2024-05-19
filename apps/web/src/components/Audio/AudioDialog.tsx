@@ -3,7 +3,7 @@ import BatchExport from './AudioBatchExport'
 import AudioExport from './AudioExport'
 import { AudioDialogEnum } from './store/audio-dialog'
 import { Dialog } from '@gendam/ui/v2/dialog'
-import { ExplorerItem } from '@/Explorer/types'
+import { type FilePath } from '@/lib/bindings'
 import { useBoundStore as useAudioBoundStore } from './store'
 import { useCallback } from 'react'
 
@@ -32,7 +32,7 @@ export const useAudioDialog = () => {
   const setAudioDialogProps = useAudioBoundStore.use.setAudioDialogProps()
   const setAudioDialogOpen = useAudioBoundStore.use.setIsOpenAudioDialog()
 
-  const singleExport = useCallback((item: ExplorerItem) => {
+  const singleExport = useCallback((item: FilePath) => {
     if (!item.assetObject) {
       return
     }
@@ -46,7 +46,7 @@ export const useAudioDialog = () => {
     setIsOpenAudioDialog(true)
   }, [setAudioDialogProps, setIsOpenAudioDialog])
 
-  const batchExport = useCallback((items: ExplorerItem[]) => {
+  const batchExport = useCallback((items: FilePath[]) => {
     items = items.filter(item => item.assetObject?.mediaData?.hasAudio)
     // items.sort((a, b) => a.assetObject.id - b.assetObject.id)
     setAudioDialogProps({

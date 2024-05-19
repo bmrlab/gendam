@@ -1,4 +1,4 @@
-import { ExplorerItem } from '@/Explorer/types'
+import { type FilePath } from '@/lib/bindings'
 import { websocketClient, rspc } from '@/lib/rspc'
 import { Button } from '@gendam/ui/v2/button'
 import { useCallback, useRef } from 'react'
@@ -29,7 +29,7 @@ export const useP2PEvents = () => {
 
   const progressRef = useRef(new WeakMap())
   const receivePathMap = useRef(new Map<string, string[]>())
-  const receiveDirMap = useRef(new Map<string, ExplorerItem | null>())
+  const receiveDirMap = useRef(new Map<string, FilePath | null>())
 
   const { openFileSelection } = useOpenFileSelection()
 

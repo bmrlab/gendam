@@ -1,5 +1,5 @@
 'use client'
-import { ExplorerItem } from '@/Explorer/types'
+import { type FilePath } from '@/lib/bindings'
 import { useUploadQueueStore } from '@/components/UploadQueue/store'
 import Icon from '@gendam/ui/icons'
 import { useRouter } from 'next/navigation'
@@ -10,7 +10,7 @@ const CompletedQueueList = () => {
   const uploadQueueStore = useUploadQueueStore()
   const router = useRouter()
   const reveal = useCallback(
-    (data: ExplorerItem) => {
+    (data: FilePath) => {
       router.push(`/explorer?dir=${data.materializedPath}&id=${data.id}`)
     },
     [router],
@@ -19,7 +19,7 @@ const CompletedQueueList = () => {
   // 合并刚上传的 filePath 和正在处理中的 filePath
   const mergedCompletedItems = useMemo<
     {
-      file: ExplorerItem
+      file: FilePath
       processing: boolean
     }[]
   >(() => {

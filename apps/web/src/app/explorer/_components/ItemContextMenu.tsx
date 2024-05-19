@@ -3,16 +3,17 @@ import { useExplorerStore } from '@/Explorer/store'
 import { rspc, queryClient } from '@/lib/rspc'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { useRouter } from 'next/navigation'
-import { forwardRef, useCallback } from 'react'
+import { forwardRef, useCallback, useMemo } from 'react'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { useMoveTargetSelected } from '@/hooks/useMoveTargetSelected'
 import { useOpenFileSelection } from '@/hooks/useOpenFileSelection'
 import { useInspector } from '@/components/Inspector/store'
 import { useAudioDialog } from '@/components/Audio/AudioDialog'
-import { ExplorerItem } from '@/Explorer/types'
+import { type FilePath } from '@/lib/bindings'
+import { type ExplorerItem } from '@/Explorer/types'
 
 type ItemContextMenuProps = {
-  data: ExplorerItem
+  data: FilePath
 }
 
 const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuProps>(function ItemContextMenuComponent(
@@ -24,6 +25,12 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   // Explorer Component's State and Context
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
+
+  const selectedFilePathItems = useMemo(() => {
+    type T = Extract<ExplorerItem, { type: 'FilePath' }>
+    const filtered = Array.from(explorer.selectedItems).filter((item) => item.type === 'FilePath') as T[]
+    return filtered.map((item) => item.filePath)
+  }, [explorer.selectedItems])
 
   // Page Specific State and Context
   const inspector = useInspector()
@@ -71,7 +78,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
 
   const handleDelete = useCallback(
     async (e: Event) => {
-      for (let item of Array.from(explorer.selectedItems)) {
+      for (let item of selectedFilePathItems) {
         try {
           await deleteMut.mutateAsync({
             materializedPath: item.materializedPath,
@@ -84,7 +91,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       }
       explorer.resetSelectedItems()
     },
-    [deleteMut, explorer],
+    [selectedFilePathItems, deleteMut, explorer],
   )
 
   const handleRename = useCallback(
@@ -96,7 +103,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
 
   const handleProcessMetadata = useCallback(
     async (e: Event) => {
-      for (let item of Array.from(explorer.selectedItems)) {
+      for (let item of selectedFilePathItems) {
         if (!item.assetObject) {
           return
         }
@@ -108,12 +115,12 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
         })
       }
     },
-    [metadataMut, explorer],
+    [selectedFilePathItems, metadataMut],
   )
 
   const handleProcessJobs = useCallback(
     async (e: Event) => {
-      for (let item of Array.from(explorer.selectedItems)) {
+      for (let item of selectedFilePathItems) {
         if (!item.assetObject) {
           return
         }
@@ -126,17 +133,17 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
         })
       }
     },
-    [processJobsMut, explorer],
+    [selectedFilePathItems, processJobsMut],
   )
 
   const handleShare = useCallback(
     (peerId: string) => {
-      let idList = Array.from(explorer.selectedItems).map((item) => {
+      let idList = selectedFilePathItems.map((item) => {
         return item.id
       })
       p2pMut.mutate({ fileIdList: idList, peerId: peerId })
     },
-    [explorer.selectedItems, p2pMut],
+    [selectedFilePathItems, p2pMut],
   )
 
   return (
@@ -153,18 +160,18 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />
       <ContextMenu.Item
         onSelect={handleProcessMetadata}
-        disabled={Array.from(explorer.selectedItems).some((item) => !item.assetObject)}
+        disabled={selectedFilePathItems.some((item) => !item.assetObject)}
       >
         <div>Regen thumbnail</div>
       </ContextMenu.Item>
       <ContextMenu.Item
         onSelect={handleProcessJobs}
-        disabled={Array.from(explorer.selectedItems).some((item) => !item.assetObject)}
+        disabled={selectedFilePathItems.some((item) => !item.assetObject)}
       >
         <div>Re-process jobs</div>
       </ContextMenu.Item>
       <ContextMenu.Item onSelect={() => {
-        const items = Array.from(explorer.selectedItems)
+        const items = selectedFilePathItems
         return items.length === 1 ? audioDialog.singleExport(items[0]) : audioDialog.batchExport(items)
       }}>
         <div>Export transcript</div>

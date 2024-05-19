@@ -1,7 +1,7 @@
 // TODO: move this to Shared Folder
 
 import { create } from 'zustand'
-import { ExplorerItem } from '@/Explorer/types'
+import { type FilePath } from '@/lib/bindings'
 
 export type FileItem = {
   materializedPath: string
@@ -10,14 +10,14 @@ export type FileItem = {
 }
 
 interface UploadQueue {
-  inProcess: ExplorerItem[]
-  completed: (FileItem & ExplorerItem)[]
+  inProcess: FilePath[]
+  completed: (FileItem & FilePath)[]
   failed: FileItem[]
   queue: FileItem[]
   uploading: FileItem | null
-  setInProcessItems: (items: ExplorerItem[]) => void
+  setInProcessItems: (items: FilePath[]) => void
   nextUploading: () => FileItem | null
-  completeUploading: (filePathData: ExplorerItem) => void
+  completeUploading: (filePathData: FilePath) => void
   failedUploading: () => void
   retryFailed: (item: FileItem) => void
   enqueue: (item: FileItem) => void
@@ -45,7 +45,7 @@ export const useUploadQueueStore = create<UploadQueue>((set, get) => ({
     })
     return newUploading
   },
-  completeUploading: (filePathData: ExplorerItem) => {
+  completeUploading: (filePathData: FilePath) => {
     set((state) => {
       if (state.uploading) {
         // should check if state.uploading is same as filePathData (but name may be different ...)

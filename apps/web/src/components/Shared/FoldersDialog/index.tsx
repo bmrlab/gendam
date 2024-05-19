@@ -1,5 +1,4 @@
-import FileThumb from '@/Explorer/components/View/FileThumb'
-import { ExplorerItem } from '@/Explorer/types'
+import { type FilePath } from '@/lib/bindings'
 import Icon from '@gendam/ui/icons'
 import { client, rspc } from '@/lib/rspc'
 import { toast } from 'sonner'
@@ -15,7 +14,7 @@ import { useFoldersDialog } from './store'
 export default function FoldersDialog() {
   const foldersDialog = useFoldersDialog()
   const [currentPath, setCurrentPath] = useState<string>('/')
-  const [selectedFolder, setSelectedFolder] = useState<ExplorerItem | null>(null)
+  const [selectedFolder, setSelectedFolder] = useState<FilePath | null>(null)
 
   const { data: dirs, isError: assetsListFailed } = rspc.useQuery(
     [
@@ -50,7 +49,7 @@ export default function FoldersDialog() {
     }
   }, [foldersDialog.open])
 
-  const [currentExplorerItem, setCurrentExplorerItem] = useState<ExplorerItem | null>(null)
+  const [currentFilePath, setCurrentFilePath] = useState<FilePath | null>(null)
 
   useEffect(() => {
     const match = currentPath.match(/^((\/[^/]+)*\/)([^/]+)\/$/)
@@ -60,7 +59,7 @@ export default function FoldersDialog() {
       client
         .query(['assets.get', { materializedPath, name }])
         .then((data) => {
-          setCurrentExplorerItem(data)
+          setCurrentFilePath(data)
         })
         .catch((error) => {
           toast.error(`Error fetch folder ${currentPath}`, {
@@ -68,16 +67,16 @@ export default function FoldersDialog() {
           })
         })
     } else {
-      setCurrentExplorerItem(null)
+      setCurrentFilePath(null)
     }
-  }, [setCurrentExplorerItem, currentPath])
+  }, [setCurrentFilePath, currentPath])
 
-  const selectFolder = useCallback((data: ExplorerItem|null) => {
+  const selectFolder = useCallback((data: FilePath|null) => {
     setSelectedFolder(data)
   }, [])
 
   const gotoFolder = useCallback(
-    (data: ExplorerItem | '-1') => {
+    (data: FilePath | '-1') => {
       if (data === '-1') {
         let newPath = currentPath.replace(/([^/]+)\/$/, '')
         setCurrentPath(newPath)
@@ -123,7 +122,9 @@ export default function FoldersDialog() {
                     "mb-1 h-16 w-16 rounded p-1",
                     selectedFolder?.id === data.id ? "bg-app-hover" : null
                   )}>
-                    <FileThumb data={data} className="h-full w-full" />
+                    <div className="overflow-hidden relative h-full w-full">
+                      <Image src={Folder_Light} alt="folder" priority fill={true} className="object-contain"></Image>
+                    </div>
                   </div>
                   <div className={classNames(
                     "w-16 rounded px-1",
@@ -150,20 +151,13 @@ export default function FoldersDialog() {
               if (selectedFolder) {
                 foldersDialog.confirm(selectedFolder)
               } else {
-                foldersDialog.confirm(currentExplorerItem)
+                foldersDialog.confirm(currentFilePath)
               }
             }}>
               <Button variant="accent" size="sm">
                 Choose {selectedFolder ? `folder "${selectedFolder.name}"` : 'current folder'}
               </Button>
             </Dialog.Close>
-            {/* {Array.from(explorer.selectedItems).map((item) => {
-              return (
-                <div key={item.id} className="text-xs text-neutral-400">
-                  {item.name}
-                </div>
-              )
-            })} */}
           </div>
         </Dialog.Content>
       </Dialog.Portal>

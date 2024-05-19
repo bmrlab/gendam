@@ -1,13 +1,13 @@
-import { ExplorerItem } from '@/Explorer/types'
+import { type FilePath } from '@/lib/bindings'
 import { useFoldersDialog } from '@/components/Shared/FoldersDialog/store'
 
 export const useOpenFileSelection = () => {
   const foldersDialog = useFoldersDialog()
-  function openFileSelection(): Promise<ExplorerItem | null> {
+  function openFileSelection(): Promise<FilePath | null> {
     foldersDialog.setOpen(true)
 
     return new Promise((resolve, reject) => {
-      const handleConfirm = (path: ExplorerItem | null) => {
+      const handleConfirm = (path: FilePath | null) => {
         resolve(path)
       }
       foldersDialog.setConfirm(handleConfirm)
