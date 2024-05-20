@@ -10,7 +10,7 @@ use crate::validators;
 use crate::CtxWithLibrary;
 use create::{create_asset_object, create_dir};
 use delete::delete_file_path;
-use process::{process_video_asset, process_video_metadata};
+use process::{export_video_segment, process_video_asset, process_video_metadata};
 use read::{get_file_path, list_file_path};
 use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
@@ -234,6 +234,29 @@ where
                 let library = ctx.library()?;
                 let asset_object_id = input;
                 process_video_metadata(&library, asset_object_id).await?;
+                Ok(())
+            })
+        })
+        .mutation("export_video_segment", |t| {
+            #[derive(Deserialize, Type, Debug)]
+            #[serde(rename_all = "camelCase")]
+            struct VideoSegmentExportPayload {
+                verbose_file_name: String,
+                output_dir: String,
+                asset_object_id: i32,
+                milliseconds_from: u32,
+                milliseconds_to: u32,
+            }
+            t(|ctx, input: VideoSegmentExportPayload| async move {
+                let library = ctx.library()?;
+                export_video_segment(
+                    &library,
+                    input.verbose_file_name,
+                    input.output_dir,
+                    input.asset_object_id,
+                    input.milliseconds_from,
+                    input.milliseconds_to,
+                ).await?;
                 Ok(())
             })
         })

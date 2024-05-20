@@ -270,6 +270,21 @@ impl VideoHandler {
             }
         }
     }
+
+    pub fn save_video_segment(&self,
+        verbose_file_name: &str,
+        output_dir: impl AsRef<std::path::Path>,
+        milliseconds_from: u32,
+        milliseconds_to: u32,
+    ) -> anyhow::Result<()> {
+        let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
+        video_decoder.save_video_segment(
+            verbose_file_name,
+            output_dir,
+            milliseconds_from,
+            milliseconds_to
+        )
+    }
 }
 
 #[async_trait]

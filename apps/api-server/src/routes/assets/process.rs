@@ -6,6 +6,22 @@ use prisma_client_rust::QueryError;
 use prisma_lib::{asset_object, file_path, media_data};
 use tracing::{error, info};
 
+fn sql_error(e: QueryError) -> rspc::Error {
+    error!("sql query failed: {e}",);
+    rspc::Error::new(
+        rspc::ErrorCode::InternalServerError,
+        format!("sql query failed: {}", e),
+    )
+}
+
+fn error_404(msg: &str) -> rspc::Error {
+    error!("{}", msg);
+    rspc::Error::new(
+        rspc::ErrorCode::NotFound,
+        String::from(msg),
+    )
+}
+
 pub async fn process_video_asset(
     library: &Library,
     ctx: &impl CtxWithLibrary,
@@ -72,13 +88,6 @@ pub async fn process_video_metadata(
     asset_object_id: i32,
 ) -> Result<(), rspc::Error> {
     info!("process video metadata for asset_object_id: {asset_object_id}");
-    let sql_error = |e: QueryError| {
-        error!("sql query failed: {e}",);
-        rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("sql query failed: {}", e),
-        )
-    };
     let asset_object_data = match library
         .prisma_client()
         .asset_object()
@@ -136,5 +145,49 @@ pub async fn process_video_metadata(
         .exec()
         .await
         .map_err(sql_error)?;
+    Ok(())
+}
+
+pub async fn export_video_segment(
+    library: &Library,
+    verbose_file_name: String,
+    output_dir: String,
+    asset_object_id: i32,
+    milliseconds_from: u32,
+    milliseconds_to: u32,
+) -> Result<(), rspc::Error> {
+    info!("export video segment for asset_object_id: {asset_object_id}");
+
+    let asset_object_data = match library
+        .prisma_client()
+        .asset_object()
+        .find_unique(asset_object::id::equals(asset_object_id))
+        .exec()
+        .await
+        .map_err(sql_error)?
+    {
+        Some(asset_object_data) => asset_object_data,
+        None => return Err(error_404("failed to find asset_object"))
+    };
+    let video_handler = VideoHandler::new(&asset_object_data.hash, &library).map_err(|e| {
+        error!("Failed to create video handler: {e}");
+        rspc::Error::new(
+            rspc::ErrorCode::InternalServerError,
+            format!("failed to get video metadata: {}", e),
+        )
+    })?;
+    video_handler.save_video_segment(
+        verbose_file_name.as_ref(),
+        output_dir,
+        milliseconds_from,
+        milliseconds_to,
+    ).map_err(|e| {
+        error!("failed to save video segment: {e}");
+        rspc::Error::new(
+            rspc::ErrorCode::InternalServerError,
+            format!("failed to save video segment: {}", e),
+        )
+    })?;
+
     Ok(())
 }

@@ -21,6 +21,7 @@ export type Procedures = {
         { key: "assets.create_asset_object", input: AssetObjectCreatePayload, result: FilePath } | 
         { key: "assets.create_dir", input: FilePathCreatePayload, result: null } | 
         { key: "assets.delete_file_path", input: FilePathDeletePayload, result: null } | 
+        { key: "assets.export_video_segment", input: VideoSegmentExportPayload, result: null } | 
         { key: "assets.move_file_path", input: FilePathMovePayload, result: null } | 
         { key: "assets.process_video_asset", input: number, result: null } | 
         { key: "assets.process_video_metadata", input: number, result: null } | 
@@ -82,6 +83,8 @@ export type SearchResultPayload = { filePath: FilePath; metadata: SearchResultMe
 export type FilePathCreatePayload = { materializedPath: string; name: string }
 
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
+
+export type VideoSegmentExportPayload = { verboseFileName: string; outputDir: string; assetObjectId: number; millisecondsFrom: number; millisecondsTo: number }
 
 export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
 

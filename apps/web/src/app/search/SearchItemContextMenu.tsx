@@ -1,11 +1,13 @@
 'use client'
 import { useExplorerContext } from '@/Explorer/hooks'
 import { type ExplorerItem } from '@/Explorer/types'
+import { rspc } from '@/lib/rspc'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { type SearchResultPayload } from '@/lib/bindings'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback, useMemo } from 'react'
+import { toast } from 'sonner'
 
 type SearchItemContextMenuProps = {
   data: SearchResultPayload
@@ -17,11 +19,11 @@ const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemC
     const router = useRouter()
     const quickViewStore = useQuickViewStore()
 
-    // const selectedSearchResultItems = useMemo(() => {
-    //   type T = Extract<ExplorerItem, { type: 'SearchResult' }>
-    //   const filtered = Array.from(explorer.selectedItems).filter((item) => item.type === 'SearchResult') as T[]
-    //   return filtered.map(({ filePath, metadata }) => ({ filePath, metadata } as SearchResultPayload))
-    // }, [explorer.selectedItems])
+    const selectedSearchResultItems = useMemo(() => {
+      type T = Extract<ExplorerItem, { type: 'SearchResult' }>
+      const filtered = Array.from(explorer.selectedItems).filter((item) => item.type === 'SearchResult') as T[]
+      return filtered.map(({ filePath, metadata }) => ({ filePath, metadata } as SearchResultPayload))
+    }, [explorer.selectedItems])
 
     const quickview = useCallback(() => {
       quickViewStore.open({
@@ -37,6 +39,39 @@ const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemC
       router.push(`/explorer?dir=${data.filePath.materializedPath}&id=${data.filePath.id}`)
     }, [data, router])
 
+    const exportSegmentMut = rspc.useMutation(['assets.export_video_segment'])
+
+    const exportSegment = useCallback(async () => {
+      const { open, save } = await import('@tauri-apps/api/dialog')
+      const { downloadDir } = await import('@tauri-apps/api/path')
+      const selectedDir = await open({
+        multiple: false,
+        directory: true,
+        defaultPath: await downloadDir(),
+      })
+      for (const { filePath, metadata } of selectedSearchResultItems) {
+        if (!filePath.assetObjectId) {
+          continue
+        }
+        try {
+          await exportSegmentMut.mutateAsync({
+            verboseFileName: filePath.name,
+            assetObjectId: filePath.assetObjectId,
+            outputDir: selectedDir as string,
+            millisecondsFrom: metadata.startTime,
+            millisecondsTo: Math.max(metadata.endTime, metadata.startTime + 1000),
+          })
+          toast.success('Exported successfully', {
+            description: `Exported ${filePath.name} to ${selectedDir}`
+          })
+        } catch(err) {
+          toast.error('Export failed', {
+            description: `Failed to export ${filePath.name} to ${selectedDir}`
+          })
+        }
+      }
+    }, [exportSegmentMut, selectedSearchResultItems])
+
     return (
       <ContextMenu.Content ref={forwardedRef as any} {...prpos} onClick={(e) => e.stopPropagation()}>
         <ContextMenu.Item
@@ -50,6 +85,11 @@ const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemC
           disabled={explorer.selectedItems.size > 1}
         >
           <div>Reveal in explorer</div>
+        </ContextMenu.Item>
+        <ContextMenu.Item
+          onSelect={() => exportSegment()}
+        >
+          <div>Export video segment</div>
         </ContextMenu.Item>
       </ContextMenu.Content>
     )

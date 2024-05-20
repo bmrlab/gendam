@@ -308,6 +308,62 @@ impl VideoDecoder {
 
         Ok(())
     }
+
+    pub fn save_video_segment(
+        &self,
+        verbose_file_name: &str,
+        output_dir: impl AsRef<Path>,
+        milliseconds_from: u32,
+        milliseconds_to: u32,
+    ) -> anyhow::Result<()> {
+        fn format_seconds(milliseconds: u32) -> String {
+            let seconds_duration = std::time::Duration::from_millis(milliseconds as u64);
+            let hours = seconds_duration.as_secs() / 3600;
+            let minutes = (seconds_duration.as_secs() % 3600) / 60;
+            let seconds = (seconds_duration.as_secs() % 3600) % 60;
+            format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+        }
+        let seconds_string_from = format_seconds(milliseconds_from);
+        let seconds_string_to = format_seconds(milliseconds_to);
+        // ffmpeg -i filename.mp4 -ss 00:00:02 -to 00:00:04 -c copy "[00:00:02,00:00:04] filename.mp4"
+        let (file_name_wo_ext, file_ext) = match verbose_file_name.rsplit_once('.') {
+            Some((wo_ext, ext)) => (wo_ext.to_owned(), format!(".{}", ext)),
+            None => (verbose_file_name.to_owned(), "".to_string()),
+        };
+        let output_full_path = output_dir.as_ref().join(format!(
+            "{} [{},{}]{}",
+            file_name_wo_ext, milliseconds_from, milliseconds_to, file_ext
+        ));
+        match std::process::Command::new(&self.binary_file_path)
+            .args([
+                "-i",
+                self.video_file_path
+                    .to_str()
+                    .expect("invalid video file path"),
+                "-ss",
+                &seconds_string_from,
+                "-to",
+                &seconds_string_to,
+                // "-c",
+                // "copy",  // "copy" codec 有时候会让有些帧空白, 删除这个参数, 导出文件会大一点但稳定
+                output_full_path.to_string_lossy().as_ref(),
+            ])
+            .output()
+        {
+            Ok(output) => {
+                if !output.status.success() {
+                    bail!(
+                        "Failed to save video segment: {}",
+                        String::from_utf8_lossy(&output.stderr)
+                    );
+                }
+                Ok(())
+            }
+            Err(e) => {
+                bail!("Failed to save video segment: {e}");
+            }
+        }
+    }
 }
 
 #[cfg(feature = "ffmpeg-dylib")]
@@ -353,5 +409,24 @@ async fn test_video_decoder() {
             .get_video_metadata()
             .expect("failed to get video metadata");
         println!("{metadata:#?}");
+    }
+}
+
+#[test_log::test(tokio::test)]
+async fn test_save_video_segment() {
+    #[cfg(feature = "ffmpeg-binary")]
+    {
+        let video_file = "/Users/xddotcom/Library/Application Support/ai.gendam.desktop/libraries/d3a13702-8f11-4dc6-86ea-42f63a92c3ad/files/fb6/fb62c84c5e20d5d0";
+        let video_decoder = VideoDecoder::new(video_file).unwrap();
+        let output_dir = "/Users/xddotcom/Downloads";
+        let _result = video_decoder
+            .save_video_segment(
+                "test.mp4",
+                output_dir,
+                3000,
+                5000,
+            )
+            .unwrap();
+        // println!("{result:#?}");
     }
 }
