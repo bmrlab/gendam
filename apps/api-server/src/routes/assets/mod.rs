@@ -17,7 +17,6 @@ use serde::Deserialize;
 use specta::Type;
 use tracing::info;
 
-use crate::routes::assets::utils::merge_shared_path;
 use crate::validators;
 use create::{create_asset_object, create_dir};
 use delete::delete_file_path;
@@ -139,17 +138,14 @@ where
                 }
                 |ctx, input: FilePathQueryPayload| async move {
                     let library = ctx.library()?;
-                    let mut res = list_file_path(
+                    let res = list_file_path(
                         &library,
                         &input.materialized_path,
                         input.is_dir,
                         input.include_sub_dirs,
                     )
                     .await?;
-                    let res = &mut res;
-                    merge_shared_path(&library, res).await;
-                    info!("res: {res:?}");
-                    Ok(res.to_owned())
+                    Ok(res)
                 }
             })
         })

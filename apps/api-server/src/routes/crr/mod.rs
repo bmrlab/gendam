@@ -37,8 +37,8 @@ impl PullResult {
 }
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
-where
-    TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
+    where
+        TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
     Router::<TCtx>::new()
         .mutation("pull", |t| {
@@ -157,14 +157,10 @@ where
                             pull_result.file_path_id.clone(),
                         ),
                         (
-                            file_path::UniqueWhereParam::IdEquals(
-                                pull_result.file_path_id.clone(),
-                            ),
+                            file_path::UniqueWhereParam::IdEquals(pull_result.file_path_id.clone()),
                             pull_result.device_id.clone(),
                             payload.relative_path.clone(),
-                            vec![sub_file_path_ids::set(
-                                sub_file_path_ids_string.clone(),
-                            )],
+                            vec![sub_file_path_ids::set(sub_file_path_ids_string.clone())],
                         ),
                         vec![
                             sync_metadata::device_id::set(pull_result.device_id),
@@ -181,8 +177,16 @@ where
                 library
                     .prisma_client()
                     .file_path()
-                    .update(
-                        file_path::UniqueWhereParam::IdEquals(pull_result.file_path_id.clone()),
+                    .update_many(
+                        vec![file_path::WhereParam::Id(
+                            prisma_lib::read_filters::StringFilter::InVec(
+                                [
+                                    pull_result.sub_file_path_ids,
+                                    vec![pull_result.file_path_id],
+                                ]
+                                    .concat(),
+                            ),
+                        )],
                         vec![file_path::SetParam::SetRelativePath(Some(
                             payload.relative_path,
                         ))],
