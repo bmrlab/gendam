@@ -2,51 +2,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use api_server::{ctx::default::Ctx, CtxWithLibrary};
 use dotenvy::dotenv;
-use std::{
-    path::PathBuf,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 use tauri::Manager;
 use vector_db::kill_qdrant_server;
 mod store;
 use store::Store;
-
-#[allow(dead_code)]
-fn validate_app_version(app_handle: tauri::AppHandle, local_data_root: &PathBuf) {
-    // 目前先不需要调用这个, 这一次 release 不会用到旧的数据库
-    const VERSION_SHOULD_GTE: usize = 2;
-    let mut tauri_store =
-        tauri_plugin_store::StoreBuilder::new(app_handle, "settings.json".parse().unwrap()).build();
-    tauri_store.load().unwrap_or_else(|e| {
-        tracing::warn!("Failed to load tauri store: {:?}", e);
-    });
-    let version: usize = match tauri_store.get("version") {
-        Some(value) => value.as_str().unwrap_or("").to_string(),
-        None => "".to_string(),
-    }
-    .parse()
-    .unwrap_or(0);
-    if version < VERSION_SHOULD_GTE {
-        // check if libraries exists, if true, move it to archived/libraries
-        let libraries_dir = local_data_root.join("libraries");
-        if libraries_dir.exists() {
-            let archived_dir = local_data_root.join("archived");
-            std::fs::create_dir_all(&archived_dir).unwrap();
-            std::fs::rename(
-                &libraries_dir,
-                archived_dir.join(format!("libraries-{}", chrono::Utc::now().timestamp())),
-            )
-            .unwrap();
-        }
-        tauri_store.delete("current-library-id").unwrap();
-        tauri_store
-            .insert("version".to_string(), VERSION_SHOULD_GTE.to_string().into())
-            .unwrap_or_else(|e| tracing::warn!("Failed to insert version to tauri store: {:?}", e));
-        tauri_store.save().unwrap_or_else(|e| {
-            tracing::warn!("Failed to save tauri store: {:?}", e);
-        });
-    }
-}
 
 #[tokio::main]
 async fn main() {
@@ -175,3 +135,40 @@ fn greet(name: &str) -> String {
     println!("Hello, {}, from Server!", name);
     format!("Hello, {}, in Client!", name)
 }
+
+// #[allow(dead_code)]
+// fn validate_app_version(app_handle: tauri::AppHandle, local_data_root: &std::path::PathBuf) {
+//     // 目前先不需要调用这个, 这一次 release 不会用到旧的数据库
+//     const VERSION_SHOULD_GTE: usize = 2;
+//     let mut tauri_store =
+//         tauri_plugin_store::StoreBuilder::new(app_handle, "settings.json".parse().unwrap()).build();
+//     tauri_store.load().unwrap_or_else(|e| {
+//         tracing::warn!("Failed to load tauri store: {:?}", e);
+//     });
+//     let version: usize = match tauri_store.get("version") {
+//         Some(value) => value.as_str().unwrap_or("").to_string(),
+//         None => "".to_string(),
+//     }
+//     .parse()
+//     .unwrap_or(0);
+//     if version < VERSION_SHOULD_GTE {
+//         // check if libraries exists, if true, move it to archived/libraries
+//         let libraries_dir = local_data_root.join("libraries");
+//         if libraries_dir.exists() {
+//             let archived_dir = local_data_root.join("archived");
+//             std::fs::create_dir_all(&archived_dir).unwrap();
+//             std::fs::rename(
+//                 &libraries_dir,
+//                 archived_dir.join(format!("libraries-{}", chrono::Utc::now().timestamp())),
+//             )
+//             .unwrap();
+//         }
+//         tauri_store.delete("current-library-id").unwrap();
+//         tauri_store
+//             .insert("version".to_string(), VERSION_SHOULD_GTE.to_string().into())
+//             .unwrap_or_else(|e| tracing::warn!("Failed to insert version to tauri store: {:?}", e));
+//         tauri_store.save().unwrap_or_else(|e| {
+//             tracing::warn!("Failed to save tauri store: {:?}", e);
+//         });
+//     }
+// }

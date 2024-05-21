@@ -3,7 +3,7 @@ use std::{
     path::PathBuf,
     sync::Mutex,
 };
-use dotenvy::dotenv;
+// use dotenvy::dotenv;
 // use tracing::subscriber;
 use tracing_subscriber::{
     layer::SubscriberExt,
@@ -13,12 +13,12 @@ use tracing_subscriber::{
 // mod open_telemetry;
 // use open_telemetry::init_otel_layer;
 
-
 fn init_env_layer() -> tracing_subscriber::EnvFilter {
-    match dotenv() {
-        Ok(path) => eprintln!(".env read successfully from {}", path.display()),
-        Err(e) => eprintln!("Could not load .env file: {e}"),
-    };
+    // not nessary to load .env file, as it's already loaded in the main function
+    // match dotenv() {
+    //     Ok(path) => eprintln!(".env read successfully from {}", path.display()),
+    //     Err(e) => eprintln!("Could not load .env file: {e}"),
+    // };
 
     let env_layer = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "debug".into());
