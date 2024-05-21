@@ -215,7 +215,9 @@ impl Queryable for Sqlite {
             unsafe {
                 let client_lock = self.client.lock().await;
                 client_lock.load_extension_enable()?;
-                match client_lock.load_extension("crsqlite", Some("sqlite3_crsqlite_init")) {
+                match client_lock
+                    .load_extension("/Users/zingerbee/Desktop/crsqlite.dylib", Some("sqlite3_crsqlite_init"))
+                {
                     Ok(()) => {
                         tracing::info!("Loaded crsqlite extension successfully");
                         return Ok(1);

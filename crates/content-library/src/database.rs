@@ -18,11 +18,10 @@ async fn copy_data_from_legacy_db(
             for data in legacy_asset_objects {
                 client
                     .asset_object()
-                    .create(
-                        data.hash,
-                        data.size,
-                        vec![asset_object::mime_type::set(data.mime_type)],
-                    )
+                    .create(vec![
+                            asset_object::hash::set(data.hash)
+                            asset_object::size::set(data.size)
+                            asset_object::mime_type::set(data.mime_type)])
                     .exec()
                     .await?;
             }

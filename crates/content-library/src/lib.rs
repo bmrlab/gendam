@@ -1,5 +1,5 @@
 use crdt::constant::CRDT_TABLE;
-use prisma_lib::{new_client_with_url, raw, PrismaClient};
+use prisma_lib::{raw, PrismaClient};
 use qdrant::create_qdrant_server;
 pub use qdrant::{make_sure_collection_created, QdrantCollectionInfo, QdrantServerInfo};
 use qdrant_client::client::QdrantClient;
@@ -9,10 +9,10 @@ use std::{
 };
 use vector_db::QdrantServer;
 
+pub mod bundle;
+mod database;
 mod port;
 mod qdrant;
-mod database;
-pub mod bundle;
 
 #[derive(Clone, Debug)]
 pub struct Library {
@@ -98,15 +98,15 @@ pub async fn load_library(
 
     let client = database::migrate_library(&db_dir).await?;
 
-    let prisma_client = Arc::new(client);
-
     let load_extension_res = client
-    ._execute_raw(raw!(".load"))
-    .exec()
-    .await
-    .expect("failed to load extension");
+        ._execute_raw(raw!(".load"))
+        .exec()
+        .await
+        .expect("failed to load extension");
 
     tracing::info!("loading extension status: {}", load_extension_res);
+
+    let prisma_client = Arc::new(client);
 
     let qdrant_server = create_qdrant_server(qdrant_dir).await?;
 

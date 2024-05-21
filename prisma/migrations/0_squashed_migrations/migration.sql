@@ -1,65 +1,81 @@
 -- CreateTable
 CREATE TABLE "FilePath" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "isDir" BOOLEAN NOT NULL,
-    "materializedPath" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "isDir" BOOLEAN NOT NULL DEFAULT false,
+    "materializedPath" TEXT NOT NULL DEFAULT '',
+    "relativePath" TEXT,
+    "name" TEXT NOT NULL DEFAULT '',
     "description" TEXT,
-    "assetObjectId" INTEGER,
+    "assetObjectId" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "FilePath_assetObjectId_fkey" FOREIGN KEY ("assetObjectId") REFERENCES "AssetObject" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    "updatedAt" DATETIME
 );
 
 -- CreateTable
 CREATE TABLE "AssetObject" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "hash" TEXT NOT NULL,
-    "size" INTEGER NOT NULL,
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "hash" TEXT,
+    "size" INTEGER,
     "mimeType" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "updatedAt" DATETIME
 );
 
 -- CreateTable
 CREATE TABLE "MediaData" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" TEXT NOT NULL PRIMARY KEY,
     "width" INTEGER,
     "height" INTEGER,
     "duration" INTEGER,
     "bitRate" INTEGER,
     "hasAudio" BOOLEAN,
-    "assetObjectId" INTEGER NOT NULL,
+    "assetObjectId" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "MediaData_assetObjectId_fkey" FOREIGN KEY ("assetObjectId") REFERENCES "AssetObject" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    "updatedAt" DATETIME
 );
 
 -- CreateTable
 CREATE TABLE "FileHandlerTask" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "assetObjectId" INTEGER NOT NULL,
+    "assetObjectId" TEXT NOT NULL,
     "taskType" TEXT NOT NULL,
     "exitCode" INTEGER,
     "exitMessage" TEXT,
     "startsAt" DATETIME,
     "endsAt" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "SyncMetadata" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "filePathId" TEXT NOT NULL,
+    "subFilePathIds" TEXT,
+    "deviceId" TEXT NOT NULL,
+    "relativePath" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "FileHandlerTask_assetObjectId_fkey" FOREIGN KEY ("assetObjectId") REFERENCES "AssetObject" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    "lastSyncAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateIndex
 CREATE INDEX "FilePath_materializedPath_idx" ON "FilePath"("materializedPath");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "FilePath_materializedPath_name_key" ON "FilePath"("materializedPath", "name");
+CREATE INDEX "FilePath_assetObjectId_idx" ON "FilePath"("assetObjectId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "AssetObject_hash_key" ON "AssetObject"("hash");
+CREATE INDEX "FilePath_relativePath_idx" ON "FilePath"("relativePath");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "MediaData_assetObjectId_key" ON "MediaData"("assetObjectId");
+CREATE INDEX "MediaData_assetObjectId_idx" ON "MediaData"("assetObjectId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "FileHandlerTask_assetObjectId_taskType_key" ON "FileHandlerTask"("assetObjectId", "taskType");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SyncMetadata_filePathId_key" ON "SyncMetadata"("filePathId");
+
+-- CreateIndex
+CREATE INDEX "SyncMetadata_filePathId_deviceId_relativePath_idx" ON "SyncMetadata"("filePathId", "deviceId", "relativePath");
