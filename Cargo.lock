@@ -271,6 +271,7 @@ dependencies = [
  "downloader",
  "file-handler",
  "futures",
+ "glob",
  "infer 0.15.0",
  "libp2p",
  "mime_guess",

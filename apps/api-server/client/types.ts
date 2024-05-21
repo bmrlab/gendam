@@ -12,6 +12,7 @@ export type Procedures = {
         { key: "libraries.status", input: never, result: LibraryStatusResult } | 
         { key: "p2p.state", input: never, result: any } | 
         { key: "search.all", input: SearchRequestPayload, result: SearchResultPayload[] } | 
+        { key: "search.suggestions", input: never, result: string[] } | 
         { key: "tasks.get_assets_in_process", input: never, result: FilePath[] } | 
         { key: "tasks.list", input: TaskListRequestPayload, result: FileHandlerTask[] } | 
         { key: "users.get", input: never, result: Auth | null } | 
@@ -54,8 +55,6 @@ export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsT
 
 export type ModelArtifact = { url: string; checksum: string }
 
-export type SearchResultPayload = { filePath: FilePath; metadata: SearchResultMetadata }
-
 export type Auth = { id: string; name: string }
 
 export type SharePayload = { fileIdList: number[]; peerId: string }
@@ -70,6 +69,8 @@ export type VideoTaskListRequestFilter = "all" | "processing" | "completed" | "f
 
 export type VideoWithTasksPageResult = { data: VideoWithTasksResult[]; pagination: Pagination; maxPage: number }
 
+export type SearchRequestPayload = { text: string; recordType: string }
+
 export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPath: string; oldName: string; newName: string }
 
 export type AssetObjectReceivePayload = { hash: string; materializedPath: string }
@@ -79,8 +80,6 @@ export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 export type FilePathDeletePayload = { materializedPath: string; name: string }
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
-
-export type SearchRequestPayload = { text: string; recordType: string }
 
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
@@ -136,12 +135,14 @@ export type AIModel = { id: string; title: string; description: string; categori
 
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
 
-export type SearchResultMetadata = { startTime: number; endTime: number; score: number }
-
 export type AssetObject = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string }
 
 export type TaskListRequestPayload = { filter: TaskListRequestFilter }
 
+export type SearchResultMetadata = { startTime: number; endTime: number; score: number }
+
 export type LibrarySettingsThemeEnum = "light" | "dark"
 
 export type ExportInput = { types: AudioType[]; hash: string; path: string; fileName?: string | null }
+
+export type SearchResultPayload = { filePath: FilePath; metadata: SearchResultMetadata }

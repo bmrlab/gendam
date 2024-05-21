@@ -1,18 +1,12 @@
 use content_library::{Library, QdrantServerInfo};
 use crate::ai::AIHandler;
+use crate::error::sql_error;
 use file_handler::{
     search::{SearchRequest, SearchResult},
     SearchRecordType,
 };
 use serde::{Deserialize, Serialize};
 use specta::Type;
-
-fn sql_error(e: prisma_client_rust::QueryError) -> rspc::Error {
-    rspc::Error::new(
-        rspc::ErrorCode::InternalServerError,
-        format!("sql query failed: {}", e),
-    )
-}
 
 #[derive(Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
