@@ -3,7 +3,10 @@ use std::path::PathBuf;
 use super::utils::generate_file_hash;
 use content_library::Library;
 use prisma_client_rust::QueryError;
-use prisma_lib::{asset_object, file_path};
+use prisma_lib::{
+    asset_object,
+    file_path::{self},
+};
 
 pub async fn create_dir(
     library: &Library,
@@ -126,7 +129,7 @@ pub async fn create_asset_object(
                     let name = file_path_data.name.as_str();
                     let (name_wo_ext_1, ext_1) = match name.rsplit_once('.') {
                         Some((wo_ext, ext)) => (wo_ext, ext),
-                        None => (name, "")
+                        None => (name, ""),
                     };
                     if ext_1 == ext && name_wo_ext_1 == name_wo_ext {
                         return Some(0);
@@ -136,25 +139,29 @@ pub async fn create_asset_object(
                         None => (name_wo_ext_1, "0"),
                     };
                     if ext_1 == ext && name_wo_ext_1 == name_wo_ext {
-                        num.parse::<u32>().ok()  // Converts from Result<T, E> to Option<T>
+                        num.parse::<u32>().ok() // Converts from Result<T, E> to Option<T>
                     } else {
                         None
                     }
                 })
                 .max();
-            let ext_with_dot = if ext == "" { "".to_string() } else { format!(".{}", ext) };
+            let ext_with_dot = if ext == "" {
+                "".to_string()
+            } else {
+                format!(".{}", ext)
+            };
             let new_name = match max_num {
                 Some(max_num) => format!("{} {}{}", name_wo_ext, max_num + 1, ext_with_dot),
                 None => format!("{}{}", name_wo_ext, ext_with_dot), // same as name
             };
             let file_path_data = client
                 .file_path()
-                .create(
-                    false,
-                    materialized_path.to_string(),
-                    new_name.clone(),
-                    vec![file_path::asset_object_id::set(Some(asset_object_data.id))],
-                )
+                .create(vec![
+                    file_path::materialized_path::set(materialized_path.to_string()),
+                    file_path::name::set(new_name.clone()),
+                    file_path::is_dir::set(false),
+                    file_path::asset_object_id::set(Some(asset_object_data.id.clone())),
+                ])
                 .exec()
                 .await?;
             Ok((asset_object_data, file_path_data, asset_object_existed))

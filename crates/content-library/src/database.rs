@@ -19,9 +19,10 @@ async fn copy_data_from_legacy_db(
                 client
                     .asset_object()
                     .create(vec![
-                            asset_object::hash::set(data.hash)
-                            asset_object::size::set(data.size)
-                            asset_object::mime_type::set(data.mime_type)])
+                        asset_object::hash::set(data.hash),
+                        asset_object::size::set(data.size),
+                        asset_object::mime_type::set(data.mime_type),
+                    ])
                     .exec()
                     .await?;
             }
@@ -30,16 +31,14 @@ async fn copy_data_from_legacy_db(
             for data in legacy_media_data {
                 client
                     .media_data()
-                    .create(
-                        data.asset_object_id,
-                        vec![
-                            media_data::width::set(data.width),
-                            media_data::height::set(data.height),
-                            media_data::duration::set(data.duration),
-                            media_data::bit_rate::set(data.bit_rate),
-                            media_data::has_audio::set(data.has_audio),
-                        ],
-                    )
+                    .create(vec![
+                        media_data::asset_object_id::set(data.asset_object_id),
+                        media_data::width::set(data.width),
+                        media_data::height::set(data.height),
+                        media_data::duration::set(data.duration),
+                        media_data::bit_rate::set(data.bit_rate),
+                        media_data::has_audio::set(data.has_audio),
+                    ])
                     .exec()
                     .await?;
             }
@@ -48,12 +47,12 @@ async fn copy_data_from_legacy_db(
             for data in legacy_file_paths {
                 client
                     .file_path()
-                    .create(
-                        data.is_dir,
-                        data.materialized_path,
-                        data.name,
-                        vec![file_path::asset_object_id::set(data.asset_object_id)],
-                    )
+                    .create(vec![
+                        file_path::is_dir::set(data.is_dir),
+                        file_path::materialized_path::set(data.materialized_path),
+                        file_path::name::set(data.name),
+                        file_path::asset_object_id::set(data.asset_object_id),
+                    ])
                     .exec()
                     .await?;
             }

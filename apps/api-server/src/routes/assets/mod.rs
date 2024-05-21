@@ -16,12 +16,6 @@ use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
 use specta::Type;
 use tracing::info;
-
-use crate::validators;
-use create::{create_asset_object, create_dir};
-use delete::delete_file_path;
-use process::{process_video_asset, process_video_metadata};
-use read::{get_file_path, list_file_path};
 use types::FilePathRequestPayload;
 use update::{move_file_path, rename_file_path};
 
@@ -250,7 +244,7 @@ where
             struct VideoSegmentExportPayload {
                 verbose_file_name: String,
                 output_dir: String,
-                asset_object_id: i32,
+                asset_object_id: String,
                 milliseconds_from: u32,
                 milliseconds_to: u32,
             }
@@ -263,7 +257,8 @@ where
                     input.asset_object_id,
                     input.milliseconds_from,
                     input.milliseconds_to,
-                ).await?;
+                )
+                .await?;
                 Ok(())
             })
         })

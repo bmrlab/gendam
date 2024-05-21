@@ -26,7 +26,7 @@ pub async fn trigger_unfinished(
         .await?;
 
     // group tasks by asset_object_id
-    let mut asset_tasks: HashMap<i32, Vec<String>> = HashMap::new();
+    let mut asset_tasks: HashMap<String, Vec<String>> = HashMap::new();
     tasks.into_iter().for_each(|task| {
         if let Some(tasks) = asset_tasks.get_mut(&task.asset_object_id) {
             tasks.push(task.task_type.to_string());
@@ -86,16 +86,22 @@ pub async fn create_file_handler_task(
         None => valid_task_types,
     };
 
+    let asset_object_data_id = asset_object_data.id.clone();
+
     for (idx, task_type) in task_types.iter().enumerate() {
         let x = library
             .prisma_client()
             .file_handler_task()
             .upsert(
                 file_handler_task::asset_object_id_task_type(
-                    asset_object_data.id,
+                    asset_object_data_id.clone(),
                     task_type.0.to_string(),
                 ),
-                file_handler_task::create(asset_object_data.id, task_type.0.to_string(), vec![]),
+                file_handler_task::create(
+                    asset_object_data_id.clone(),
+                    task_type.0.to_string(),
+                    vec![],
+                ),
                 vec![
                     file_handler_task::starts_at::set(None),
                     file_handler_task::ends_at::set(None),
@@ -122,7 +128,7 @@ pub async fn create_file_handler_task(
                 handler: handler.clone(),
                 task_type: task_type.0.clone(),
                 with_existing_artifacts,
-                asset_object_id: asset_object_data.id,
+                asset_object_id: asset_object_data_id.clone(),
                 prisma_client: library.prisma_client(),
             },
             priority,
@@ -131,13 +137,17 @@ pub async fn create_file_handler_task(
             Ok(_) => {
                 info!(
                     "Task queued {} {}, priority: {}",
-                    asset_object_data.id, &task_type.0, priority
+                    asset_object_data_id.clone(),
+                    &task_type.0,
+                    priority
                 );
             }
             Err(e) => {
                 error!(
                     "Failed to queue task {} {}: {}",
-                    asset_object_data.id, &task_type.0, e
+                    asset_object_data_id.clone(),
+                    &task_type.0,
+                    e
                 );
             }
         }
@@ -154,7 +164,7 @@ pub fn get_file_handler(
 
     let handler: Box<dyn FileHandler> = match &asset_object_data.mime_type {
         Some(mime_type) if mime_type.starts_with("video") => {
-            let handler = VideoHandler::new(&asset_object_data.hash, &library)?;
+            let handler = VideoHandler::new(&asset_object_data.hash.clone().expect("hash"), &library)?;
 
             let library_settings = get_library_settings(&library.dir);
 

@@ -2,11 +2,11 @@ use prisma_lib::{file_path, PrismaClient};
 use std::{collections::HashSet, sync::Arc};
 
 pub async fn find_all_asset_object_hashes(
-    file_id_list: Vec<i32>,
+    file_id_list: Vec<String>,
     prisma_client: Arc<PrismaClient>,
 ) -> Result<Vec<String>, rspc::Error> {
     let mut files = file_id_list.clone();
-    let mut results = HashSet::new();
+    let mut results: HashSet<String> = HashSet::new();
 
     loop {
         if files.is_empty() {
@@ -40,7 +40,7 @@ pub async fn find_all_asset_object_hashes(
                     match asset_object {
                         Some(asset_object) => {
                             // 是文件
-                            results.insert(asset_object.hash.clone());
+                            results.insert(asset_object.hash.clone().expect("hash"));
                         }
                         None => {
                             // 是文件夹
@@ -54,7 +54,7 @@ pub async fn find_all_asset_object_hashes(
                                 )])
                                 .exec()
                                 .await?;
-                            let res: Vec<i32> =
+                            let res: Vec<String> =
                                 sub_file_res.iter().map(|file| file.id.clone()).collect();
 
                             files.extend(res);
@@ -73,7 +73,7 @@ pub async fn find_all_asset_object_hashes(
                         )])
                         .exec()
                         .await?;
-                    let res: Vec<i32> = sub_file_res.iter().map(|file| file.id.clone()).collect();
+                    let res: Vec<String> = sub_file_res.iter().map(|file| file.id.clone()).collect();
 
                     files.extend(res);
                 }

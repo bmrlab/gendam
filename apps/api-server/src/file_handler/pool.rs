@@ -20,7 +20,7 @@ pub struct Task {
     pub handler: Arc<Box<dyn FileHandler>>,
     pub task_type: String,
     pub with_existing_artifacts: Option<bool>,
-    pub asset_object_id: i32,
+    pub asset_object_id: String,
     pub prisma_client: Arc<PrismaClient>,
 }
 
@@ -57,7 +57,7 @@ impl Task {
             .file_handler_task()
             .update(
                 file_handler_task::asset_object_id_task_type(
-                    self.asset_object_id,
+                    self.asset_object_id.clone(),
                     // (&*self.task_type).as_ref().to_string(),
                     self.task_type.clone(),
                 ),
@@ -88,7 +88,7 @@ impl Task {
             .file_handler_task()
             .update(
                 file_handler_task::asset_object_id_task_type(
-                    self.asset_object_id,
+                    self.asset_object_id.clone(),
                     // (&*self.task_type).as_ref().to_string(),
                     self.task_type.clone(),
                 ),
@@ -130,13 +130,13 @@ impl Eq for Task {}
 pub enum TaskPayload {
     Task((Task, TaskPriority, usize)),
     #[allow(dead_code)]
-    CancelByAssetAndType(i32, String),
-    CancelByAssetId(i32),
+    CancelByAssetAndType(String, String),
+    CancelByAssetId(String),
     CancelAll,
 }
 
 pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
-    let task_mapping: HashMap<i32, HashMap<String, CancellationToken>> = HashMap::new();
+    let task_mapping: HashMap<String, HashMap<String, CancellationToken>> = HashMap::new();
     let task_mapping = Arc::new(RwLock::new(task_mapping));
     let task_mapping_clone = task_mapping.clone();
 
@@ -214,7 +214,7 @@ pub fn init_task_pool() -> anyhow::Result<Sender<TaskPayload>> {
 /// 收到任务则将任务加入队列
 async fn handle_task_payload_input(
     task_queue: Arc<RwLock<PriorityQueue<Task, TaskPriority>>>,
-    task_mapping: Arc<RwLock<HashMap<i32, HashMap<String, CancellationToken>>>>,
+    task_mapping: Arc<RwLock<HashMap<String, HashMap<String, CancellationToken>>>>,
     current_task_priority: Arc<RwLock<Option<TaskPriority>>>,
     rx: mpsc::Receiver<TaskPayload>,
     task_tx: tokio::sync::mpsc::Sender<()>,
@@ -225,7 +225,7 @@ async fn handle_task_payload_input(
         match rx.recv() {
             Ok(payload) => match payload {
                 TaskPayload::Task((task, priority, order)) => {
-                    let asset_object_id = task.asset_object_id;
+                    let asset_object_id = task.asset_object_id.clone();
                     // let task_type = (&*task.task_type).as_ref().to_string();
                     let task_type = task.task_type.clone();
                     info!("Task received: {} {}", asset_object_id, &task_type);
@@ -233,7 +233,7 @@ async fn handle_task_payload_input(
                     // if task exists, ignore it
                     // 这里 task_queue 是所有未执行的任务
                     // task_mapping 还包括了正在执行的任务，所以用它
-                    if let Some(tasks) = task_mapping.read().await.get(&asset_object_id) {
+                    if let Some(tasks) = task_mapping.read().await.get(&asset_object_id.clone()) {
                         if let Some(_) = tasks.get(&task_type) {
                             continue;
                         }
@@ -243,7 +243,7 @@ async fn handle_task_payload_input(
                     {
                         let current_cancel_token = CancellationToken::new();
                         let mut task_mapping = task_mapping.write().await;
-                        match task_mapping.get_mut(&asset_object_id) {
+                        match task_mapping.get_mut(&asset_object_id.clone()) {
                             Some(item) => {
                                 item.insert(task_type, current_cancel_token);
                             }
@@ -280,7 +280,7 @@ async fn handle_task_payload_input(
                 }
                 TaskPayload::CancelByAssetAndType(asset_object_id, task_type) => {
                     let task_mapping = task_mapping.read().await;
-                    if let Some(item) = task_mapping.get(&asset_object_id) {
+                    if let Some(item) = task_mapping.get(&asset_object_id.clone()) {
                         if let Some(cancel_token) = item.get(&task_type.to_string()) {
                             cancel_token.cancel();
                         } else {
@@ -296,7 +296,7 @@ async fn handle_task_payload_input(
                 }
                 TaskPayload::CancelByAssetId(asset_object_id) => {
                     let task_mapping = task_mapping.read().await;
-                    if let Some(item) = task_mapping.get(&asset_object_id) {
+                    if let Some(item) = task_mapping.get(&asset_object_id.clone()) {
                         item.iter().for_each(|(task_type, cancel_token)| {
                             cancel_token.cancel();
                             info!("Task cancelled {} {}", asset_object_id, task_type);
@@ -318,7 +318,7 @@ async fn handle_task_payload_input(
 /// 当任务队列为空时，如果 task_rx 收到信息，则继续处理任务
 async fn loop_until_queue_empty(
     task_queue: Arc<RwLock<PriorityQueue<Task, TaskPriority>>>,
-    task_mapping: Arc<RwLock<HashMap<i32, HashMap<String, CancellationToken>>>>,
+    task_mapping: Arc<RwLock<HashMap<String, HashMap<String, CancellationToken>>>>,
     current_task_priority: Arc<RwLock<Option<TaskPriority>>>,
     mut task_rx: tokio::sync::mpsc::Receiver<()>,
     mut priority_rx: tokio::sync::mpsc::Receiver<()>,
@@ -343,7 +343,7 @@ async fn loop_until_queue_empty(
                         top_task
                     };
 
-                    let asset_object_id = task.asset_object_id;
+                    let asset_object_id = task.asset_object_id.clone();
                     // let task_type = (&*task.task_type).as_ref().to_string();
                     let task_type = task.task_type.clone();
                     info!(
@@ -357,26 +357,26 @@ async fn loop_until_queue_empty(
                      * 不然下面的 task_mapping_clone.write().await 会死锁，
                      * 而且 current_cancel_token 不能是 & cancel_token.clone() 释放 task_mapping
                      */
-                    let current_cancel_token = match task_mapping.read().await.get(&asset_object_id)
-                    {
-                        Some(item) => match item.get(&task_type.to_string()) {
-                            Some(cancel_token) => cancel_token.clone(),
+                    let current_cancel_token =
+                        match task_mapping.read().await.get(&asset_object_id.clone()) {
+                            Some(item) => match item.get(&task_type.to_string()) {
+                                Some(cancel_token) => cancel_token.clone(),
+                                None => {
+                                    error!(
+                                        "No task in the queue for asset obejct {} of type {}",
+                                        asset_object_id, task_type
+                                    );
+                                    continue;
+                                }
+                            },
                             None => {
                                 error!(
-                                    "No task in the queue for asset obejct {} of type {}",
-                                    asset_object_id, task_type
+                                    "No tasks in the queue for asset obejct {} ",
+                                    asset_object_id
                                 );
                                 continue;
                             }
-                        },
-                        None => {
-                            error!(
-                                "No tasks in the queue for asset obejct {} ",
-                                asset_object_id
-                            );
-                            continue;
-                        }
-                    };
+                        };
 
                     let task_clone = task.clone();
                     let mut cancel_by_priority = false;

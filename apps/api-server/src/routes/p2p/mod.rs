@@ -29,7 +29,7 @@ where
             #[derive(Deserialize, Type, Debug)]
             #[serde(rename_all = "camelCase")]
             struct SharePayload {
-                file_id_list: Vec<i32>,
+                file_id_list: Vec<String>,
                 peer_id: String,
             }
             t(|ctx, input: SharePayload| async move {

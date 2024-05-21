@@ -111,7 +111,7 @@ where
                         ))
                         .take(1),
                 )
-                .with(prisma_lib::asset_object::media_data::fetch())
+                .with(prisma_lib::asset_object::media_data::fetch(vec![]))
                 .exec()
                 .await
                 .map_err(sql_error)?;
@@ -119,9 +119,9 @@ where
             // println!("tasks: {:?}", tasks);
             let mut tasks_hash_map =
                 std::collections::HashMap::<String, &prisma_lib::asset_object::Data>::new();
-            asset_objects.iter().for_each(|asset_object_data| {
+            asset_objects.iter().filter(|a| a.hash.is_some()).for_each(|asset_object_data| {
                 let hash = asset_object_data.hash.clone();
-                tasks_hash_map.insert(hash, asset_object_data);
+                tasks_hash_map.insert(hash.unwrap(), asset_object_data);
             });
 
             let search_result = search_results

@@ -8,9 +8,9 @@ use specta::Type;
 #[serde(rename_all = "camelCase")]
 struct TaskListRequestFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
-    asset_object_id: Option<i32>,
+    asset_object_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    asset_object_ids: Option<Vec<i32>>,
+    asset_object_ids: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Type, Debug)]

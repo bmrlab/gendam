@@ -85,7 +85,7 @@ pub async fn process_video_asset(
 
 pub async fn process_video_metadata(
     library: &Library,
-    asset_object_id: i32,
+    asset_object_id: String,
 ) -> Result<(), rspc::Error> {
     info!("process video metadata for asset_object_id: {asset_object_id}");
     let asset_object_data = match library
@@ -105,7 +105,10 @@ pub async fn process_video_metadata(
             ));
         }
     };
-    let video_handler = VideoHandler::new(&asset_object_data.hash, &library).map_err(|e| {
+    
+    let hash = asset_object_data.hash.clone().expect("hash");
+
+    let video_handler = VideoHandler::new(&hash, &library).map_err(|e| {
         error!("Failed to create video handler: {e}");
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
@@ -127,24 +130,41 @@ pub async fn process_video_metadata(
         )
     })?;
 
-    let values: Vec<media_data::SetParam> = vec![
+    let mut values: Vec<media_data::SetParam> = vec![
         media_data::width::set(Some(metadata.width as i32)),
         media_data::height::set(Some(metadata.height as i32)),
         media_data::duration::set(Some(metadata.duration as i32)),
         media_data::bit_rate::set(Some(metadata.bit_rate as i32)),
         media_data::has_audio::set(Some(metadata.audio.is_some())),
     ];
-    library
+    let media_data = library
         .prisma_client()
         .media_data()
-        .upsert(
-            media_data::asset_object_id::equals(asset_object_data.id),
-            media_data::create(asset_object_data.id, values.clone()),
-            values.clone(),
-        )
+        .find_first(vec![media_data::asset_object_id::equals(Some(
+            asset_object_data.id.clone(),
+        ))])
         .exec()
         .await
         .map_err(sql_error)?;
+
+    if let Some(media) = media_data {
+        library
+            .prisma_client()
+            .media_data()
+            .update(media_data::UniqueWhereParam::IdEquals(media.id), values)
+            .exec()
+            .await
+            .map_err(sql_error)?;
+    } else {
+        values.push(media_data::asset_object_id::set(Some(asset_object_data.id)));
+        library
+            .prisma_client()
+            .media_data()
+            .create(values)
+            .exec()
+            .await
+            .map_err(sql_error)?;
+    }
     Ok(())
 }
 
@@ -152,7 +172,7 @@ pub async fn export_video_segment(
     library: &Library,
     verbose_file_name: String,
     output_dir: String,
-    asset_object_id: i32,
+    asset_object_id: String,
     milliseconds_from: u32,
     milliseconds_to: u32,
 ) -> Result<(), rspc::Error> {
@@ -169,7 +189,8 @@ pub async fn export_video_segment(
         Some(asset_object_data) => asset_object_data,
         None => return Err(error_404("failed to find asset_object"))
     };
-    let video_handler = VideoHandler::new(&asset_object_data.hash, &library).map_err(|e| {
+    let hash = asset_object_data.hash.clone().expect("hash");
+    let video_handler = VideoHandler::new(&hash, &library).map_err(|e| {
         error!("Failed to create video handler: {e}");
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,

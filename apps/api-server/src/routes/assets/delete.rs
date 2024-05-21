@@ -120,9 +120,9 @@ pub async fn delete_file_path(
         .lock()
         .await
         .iter()
-        .filter(|v| v.is_some())
+        .filter(|v| v.hash.is_some())
         .for_each(|data| {
-            let file_path = library.file_path(&data.hash);
+            let file_path = library.file_path(data.hash.as_ref().unwrap());
             if let Err(e) = std::fs::remove_file(&file_path) {
                 error!("failed to delete file({}): {}", file_path.display(), e);
             };
