@@ -54,11 +54,11 @@ export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsT
 
 export type ModelArtifact = { url: string; checksum: string }
 
+export type SearchResultPayload = { filePath: FilePath; metadata: SearchResultMetadata }
+
 export type Auth = { id: string; name: string }
 
 export type SharePayload = { fileIdList: number[]; peerId: string }
-
-export type SearchRequestPayload = { text: string; recordType: string }
 
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
@@ -78,9 +78,9 @@ export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type FilePathDeletePayload = { materializedPath: string; name: string }
 
-export type SearchResultPayload = { filePath: FilePath; metadata: SearchResultMetadata }
-
 export type FilePathCreatePayload = { materializedPath: string; name: string }
+
+export type SearchRequestPayload = { text: string; recordType: string }
 
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
@@ -124,8 +124,6 @@ export type AudioResp = { type: AudioType; content: string }
 
 export type Result = { category: AIModelCategory; models: AIModelResult[] }
 
-export type SearchResultMetadata = { startTime: number; endTime: number; score: number }
-
 export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
 
 export type AcceptShareOutput = { fileList: string[] }
@@ -137,6 +135,8 @@ export type DownloadModelPayload = { modelId: string }
 export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
 
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
+
+export type SearchResultMetadata = { startTime: number; endTime: number; score: number }
 
 export type AssetObject = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string }
 
