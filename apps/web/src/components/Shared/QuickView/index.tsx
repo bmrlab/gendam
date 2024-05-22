@@ -1,5 +1,6 @@
-import Icon from '@gendam/ui/icons'
 import { useCurrentLibrary } from '@/lib/library'
+import Icon from '@gendam/ui/icons'
+import Image from 'next/image'
 import { useEffect, useRef } from 'react'
 import { useQuickViewStore, type QuickViewItem } from './store'
 
@@ -30,16 +31,26 @@ const Player = ({ data }: { data: QuickViewItem }) => {
 
   return (
     <div className="flex h-full w-full items-center justify-center overflow-hidden">
-      <video
-        ref={videoRef}
-        controls
-        controlsList="nodownload"
-        autoPlay
-        muted
-        className="h-auto max-h-full w-auto max-w-full overflow-hidden rounded-md"
-      >
-        {/* <source src={currentLibrary.getFileSrc(assetObject.hash)} /> */}
-      </video>
+      {data.assetObject.mimeType?.includes('video/') ? (
+        <video
+          ref={videoRef}
+          controls
+          controlsList="nodownload"
+          autoPlay
+          muted
+          className="h-auto max-h-full w-auto max-w-full overflow-hidden rounded-md"
+        >
+          {/* <source src={currentLibrary.getFileSrc(assetObject.hash)} /> */}
+        </video>
+      ) : (
+        <Image
+          src={currentLibrary.getFileSrc(data.assetObject.hash)}
+          alt={data.assetObject.hash}
+          fill={true}
+          className="object-contain object-center rounded-md"
+          priority
+        />
+      )}
     </div>
   )
 }

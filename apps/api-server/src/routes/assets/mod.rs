@@ -6,6 +6,7 @@ mod types;
 mod update;
 mod utils;
 
+use crate::routes::assets::utils::get_file_type;
 use crate::validators;
 use crate::CtxWithLibrary;
 use create::{create_asset_object, create_dir};
@@ -63,10 +64,21 @@ where
                         )
                         .await?;
                     if !asset_object_existed {
-                        process_video_metadata(&library, asset_object_data.id).await?;
-                        info!("process video metadata finished");
-                        process_video_asset(&library, &ctx, file_path_data.id, None).await?;
-                        info!("process video asset finished");
+                        match get_file_type(asset_object_data.mime_type) {
+                            utils::FileType::Video => {
+                                process_video_metadata(&library, asset_object_data.id).await?;
+                                info!("process video metadata finished");
+                                process_video_asset(&library, &ctx, file_path_data.id, None)
+                                    .await?;
+                                info!("process video asset finished");
+                            }
+                            utils::FileType::Image => {
+                                process_video_metadata(&library, asset_object_data.id).await?;
+                                info!("process image metadata finished");
+                                // todo 图片的处理
+                            }
+                            utils::FileType::Other => todo!(),
+                        }
                     }
                     let file_path = get_file_path(
                         &library,
