@@ -1,5 +1,5 @@
 'use client'
-import type { FilePath, FileHandlerTask } from '@/lib/bindings'
+import type { FileHandlerTask, FilePath } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { queryClient, rspc } from '@/lib/rspc'
 import { formatBytes, formatDateTime, formatDuration } from '@/lib/utils'
@@ -123,11 +123,23 @@ const AssetObjectDetail = ({ data }: { data: FilePath }) => {
 
   return (
     <div className="p-3">
-      <div className="w-58 bg-app-overlay/50 relative h-48 overflow-hidden">
-        <video ref={videoRef} controls autoPlay muted loop className="h-full w-full object-contain object-center">
-          {/* <source src={currentLibrary.getFileSrc(assetObject.hash)} /> */}
-        </video>
-      </div>
+      {assetObject.mimeType?.includes('video/') ? (
+        <div className="w-58 bg-app-overlay/50 relative h-48 overflow-hidden">
+          <video ref={videoRef} controls autoPlay muted loop className="h-full w-full object-contain object-center">
+            {/* <source src={currentLibrary.getFileSrc(assetObject.hash)} /> */}
+          </video>
+        </div>
+      ) : (
+        <Image
+          src={currentLibrary.getFileSrc(assetObject.hash)}
+          alt={assetObject.hash}
+          fill={false}
+          className="relative object-center"
+          width={232}
+          height={Math.floor((232 / Number(mediaData.width)) * Number(mediaData.height))}
+          priority
+        />
+      )}
       <div className="mt-3 overflow-hidden">
         <div className="text-ink line-clamp-2 break-all text-sm font-medium">{data.name}</div>
         <div className="text-ink/50 mt-1 line-clamp-2 text-xs">Location {data.materializedPath}</div>
@@ -176,18 +188,18 @@ const AssetObjectDetail = ({ data }: { data: FilePath }) => {
         </div>
         <div className="mt-2 flex justify-between">
           <div className="text-ink/50">Visual Search</div>
-          {sortedTasks.some(item => item.taskType === 'frame-content-embedding' && item.exitCode === 0) ? (
-            <div className="rounded-full px-2 text-xs text-green-600 bg-green-100">Ready</div>
+          {sortedTasks.some((item) => item.taskType === 'frame-content-embedding' && item.exitCode === 0) ? (
+            <div className="rounded-full bg-green-100 px-2 text-xs text-green-600">Ready</div>
           ) : (
-            <div className="rounded-full px-2 text-xs text-orange-600 bg-orange-100">Not ready</div>
+            <div className="rounded-full bg-orange-100 px-2 text-xs text-orange-600">Not ready</div>
           )}
         </div>
         <div className="mt-2 flex justify-between">
           <div className="text-ink/50">Transcript Search</div>
-          {sortedTasks.some(item => item.taskType === 'transcript-embedding' && item.exitCode === 0) ? (
-            <div className="rounded-full px-2 text-xs text-green-600 bg-green-100">Ready</div>
+          {sortedTasks.some((item) => item.taskType === 'transcript-embedding' && item.exitCode === 0) ? (
+            <div className="rounded-full bg-green-100 px-2 text-xs text-green-600">Ready</div>
           ) : (
-            <div className="rounded-full px-2 text-xs text-orange-600 bg-orange-100">Not ready</div>
+            <div className="rounded-full bg-orange-100 px-2 text-xs text-orange-600">Not ready</div>
           )}
         </div>
       </div>
@@ -195,9 +207,11 @@ const AssetObjectDetail = ({ data }: { data: FilePath }) => {
       <div className="text-xs">
         <div className="text-md mt-2 flex items-center justify-between">
           <div className="font-medium">Jobs</div>
-          {sortedTasks.some(task => task.exitCode === null) ? (
-            <div className="group flex items-center gap-1 text-ink/60">
-              <div className="px-1 transition-opacity duration-300 opacity-0 group-hover:opacity-100">Cancel pending jobs</div>
+          {sortedTasks.some((task) => task.exitCode === null) ? (
+            <div className="text-ink/60 group flex items-center gap-1">
+              <div className="px-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                Cancel pending jobs
+              </div>
               <Button variant="ghost" size="xs" className="px-0" onClick={() => handleJobsCancel()}>
                 <Icon.Close className="h-3 w-3" />
               </Button>

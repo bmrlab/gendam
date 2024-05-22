@@ -1,8 +1,8 @@
-use std::path::Path;
 use blake3::Hasher;
+use std::path::Path;
 use tokio::{
-	fs::{self, File},
-	io::{self, AsyncReadExt, AsyncSeekExt, SeekFrom},
+    fs::{self, File},
+    io::{self, AsyncReadExt, AsyncSeekExt, SeekFrom},
 };
 
 const SAMPLE_COUNT: u64 = 4;
@@ -72,3 +72,22 @@ pub async fn generate_file_hash(path: impl AsRef<Path>, size: u64) -> Result<Str
 //         format!("{}/", path)
 //     }
 // }
+
+pub enum FileType {
+    Video,
+    Image,
+    Other,
+}
+
+pub fn get_file_type(mime_type: Option<String>) -> FileType {
+    if let Some(mime_type) = mime_type {
+        if mime_type.starts_with("video/") {
+            return FileType::Video;
+        } else if mime_type.starts_with("image/") {
+            return FileType::Image;
+        } else {
+            return FileType::Other;
+        }
+    }
+    FileType::Other
+}
