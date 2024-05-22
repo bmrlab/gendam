@@ -81,12 +81,22 @@ pub async fn create_asset_object(
     let destination_path = library.file_path(&file_hash);
 
     if PathBuf::from(local_full_path) != destination_path {
-        std::fs::copy(local_full_path, destination_path).map_err(|e| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("failed to copy file: {}", e),
+        library
+            .files_storage
+            .copy(
+                local_full_path,
+                &library
+                    .relative_file_path(&file_hash)
+                    .to_str()
+                    .expect("Invalid file hash"),
             )
-        })?;
+            .await
+            .map_err(|e| {
+                rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    format!("failed to copy file: {}", e),
+                )
+            })?;
     }
 
     let (asset_object_data, file_path_data, asset_object_existed) = library

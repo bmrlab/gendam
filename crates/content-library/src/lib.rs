@@ -6,6 +6,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use storage::Storage;
 use vector_db::QdrantServer;
 
 mod port;
@@ -17,6 +18,8 @@ pub mod bundle;
 pub struct Library {
     pub id: String,
     pub dir: PathBuf,
+    pub files_storage: Storage,
+    pub artifacts_storage: Storage,
     files_dir: PathBuf, // for content files
     artifacts_dir: PathBuf,
     // db_url: String,
@@ -68,6 +71,11 @@ impl Library {
 
         files_dir_with_shard.join(file_hash)
     }
+
+    /// opendal will create directory iteratively if not exist
+    pub fn relative_file_path(&self, file_hash: &str) -> PathBuf {
+        PathBuf::from(get_shard_hex(file_hash)).join(file_hash)
+    }
 }
 
 pub async fn load_library(
@@ -89,6 +97,17 @@ pub async fn load_library(
     let library = Library {
         id: library_id.to_string(),
         dir: library_dir,
+        files_storage: Storage::new_fs(files_dir.to_str().expect("Invalid files dir")).map_err(
+            |e| {
+                tracing::error!("Failed to create files storage: {}", e);
+                ()
+            },
+        )?,
+        artifacts_storage: Storage::new_fs(artifacts_dir.to_str().expect("Invalid artifacts dir"))
+            .map_err(|e| {
+                tracing::error!("Failed to create artifacts storage: {}", e);
+                ()
+            })?,
         files_dir,
         artifacts_dir,
         prisma_client,
