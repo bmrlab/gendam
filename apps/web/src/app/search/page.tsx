@@ -54,6 +54,23 @@ export default function Search() {
   })
   const [groupFrames, setGroupFrames] = useState(false)
   const [items, setItems] = useState<SearchResultPayload[] | null>(null)
+  const suggestionsQuery = rspc.useQuery(['search.suggestions'])
+
+  const pickedSuggestions = useMemo(() => {
+    // shuffle pick 5 suggestions
+    if (suggestionsQuery.data) {
+      const suggestions = [...suggestionsQuery.data]
+      const picked = []
+      while (picked.length < 5 && suggestions.length > 0) {
+        const index = Math.floor(Math.random() * suggestions.length)
+        picked.push(suggestions[index])
+        suggestions.splice(index, 1)
+      }
+      return picked
+    } else {
+      return []
+    }
+  }, [suggestionsQuery.data])
 
   const handleSearch = useCallback(
     (text: string, recordType: string) => {
@@ -150,6 +167,17 @@ export default function Search() {
           <div className="flex-1 flex flex-col items-center justify-center">
             <Image src={Video_Files} alt="video files" priority className="w-60 h-60"></Image>
             <div className="my-4 text-sm">Search for visual objects or processed transcripts</div>
+            <div className="mb-2 text-sm">Try searching for:</div>
+            <div className="mb-4 text-ink/70 text-xs">
+              {pickedSuggestions.map((suggestion, index) => (
+                <div
+                  key={index} className="py-1 text-center hover:underline"
+                  onClick={() => handleSearch(suggestion, 'Frame')}
+                >
+                  &quot;{ suggestion }&quot;
+                </div>
+              ))}
+            </div>
           </div>
         ) : queryRes.isLoading ? (
           <div className="flex-1 text-ink/50 flex items-center justify-center px-2 py-8 text-sm">Searching...</div>
