@@ -1,10 +1,11 @@
 use crate::CtxWithLibrary;
-// use crate::error::sql_error;
-// use file_handler::video::VideoHandler;
-use rspc::{Router, RouterBuilder};
-mod search;
-use search::{SearchRequestPayload, search_all};
 use glob::glob;
+use rspc::{Router, RouterBuilder};
+
+mod recommend;
+mod search;
+use recommend::{recommend_frames, RecommendRequestPayload};
+use search::{search_all, SearchRequestPayload};
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -16,12 +17,20 @@ where
                 let library = ctx.library()?;
                 let qdrant_info = ctx.qdrant_info()?;
                 let ai_handler = ctx.ai_handler()?;
-                search_all(
+                search_all(&library, &qdrant_info, &ai_handler, input).await
+            })
+        })
+        .query("recommend", |t| {
+            t(|ctx: TCtx, input: RecommendRequestPayload| async move {
+                let library = ctx.library()?;
+                let qdrant_info = ctx.qdrant_info()?;
+                recommend_frames(
                     &library,
                     &qdrant_info,
-                    &ai_handler,
-                    input
-                ).await
+                    &input.asset_object_hash,
+                    input.timestamp,
+                )
+                .await
             })
         })
         .query("suggestions", |t| {
@@ -44,7 +53,10 @@ where
                 //         Some("".to_string())
                 //     })
                 //     .collect::<Vec<String>>();
-                let pattern = format!("{}/artifacts/*/*/frame-caption-*/*.json", library.dir.to_string_lossy());
+                let pattern = format!(
+                    "{}/artifacts/*/*/frame-caption-*/*.json",
+                    library.dir.to_string_lossy()
+                );
                 let entries = glob(&pattern).map_err(|e| {
                     rspc::Error::new(
                         rspc::ErrorCode::InternalServerError,

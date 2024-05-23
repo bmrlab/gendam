@@ -12,6 +12,7 @@ export type Procedures = {
         { key: "libraries.status", input: never, result: LibraryStatusResult } | 
         { key: "p2p.state", input: never, result: any } | 
         { key: "search.all", input: SearchRequestPayload, result: SearchResultPayload[] } | 
+        { key: "search.recommend", input: RecommendRequestPayload, result: SearchResultPayload[] } | 
         { key: "search.suggestions", input: never, result: string[] } | 
         { key: "tasks.get_assets_in_process", input: never, result: FilePath[] } | 
         { key: "tasks.list", input: TaskListRequestPayload, result: FileHandlerTask[] } | 
@@ -142,6 +143,8 @@ export type TaskListRequestPayload = { filter: TaskListRequestFilter }
 export type SearchResultMetadata = { startTime: number; endTime: number; score: number }
 
 export type LibrarySettingsThemeEnum = "light" | "dark"
+
+export type RecommendRequestPayload = { assetObjectHash: string; timestamp: number }
 
 export type ExportInput = { types: AudioType[]; hash: string; path: string; fileName?: string | null }
 
