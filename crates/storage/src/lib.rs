@@ -4,7 +4,7 @@ use crate::error::StorageError;
 use error::Result;
 use opendal::services::Fs;
 use opendal::{Buffer, Operator};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug)]
 pub struct Storage {
@@ -37,17 +37,8 @@ impl Storage {
     }
 
     // check if path is under root of opendal
-    fn under_root(&self, path: &str) -> bool {
-        let path = PathBuf::from(path);
-
-        if path.is_relative() {
-            return true;
-        }
-
-        let mut root_components = self.root.components();
-        let mut path_components = path.components();
-
-        root_components.all(|path_component| path_components.next() == Some(path_component))
+    fn under_root(&self, path: impl AsRef<Path>) -> bool {
+        path.as_ref().is_relative()
     }
 
     pub async fn copy(&self, from: &str, to: &str) -> Result<()> {
@@ -62,13 +53,48 @@ impl Storage {
             self.op.copy(from, to).await.map_err(|e| e.into())
         }
     }
+
+    // list all files under path
+    // not recursion
+    // accept relative path like "path/" "path" ""
+    pub async fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<PathBuf>> {
+        match path.as_ref().to_str() {
+            Some(path) => {
+                let path = if path.ends_with("/") {
+                    path.to_string()
+                } else {
+                    format!("{}/", path)
+                };
+                self.op
+                    .list(path.as_str())
+                    .await
+                    .map(|entries| {
+                        entries
+                            .into_iter()
+                            .map(|entry| PathBuf::from(entry.path()))
+                            .collect::<Vec<PathBuf>>()
+                    })
+                    .map_err(StorageError::from)
+            }
+            None => Err(StorageError::from(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Invalid path",
+            ))),
+        }
+    }
 }
 
 #[cfg(test)]
 mod storage_test {
 
     fn init_storage() -> super::Storage {
-        super::Storage::new_fs("/Users/zingerbee/Downloads/test").unwrap()
+        let test_path = "/Users/zingerbee/Downloads/test/gendam";
+        super::Storage::new_fs(test_path).unwrap()
+    }
+
+    fn clear_test_dir() {
+        let test_path = "/Users/zingerbee/Downloads/test/gendam";
+        let _ = std::fs::remove_dir_all(test_path);
     }
 
     #[test]
@@ -129,5 +155,40 @@ mod storage_test {
         let path = "/Users/zingerbee/Downloads/test/absolute_path_test.txt";
         let result = storage.write(path, data.clone()).await;
         assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_read_dir() {
+        clear_test_dir();
+        let storage = init_storage();
+
+        let data = b"hello world".to_vec();
+        storage.write("test.txt", data.clone()).await.unwrap();
+        storage.write("test2.txt", data.clone()).await.unwrap();
+        storage.write("fo/test.txt", data.clone()).await.unwrap();
+        storage.write("fo2/test.txt", data.clone()).await.unwrap();
+
+        {
+            let read_res = storage.read_dir("fo/").await.unwrap();
+            assert_eq!(read_res.len(), 1);
+            let read_res = storage.read_dir("fo").await.unwrap();
+            assert_eq!(read_res.len(), 1);
+        }
+
+        {
+            let read_res = storage.read_dir("").await.unwrap();
+            assert_eq!(read_res.len(), 4);
+        }
+    }
+
+    #[test]
+    fn test_std_read_dir() {
+        let path: Vec<std::path::PathBuf> =
+            std::fs::read_dir("/Users/zingerbee/Downloads/test/gendam/fo/")
+                .unwrap()
+                .filter_map(|res| res.map(|e| e.path()).ok())
+                .collect();
+
+        println!("{:?}", path);
     }
 }
