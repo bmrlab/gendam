@@ -57,6 +57,16 @@ impl Library {
         artifacts_dir_with_shard
     }
 
+    pub fn relative_artifacts_path(&self, file_hash: &str) -> PathBuf {
+        self.relative_artifacts_dir()
+            .join(get_shard_hex(file_hash))
+            .join(file_hash)
+    }
+
+    pub fn relative_artifacts_dir(&self) -> PathBuf {
+        PathBuf::from("artifacts")
+    }
+
     /// Get the file path in library for a given file hash
     ///
     /// For now, `file_path` is something like `%LIBRARY_FILES_DIR%/%SHARD_ID%/%FILE_HASH%`,
@@ -71,9 +81,15 @@ impl Library {
         files_dir_with_shard.join(file_hash)
     }
 
+    pub fn relative_file_dir(&self) -> PathBuf {
+        PathBuf::from("files")
+    }
+
     /// opendal will create directory iteratively if not exist
     pub fn relative_file_path(&self, file_hash: &str) -> PathBuf {
-        PathBuf::from("files").join(PathBuf::from(get_shard_hex(file_hash)).join(file_hash))
+        self.relative_file_dir()
+            .join(get_shard_hex(file_hash))
+            .join(file_hash)
     }
 }
 
