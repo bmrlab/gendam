@@ -82,7 +82,7 @@ pub async fn create_asset_object(
 
     if PathBuf::from(local_full_path) != destination_path {
         library
-            .files_storage
+            .storage
             .copy(
                 local_full_path,
                 &library
