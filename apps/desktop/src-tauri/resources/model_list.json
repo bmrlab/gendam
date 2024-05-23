@@ -14,7 +14,7 @@
         "checksum": ""
       },
       {
-        "url": "https://tezign-ai-models.oss-cn-beijing.aliyuncs.com/CLIP-ViT-B-32-multilingual-v1/textual.onnx",
+        "url": "https://tezign-ai-models.oss-cn-beijing.aliyuncs.com/CLIP-ViT-B-32-multilingual-v1/textual_quantize.onnx",
         "checksum": ""
       },
       {
@@ -25,7 +25,7 @@
     "model_type": "CLIP",
     "params": {
       "image_model_path": "./CLIP-ViT-B-32-multilingual-v1/visual_quantize.onnx",
-      "text_model_path": "./CLIP-ViT-B-32-multilingual-v1/textual.onnx",
+      "text_model_path": "./CLIP-ViT-B-32-multilingual-v1/textual_quantize.onnx",
       "text_tokenizer_vocab_path": "./CLIP-ViT-B-32-multilingual-v1/tokenizer.json",
       "model_type": "MViTB32"
     },
