@@ -8,8 +8,9 @@ import { useUploadQueueStore } from '@/components/UploadQueue/store'
 import Icon from '@gendam/ui/icons'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
-import SearchForm from '../../search/SearchForm'  // TODO: 这样不大好，应该是一个公共组件
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { type SearchRequestPayload } from '@/lib/bindings'
+import SearchForm, { type SearchFormRef } from '../../search/SearchForm'  // TODO: 这样不大好，应该是一个公共组件
 import { useInspector } from '@/components/Inspector/store'
 import TitleDialog, { useTitleDialog } from './TitleDialog'
 import { Button } from '@gendam/ui/v2/button'
@@ -38,11 +39,18 @@ export default function Header() {
     [explorer.materializedPath, uploadQueueStore],
   )
 
-  const handleSearch = useCallback((text: string, recordType: string) => {
-    const search = new URLSearchParams()
-    search.set('text', text)
-    search.set('recordType', recordType)
-    router.push(`/search?${search}`)
+  const searchFormRef = useRef<SearchFormRef>(null)
+  // const [searchPayload, setSearchPayload] = useState<SearchRequestPayload | null>(null)
+  const onSearchFormSubmit = useCallback(() => {
+    if (searchFormRef.current) {
+      const search = new URLSearchParams()
+      const value = searchFormRef.current.getValue()
+      if (value) {
+        search.set('text', value.text)
+        search.set('recordType', value.recordType)
+        router.push(`/search?${search}`)
+      }
+    }
   }, [router])
 
   useEffect(() => {
@@ -74,8 +82,8 @@ export default function Header() {
         <PageNav title={explorer.materializedPath === '/' ? 'Library' : explorer.materializedPath} />
         <div className="absolute left-1/3 w-1/3">
           <SearchForm
-            initialSearchPayload={null}
-            onSubmit={(text: string, recordType: string) => handleSearch(text, recordType)}
+            ref={searchFormRef}
+            onSubmit={() => onSearchFormSubmit()}
           />
         </div>
         <div className="ml-auto"></div>
