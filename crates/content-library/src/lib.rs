@@ -9,17 +9,16 @@ use std::{
 use storage::Storage;
 use vector_db::QdrantServer;
 
+pub mod bundle;
+mod database;
 mod port;
 mod qdrant;
-mod database;
-pub mod bundle;
 
 #[derive(Clone, Debug)]
 pub struct Library {
     pub id: String,
     pub dir: PathBuf,
-    pub files_storage: Storage,
-    pub artifacts_storage: Storage,
+    pub storage: Storage,
     files_dir: PathBuf, // for content files
     artifacts_dir: PathBuf,
     // db_url: String,
@@ -74,7 +73,7 @@ impl Library {
 
     /// opendal will create directory iteratively if not exist
     pub fn relative_file_path(&self, file_hash: &str) -> PathBuf {
-        PathBuf::from(get_shard_hex(file_hash)).join(file_hash)
+        PathBuf::from("files").join(PathBuf::from(get_shard_hex(file_hash)).join(file_hash))
     }
 }
 
@@ -96,18 +95,13 @@ pub async fn load_library(
 
     let library = Library {
         id: library_id.to_string(),
-        dir: library_dir,
-        files_storage: Storage::new_fs(files_dir.to_str().expect("Invalid files dir")).map_err(
+        dir: library_dir.clone(),
+        storage: Storage::new_fs(library_dir.to_str().expect("Invalid library dir")).map_err(
             |e| {
-                tracing::error!("Failed to create files storage: {}", e);
+                tracing::error!("Failed to create library storage: {}", e);
                 ()
             },
         )?,
-        artifacts_storage: Storage::new_fs(artifacts_dir.to_str().expect("Invalid artifacts dir"))
-            .map_err(|e| {
-                tracing::error!("Failed to create artifacts storage: {}", e);
-                ()
-            })?,
         files_dir,
         artifacts_dir,
         prisma_client,
