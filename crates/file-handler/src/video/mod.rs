@@ -109,7 +109,8 @@ impl VideoHandler {
     /// * `video_file_hash` - The hash of the video file
     /// * `library` - Current library reference
     pub fn new(video_file_hash: &str, library: &Library) -> anyhow::Result<Self> {
-        let artifacts_dir = library.artifacts_dir(video_file_hash);
+        let artifacts_dir = library.relative_artifacts_path(video_file_hash);
+        // TODO: 暂时先使用绝对路径给 ffmpeg 使用，后续需要将文件加载到内存中传递给 ffmpeg
         let video_path = library.file_path(video_file_hash);
 
         Ok(Self {
@@ -196,7 +197,8 @@ impl VideoHandler {
     }
 
     pub async fn save_thumbnail(&self, seconds: Option<u64>) -> anyhow::Result<()> {
-        let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
+        let video_decoder =
+            decoder::VideoDecoder::new(&self.video_path, self.library.storage.clone())?;
         video_decoder
             .save_video_thumbnail(&self.artifacts_dir.join(THUMBNAIL_FILE_NAME), seconds)
             .await
@@ -263,7 +265,8 @@ impl VideoHandler {
             Some(v) => Ok(v.clone()),
             _ => {
                 // TODO ffmpeg-dylib not implemented
-                let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
+                let video_decoder =
+                    decoder::VideoDecoder::new(&self.video_path, self.library.storage.clone())?;
                 let data = video_decoder.get_video_metadata()?;
                 *metadata = Some(data.clone());
                 Ok(data)
@@ -278,7 +281,8 @@ impl VideoHandler {
         milliseconds_from: u32,
         milliseconds_to: u32,
     ) -> anyhow::Result<()> {
-        let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
+        let video_decoder =
+            decoder::VideoDecoder::new(&self.video_path, self.library.storage.clone())?;
         video_decoder.save_video_segment(
             verbose_file_name,
             output_dir,
