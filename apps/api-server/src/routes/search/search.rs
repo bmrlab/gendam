@@ -1,6 +1,6 @@
-use content_library::{Library, QdrantServerInfo};
 use crate::ai::AIHandler;
 use crate::error::sql_error;
+use content_library::{Library, QdrantServerInfo};
 use file_handler::{
     search::{SearchRequest, SearchResult},
     SearchRecordType,
@@ -27,8 +27,8 @@ pub struct SearchResultMetadata {
 #[derive(Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResultPayload {
-    file_path: prisma_lib::file_path::Data,
-    metadata: SearchResultMetadata,
+    pub file_path: prisma_lib::file_path::Data,
+    pub metadata: SearchResultMetadata,
 }
 
 pub async fn search_all(
@@ -77,6 +77,14 @@ pub async fn search_all(
         }
     };
 
+    let result = retrieve_assets_for_search(library, search_results).await?;
+    Ok(result)
+}
+
+pub async fn retrieve_assets_for_search(
+    library: &Library,
+    search_results: Vec<SearchResult>,
+) -> Result<Vec<SearchResultPayload>, rspc::Error> {
     let file_identifiers = search_results
         .iter()
         .map(
@@ -118,7 +126,7 @@ pub async fn search_all(
         tasks_hash_map.insert(hash, asset_object_data);
     });
 
-    let search_result = search_results
+    let results_with_asset = search_results
         .iter()
         .filter_map(|search_result| {
             let SearchResult {
@@ -166,5 +174,5 @@ pub async fn search_all(
         })
         .collect::<Vec<_>>();
 
-    Ok(search_result)
+    return Ok(results_with_asset);
 }
