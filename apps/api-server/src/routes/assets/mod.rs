@@ -75,7 +75,9 @@ where
                             utils::FileType::Image => {
                                 process_video_metadata(&library, asset_object_data.id).await?;
                                 info!("process image metadata finished");
-                                // todo 图片的处理
+                                process_video_asset(&library, &ctx, file_path_data.id, None)
+                                    .await?;
+                                info!("process image asset finished");
                             }
                             utils::FileType::Other => todo!(),
                         }
@@ -268,7 +270,8 @@ where
                     input.asset_object_id,
                     input.milliseconds_from,
                     input.milliseconds_to,
-                ).await?;
+                )
+                .await?;
                 Ok(())
             })
         })

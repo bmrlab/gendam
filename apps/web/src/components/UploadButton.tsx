@@ -21,7 +21,7 @@ const TauriUploadButton: React.FC<
           extensions: ['mp4', 'mov', 'avi', 'mkv'],
         },
         {
-          name: 'Images',
+          name: 'Image',
           extensions: ['jpg', 'jpeg', 'png', 'gif', "webp"]
         }
       ],
