@@ -38,14 +38,16 @@ impl VideoHandler {
         self.get_embedding_from_file(embedding_path)
     }
 
-    pub fn list_frame_paths(&self) -> anyhow::Result<Vec<PathBuf>> {
+    pub async fn list_frame_paths(&self) -> anyhow::Result<Vec<PathBuf>> {
         let frames_dir = self.get_frames_dir()?;
-
-        let frame_paths = std::fs::read_dir(frames_dir)?
-            .filter_map(|res| res.map(|e| e.path()).ok())
+        let frame_paths = self
+            .library
+            .storage
+            .read_dir(frames_dir)
+            .await?
+            .into_iter()
             .filter(|v| v.extension() == Some(std::ffi::OsStr::new(FRAME_FILE_EXTENSION)))
-            .collect::<Vec<_>>();
-
+            .collect();
         Ok(frame_paths)
     }
 
@@ -62,7 +64,8 @@ impl VideoHandler {
 
         #[cfg(feature = "ffmpeg-binary")]
         {
-            let video_decoder = decoder::VideoDecoder::new(video_path)?;
+            let video_decoder =
+                decoder::VideoDecoder::new(video_path, self.library.storage.clone())?;
             video_decoder.save_video_frames(frames_dir.clone()).await?;
         }
 
@@ -79,7 +82,7 @@ impl VideoHandler {
     pub(crate) async fn save_frame_content_embedding(&self) -> anyhow::Result<()> {
         // 这里还是从本地读取所有图片
         // 因为一个视频包含的帧数可能非常多，从 sqlite 读取反而麻烦了
-        let frame_paths = self.list_frame_paths()?;
+        let frame_paths = self.list_frame_paths().await?;
         let (multi_modal_embedding, _) = self.multi_modal_embedding()?;
 
         for path in frame_paths {

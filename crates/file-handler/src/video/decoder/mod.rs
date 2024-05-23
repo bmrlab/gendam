@@ -19,8 +19,8 @@ use super::FRAME_FILE_EXTENSION;
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::path::Path;
-use std::str;
+use std::{path::Path, process::Stdio};
+use storage::Storage;
 use tokio::process::Command;
 
 #[cfg(feature = "ffmpeg-dylib")]
@@ -89,11 +89,12 @@ pub struct VideoDecoder {
     video_file_path: std::path::PathBuf,
     binary_file_path: std::path::PathBuf,
     ffprobe_file_path: std::path::PathBuf,
+    storage: Storage,
 }
 
 #[cfg(feature = "ffmpeg-binary")]
 impl VideoDecoder {
-    pub fn new(filename: impl AsRef<Path>) -> anyhow::Result<Self> {
+    pub fn new(filename: impl AsRef<Path>, storage: Storage) -> anyhow::Result<Self> {
         let current_exe_path = std::env::current_exe().expect("failed to get current executable");
         let current_dir = current_exe_path
             .parent()
@@ -105,6 +106,7 @@ impl VideoDecoder {
             video_file_path: filename.as_ref().to_path_buf(),
             binary_file_path,
             ffprobe_file_path,
+            storage,
         })
     }
 }
@@ -212,6 +214,9 @@ impl VideoDecoder {
 
     pub async fn save_video_frames(&self, frames_dir: impl AsRef<Path>) -> anyhow::Result<()> {
         // 单独提取 timestamp 为 0 的帧
+        let frame_0_path = frames_dir
+            .as_ref()
+            .join(format!("0.{}", FRAME_FILE_EXTENSION));
         match std::process::Command::new(&self.binary_file_path)
             .args([
                 "-i",
@@ -224,12 +229,12 @@ impl VideoDecoder {
                 "vfr",
                 "-compression_level",
                 "9",
-                frames_dir
-                    .as_ref()
-                    .join(format!("0.{}", FRAME_FILE_EXTENSION))
-                    .to_str()
-                    .expect("invalid frames dir path"),
+                "-f",
+                "image2pipe",
+                "pipe:1",
             ])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .output()
         {
             Ok(output) => {
@@ -239,6 +244,12 @@ impl VideoDecoder {
                         String::from_utf8_lossy(&output.stderr)
                     );
                 }
+                self.storage
+                    .write(
+                        frame_0_path.to_str().expect("invalid frames dir path"),
+                        output.stdout,
+                    )
+                    .await?;
             }
             Err(e) => {
                 bail!("Failed to save video frames: {e}");
@@ -386,7 +397,7 @@ impl VideoDecoder {
             .output()
         {
             Ok(output) => {
-                let stdout = str::from_utf8(&output.stdout)?;
+                let stdout = std::str::from_utf8(&output.stdout)?;
                 let json: Value = serde_json::from_str(stdout)?;
                 if let Some(duration) = json["format"]["duration"].as_str() {
                     let duration: f64 = duration.parse()?;
@@ -544,8 +555,11 @@ async fn test_video_decoder() {
 
     #[cfg(feature = "ffmpeg-binary")]
     {
-        let video_decoder = VideoDecoder::new("/Users/zhuo/Desktop/1-4 插件-整页截屏.mp4")
-            .expect("failed to find ffmpeg binary file");
+        let video_decoder = VideoDecoder::new(
+            "/Users/zhuo/Desktop/1-4 插件-整页截屏.mp4",
+            Storage::new_fs("").unwrap(),
+        )
+        .expect("failed to find ffmpeg binary file");
 
         // let frames_fut = video_decoder.save_video_frames("/Users/zhuo/Desktop/frames");
         // let audio_fut = video_decoder.save_video_audio("/Users/zhuo/Desktop/audio.wav");
@@ -568,7 +582,7 @@ async fn test_save_video_segment() {
     #[cfg(feature = "ffmpeg-binary")]
     {
         let video_file = "/Users/xddotcom/Library/Application Support/ai.gendam.desktop/libraries/d3a13702-8f11-4dc6-86ea-42f63a92c3ad/files/fb6/fb62c84c5e20d5d0";
-        let video_decoder = VideoDecoder::new(video_file).unwrap();
+        let video_decoder = VideoDecoder::new(video_file, Storage::new_fs("").unwrap()).unwrap();
         let output_dir = "/Users/xddotcom/Downloads";
         let _result = video_decoder
             .save_video_segment("test.mp4", output_dir, 3000, 5000)
