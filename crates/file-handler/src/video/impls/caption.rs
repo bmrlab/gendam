@@ -59,7 +59,7 @@ impl VideoHandler {
     /// - To prisma `VideoFrameCaption` model
     pub(crate) async fn save_frames_caption(&self) -> anyhow::Result<()> {
         let (image_caption, _) = self.image_caption()?;
-        let frame_paths = self.list_frame_paths()?;
+        let frame_paths = self.list_frame_paths().await?;
         for path in frame_paths {
             debug!("get_frames_caption: {:?}", path);
 
@@ -92,7 +92,7 @@ impl VideoHandler {
     }
 
     pub(crate) async fn save_frame_caption_embedding(&self) -> anyhow::Result<()> {
-        let frame_paths = self.list_frame_paths()?;
+        let frame_paths = self.list_frame_paths().await?;
 
         for path in frame_paths {
             debug!("save_frame_caption_embedding: {:?}", path,);

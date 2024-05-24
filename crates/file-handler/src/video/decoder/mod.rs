@@ -192,8 +192,12 @@ impl VideoDecoder {
                 "1",
                 "-compression_level",
                 "9",
-                thumbnail_path.as_ref().to_string_lossy().as_ref(),
+                "-f",
+                "image2pipe",
+                "pipe:1",
             ])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .output()
         {
             Ok(output) => {
@@ -203,7 +207,15 @@ impl VideoDecoder {
                         String::from_utf8_lossy(&output.stderr)
                     );
                 }
-
+                self.storage
+                    .write(
+                        thumbnail_path
+                            .as_ref()
+                            .to_str()
+                            .expect("invalid thumbnail path path"),
+                        output.stdout,
+                    )
+                    .await?;
                 Ok(())
             }
             Err(e) => {
@@ -268,6 +280,9 @@ impl VideoDecoder {
                 "vfr",
                 "-compression_level",
                 "9",
+                "-f",
+                "image2pipe",
+                "pipe:1",
                 frames_dir
                     .as_ref()
                     .join(format!("%d000.{}", FRAME_FILE_EXTENSION))
@@ -283,6 +298,8 @@ impl VideoDecoder {
                         String::from_utf8_lossy(&output.stderr)
                     );
                 }
+                let data = output.stdout; // 从 ffmpeg 命令获取数据
+                self.save_batch_framer(data, frames_dir).await?;
             }
             Err(e) => {
                 bail!("Failed to save video frames: {e}");
@@ -290,6 +307,44 @@ impl VideoDecoder {
         }
 
         Ok(())
+    }
+
+    async fn save_batch_framer(
+        &self,
+        data: Vec<u8>,
+        frames_dir: impl AsRef<Path>,
+    ) -> Result<(), anyhow::Error> {
+        let mut start = 0;
+        let mut end = 0;
+        let mut count = 0;
+        Ok(while start < data.len() {
+            if data[start] == 0xFF && data[start + 1] == 0xD8 {
+                // JPEG 开始
+                end = start + 2;
+                while end < data.len() {
+                    if data[end] == 0xFF && data[end + 1] == 0xD9 {
+                        // JPEG 结束
+                        // 保存 JPEG 图像到文件
+                        self.storage
+                            .write(
+                                frames_dir
+                                    .as_ref()
+                                    .join(format!("{}000.{FRAME_FILE_EXTENSION}", count + 1))
+                                    .to_str()
+                                    .expect("invalid frames dir path"),
+                                data[start..=end + 1].to_vec(),
+                            )
+                            .await?;
+
+                        count += 1;
+                        start = end + 2;
+                        break;
+                    }
+                    end += 1;
+                }
+            }
+            start += 1;
+        })
     }
 
     pub async fn save_video_audio(&self, audio_path: impl AsRef<Path>) -> anyhow::Result<()> {
