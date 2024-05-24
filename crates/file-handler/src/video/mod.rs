@@ -390,10 +390,19 @@ impl FileHandler for VideoHandler {
         self.delete_artifacts_in_db().await?;
 
         // delete artifacts on file system
-        std::fs::remove_dir_all(self.artifacts_dir.clone()).map_err(|e| {
-            tracing::error!("failed to delete artifacts: {}", e);
-            e
-        })?;
+
+        self.library
+            .storage
+            .remove_dir_all(
+                self.artifacts_dir
+                    .to_str()
+                    .expect("invalid artifacts dir path"),
+            )
+            .await
+            .map_err(|e| {
+                tracing::error!("failed to delete artifacts: {}", e);
+                e
+            })?;
 
         Ok(())
     }
