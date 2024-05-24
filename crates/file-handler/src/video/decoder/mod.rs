@@ -360,7 +360,9 @@ impl VideoDecoder {
                 "16000",
                 "-ac",
                 "1",
-                audio_path.as_ref().to_str().expect("invalid audio path"),
+                "-f",
+                "wav",
+                "pipe:1",
             ])
             .output()
         {
@@ -371,6 +373,12 @@ impl VideoDecoder {
                         String::from_utf8_lossy(&output.stderr)
                     );
                 }
+                self.storage
+                    .write(
+                        audio_path.as_ref().to_str().expect("invalid audio path"),
+                        output.stdout,
+                    )
+                    .await?;
             }
             Err(e) => {
                 bail!("Failed to save video frames: {e}");
