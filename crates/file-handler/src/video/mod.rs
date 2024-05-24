@@ -336,7 +336,7 @@ impl FileHandler for VideoHandler {
                 tracing::info!("run task {} with existing artifacts", task_type);
             }
             _ => {
-                self.set_default_output_path(&task_type)?;
+                self.set_default_output_path(&task_type).await?;
             }
         }
 
@@ -351,7 +351,7 @@ impl FileHandler for VideoHandler {
             // !! DO NOT add default arm here
         }
 
-        self.set_artifacts_result(&task_type)?;
+        self.set_artifacts_result(&task_type).await?;
 
         Ok(())
     }
@@ -452,7 +452,7 @@ impl FileHandler for VideoHandler {
         self.delete_artifacts_in_db_by_task(task_type).await?;
 
         let task_type = VideoTaskType::from_str(task_type)?;
-        self._delete_artifacts_by_task(&task_type)?;
+        self._delete_artifacts_by_task(&task_type).await?;
 
         Ok(())
     }

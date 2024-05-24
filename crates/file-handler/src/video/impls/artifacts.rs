@@ -1,6 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::bail;
+use async_recursion::async_recursion;
 use uuid::Uuid;
 
 use crate::{
@@ -24,12 +25,20 @@ impl VideoHandler {
         }
     }
 
-    fn set_artifacts_settings(&self, artifacts_settings: ArtifactsSettings) -> anyhow::Result<()> {
-        std::fs::write(
-            self.artifacts_dir.join(ARTIFACTS_SETTINGS_FILE_NAME),
-            serde_json::to_string(&artifacts_settings)?,
-        )?;
-
+    async fn set_artifacts_settings(
+        &self,
+        artifacts_settings: ArtifactsSettings,
+    ) -> anyhow::Result<()> {
+        self.library
+            .storage
+            .write(
+                self.artifacts_dir
+                    .join(ARTIFACTS_SETTINGS_FILE_NAME)
+                    .to_str()
+                    .expect("Failed to convert ARTIFACTS_SETTINGS_FILE_NAME path to string"),
+                serde_json::to_string(&artifacts_settings)?,
+            )
+            .await?;
         Ok(())
     }
 
@@ -77,7 +86,7 @@ impl VideoHandler {
         }
     }
 
-    pub fn set_default_output_path(&self, task_type: &VideoTaskType) -> anyhow::Result<()> {
+    pub async fn set_default_output_path(&self, task_type: &VideoTaskType) -> anyhow::Result<()> {
         let mut settings = self.get_artifacts_settings();
 
         let current_model_name = match task_type {
@@ -147,12 +156,12 @@ impl VideoHandler {
             std::fs::create_dir_all(&output_dir)?;
         }
 
-        self.set_artifacts_settings(settings)?;
+        self.set_artifacts_settings(settings).await?;
 
         Ok(())
     }
 
-    pub fn set_artifacts_result(&self, task_type: &VideoTaskType) -> anyhow::Result<()> {
+    pub async fn set_artifacts_result(&self, task_type: &VideoTaskType) -> anyhow::Result<()> {
         let output_info = self.get_output_info_in_settings(task_type)?;
 
         let artifacts_result = std::fs::read_dir(self.artifacts_dir.join(&output_info.dir))?
@@ -194,7 +203,7 @@ impl VideoHandler {
             _ => bail!("output path not found in settings"),
         }
 
-        self.set_artifacts_settings(settings)?;
+        self.set_artifacts_settings(settings).await?;
 
         Ok(())
     }
@@ -217,7 +226,8 @@ impl VideoHandler {
         }
     }
 
-    pub(crate) fn _delete_artifacts_by_task(
+    #[async_recursion]
+    pub(crate) async fn _delete_artifacts_by_task(
         &self,
         task_type: &VideoTaskType,
     ) -> anyhow::Result<()> {
@@ -229,11 +239,11 @@ impl VideoHandler {
             }
         }
 
-        self.set_artifacts_settings(settings)?;
+        self.set_artifacts_settings(settings).await?;
 
         let child_task_type_list = task_type.get_child_task();
         for task_type in child_task_type_list {
-            self._delete_artifacts_by_task(&task_type)?;
+            self._delete_artifacts_by_task(&task_type).await?;
         }
 
         Ok(())
