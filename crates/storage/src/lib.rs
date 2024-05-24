@@ -39,21 +39,46 @@ impl Storage {
         &self.block_op
     }
 
+    /// To indicate that a path is a directory, it is compulsory to include a trailing / in the path. Failure to do so may result in NotADirectory error being returned by OpenDAL.
+    /// https://opendal.apache.org/docs/rust/opendal/struct.BlockingOperator.html#method.create_dir
+    pub async fn create_dir(&self, path: &str) -> Result<()> {
+        let path = if path.ends_with("/") {
+            path.to_string()
+        } else {
+            format!("{}/", path)
+        };
+        self.op
+            .create_dir(path.as_str())
+            .await
+            .map_err(StorageError::from)
+    }
+
+    pub async fn is_exist(&self, path: &str) -> Result<bool> {
+        self.op.is_exist(path).await.map_err(StorageError::from)
+    }
+
     pub async fn read(&self, path: &str) -> Result<Buffer> {
-        self.op.read(path).await.map_err(|e| e.into())
+        self.op.read(path).await.map_err(StorageError::from)
     }
 
     pub fn read_blocking(&self, path: &str) -> Result<Buffer> {
-        self.block_op.read(path).map_err(|e| e.into())
+        self.block_op.read(path).map_err(StorageError::from)
+    }
+
+    pub fn read_to_string(&self, path: &str) -> Result<String> {
+        self.block_op
+            .read(path)
+            .map(|bs| String::from_utf8(bs.to_vec()).map_err(StorageError::from))?
+            .map_err(StorageError::from)
     }
 
     /// if dir not exist, create it iteratively
     pub async fn write(&self, path: &str, bs: impl Into<Buffer>) -> Result<()> {
-        self.op.write(path, bs).await.map_err(|e| e.into())
+        self.op.write(path, bs).await.map_err(StorageError::from)
     }
 
     pub fn write_blocking(&self, path: &str, bs: impl Into<Bytes>) -> Result<()> {
-        self.block_op.write(path, bs).map_err(|e| e.into())
+        self.block_op.write(path, bs).map_err(StorageError::from)
     }
 
     // check if path is under root of opendal
@@ -67,10 +92,10 @@ impl Storage {
             let data = tokio::fs::read(from)
                 .await
                 .map_err(|e| StorageError::from(e))?;
-            self.op.write(to, data).await.map_err(|e| e.into())
+            self.op.write(to, data).await.map_err(StorageError::from)
         } else {
             // copy file under root of opendal
-            self.op.copy(from, to).await.map_err(|e| e.into())
+            self.op.copy(from, to).await.map_err(StorageError::from)
         }
     }
 
@@ -210,5 +235,21 @@ mod storage_test {
                 .collect();
 
         println!("{:?}", path);
+    }
+
+    #[tokio::test]
+    async fn test_is_exist() {
+        clear_test_dir();
+        let storage = init_storage();
+        let data = b"hello world".to_vec();
+        storage.write("test.txt", data.clone()).await.unwrap();
+        storage.write("test2.txt", data.clone()).await.unwrap();
+        storage.write("fo/test.txt", data.clone()).await.unwrap();
+        assert!(storage.is_exist("test.txt").await.unwrap());
+        assert!(!storage.is_exist("test3.txt").await.unwrap());
+        assert!(storage.is_exist("fo/test.txt").await.unwrap());
+        assert!(storage.is_exist("fo").await.unwrap());
+        assert!(storage.is_exist("fo/").await.unwrap());
+        clear_test_dir();
     }
 }
