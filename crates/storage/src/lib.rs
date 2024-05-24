@@ -127,6 +127,10 @@ impl Storage {
             ))),
         }
     }
+
+    pub async fn remove_dir_all(&self, path: &str) -> Result<()> {
+        self.op.remove_all(path).await.map_err(StorageError::from)
+    }
 }
 
 #[cfg(test)]

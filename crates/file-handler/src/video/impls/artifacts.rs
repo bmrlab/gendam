@@ -2,7 +2,6 @@ use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::bail;
 use async_recursion::async_recursion;
-use tracing::info;
 use uuid::Uuid;
 
 use crate::{
@@ -252,7 +251,15 @@ impl VideoHandler {
         let output_path_map = settings.results.remove(&task_type.to_string());
         if let Some(output_path_map) = output_path_map {
             for output_path in output_path_map.values() {
-                std::fs::remove_dir_all(self.artifacts_dir.join(output_path.dir.to_owned()))?;
+                self.library
+                    .storage
+                    .remove_dir_all(
+                        self.artifacts_dir
+                            .join(output_path.dir.to_owned())
+                            .to_str()
+                            .expect("invalid output_path path"),
+                    )
+                    .await?;
             }
         }
 
