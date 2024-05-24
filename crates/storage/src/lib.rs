@@ -1,15 +1,17 @@
 mod error;
 
 use crate::error::StorageError;
+use bytes::Bytes;
 use error::Result;
 use opendal::services::Fs;
-use opendal::{Buffer, Operator};
+use opendal::{BlockingOperator, Buffer, Operator};
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug)]
 pub struct Storage {
     root: PathBuf,
     op: Operator,
+    block_op: BlockingOperator,
 }
 
 impl Storage {
@@ -17,14 +19,32 @@ impl Storage {
         let mut builder = Fs::default();
         builder.root(root);
         let op: Operator = Operator::new(builder)?.finish();
+
+        let mut builder = Fs::default();
+        builder.root(root);
+        let block_op = Operator::new(builder)?.finish().blocking();
+
         Ok(Self {
             op,
+            block_op,
             root: PathBuf::from(root),
         })
     }
 
+    pub fn operator(&self) -> &Operator {
+        &self.op
+    }
+
+    pub fn blocking_operator(&self) -> &BlockingOperator {
+        &self.block_op
+    }
+
     pub async fn read(&self, path: &str) -> Result<Buffer> {
         self.op.read(path).await.map_err(|e| e.into())
+    }
+
+    pub fn read_blocking(&self, path: &str) -> Result<Buffer> {
+        self.block_op.read(path).map_err(|e| e.into())
     }
 
     /// if dir not exist, create it iteratively
@@ -32,8 +52,8 @@ impl Storage {
         self.op.write(path, bs).await.map_err(|e| e.into())
     }
 
-    pub fn operator(&self) -> &Operator {
-        &self.op
+    pub fn write_blocking(&self, path: &str, bs: impl Into<Bytes>) -> Result<()> {
+        self.block_op.write(path, bs).map_err(|e| e.into())
     }
 
     // check if path is under root of opendal

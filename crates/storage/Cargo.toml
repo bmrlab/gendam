@@ -9,4 +9,5 @@ anyhow.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["test-util", "macros"] }
 
-opendal = {version = "0.46.0", features = ["services-fs"] }
+opendal = { version = "0.46.0", features = ["services-fs"] }
+bytes = "1.6.0"
