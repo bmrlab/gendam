@@ -50,7 +50,10 @@ impl VideoHandler {
     }
 
     pub fn get_embedding_from_file(&self, path: impl AsRef<Path>) -> anyhow::Result<Vec<f32>> {
-        let embedding = std::fs::read_to_string(path)?;
+        let embedding: String = self
+            .library
+            .storage
+            .read_to_string(path.as_ref().to_str().expect("invalid embedding file"))?;
         serde_json::from_str::<Vec<f32>>(&embedding).map_err(|e| anyhow::anyhow!(e))
     }
 }

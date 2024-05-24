@@ -2,6 +2,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::bail;
 use async_recursion::async_recursion;
+use tracing::info;
 use uuid::Uuid;
 
 use crate::{
@@ -11,7 +12,12 @@ use crate::{
 
 impl VideoHandler {
     fn get_artifacts_settings(&self) -> ArtifactsSettings {
-        match std::fs::read_to_string(self.artifacts_dir().join(ARTIFACTS_SETTINGS_FILE_NAME)) {
+        match self.library.storage.read_to_string(
+            self.artifacts_dir()
+                .join(ARTIFACTS_SETTINGS_FILE_NAME)
+                .to_str()
+                .expect("invalid ARTIFACTS_SETTINGS_FILE_NAME path"),
+        ) {
             std::result::Result::Ok(json_content) => {
                 if let std::result::Result::Ok(settings) =
                     serde_json::from_str::<ArtifactsSettings>(&json_content)
@@ -152,8 +158,16 @@ impl VideoHandler {
         };
 
         let output_dir = self.artifacts_dir.join(PathBuf::from(output_dir));
-        if !output_dir.exists() {
-            std::fs::create_dir_all(&output_dir)?;
+        if !self
+            .library
+            .storage
+            .is_exist(output_dir.to_str().expect("invalid output_dir path"))
+            .await?
+        {
+            self.library
+                .storage
+                .create_dir(output_dir.to_str().expect("invalid output_dir path"))
+                .await?;
         }
 
         self.set_artifacts_settings(settings).await?;
@@ -164,9 +178,12 @@ impl VideoHandler {
     pub async fn set_artifacts_result(&self, task_type: &VideoTaskType) -> anyhow::Result<()> {
         let output_info = self.get_output_info_in_settings(task_type)?;
 
-        let artifacts_result = std::fs::read_dir(self.artifacts_dir.join(&output_info.dir))?
+        let artifacts_result = self
+            .library
+            .storage
+            .read_dir(self.artifacts_dir.join(&output_info.dir))
+            .await?
             .into_iter()
-            .filter_map(|v| v.ok().map(|t| t.path()))
             .filter_map(|v| {
                 v.file_name()
                     .map(|t| PathBuf::from(PathBuf::from(t.to_os_string())))

@@ -283,11 +283,6 @@ impl VideoDecoder {
                 "-f",
                 "image2pipe",
                 "pipe:1",
-                frames_dir
-                    .as_ref()
-                    .join(format!("%d000.{}", FRAME_FILE_EXTENSION))
-                    .to_str()
-                    .expect("invalid frames dir path"),
             ])
             .output()
         {

@@ -13,4 +13,7 @@ pub enum StorageError {
 
     #[error("Storage tokio fs error: {0}")]
     TokioFsError(#[from] tokio::io::Error),
+
+    #[error("UTF-8 conversion error: {0}")]
+    Utf8Error(#[from] std::string::FromUtf8Error),
 }
