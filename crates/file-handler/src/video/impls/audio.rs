@@ -108,9 +108,14 @@ impl VideoHandler {
             .await?;
 
         let result_path = self.get_transcript_path()?;
-        let mut file = std::fs::File::create(result_path)?;
-        let json = serde_json::to_string(&result)?;
-        file.write_all(json.as_bytes())?;
+
+        self.library
+            .storage
+            .write(
+                result_path.to_str().expect("invalid transcript path"),
+                serde_json::to_string(&result)?,
+            )
+            .await?;
 
         Ok(())
     }

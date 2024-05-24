@@ -94,8 +94,13 @@ impl VideoHandler {
                     .process_single(path)
                     .await?;
 
-                let mut file = std::fs::File::create(embedding_path)?;
-                file.write_all(serde_json::to_string(&embedding)?.as_bytes())?;
+                self.library
+                    .storage
+                    .write(
+                        embedding_path.to_str().expect("invalid path"),
+                        serde_json::to_string(&embedding)?,
+                    )
+                    .await?;
             }
 
             self.save_db_single_frame_content_embedding(timestamp)

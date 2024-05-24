@@ -7,7 +7,7 @@ use crate::{
 };
 use qdrant_client::qdrant::PointStruct;
 use serde_json::{json, Value};
-use std::{io::Write, path::PathBuf};
+use std::path::PathBuf;
 use tracing::{debug, error};
 
 impl VideoHandler {
@@ -77,15 +77,17 @@ impl VideoHandler {
 
             debug!("caption: {:?}", caption);
             // write into file
-            let mut file = std::fs::File::create(caption_path)?;
-            // here write as a json file, so that we can easily check the if file result is valid
-            file.write_all(
-                json!({
-                    "caption": caption
-                })
-                .to_string()
-                .as_bytes(),
-            )?;
+
+            self.library
+                .storage
+                .write(
+                    caption_path.to_str().expect("invalid caption path"),
+                    json!({
+                        "caption": caption
+                    })
+                    .to_string(),
+                )
+                .await?;
         }
 
         Ok(())
