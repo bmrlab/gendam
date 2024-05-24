@@ -4,7 +4,7 @@ pub mod caption;
 pub mod frame;
 
 use super::VideoHandler;
-use std::{io::Write, path::Path};
+use std::path::Path;
 
 pub(self) fn get_frame_timestamp_from_path(
     path: impl AsRef<std::path::Path>,
@@ -39,9 +39,13 @@ impl VideoHandler {
             .process_single(text.to_string())
             .await?;
 
-        let mut file = std::fs::File::create(path)?;
-        file.write_all(serde_json::to_string(&embedding)?.as_bytes())?;
-
+        self.library
+            .storage
+            .write(
+                path.as_ref().to_str().expect("invalid text embedding path"),
+                serde_json::to_string(&embedding)?,
+            )
+            .await?;
         Ok(())
     }
 
