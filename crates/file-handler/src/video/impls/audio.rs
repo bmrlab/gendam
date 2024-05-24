@@ -76,7 +76,8 @@ impl VideoHandler {
 
         #[cfg(feature = "ffmpeg-binary")]
         {
-            let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
+            let video_decoder =
+                decoder::VideoDecoder::new(&self.video_path, self.library.storage.clone())?;
             video_decoder.save_video_audio(audio_path).await?;
         }
 
