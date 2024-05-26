@@ -1,113 +1,66 @@
 'use client'
+import ExplorerLayout from '@/Explorer/components/ExplorerLayout'
+import { ExplorerContextProvider, ExplorerViewContextProvider, useExplorerValue } from '@/Explorer/hooks'
+import { ExplorerItem } from '@/Explorer/types'
 import PageNav from '@/components/PageNav'
 import Viewport from '@/components/Viewport'
-import type { SearchRequestPayload, SearchResultPayload } from '@/lib/bindings'
 import { Video_Files } from '@gendam/assets/images'
-import Image from 'next/image'
-import { rspc } from '@/lib/rspc'
-import classNames from 'classnames'
-import { useSearchParams } from 'next/navigation'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import SearchForm, { type SearchFormRef } from './SearchForm'
-import SearchResults from './SearchResults'
 import { Checkbox } from '@gendam/ui/v2/checkbox'
-import Icon from '@gendam/ui/icons'
+import classNames from 'classnames'
+import Image from 'next/image'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import SearchForm, { type SearchFormRef } from './SearchForm'
 import SearchItemContextMenu from './SearchItemContextMenu'
-import ExplorerLayout from '@/Explorer/components/ExplorerLayout'
-import {
-  ExplorerContextProvider,
-  ExplorerViewContextProvider,
-  useExplorerValue,
-} from '@/Explorer/hooks'
-import { ExplorerItem } from '@/Explorer/types'
+import SearchResults from './SearchResults'
+import SearchSuggestions from './SearchSuggestions'
+import { SearchPageContextProvider, useSearchPageContext, type SearchResultPayload } from './context'
 
-const useSearchPayloadInURL: () => [
-  SearchRequestPayload | null,
-  (payload: SearchRequestPayload | null) => void,
-] = () => {
-  const searchParams = useSearchParams()
-  const searchPayloadInURL = useMemo<SearchRequestPayload | null>(() => {
-    try {
-      const text = searchParams.get('text')
-      const recordType = searchParams.get('recordType')
-      if (text && recordType) {
-        return { text, recordType }
-      }
-    } catch (e) {}
-    return null
-  }, [searchParams])
+function SearchPage() {
+  const searchQuery = useSearchPageContext()
+  const { requestPayload } = searchQuery
 
-  const updateSearchPayloadInURL = useCallback((payload: SearchRequestPayload | null) => {
-    if (payload) {
-      const search = new URLSearchParams()
-      search.set('text', payload.text)
-      search.set('recordType', payload.recordType)
-      window.history.replaceState({}, '', `${window.location.pathname}?${search}`)
-    } else {
-      window.history.replaceState({}, '', `${window.location.pathname}`)
-    }
-  }, [])
-
-  return [searchPayloadInURL, updateSearchPayloadInURL]
-}
-
-export default function Search() {
-  const [searchPayloadInURL, updateSearchPayloadInURL] = useSearchPayloadInURL()
-  const [searchPayload, setSearchPayload] = useState<SearchRequestPayload | null>(searchPayloadInURL)
-  const searchQuery = rspc.useQuery(['search.all', searchPayload!], {
-    enabled: !!searchPayload,
-  })
   const searchFormRef = useRef<SearchFormRef>(null)
   const onSearchFormSubmit = useCallback(() => {
-    if (searchFormRef.current) {
-      const value = searchFormRef.current.getValue()
-      setSearchPayload(value)
-      updateSearchPayloadInURL(value)
+    const value = searchFormRef.current?.getValue()
+    if (value?.text && value?.recordType) {
+      searchQuery.fetch({
+        api: 'search.all',
+        text: value.text,
+        recordType: value.recordType,
+      })
     } else {
-      setSearchPayload(null)
-      updateSearchPayloadInURL(null)
+      searchQuery.fetch(null)
     }
-  }, [setSearchPayload, updateSearchPayloadInURL])
-  const handleSearch = useCallback((value: SearchRequestPayload) => {
-    if (searchFormRef.current) {
-      searchFormRef.current.setValue(value)
-      setSearchPayload(value)
-      updateSearchPayloadInURL(value)
-    }
-  }, [updateSearchPayloadInURL])
-  useEffect(() => {
-    if (searchFormRef.current) {
-      searchFormRef.current.setValue(searchPayloadInURL)
-    }
-  }, [searchPayloadInURL])
-
-  const suggestionsQuery = rspc.useQuery(['search.suggestions'])
-  const [suggestSeed, setSuggestSeed] = useState(0)
-  const pickedSuggestions = useMemo(() => {
-    // shuffle pick 5 suggestions
-    suggestSeed
-    if (suggestionsQuery.data) {
-      const suggestions = [...suggestionsQuery.data]
-      const picked = []
-      while (picked.length < 5 && suggestions.length > 0) {
-        const index = Math.floor(Math.random() * suggestions.length)
-        picked.push(suggestions[index])
-        suggestions.splice(index, 1)
+  }, [searchQuery])
+  const handleSearch = useCallback(
+    (text: string, recordType: 'Frame' | 'Transcript') => {
+      if (searchFormRef.current) {
+        searchFormRef.current.setValue({ text, recordType })
+        searchQuery.fetch({
+          api: 'search.all',
+          text,
+          recordType,
+        })
       }
-      return picked
-    } else {
-      return []
+    },
+    [searchQuery],
+  )
+  useEffect(() => {
+    if (searchFormRef.current && requestPayload?.api === 'search.all') {
+      searchFormRef.current.setValue(requestPayload)
     }
-  }, [suggestionsQuery.data, suggestSeed])
+  }, [requestPayload])
 
   const [groupFrames, setGroupFrames] = useState(false)
   const [items, setItems] = useState<SearchResultPayload[] | null>(null)
   const explorer = useExplorerValue({
-    items: items ? items.map((item) => ({
-      type: 'SearchResult',
-      filePath: item.filePath,
-      metadata: item.metadata,
-    })) : null,
+    items: items
+      ? items.map((item) => ({
+          type: 'SearchResult',
+          filePath: item.filePath,
+          metadata: item.metadata,
+        }))
+      : null,
     settings: {
       layout: 'grid',
     },
@@ -122,13 +75,6 @@ export default function Search() {
     }
   }, [searchQuery.isSuccess, searchQuery.data, resetSelectedItems])
 
-  const renderLayout = () => {
-    if (!searchQuery.data) {
-      return <></>
-    }
-    return <SearchResults groupFrames={groupFrames} />
-  }
-
   const contextMenu = (data: ExplorerItem) => {
     return data.type === 'SearchResult' ? (
       <SearchItemContextMenu
@@ -140,89 +86,89 @@ export default function Search() {
     ) : null
   }
 
+  const ToolBar =
+    requestPayload?.api === 'search.all' ? (
+      <div className="border-app-line flex items-center justify-start border-b px-8 py-2">
+        <div className="border-app-line flex items-center overflow-hidden rounded-lg border text-xs">
+          <div
+            className={classNames('px-4 py-2', requestPayload.recordType === 'Frame' && 'bg-app-hover')}
+            onClick={() => handleSearch(requestPayload.text, 'Frame')}
+          >
+            Visual
+          </div>
+          <div
+            className={classNames('px-4 py-2', requestPayload.recordType === 'Transcript' && 'bg-app-hover')}
+            onClick={() => handleSearch(requestPayload.text, 'Transcript')}
+          >
+            Transcript
+          </div>
+        </div>
+        {/* <div className="text-ink/50 ml-4 text-sm flex-1 truncate">{requestPayload.text}</div> */}
+        <form className="ml-auto mr-3 flex items-center gap-2">
+          <Checkbox.Root
+            id="--group-frames"
+            checked={groupFrames}
+            onCheckedChange={(checked: boolean | 'indeterminate') => {
+              setGroupFrames(checked === true ? true : false)
+            }}
+          >
+            <Checkbox.Indicator />
+          </Checkbox.Root>
+          <label className="text-xs" htmlFor="--group-frames">
+            Expand video frames
+          </label>
+        </form>
+      </div>
+    ) : null
+
   return (
     <Viewport.Page>
       <Viewport.Toolbar className="relative">
         <PageNav
-          title={searchPayload ? `Searching "${searchPayload.text}"` : "Search"}
+          title={requestPayload?.api === 'search.all' ? `Searching "${requestPayload.text}"` : 'Search'}
           className="max-w-[25%] overflow-hidden"
         />
         <div className="absolute left-1/3 w-1/3">
-          <SearchForm
-            ref={searchFormRef}
-            onSubmit={() => onSearchFormSubmit()}
-          />
+          <SearchForm ref={searchFormRef} onSubmit={() => onSearchFormSubmit()} />
         </div>
       </Viewport.Toolbar>
       <Viewport.Content className="flex flex-col items-stretch">
-        {searchPayload ? (
-          <div className="border-app-line flex items-center justify-start border-b px-8 py-2">
-            <div className="border-app-line flex items-center overflow-hidden rounded-lg border text-xs">
-              <div
-                className={classNames('px-4 py-2', searchPayload.recordType === 'Frame' && 'bg-app-hover')}
-                onClick={() => handleSearch({ ...searchPayload, recordType: 'Frame' })}
-              >Visual</div>
-              <div
-                className={classNames('px-4 py-2', searchPayload.recordType === 'Transcript' && 'bg-app-hover')}
-                onClick={() => handleSearch({ ...searchPayload, recordType: 'Transcript' })}
-              >Transcript</div>
-            </div>
-            {/* <div className="text-ink/50 ml-4 text-sm flex-1 truncate">{searchPayload.text}</div> */}
-            <form className='ml-auto flex items-center gap-2 mr-3'>
-              <Checkbox.Root
-                id="--group-frames" checked={groupFrames}
-                onCheckedChange={(checked: boolean | 'indeterminate') => {
-                  setGroupFrames(checked === true ? true : false)
-                }}
-              >
-                <Checkbox.Indicator />
-              </Checkbox.Root>
-              <label className="text-xs" htmlFor="--group-frames">Expand video frames</label>
-            </form>
-          </div>
-        ) : null}
-
-        {!searchPayload ? (
-          <div className="flex-1 flex flex-col items-center justify-center">
-            <Image src={Video_Files} alt="video files" priority className="w-60 h-60"></Image>
+        {ToolBar}
+        {!requestPayload ? (
+          <div className="flex flex-1 flex-col items-center justify-center">
+            <Image src={Video_Files} alt="video files" priority className="h-60 w-60"></Image>
             <div className="my-4 text-sm">Search for visual objects or processed transcripts</div>
             <div className="mb-2 text-sm">Try searching for:</div>
-            <div className="mb-2 text-ink/50 text-xs">
-              {pickedSuggestions.map((suggestion, index) => (
-                <div
-                  key={index} className="py-1 text-center hover:underline"
-                  onClick={() => handleSearch({ text: suggestion, recordType: 'Frame' })}
-                >
-                  &quot;{ suggestion }&quot;
-                </div>
-              ))}
-            </div>
-            <div className="mb-4 p-2" onClick={() => setSuggestSeed(suggestSeed + 1)}>
-              <Icon.Cycle className="h-4 w-4 text-ink/50" />
-            </div>
+            <SearchSuggestions onSelectText={(text) => handleSearch(text, 'Frame')} />
           </div>
         ) : searchQuery.isLoading ? (
-          <div className="flex-1 text-ink/50 flex items-center justify-center px-2 py-8 text-sm">Searching...</div>
+          <div className="text-ink/50 flex flex-1 items-center justify-center px-2 py-8 text-sm">Searching...</div>
         ) : searchQuery.isSuccess && searchQuery.data.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center">
-            <Image src={Video_Files} alt="video files" priority className="w-60 h-60"></Image>
-            <div className="my-4 text-sm">
-              No results found for <span className="font-medium">{searchPayload.text}</span>
-            </div>
+          <div className="flex flex-1 flex-col items-center justify-center">
+            <Image src={Video_Files} alt="video files" priority className="h-60 w-60"></Image>
+            <div className="my-4 text-sm">No results found</div>
           </div>
         ) : searchQuery.isSuccess && searchQuery.data.length > 0 ? (
           <ExplorerViewContextProvider value={{ contextMenu }}>
             <ExplorerContextProvider explorer={explorer}>
               <ExplorerLayout
                 className="flex-1 p-8"
-                renderLayout={renderLayout}
+                renderLayout={() => <SearchResults groupFrames={groupFrames} />}
               ></ExplorerLayout>
             </ExplorerContextProvider>
           </ExplorerViewContextProvider>
         ) : (
-          <div className="flex-1 text-ink/50 flex items-center justify-center">Something went wrong</div>
+          <div className="text-ink/50 flex flex-1 items-center justify-center">Something went wrong</div>
         )}
       </Viewport.Content>
     </Viewport.Page>
+  )
+}
+
+export default function Search() {
+  return (
+    <SearchPageContextProvider>
+      <SearchPage />
+    </SearchPageContextProvider>
   )
 }

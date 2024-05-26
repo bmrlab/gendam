@@ -1,14 +1,19 @@
 'use client'
-import { SearchRequestPayload } from '@/lib/bindings'
 import Icon from '@gendam/ui/icons'
 import { CommandPrimitive } from '@gendam/ui/v2/command'
 import classNames from 'classnames'
+import { type SearchPayload } from './context'
 // import classNames from 'classnames'
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react'
 
+type FormData = {
+  text: string
+  recordType: 'Frame' | 'Transcript'
+}
+
 export type SearchFormRef = {
-  getValue: () => SearchRequestPayload | null
-  setValue: (value: SearchRequestPayload | null) => void
+  getValue: () => FormData | null
+  setValue: (value: FormData | null) => void
 }
 
 const SearchFormWithRef = forwardRef<
@@ -17,34 +22,41 @@ const SearchFormWithRef = forwardRef<
     onSubmit: () => void
   }
 >(function SearchForm({ onSubmit }, ref) {
-  const [value, setValue] = useState<SearchRequestPayload>({
-    text: '',
-    recordType: 'Frame',
-  })
+  const [text, setText] = useState('')
+  const [recordType, setRecordType] = useState<'Frame' | 'Transcript' | null>(null)
+  // const [value, setValue] = useState<T | null>(null)
 
   useImperativeHandle<SearchFormRef, SearchFormRef>(ref, () => ({
-    getValue: () => (value.text ? value : null),
-    setValue: (value) => setValue(value || { text: '', recordType: 'Frame' }),
+    getValue: () => (text && recordType ? { api: 'search.all', text, recordType } : null),
+    setValue: (value) => {
+      if (value) {
+        setText(value.text)
+        setRecordType(value.recordType)
+      } else {
+        setText('')
+        setRecordType(null)
+      }
+    },
   }))
 
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [typing, setTyping] = useState(false)
 
   const onSelectCommandItem = useCallback(
-    (recordType: string) => {
-      setValue({ ...value, recordType })
+    (recordType: 'Frame' | 'Transcript') => {
+      setRecordType(recordType)
       setTyping(false)
       searchInputRef.current?.blur()
       setTimeout(() => onSubmit(), 0)
-      // onSubmit()
     },
-    [value, setValue, onSubmit],
+    [onSubmit],
   )
 
   const onClearValue = useCallback(() => {
-    setValue({ ...value, text: '' })
+    setText('')
+    setRecordType(null)
     setTimeout(() => onSubmit(), 0)
-  }, [value, setValue, onSubmit])
+  }, [onSubmit])
 
   return (
     <div className="relative mx-auto block w-96 max-w-full">
@@ -54,8 +66,8 @@ const SearchFormWithRef = forwardRef<
             ref={searchInputRef}
             className="border-app-line bg-app-overlay text-ink block w-full rounded-md border px-4 py-[0.3rem] pl-7 pr-7 text-sm outline-none"
             placeholder="Search"
-            value={value.text}
-            onValueChange={(text) => setValue({ ...value, text })}
+            value={text}
+            onValueChange={(text) => setText(text)}
             onFocus={() => setTyping(true)}
             onBlur={() => setTimeout(() => setTyping(false), 200)}
             autoFocus={false}
@@ -63,8 +75,8 @@ const SearchFormWithRef = forwardRef<
           <Icon.MagnifyingGlass className="text-ink/50 absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform" />
           <Icon.Close
             className={classNames(
-              "text-ink/30 absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 transform",
-              !value.text ? "hidden" : null,
+              'text-ink/30 absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 transform',
+              !text ? 'hidden' : null,
             )}
             onClick={() => onClearValue()}
           />
@@ -82,7 +94,7 @@ const SearchFormWithRef = forwardRef<
                 </div>
                 <div className="mx-2 flex-1 break-all">
                   <span>Visual search for </span>
-                  <strong>{value.text}</strong>
+                  <strong>{text}</strong>
                 </div>
               </CommandPrimitive.Item>
               <CommandPrimitive.Item
@@ -94,7 +106,7 @@ const SearchFormWithRef = forwardRef<
                 </div>
                 <div className="mx-2 flex-1 break-all">
                   <span>Transcript search for </span>
-                  <strong>{value.text}</strong>
+                  <strong>{text}</strong>
                 </div>
               </CommandPrimitive.Item>
             </CommandPrimitive.List>
