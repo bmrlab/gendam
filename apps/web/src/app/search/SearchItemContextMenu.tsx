@@ -1,13 +1,13 @@
 'use client'
 import { useExplorerContext } from '@/Explorer/hooks'
 import { type ExplorerItem } from '@/Explorer/types'
-import { rspc } from '@/lib/rspc'
+import { client, rspc } from '@/lib/rspc'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
-import { type SearchResultPayload } from '@/lib/bindings'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
+import { useSearchPageContext, type SearchResultPayload } from './context'
 
 type SearchItemContextMenuProps = {
   data: SearchResultPayload
@@ -18,6 +18,8 @@ const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemC
     const explorer = useExplorerContext()
     const router = useRouter()
     const quickViewStore = useQuickViewStore()
+
+    const searchQuery = useSearchPageContext()
 
     const selectedSearchResultItems = useMemo(() => {
       type T = Extract<ExplorerItem, { type: 'SearchResult' }>
@@ -72,6 +74,17 @@ const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemC
       }
     }, [exportSegmentMut, selectedSearchResultItems])
 
+    const recommendFrames = useCallback(async () => {
+      if (!data.filePath.assetObject) {
+        return
+      }
+      searchQuery.fetch({
+        api: 'search.recommend',
+        assetObjectHash: data.filePath.assetObject.hash,
+        timestamp: data.metadata.startTime,
+      })
+    }, [data.filePath.assetObject, data.metadata.startTime, searchQuery])
+
     return (
       <ContextMenu.Content ref={forwardedRef as any} {...prpos} onClick={(e) => e.stopPropagation()}>
         <ContextMenu.Item
@@ -90,6 +103,12 @@ const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemC
           onSelect={() => exportSegment()}
         >
           <div>Export video segment</div>
+        </ContextMenu.Item>
+        <ContextMenu.Item
+          onSelect={() => recommendFrames()}
+          disabled={explorer.selectedItems.size > 1}
+        >
+          <div>Recommend</div>
         </ContextMenu.Item>
       </ContextMenu.Content>
     )
