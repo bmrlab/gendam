@@ -6,6 +6,7 @@ use error::Result;
 use opendal::services::Fs;
 use opendal::{BlockingOperator, Buffer, Operator};
 use std::path::{Path, PathBuf};
+use std::vec;
 
 #[derive(Clone, Debug)]
 pub struct Storage {
@@ -99,6 +100,10 @@ impl Storage {
         }
     }
 
+    pub fn get_actual_path(&self, path: impl AsRef<Path>) -> PathBuf {
+        self.root.join(path)
+    }
+
     // list all files under path
     // not recursion
     // accept relative path like "path/" "path" ""
@@ -128,13 +133,38 @@ impl Storage {
         }
     }
 
+    pub fn remove_file(&self, path: &PathBuf) -> Result<()> {
+        self.block_op
+            .remove(vec![path
+                .to_str()
+                .ok_or_else(|| StorageError::PathError)?
+                .to_string()])
+            .map_err(StorageError::from)
+    }
+
     pub async fn remove_dir_all(&self, path: &str) -> Result<()> {
         self.op.remove_all(path).await.map_err(StorageError::from)
+    }
+
+    pub fn add_tmp_suffix_to_path(path: &Path) -> PathBuf {
+        let mut new_path = path.to_path_buf();
+        if let Some(file_stem) = new_path.file_stem() {
+            let new_file_stem = format!("{}-tmp", file_stem.to_string_lossy());
+            new_path.set_file_name(format!(
+                "{}.{}",
+                new_file_stem,
+                new_path.extension().unwrap_or_default().to_string_lossy()
+            ));
+        }
+        new_path
     }
 }
 
 #[cfg(test)]
 mod storage_test {
+    use std::path::PathBuf;
+
+    use crate::Storage;
 
     fn init_storage() -> super::Storage {
         let test_path = "/Users/zingerbee/Downloads/test/gendam";
@@ -255,5 +285,15 @@ mod storage_test {
         assert!(storage.is_exist("fo").await.unwrap());
         assert!(storage.is_exist("fo/").await.unwrap());
         clear_test_dir();
+    }
+
+    #[test]
+    fn test_add_tmp_suffix_to_file() {
+        let file_path = PathBuf::from("path/to/your/folder/aa.mp4");
+        let new_path = Storage::add_tmp_suffix_to_path(&file_path);
+        println!("Original path: {:?}", file_path);
+        println!("New path: {:?}", new_path);
+
+        assert_eq!("path/to/your/folder/aa-tmp.mp4", new_path.to_str().unwrap());
     }
 }
