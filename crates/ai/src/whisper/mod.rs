@@ -9,7 +9,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use storage::Storage;
-use tracing::{debug, info, warn};
+use tracing::warn;
 
 mod language;
 
@@ -151,11 +151,9 @@ impl Whisper {
         params: Option<WhisperParams>,
     ) -> anyhow::Result<WhisperResult> {
         let params = params.unwrap_or_default();
-        let mut output_file_path = audio_file_path.as_ref().with_file_name("transcript");
-        debug!("output_file_path: {:?}", output_file_path);
-        let actual_path = self.storage.get_actual_path(output_file_path.as_path());
-        let mut tmp_output_file_path = Storage::add_tmp_suffix_to_path(&actual_path);
-        let actual_audio_file_path = self.storage.get_actual_path(audio_file_path.as_ref());
+        let output_file_path = audio_file_path.as_ref().with_file_name("transcript");
+        let actual_audio_path = self.storage.get_actual_path(audio_file_path.as_ref());
+        let actual_output_path = self.storage.get_actual_path(output_file_path.as_path());
 
         // let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
         //     resources_dir: self.resources_dir.clone(),
@@ -171,19 +169,16 @@ impl Whisper {
 
         let model_path = self.model_path.to_string_lossy().to_string();
 
-        debug!("actual_audio_file_path: {:?}", actual_audio_file_path);
-        debug!("temp_output_file_path: {:?}", tmp_output_file_path);
-
         let mut args_list = vec![
             "-l",
             "auto",
             "-f",
-            actual_audio_file_path.to_str().unwrap(),
+            actual_audio_path.to_str().unwrap(),
             "-m",
             &model_path,
             "-oj",
             "-of",
-            tmp_output_file_path.to_str().unwrap(),
+            actual_output_path.to_str().unwrap(),
         ];
 
         if params.enable_translate {
@@ -201,29 +196,6 @@ impl Whisper {
                         String::from_utf8_lossy(&output.stderr)
                     );
                 }
-
-                // 默认导出自动带上 .json 后缀
-                tmp_output_file_path.set_extension("json");
-                output_file_path.set_extension("json");
-                if let Ok(data) = std::fs::read(tmp_output_file_path.as_path()) {
-                    match self
-                        .storage
-                        .write(
-                            output_file_path.to_str().expect("invalid output_file_path"),
-                            data,
-                        )
-                        .await
-                    {
-                        Ok(_) => {
-                            if let Err(e) = std::fs::remove_file(tmp_output_file_path) {
-                                info!("failed to remove tmp output: {}", e);
-                            }
-                        }
-                        Err(e) => {
-                            warn!("failed to write transcript: {}", e);
-                        }
-                    };
-                }
             }
             Err(e) => {
                 bail!("failed to run subprocess {}", e);
@@ -233,7 +205,7 @@ impl Whisper {
         // result may contain invalid utf-8
         // TODO maybe we should also remove replacement character?
         let mut buf: Vec<u8> = vec![];
-        let mut file = std::fs::File::open(output_file_path.with_extension("json"))?;
+        let mut file = std::fs::File::open(actual_output_path.with_extension("json"))?;
         file.read_to_end(&mut buf)?;
         let transcript = String::from_utf8_lossy(&buf);
         let transcript = transcript.to_string();
@@ -245,7 +217,7 @@ impl Whisper {
         let transcription: Vec<WhisperTranscription> = serde_json::from_value(transcription)?;
 
         // delete json output file
-        if let Err(e) = std::fs::remove_file(output_file_path.with_extension("json")) {
+        if let Err(e) = std::fs::remove_file(actual_output_path.with_extension("json")) {
             warn!("failed to remove json output: {}", e);
         };
 
