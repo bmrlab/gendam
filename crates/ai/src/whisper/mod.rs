@@ -8,13 +8,15 @@ use std::convert::AsRef;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use tracing::warn;
+use storage::Storage;
+use tracing::{debug, info, warn};
 
 mod language;
 
 pub struct Whisper {
     binary_path: PathBuf,
     model_path: PathBuf,
+    storage: Storage,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -104,7 +106,7 @@ impl Default for WhisperParams {
 }
 
 impl Whisper {
-    pub async fn new(model_path: impl AsRef<Path>) -> anyhow::Result<Self> {
+    pub async fn new(model_path: impl AsRef<Path>, stroage: Storage) -> anyhow::Result<Self> {
         let current_exe_path = std::env::current_exe().expect("failed to get current executable");
         let current_dir = current_exe_path
             .parent()
@@ -139,6 +141,7 @@ impl Whisper {
         Ok(Self {
             binary_path,
             model_path: model_path.as_ref().to_path_buf(),
+            storage: stroage,
         })
     }
 
@@ -148,7 +151,11 @@ impl Whisper {
         params: Option<WhisperParams>,
     ) -> anyhow::Result<WhisperResult> {
         let params = params.unwrap_or_default();
-        let output_file_path = audio_file_path.as_ref().with_file_name("transcript");
+        let mut output_file_path = audio_file_path.as_ref().with_file_name("transcript");
+        debug!("output_file_path: {:?}", output_file_path);
+        let actual_path = self.storage.get_actual_path(output_file_path.as_path());
+        let mut tmp_output_file_path = Storage::add_tmp_suffix_to_path(&actual_path);
+        let actual_audio_file_path = self.storage.get_actual_path(audio_file_path.as_ref());
 
         // let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
         //     resources_dir: self.resources_dir.clone(),
@@ -164,16 +171,19 @@ impl Whisper {
 
         let model_path = self.model_path.to_string_lossy().to_string();
 
+        debug!("actual_audio_file_path: {:?}", actual_audio_file_path);
+        debug!("temp_output_file_path: {:?}", tmp_output_file_path);
+
         let mut args_list = vec![
             "-l",
             "auto",
             "-f",
-            audio_file_path.as_ref().to_str().unwrap(),
+            actual_audio_file_path.to_str().unwrap(),
             "-m",
             &model_path,
             "-oj",
             "-of",
-            output_file_path.to_str().unwrap(),
+            tmp_output_file_path.to_str().unwrap(),
         ];
 
         if params.enable_translate {
@@ -190,6 +200,29 @@ impl Whisper {
                         "failed to get transcript: {}",
                         String::from_utf8_lossy(&output.stderr)
                     );
+                }
+
+                // 默认导出自动带上 .json 后缀
+                tmp_output_file_path.set_extension("json");
+                output_file_path.set_extension("json");
+                if let Ok(data) = std::fs::read(tmp_output_file_path.as_path()) {
+                    match self
+                        .storage
+                        .write(
+                            output_file_path.to_str().expect("invalid output_file_path"),
+                            data,
+                        )
+                        .await
+                    {
+                        Ok(_) => {
+                            if let Err(e) = std::fs::remove_file(tmp_output_file_path) {
+                                info!("failed to remove tmp output: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            warn!("failed to write transcript: {}", e);
+                        }
+                    };
                 }
             }
             Err(e) => {
@@ -251,6 +284,7 @@ async fn test_whisper() {
 
     let whisper = Whisper::new(
         "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
+        Storage::new_fs("").unwrap(),
     )
     .await
     .unwrap();

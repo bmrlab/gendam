@@ -151,8 +151,13 @@ impl Storage {
         if let Some(file_stem) = new_path.file_stem() {
             let new_file_stem = format!("{}-tmp", file_stem.to_string_lossy());
             new_path.set_file_name(format!(
-                "{}.{}",
+                "{}{}{}",
                 new_file_stem,
+                if let Some(_) = new_path.extension() {
+                    "."
+                } else {
+                    ""
+                },
                 new_path.extension().unwrap_or_default().to_string_lossy()
             ));
         }
@@ -295,5 +300,14 @@ mod storage_test {
         println!("New path: {:?}", new_path);
 
         assert_eq!("path/to/your/folder/aa-tmp.mp4", new_path.to_str().unwrap());
+
+        let file_path = PathBuf::from(
+            "artifacts/bdc/bdca61586e79f6ba/audio-2762e699-07bb-4c81-b958-73325e0dedc5/transcript",
+        );
+        let new_path = Storage::add_tmp_suffix_to_path(&file_path);
+        println!("Original path: {:?}", file_path);
+        println!("New path: {:?}", new_path);
+
+        assert_eq!("artifacts/bdc/bdca61586e79f6ba/audio-2762e699-07bb-4c81-b958-73325e0dedc5/transcript-tmp", new_path.to_str().unwrap());
     }
 }
