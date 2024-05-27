@@ -105,7 +105,7 @@ const AssetObjectDetail = ({ data }: { data: FilePath }) => {
     if (!videoRef?.current || !data.assetObject?.hash) {
       return
     }
-    const videoSrc = currentLibrary.getFileSrc(data.assetObject.hash)
+    const videoSrc = currentLibrary.getFileSrc(data.assetObject.hash, data.assetObject.mimeType!)
     // 重新赋值才能在 src 变化了以后重新加载视频
     if (videoRef.current.src != videoSrc) {
       videoRef.current.src = videoSrc

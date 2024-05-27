@@ -364,6 +364,37 @@ impl VideoDecoder {
             }
         }
     }
+
+    pub fn convert(&self, convert_path: impl AsRef<Path>) -> anyhow::Result<()> {
+        match std::process::Command::new(&self.binary_file_path)
+            .args([
+                "-i",
+                self.video_file_path
+                    .to_str()
+                    .expect("invalid video file path"),
+                "-codec",
+                "copy",
+                convert_path
+                    .as_ref()
+                    .to_str()
+                    .expect("invalid convert path"),
+            ])
+            .output()
+        {
+            Ok(output) => {
+                if !output.status.success() {
+                    bail!(
+                        "Failed to convert video: {}",
+                        String::from_utf8_lossy(&output.stderr)
+                    );
+                }
+                Ok(())
+            }
+            Err(e) => {
+                bail!("Failed to convert video: {e}");
+            }
+        }
+    }
 }
 
 #[cfg(feature = "ffmpeg-dylib")]
@@ -420,12 +451,7 @@ async fn test_save_video_segment() {
         let video_decoder = VideoDecoder::new(video_file).unwrap();
         let output_dir = "/Users/xddotcom/Downloads";
         let _result = video_decoder
-            .save_video_segment(
-                "test.mp4",
-                output_dir,
-                3000,
-                5000,
-            )
+            .save_video_segment("test.mp4", output_dir, 3000, 5000)
             .unwrap();
         // println!("{result:#?}");
     }

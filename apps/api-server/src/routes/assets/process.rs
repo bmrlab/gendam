@@ -127,6 +127,18 @@ pub async fn process_video_metadata(
         )
     })?;
 
+    if let Some(mime_type) = asset_object_data.mime_type {
+        if mime_type.ends_with("x-matroska") {
+            video_handler.convert().map_err(|e| {
+                error!("failed to convert video: {e}");
+                rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    format!("failed to convert video: {}", e),
+                )
+            })?;
+        }
+    }
+
     let values: Vec<media_data::SetParam> = vec![
         media_data::width::set(Some(metadata.width as i32)),
         media_data::height::set(Some(metadata.height as i32)),

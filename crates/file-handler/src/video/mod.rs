@@ -285,6 +285,18 @@ impl VideoHandler {
             milliseconds_to
         )
     }
+
+    // 格式转换 现在是给mkv转mp4
+    pub fn convert(&self) -> anyhow::Result<()> {
+        // 记录时间
+        let start = std::time::Instant::now();
+        let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
+        video_decoder.convert(&self.artifacts_dir.join("out.mp4"))?;
+        let duration = start.elapsed();
+        tracing::debug!("convert video duration: {:?}", duration);
+        Ok(())
+    }
+
 }
 
 #[async_trait]

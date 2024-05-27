@@ -14,7 +14,7 @@ const Player = ({ data }: { data: QuickViewItem }) => {
     }
     const startTime = Math.max(0, (data.video?.currentTime || 0) - 0.5)
     // const endTime = startTime + 2
-    const videoSrc = currentLibrary.getFileSrc(data.assetObject.hash)
+    const videoSrc = currentLibrary.getFileSrc(data.assetObject.hash, data.assetObject.mimeType!)
     // 重新赋值才能在 src 变化了以后重新加载视频
     if ($video.src != videoSrc) {
       $video.src = videoSrc

@@ -196,12 +196,16 @@ export default function ClientLayout({
   )
 
   const getFileSrc = useCallback(
-    (assetObjectHash: string) => {
+    (assetObjectHash: string, assetObjectMimeType?: string) => {
       if (!library) {
         return '/images/empty.png'
       }
       // const fileFullPath = library.dir + '/files/' + assetObjectHash
-      const fileFullPath = `${library.dir}/files/${getFileShardHex(assetObjectHash)}/${assetObjectHash}`
+      let fileFullPath = `${library.dir}/files/${getFileShardHex(assetObjectHash)}/${assetObjectHash}`
+      // mkv
+      if (assetObjectMimeType === 'video/x-matroska') {
+        fileFullPath = `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/out.mp4`
+      }
       if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
         return convertFileSrc(fileFullPath)
       } else {
