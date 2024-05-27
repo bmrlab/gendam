@@ -126,6 +126,7 @@ dependencies = [
  "reqwest 0.11.27",
  "serde",
  "serde_json",
+ "storage",
  "strum",
  "strum_macros",
  "test-log",

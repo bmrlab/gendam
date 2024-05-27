@@ -5,6 +5,7 @@ edition = { workspace = true }
 
 [dependencies]
 file-downloader = { path = "../file-downloader" }
+storage = { path = "../storage" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
