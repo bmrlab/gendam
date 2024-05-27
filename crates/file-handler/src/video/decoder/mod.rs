@@ -26,7 +26,7 @@ use tokio::process::Command;
 #[cfg(feature = "ffmpeg-dylib")]
 impl VideoDecoder {
     pub fn new(filename: impl AsRef<Path>) -> Self {
-        debug!("Successfully opened {}", filename.as_ref().display());
+        tracing::debug!("Successfully opened {}", filename.as_ref().display());
 
         let decoder = Self {
             video_file_path: filename.as_ref().to_path_buf(),
@@ -343,6 +343,9 @@ impl VideoDecoder {
     }
 
     pub async fn save_video_audio(&self, audio_path: impl AsRef<Path>) -> anyhow::Result<()> {
+        let actual_path = self.storage.get_actual_path(audio_path.as_ref());
+        let tmp_path = Storage::add_tmp_suffix_to_path(&actual_path);
+        debug!("tmp_path: {:?}", tmp_path);
         match std::process::Command::new(&self.binary_file_path)
             .args([
                 "-i",
@@ -355,9 +358,7 @@ impl VideoDecoder {
                 "16000",
                 "-ac",
                 "1",
-                "-f",
-                "wav",
-                "pipe:1",
+                tmp_path.to_str().expect("invalid audio path"),
             ])
             .output()
         {
@@ -368,12 +369,28 @@ impl VideoDecoder {
                         String::from_utf8_lossy(&output.stderr)
                     );
                 }
-                self.storage
-                    .write(
-                        audio_path.as_ref().to_str().expect("invalid audio path"),
-                        output.stdout,
-                    )
-                    .await?;
+
+                let content = std::fs::read(tmp_path.clone());
+                match content {
+                    Ok(data) => {
+                        if let Ok(()) = self
+                            .storage
+                            .write(
+                                audio_path.as_ref().to_str().expect("invalid audio path"),
+                                data,
+                            )
+                            .await
+                        {
+                            // 删除临时文件
+                            if let Err(e) = std::fs::remove_file(tmp_path) {
+                                tracing::info!("Failed to remove tmp audio file: {:?}", e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        bail!("Failed to save video audio: {e}");
+                    }
+                }
             }
             Err(e) => {
                 bail!("Failed to save video frames: {e}");

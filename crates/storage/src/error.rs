@@ -16,4 +16,7 @@ pub enum StorageError {
 
     #[error("UTF-8 conversion error: {0}")]
     Utf8Error(#[from] std::string::FromUtf8Error),
+
+    #[error("Path error")]
+    PathError,
 }

@@ -15,6 +15,7 @@ ai = { path = "../../crates/ai" }
 p2p = { path = "../../crates/p2p" }
 p2p-block = { path = "../../crates/p2p-block" }
 cron = { path = "../../crates/cron" }
+storage = { path = "../../crates/storage" }
 rspc = { workspace = true }
 rspc-axum = { workspace = true }
 specta = { workspace = true }

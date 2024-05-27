@@ -4,6 +4,7 @@ use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize, Serializer};
 use std::fmt::Write;
 use std::path::PathBuf;
+use storage::Storage;
 use tracing::debug;
 
 // 检查 content 是否为空，如何为空直接返回空字符串
@@ -70,9 +71,9 @@ pub struct AudioReader {
 }
 
 impl AudioReader {
-    pub fn new(path: PathBuf) -> Self {
+    pub fn new(path: PathBuf, storage: Storage) -> Self {
         Self {
-            content: AudioReader::parse(path).unwrap_or_default(),
+            content: AudioReader::parse(path, storage).unwrap_or_default(),
         }
     }
 
@@ -83,9 +84,9 @@ impl AudioReader {
     /// 读取 transcript.txt 文件内容
     /// 文件格式为 JSON: [{"start_timestamp":0,"end_timestamp":1880,"text":"..."}]
     /// 返回 AudioData
-    fn parse(path: PathBuf) -> anyhow::Result<Vec<AudioData>> {
+    fn parse(path: PathBuf, storage: Storage) -> anyhow::Result<Vec<AudioData>> {
         debug!("audio parse path {}", path.display());
-        let content = std::fs::read_to_string(path)?;
+        let content = storage.read_to_string(path.to_str().expect("invalid path in parse"))?;
         let raw_content = serde_json::from_str::<AudioTranscriptOutput>(&content)?;
 
         Ok(raw_content
@@ -222,7 +223,7 @@ mod audio_tests {
         let path = env::current_dir()
             .unwrap()
             .join("src/tests/mock/transcript.txt");
-        let reader = AudioReader::new(path);
+        let reader = AudioReader::new(path, Storage::new_fs("").unwrap());
         reader
     }
 

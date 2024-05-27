@@ -172,8 +172,9 @@ pub async fn delete_file_path_and_unlinked_asset_objects(
         .await
         .iter()
         .for_each(|data| {
-            let file_path = library.file_path(&data.hash);
-            if let Err(e) = std::fs::remove_file(&file_path) {
+            let file_path = library.relative_file_path(&data.hash);
+
+            if let Err(e) = library.storage.remove_file(&file_path) {
                 error!("failed to delete file({}): {}", file_path.display(), e);
             };
         });
