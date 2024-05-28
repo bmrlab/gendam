@@ -100,16 +100,18 @@ const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemC
         >
           <div>Reveal in explorer</div>
         </ContextMenu.Item>
-        <ContextMenu.Item
-          onSelect={() => exportSegment()}
-        >
-          <div>Export video segment</div>
-        </ContextMenu.Item>
+        <ContextMenu.Separator />
         <ContextMenu.Item
           onSelect={() => recommendFrames()}
           disabled={explorer.selectedItems.size > 1}
         >
-          <div>Recommend</div>
+          <div>Find similar items</div>
+        </ContextMenu.Item>
+        <ContextMenu.Separator />
+        <ContextMenu.Item
+          onSelect={() => exportSegment()}
+        >
+          <div>Export</div>
         </ContextMenu.Item>
       </ContextMenu.Content>
     )

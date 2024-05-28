@@ -43,13 +43,15 @@ const Player = ({ data }: { data: QuickViewItem }) => {
           {/* <source src={currentLibrary.getFileSrc(assetObject.hash)} /> */}
         </video>
       ) : (
-        <Image
-          src={currentLibrary.getFileSrc(data.assetObject.hash)}
-          alt={data.assetObject.hash}
-          fill={true}
-          className="object-contain object-center rounded-md"
-          priority
-        />
+        <div className="relative h-full w-full">
+          <Image
+            src={currentLibrary.getFileSrc(data.assetObject.hash)}
+            alt={data.assetObject.hash}
+            fill={true}
+            className="h-full w-full rounded-md object-contain object-center"
+            priority
+          />
+        </div>
       )}
     </div>
   )

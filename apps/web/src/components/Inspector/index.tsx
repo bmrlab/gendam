@@ -54,9 +54,9 @@ function TaskItemStatus({ task }: { task: FileHandlerTask }) {
 }
 
 export const TaskItemType: Record<string, [string, number]> = {
-  'frame': ['Frame Processing', 1],
+  'frame': ['Visual Processing', 1],
   'frame-content-embedding': ['Visual Indexing', 2],
-  'frame-caption': ['Video Recognition', 3],
+  'frame-caption': ['Description Recognition', 3],
   'frame-caption-embedding': ['Description Indexing', 4],
   'audio': ['Audio Processing', 5],
   'transcript': ['Speech Recognition', 6],
@@ -130,15 +130,15 @@ const AssetObjectDetail = ({ data }: { data: FilePath }) => {
           </video>
         </div>
       ) : (
-        <Image
-          src={currentLibrary.getFileSrc(assetObject.hash)}
-          alt={assetObject.hash}
-          fill={false}
-          className="relative object-center"
-          width={232}
-          height={Math.floor((232 / Number(mediaData.width)) * Number(mediaData.height))}
-          priority
-        />
+        <div className="w-58 relative h-48">
+          <Image
+            src={currentLibrary.getFileSrc(assetObject.hash)}
+            alt={assetObject.hash}
+            fill={true}
+            className="h-full w-full rounded-md object-contain object-center"
+            priority
+          />
+        </div>
       )}
       <div className="mt-3 overflow-hidden">
         <div className="text-ink line-clamp-2 break-all text-sm font-medium">{data.name}</div>
