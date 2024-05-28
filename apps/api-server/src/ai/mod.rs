@@ -13,7 +13,6 @@ use ai::{
 use anyhow::bail;
 use serde_json::Value;
 use std::{fmt, time::Duration};
-use tracing::debug;
 
 pub struct AIHandler {
     pub multi_modal_embedding: Box<dyn AsMultiModalEmbeddingModel + Send + Sync>,
@@ -126,6 +125,7 @@ impl AIHandler {
             move || {
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
+                let storage = library.storage.clone();
                 async move {
                     let params = model_clone.params;
                     match model_clone.model_type {
@@ -142,6 +142,7 @@ impl AIHandler {
                                 text_model_path,
                                 text_tokenizer_vocab_path,
                                 CLIPModel::MViTB32,
+                                storage,
                             )
                             .await
                         }
