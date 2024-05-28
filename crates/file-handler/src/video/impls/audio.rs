@@ -5,11 +5,7 @@ use crate::{
 use ai::AudioTranscriptOutput;
 use qdrant_client::qdrant::PointStruct;
 use serde_json::json;
-use std::{
-    fs::File,
-    io::{BufReader, Write},
-    path::PathBuf,
-};
+use std::path::PathBuf;
 use tracing::error;
 
 impl VideoHandler {
@@ -30,9 +26,11 @@ impl VideoHandler {
     pub fn get_transcript(&self) -> anyhow::Result<AudioTranscriptOutput> {
         let transcript_path = self.get_transcript_path()?;
 
-        let file = File::open(transcript_path)?;
-        let reader = BufReader::new(file);
-        let transcription: AudioTranscriptOutput = serde_json::from_reader(reader)?;
+        let data = self
+            .library
+            .storage
+            .read_to_string(transcript_path.to_str().expect("invalid transcript path"))?;
+        let transcription: AudioTranscriptOutput = serde_json::from_str(data.as_str())?;
 
         Ok(transcription)
     }
