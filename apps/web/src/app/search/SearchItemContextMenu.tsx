@@ -80,10 +80,11 @@ const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemC
       }
       searchQuery.fetch({
         api: 'search.recommend',
+        filePath: data.filePath,
         assetObjectHash: data.filePath.assetObject.hash,
         timestamp: data.metadata.startTime,
       })
-    }, [data.filePath.assetObject, data.metadata.startTime, searchQuery])
+    }, [data.filePath, data.metadata, searchQuery])
 
     return (
       <ContextMenu.Content ref={forwardedRef as any} {...prpos} onClick={(e) => e.stopPropagation()}>

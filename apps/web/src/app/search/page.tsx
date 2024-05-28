@@ -4,6 +4,7 @@ import { ExplorerContextProvider, ExplorerViewContextProvider, useExplorerValue 
 import { ExplorerItem } from '@/Explorer/types'
 import PageNav from '@/components/PageNav'
 import Viewport from '@/components/Viewport'
+import { useCurrentLibrary } from '@/lib/library'
 import { Video_Files } from '@gendam/assets/images'
 import { Checkbox } from '@gendam/ui/v2/checkbox'
 import classNames from 'classnames'
@@ -34,20 +35,22 @@ function SearchPage() {
   }, [searchQuery])
   const handleSearch = useCallback(
     (text: string, recordType: 'Frame' | 'Transcript') => {
-      if (searchFormRef.current) {
-        searchFormRef.current.setValue({ text, recordType })
-        searchQuery.fetch({
-          api: 'search.all',
-          text,
-          recordType,
-        })
-      }
+      searchQuery.fetch({
+        api: 'search.all',
+        text,
+        recordType,
+      })
     },
     [searchQuery],
   )
   useEffect(() => {
-    if (searchFormRef.current && requestPayload?.api === 'search.all') {
+    if (!searchFormRef.current) {
+      return
+    }
+    if (requestPayload?.api === 'search.all') {
       searchFormRef.current.setValue(requestPayload)
+    } else if (requestPayload?.api === 'search.recommend') {
+      searchFormRef.current.setValue(null)
     }
   }, [requestPayload])
 
@@ -86,24 +89,42 @@ function SearchPage() {
     ) : null
   }
 
-  const ToolBar =
-    requestPayload?.api === 'search.all' ? (
-      <div className="border-app-line flex items-center justify-start border-b px-8 py-2">
-        <div className="border-app-line flex items-center overflow-hidden rounded-lg border text-xs">
-          <div
-            className={classNames('px-4 py-2', requestPayload.recordType === 'Frame' && 'bg-app-hover')}
-            onClick={() => handleSearch(requestPayload.text, 'Frame')}
-          >
-            Visual
+  const ToolBar = () => {
+    const currentLibrary = useCurrentLibrary()
+    return (
+      <div className="border-app-line flex items-center justify-start border-b p-2 px-8">
+        {requestPayload?.api === 'search.all' ? (
+          <div className="border-app-line flex items-center overflow-hidden rounded-lg border text-xs">
+            <div
+              className={classNames('px-4 py-2', requestPayload.recordType === 'Frame' && 'bg-app-hover')}
+              onClick={() => handleSearch(requestPayload.text, 'Frame')}
+            >
+              Visual
+            </div>
+            <div
+              className={classNames('px-4 py-2', requestPayload.recordType === 'Transcript' && 'bg-app-hover')}
+              onClick={() => handleSearch(requestPayload.text, 'Transcript')}
+            >
+              Transcript
+            </div>
           </div>
-          <div
-            className={classNames('px-4 py-2', requestPayload.recordType === 'Transcript' && 'bg-app-hover')}
-            onClick={() => handleSearch(requestPayload.text, 'Transcript')}
-          >
-            Transcript
+        ) : requestPayload?.api === 'search.recommend' ? (
+          <div className="text-ink/50 my-1 flex flex-1 items-center gap-1 truncate text-xs">
+            <span>Frames similar to</span>
+            <span>&quot;{requestPayload.filePath.name}&quot;</span>
+            <span className="relative inline-block h-6 w-6">
+              <Image
+                src={currentLibrary.getThumbnailSrc(
+                  requestPayload.filePath.assetObject?.hash!,
+                  Math.floor(requestPayload.timestamp / 1000),
+                )}
+                alt={requestPayload.filePath.name}
+                fill={true}
+                className="h-full w-full rounded-sm object-cover"
+              ></Image>
+            </span>
           </div>
-        </div>
-        {/* <div className="text-ink/50 ml-4 text-sm flex-1 truncate">{requestPayload.text}</div> */}
+        ) : null}
         <form className="ml-auto mr-3 flex items-center gap-2">
           <Checkbox.Root
             id="--group-frames"
@@ -119,7 +140,8 @@ function SearchPage() {
           </label>
         </form>
       </div>
-    ) : null
+    )
+  }
 
   return (
     <Viewport.Page>
@@ -132,8 +154,7 @@ function SearchPage() {
           <SearchForm ref={searchFormRef} onSubmit={() => onSearchFormSubmit()} />
         </div>
       </Viewport.Toolbar>
-      <Viewport.Content className="flex flex-col items-stretch">
-        {ToolBar}
+      <Viewport.Content className="flex flex-col items-stretch justify-start">
         {!requestPayload ? (
           <div className="flex flex-1 flex-col items-center justify-center">
             <Image src={Video_Files} alt="video files" priority className="h-60 w-60"></Image>
@@ -149,14 +170,17 @@ function SearchPage() {
             <div className="my-4 text-sm">No results found</div>
           </div>
         ) : searchQuery.isSuccess && searchQuery.data.length > 0 ? (
-          <ExplorerViewContextProvider value={{ contextMenu }}>
-            <ExplorerContextProvider explorer={explorer}>
-              <ExplorerLayout
-                className="flex-1 p-8"
-                renderLayout={() => <SearchResults groupFrames={groupFrames} />}
-              ></ExplorerLayout>
-            </ExplorerContextProvider>
-          </ExplorerViewContextProvider>
+          <>
+            <ToolBar />
+            <ExplorerViewContextProvider value={{ contextMenu }}>
+              <ExplorerContextProvider explorer={explorer}>
+                <ExplorerLayout
+                  className="p-8"
+                  renderLayout={() => <SearchResults groupFrames={groupFrames} />}
+                ></ExplorerLayout>
+              </ExplorerContextProvider>
+            </ExplorerViewContextProvider>
+          </>
         ) : (
           <div className="text-ink/50 flex flex-1 items-center justify-center">Something went wrong</div>
         )}

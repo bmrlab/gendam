@@ -47,9 +47,11 @@ const SearchFormWithRef = forwardRef<
       setRecordType(recordType)
       setTyping(false)
       searchInputRef.current?.blur()
-      setTimeout(() => onSubmit(), 0)
+      if (text) {
+        setTimeout(() => onSubmit(), 0)
+      }
     },
-    [onSubmit],
+    [text, onSubmit],
   )
 
   const onClearValue = useCallback(() => {
