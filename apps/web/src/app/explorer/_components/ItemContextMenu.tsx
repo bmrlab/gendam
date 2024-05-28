@@ -147,7 +147,10 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   )
 
   return (
-    <ContextMenu.Content ref={forwardedRef as any} {...prpos} onClick={(e) => e.stopPropagation()}>
+    <ContextMenu.Content
+      ref={forwardedRef as any} {...prpos} onClick={(e) => e.stopPropagation()}
+      className="data-[state=closed]:animate-none data-[state=closed]:duration-0"
+    >
       <ContextMenu.Item onSelect={handleOpen} disabled={explorer.selectedItems.size > 1}>
         <div>Open</div>
       </ContextMenu.Item>

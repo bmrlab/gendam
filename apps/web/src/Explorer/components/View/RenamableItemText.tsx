@@ -21,11 +21,18 @@ export default function RenamableItemText({
     if (inputRef.current) {
       const el = inputRef.current
       el.value = data.filePath.name
-      // context menu 有个 transition, 要过大约 200ms 才消失, 如果提前 focus input 会立马 blur
+      /**
+       * context menu 有个 transition，是通过 data-[state=closed]:animate-out 定义的，要过大约 200ms 才消失，
+       * 如果提前 focus input 会立马 blur
+       * 现在在 ItemContextMenu 的 Content 上加了个
+       *   data-[state=closed]:animate-none data-[state=closed]:duration-0
+       * 来去掉关闭时候的动画。
+       * 这样 timeout 的时间可以少一点，不过测试下来小于 100ms 还是会有问题 (有时候会立马 blur)，应该还有其他动画或者 transition 在影响。
+       */
       setTimeout(() => {
         el.focus()
         el.select()
-      }, 200)
+      }, 100)
     }
   }, [inputRef, data.filePath.name])
 
@@ -62,7 +69,10 @@ export default function RenamableItemText({
       <input
         ref={inputRef}
         className={classNames(
-          "block w-full rounded-md outline-none text-ink bg-app border-2 border-blue-600 px-2 py-1 text-xs",
+          "block w-full text-ink bg-app text-xs",
+          // "border-2 border-blue-600",
+          "rounded shadow-[inset_0_0_0_1px] shadow-blue-600",
+          "outline-none border-none px-1 py-1",
           className
         )}
         type="text"
