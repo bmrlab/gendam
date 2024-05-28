@@ -282,13 +282,16 @@ pub async fn handle_recommend(
         positive: vec![point_id],
         limit: RETRIEVAL_COUNT,
         with_payload: Some(true.into()),
-        filter: Some(Filter::must_not(vec![
-            // Condition::matches(
-            //     "record_type", // TODO maybe this can be better
-            //     SearchRecordType::Frame.to_string(),
-            // ),
-            Condition::matches("file_identifier", asset_object_hash.to_string()),
+        filter: Some(Filter::all(vec![
+            Condition::matches(
+                "record_type", // TODO maybe this can be better
+                SearchRecordType::Frame.to_string(),
+            ),
         ])),
+        // it's ok to include frames of the same asset
+        // filter: Some(Filter::must_not(vec![
+        //     Condition::matches("file_identifier", asset_object_hash.to_string()),
+        // ])),
         score_threshold: Some(0.2),
         ..Default::default()
     };
