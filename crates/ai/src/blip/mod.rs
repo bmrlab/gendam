@@ -12,6 +12,7 @@ use candle_transformers::models::blip::VisionConfig;
 use candle_transformers::models::quantized_blip;
 use candle_transformers::models::{blip, blip_text};
 use std::path::Path;
+use storage::Storage;
 use tokenizers::Tokenizer;
 use tracing::debug;
 
@@ -20,6 +21,7 @@ pub struct BLIP {
     model: quantized_blip::BlipForConditionalGeneration,
     logits_processor: LogitsProcessor,
     device: Device,
+    storage: Storage,
 }
 
 const SEP_TOKEN_ID: u32 = 102;
@@ -96,6 +98,7 @@ impl BLIP {
         model_path: impl AsRef<Path>,
         tokenizer_path: impl AsRef<Path>,
         model_type: BLIPModel,
+        storage: Storage,
     ) -> anyhow::Result<Self> {
         let tokenizer = Tokenizer::from_file(tokenizer_path)
             .map_err(|_| anyhow!("failed to initialize tokenizer"))?;
@@ -118,6 +121,7 @@ impl BLIP {
             model,
             logits_processor,
             device,
+            storage,
         })
     }
 
@@ -126,7 +130,9 @@ impl BLIP {
             "generating caption for image: {}",
             image_path.as_ref().display()
         );
-        let image = load_image(image_path.as_ref())?.to_device(&self.device)?;
+        let image = self
+            .load_image(image_path.as_ref())?
+            .to_device(&self.device)?;
         let image_embeds = image.unsqueeze(0)?.apply(self.model.vision_model())?;
 
         let mut token_ids = vec![30522u32];
@@ -155,23 +161,28 @@ impl BLIP {
 
         result.map_err(|_| anyhow!("failed to generate caption"))
     }
-}
 
-pub fn load_image<P: AsRef<std::path::Path>>(p: P) -> candle_core::Result<Tensor> {
-    let img = image::io::Reader::open(p)?
-        .decode()
-        .map_err(candle_core::Error::wrap)?
-        .resize_to_fill(384, 384, image::imageops::FilterType::Triangle);
-    let img = img.to_rgb8();
-    let data = img.into_raw();
-    let data = Tensor::from_vec(data, (384, 384, 3), &Device::Cpu)?.permute((2, 0, 1))?;
-    let mean =
-        Tensor::new(&[0.48145466f32, 0.4578275, 0.40821073], &Device::Cpu)?.reshape((3, 1, 1))?;
-    let std = Tensor::new(&[0.26862954f32, 0.261_302_6, 0.275_777_1], &Device::Cpu)?
-        .reshape((3, 1, 1))?;
-    (data.to_dtype(candle_core::DType::F32)? / 255.)?
-        .broadcast_sub(&mean)?
-        .broadcast_div(&std)
+    pub fn load_image<P: AsRef<std::path::Path>>(&self, p: P) -> candle_core::Result<Tensor> {
+        let data = self
+            .storage
+            .read_blocking(p.as_ref().to_str().expect("invalid path"))
+            .map_err(candle_core::Error::wrap)?;
+        let img = image::io::Reader::new(std::io::Cursor::new(data.to_vec()))
+            .with_guessed_format()?
+            .decode()
+            .map_err(candle_core::Error::wrap)?
+            .resize_to_fill(384, 384, image::imageops::FilterType::Triangle);
+        let img = img.to_rgb8();
+        let data = img.into_raw();
+        let data = Tensor::from_vec(data, (384, 384, 3), &Device::Cpu)?.permute((2, 0, 1))?;
+        let mean = Tensor::new(&[0.48145466f32, 0.4578275, 0.40821073], &Device::Cpu)?
+            .reshape((3, 1, 1))?;
+        let std = Tensor::new(&[0.26862954f32, 0.261_302_6, 0.275_777_1], &Device::Cpu)?
+            .reshape((3, 1, 1))?;
+        (data.to_dtype(candle_core::DType::F32)? / 255.)?
+            .broadcast_sub(&mean)?
+            .broadcast_div(&std)
+    }
 }
 
 #[test_log::test(tokio::test)]
@@ -180,6 +191,7 @@ async fn test_caption() {
         "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
         "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
         BLIPModel::Base,
+        Storage::new_fs("").unwrap(),
     )
     .await;
 

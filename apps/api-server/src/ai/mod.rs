@@ -13,6 +13,7 @@ use ai::{
 use anyhow::bail;
 use serde_json::Value;
 use std::{fmt, time::Duration};
+use tracing::debug;
 
 pub struct AIHandler {
     pub multi_modal_embedding: Box<dyn AsMultiModalEmbeddingModel + Send + Sync>,
@@ -81,6 +82,7 @@ impl AIHandler {
             move || {
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
+                let storage = library.storage.clone();
                 async move {
                     match model_clone.model_type {
                         ConcreteModelType::BLIP => {
@@ -94,8 +96,7 @@ impl AIHandler {
                                 "Large" => ai::blip::BLIPModel::Large,
                                 _ => ai::blip::BLIPModel::Base,
                             };
-
-                            BLIP::new(model_path, tokenizer_path, model_type).await
+                            BLIP::new(model_path, tokenizer_path, model_type, storage).await
                         }
                         _ => {
                             bail!(

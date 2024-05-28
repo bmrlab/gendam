@@ -27,7 +27,11 @@ impl VideoHandler {
 
     pub fn get_frame_caption(&self, timestamp: i64) -> anyhow::Result<String> {
         let path = self.get_frame_caption_path(timestamp)?;
-        let json_string: Value = serde_json::from_str(&std::fs::read_to_string(path)?)?;
+        let content_str = self
+            .library
+            .storage
+            .read_to_string(path.to_str().expect("invalid caption path"))?;
+        let json_string: Value = serde_json::from_str(&content_str)?;
         let caption = json_string["caption"]
             .as_str()
             .ok_or(anyhow::anyhow!("no caption found in frame caption file"))?;
@@ -75,7 +79,6 @@ impl VideoHandler {
                 .process_single(path)
                 .await?;
 
-            debug!("caption: {:?}", caption);
             // write into file
 
             self.library
