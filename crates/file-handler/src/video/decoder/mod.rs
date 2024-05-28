@@ -181,6 +181,8 @@ impl VideoDecoder {
                     .expect("invalid video file path"),
                 "-ss",
                 &seconds_string,
+                "-vf",
+                "scale='if(gte(iw,ih)*sar,768,-1)':'if(gte(iw,ih)*sar, -1, 768)',select=eq(n\\,0)",
                 "-vframes",
                 "1",
                 "-compression_level",
