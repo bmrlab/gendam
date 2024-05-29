@@ -17,10 +17,13 @@ use crate::metadata::{
 
 use super::FRAME_FILE_EXTENSION;
 use anyhow::bail;
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{path::Path, process::Stdio};
 use storage::Storage;
+use storage::*;
+use storage_macro::*;
 use tokio::process::Command;
 
 #[cfg(feature = "ffmpeg-dylib")]
@@ -85,6 +88,7 @@ impl From<&RawProbeStreamOutput> for AudioMetadata {
 }
 
 #[cfg(feature = "ffmpeg-binary")]
+#[derive(StorageTrait)]
 pub struct VideoDecoder {
     video_file_path: std::path::PathBuf,
     binary_file_path: std::path::PathBuf,
@@ -207,14 +211,7 @@ impl VideoDecoder {
                         String::from_utf8_lossy(&output.stderr)
                     );
                 }
-                self.storage
-                    .write(
-                        thumbnail_path
-                            .as_ref()
-                            .to_str()
-                            .expect("invalid thumbnail path path"),
-                        output.stdout,
-                    )
+                self.write(thumbnail_path.as_ref().to_path_buf(), output.stdout.into())
                     .await?;
                 Ok(())
             }
@@ -256,12 +253,7 @@ impl VideoDecoder {
                         String::from_utf8_lossy(&output.stderr)
                     );
                 }
-                self.storage
-                    .write(
-                        frame_0_path.to_str().expect("invalid frames dir path"),
-                        output.stdout,
-                    )
-                    .await?;
+                self.write(frame_0_path, output.stdout.into()).await?;
             }
             Err(e) => {
                 bail!("Failed to save video frames: {e}");
@@ -320,16 +312,13 @@ impl VideoDecoder {
                     if data[end] == 0xFF && data[end + 1] == 0xD9 {
                         // JPEG 结束
                         // 保存 JPEG 图像到文件
-                        self.storage
-                            .write(
-                                frames_dir
-                                    .as_ref()
-                                    .join(format!("{}000.{FRAME_FILE_EXTENSION}", count + 1))
-                                    .to_str()
-                                    .expect("invalid frames dir path"),
-                                data[start..=end + 1].to_vec(),
-                            )
-                            .await?;
+                        self.write(
+                            frames_dir
+                                .as_ref()
+                                .join(format!("{}000.{FRAME_FILE_EXTENSION}", count + 1)),
+                            data[start..=end + 1].to_vec().into(),
+                        )
+                        .await?;
 
                         count += 1;
                         start = end + 2;
@@ -343,9 +332,9 @@ impl VideoDecoder {
     }
 
     pub async fn save_video_audio(&self, audio_path: impl AsRef<Path>) -> anyhow::Result<()> {
-        let actual_path = self.storage.get_actual_path(audio_path.as_ref());
+        let actual_path = self.get_actual_path(audio_path.as_ref().to_path_buf());
         let tmp_path = Storage::add_tmp_suffix_to_path(&actual_path);
-        debug!("tmp_path: {:?}", tmp_path);
+        tracing::debug!("tmp_path: {:?}", tmp_path);
         match std::process::Command::new(&self.binary_file_path)
             .args([
                 "-i",

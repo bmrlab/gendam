@@ -8,11 +8,13 @@ use std::convert::AsRef;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use storage::Storage;
+use storage::*;
+use storage_macro::*;
 use tracing::warn;
 
 mod language;
 
+#[derive(StorageTrait)]
 pub struct Whisper {
     binary_path: PathBuf,
     model_path: PathBuf,
@@ -106,7 +108,7 @@ impl Default for WhisperParams {
 }
 
 impl Whisper {
-    pub async fn new(model_path: impl AsRef<Path>, stroage: Storage) -> anyhow::Result<Self> {
+    pub async fn new(model_path: impl AsRef<Path>, storage: Storage) -> anyhow::Result<Self> {
         let current_exe_path = std::env::current_exe().expect("failed to get current executable");
         let current_dir = current_exe_path
             .parent()
@@ -141,7 +143,7 @@ impl Whisper {
         Ok(Self {
             binary_path,
             model_path: model_path.as_ref().to_path_buf(),
-            storage: stroage,
+            storage,
         })
     }
 
@@ -152,8 +154,8 @@ impl Whisper {
     ) -> anyhow::Result<WhisperResult> {
         let params = params.unwrap_or_default();
         let output_file_path = audio_file_path.as_ref().with_file_name("transcript");
-        let actual_audio_path = self.storage.get_actual_path(audio_file_path.as_ref());
-        let actual_output_path = self.storage.get_actual_path(output_file_path.as_path());
+        let actual_audio_path = self.get_actual_path(audio_file_path.as_ref().to_path_buf());
+        let actual_output_path = self.get_actual_path(output_file_path.as_path().to_path_buf());
 
         // let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
         //     resources_dir: self.resources_dir.clone(),
