@@ -32,6 +32,7 @@ api-server = { path = "../../api-server" }
 vector-db = { path = "../../../crates/vector-db", features = ["qdrant"] }
 analytics-tracing = { path = "../../../crates/analytics-tracing" }
 p2p = { path = "../../../crates/p2p" }
+storage = { path = "../../../crates/storage" }
 
 rspc = { workspace = true }
 rspc-tauri = { workspace = true }
@@ -45,6 +46,8 @@ dotenvy = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
 tauri-plugin-clipboard = "1.0.1"
+
+percent-encoding = "2.3.1"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.

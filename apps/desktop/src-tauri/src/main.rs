@@ -2,11 +2,22 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use api_server::{ctx::default::Ctx, CtxWithLibrary};
 use dotenvy::dotenv;
-use std::sync::{Arc, Mutex};
-use tauri::Manager;
+use std::{
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
+use tauri::{
+    http::{
+        header::{HeaderValue, CONTENT_TYPE},
+        Request, ResponseBuilder,
+    },
+    AppHandle, Manager,
+};
 use vector_db::kill_qdrant_server;
 mod store;
+use storage::Storage;
 use store::Store;
+mod protocol;
 
 #[tokio::main]
 async fn main() {
@@ -16,6 +27,65 @@ async fn main() {
     };
 
     let app = tauri::Builder::default()
+        .register_uri_scheme_protocol("storage", move |app: &AppHandle, request: &Request| {
+            // 处理请求并返回响应
+            dbg!(&request);
+
+            let decode_path = percent_encoding::percent_decode(request.uri().as_bytes())
+                .decode_utf8_lossy()
+                .to_string();
+
+            let path = decode_path.split("storage://localhost/").last().unwrap();
+            dbg!(&path);
+            let part_split: Vec<&str> = path.split('/').collect();
+
+            // 找到 "artifacts" 的索引
+            if let Some(index) = part_split
+                .iter()
+                .position(|&x| x == "artifacts" || x == "files")
+            {
+                let root_path = part_split[..index].join("/");
+                dbg!(&root_path);
+                // 提取从 "artifacts or files" 开始的部分
+                let relative_path = part_split[index..].join("/");
+                dbg!(&relative_path);
+
+                if let Ok(storage) = Storage::new_fs(root_path) {
+                    storage.read_blocking(relative_path).map_or_else(
+                        |e| {
+                            tracing::error!("failed to read storage");
+                            return ResponseBuilder::new()
+                                .status(404)
+                                .body(format!("error: {}", e).as_bytes().to_vec())
+                                .map_err(Into::into);
+                        },
+                        |data| {
+                            return ResponseBuilder::new()
+                                .header(
+                                    CONTENT_TYPE,
+                                    HeaderValue::try_from("video/quicktime")
+                                        .expect("Invalid header value"),
+                                )
+                                .status(200)
+                                .body(data.to_vec())
+                                .map_err(Into::into);
+                        },
+                    )
+                } else {
+                    tracing::error!("failed to read storage");
+                    return ResponseBuilder::new()
+                        .status(500)
+                        .body(Vec::new())
+                        .map_err(Into::into);
+                }
+            } else {
+                tracing::error!("failed to create storage");
+                return ResponseBuilder::new()
+                    .status(500)
+                    .body(Vec::new())
+                    .map_err(Into::into);
+            }
+        })
         .setup(|_app| {
             #[cfg(debug_assertions)] // only include this code on debug builds
             {
