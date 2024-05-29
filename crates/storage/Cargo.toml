@@ -8,6 +8,7 @@ tracing.workspace = true
 anyhow.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["test-util", "macros"] }
+async-trait = { workspace = true }
 
 opendal = { version = "0.46.0", features = ["services-fs"] }
 bytes = "1.6.0"

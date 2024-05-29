@@ -1,0 +1,12 @@
+[package]
+name = "storage-macro"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2" }
+quote = "1"
+storage = { path = "../storage" }

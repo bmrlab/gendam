@@ -2,6 +2,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::bail;
 use async_recursion::async_recursion;
+use storage::*;
 use uuid::Uuid;
 
 use crate::{
@@ -11,12 +12,7 @@ use crate::{
 
 impl VideoHandler {
     fn get_artifacts_settings(&self) -> ArtifactsSettings {
-        match self.library.storage.read_to_string(
-            self.artifacts_dir()
-                .join(ARTIFACTS_SETTINGS_FILE_NAME)
-                .to_str()
-                .expect("invalid ARTIFACTS_SETTINGS_FILE_NAME path"),
-        ) {
+        match self.read_to_string(self.artifacts_dir().join(ARTIFACTS_SETTINGS_FILE_NAME)) {
             std::result::Result::Ok(json_content) => {
                 if let std::result::Result::Ok(settings) =
                     serde_json::from_str::<ArtifactsSettings>(&json_content)
@@ -163,10 +159,7 @@ impl VideoHandler {
             .is_exist(output_dir.to_str().expect("invalid output_dir path"))
             .await?
         {
-            self.library
-                .storage
-                .create_dir(output_dir.to_str().expect("invalid output_dir path"))
-                .await?;
+            self.create_dir(output_dir).await?;
         }
 
         self.set_artifacts_settings(settings).await?;

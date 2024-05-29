@@ -127,6 +127,7 @@ dependencies = [
  "serde",
  "serde_json",
  "storage",
+ "storage-macro",
  "strum",
  "strum_macros",
  "test-log",
@@ -2731,6 +2732,7 @@ dependencies = [
  "serde",
  "serde_json",
  "storage",
+ "storage-macro",
  "strum",
  "strum_macros",
  "test-log",
@@ -8986,11 +8988,21 @@ name = "storage"
 version = "0.1.1"
 dependencies = [
  "anyhow",
+ "async-trait",
  "bytes",
  "opendal",
  "thiserror",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "storage-macro"
+version = "0.1.1"
+dependencies = [
+ "quote",
+ "storage",
+ "syn 2.0.58",
 ]
 
 [[package]]

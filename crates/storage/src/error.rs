@@ -1,7 +1,7 @@
 use opendal::Error as OpenDalError;
 use thiserror::Error;
 
-pub type Result<T> = std::result::Result<T, StorageError>;
+pub type StorageResult<T> = std::result::Result<T, StorageError>;
 
 #[derive(Error, Debug)]
 pub enum StorageError {

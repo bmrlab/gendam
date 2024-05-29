@@ -1,12 +1,15 @@
 mod error;
+mod traits;
 
 use crate::error::StorageError;
-use bytes::Bytes;
-use error::Result;
+pub use bytes::Bytes;
+pub use error::StorageResult;
 use opendal::services::Fs;
-use opendal::{BlockingOperator, Buffer, Operator};
+pub use opendal::Buffer;
+use opendal::{BlockingOperator, Operator};
 use std::path::{Path, PathBuf};
 use std::vec;
+pub use traits::StorageTrait;
 
 #[derive(Clone, Debug)]
 pub struct Storage {
@@ -16,13 +19,14 @@ pub struct Storage {
 }
 
 impl Storage {
-    pub fn new_fs(root: &str) -> Result<Self> {
+    pub fn new_fs(root: impl AsRef<Path>) -> StorageResult<Self> {
+        let root = Storage::path_to_string(root)?;
         let mut builder = Fs::default();
-        builder.root(root);
+        builder.root(root.as_str());
         let op: Operator = Operator::new(builder)?.finish();
 
         let mut builder = Fs::default();
-        builder.root(root);
+        builder.root(root.as_str());
         let block_op = Operator::new(builder)?.finish().blocking();
 
         Ok(Self {
@@ -30,6 +34,13 @@ impl Storage {
             block_op,
             root: PathBuf::from(root),
         })
+    }
+
+    fn path_to_string(path: impl AsRef<Path>) -> StorageResult<String> {
+        match path.as_ref().to_str() {
+            Some(path) => Ok(path.to_string()),
+            None => Err(StorageError::PathError),
+        }
     }
 
     pub fn operator(&self) -> &Operator {
@@ -42,7 +53,8 @@ impl Storage {
 
     /// To indicate that a path is a directory, it is compulsory to include a trailing / in the path. Failure to do so may result in NotADirectory error being returned by OpenDAL.
     /// https://opendal.apache.org/docs/rust/opendal/struct.BlockingOperator.html#method.create_dir
-    pub async fn create_dir(&self, path: &str) -> Result<()> {
+    pub async fn create_dir(&self, path: PathBuf) -> StorageResult<()> {
+        let path = Storage::path_to_string(path)?;
         let path = if path.ends_with("/") {
             path.to_string()
         } else {
@@ -54,32 +66,55 @@ impl Storage {
             .map_err(StorageError::from)
     }
 
-    pub async fn is_exist(&self, path: &str) -> Result<bool> {
-        self.op.is_exist(path).await.map_err(StorageError::from)
+    pub async fn is_exist(&self, path: impl AsRef<Path>) -> StorageResult<bool> {
+        let path = Storage::path_to_string(path)?;
+        self.op
+            .is_exist(path.as_str())
+            .await
+            .map_err(StorageError::from)
     }
 
-    pub async fn read(&self, path: &str) -> Result<Buffer> {
-        self.op.read(path).await.map_err(StorageError::from)
+    pub async fn read(&self, path: impl AsRef<Path>) -> StorageResult<Buffer> {
+        let path = Storage::path_to_string(path)?;
+        self.op
+            .read(path.as_str())
+            .await
+            .map_err(StorageError::from)
     }
 
-    pub fn read_blocking(&self, path: &str) -> Result<Buffer> {
-        self.block_op.read(path).map_err(StorageError::from)
-    }
-
-    pub fn read_to_string(&self, path: &str) -> Result<String> {
+    pub fn read_blocking(&self, path: impl AsRef<Path>) -> StorageResult<Buffer> {
+        let path = Storage::path_to_string(path)?;
         self.block_op
-            .read(path)
+            .read(path.as_str())
+            .map_err(StorageError::from)
+    }
+
+    pub fn read_to_string(&self, path: impl AsRef<Path>) -> StorageResult<String> {
+        let path = Storage::path_to_string(path)?;
+        self.block_op
+            .read(path.as_str())
             .map(|bs| String::from_utf8(bs.to_vec()).map_err(StorageError::from))?
             .map_err(StorageError::from)
     }
 
     /// if dir not exist, create it iteratively
-    pub async fn write(&self, path: &str, bs: impl Into<Buffer>) -> Result<()> {
-        self.op.write(path, bs).await.map_err(StorageError::from)
+    pub async fn write(&self, path: impl AsRef<Path>, bs: impl Into<Buffer>) -> StorageResult<()> {
+        let path = Storage::path_to_string(path)?;
+        self.op
+            .write(path.as_str(), bs)
+            .await
+            .map_err(StorageError::from)
     }
 
-    pub fn write_blocking(&self, path: &str, bs: impl Into<Bytes>) -> Result<()> {
-        self.block_op.write(path, bs).map_err(StorageError::from)
+    pub fn write_blocking(
+        &self,
+        path: impl AsRef<Path>,
+        bs: impl Into<Bytes>,
+    ) -> StorageResult<()> {
+        let path = Storage::path_to_string(path)?;
+        self.block_op
+            .write(path.as_str(), bs)
+            .map_err(StorageError::from)
     }
 
     // check if path is under root of opendal
@@ -87,16 +122,24 @@ impl Storage {
         path.as_ref().is_relative()
     }
 
-    pub async fn copy(&self, from: &str, to: &str) -> Result<()> {
+    pub async fn copy(&self, from: impl AsRef<Path>, to: impl AsRef<Path>) -> StorageResult<()> {
+        let from = Storage::path_to_string(from)?;
+        let to = Storage::path_to_string(to)?;
         // copy file between path(not under root of opendal) and opendal
-        if !self.under_root(from) {
+        if !self.under_root(from.clone()) {
             let data = tokio::fs::read(from)
                 .await
                 .map_err(|e| StorageError::from(e))?;
-            self.op.write(to, data).await.map_err(StorageError::from)
+            self.op
+                .write(to.as_str(), data)
+                .await
+                .map_err(StorageError::from)
         } else {
             // copy file under root of opendal
-            self.op.copy(from, to).await.map_err(StorageError::from)
+            self.op
+                .copy(from.as_str(), to.as_str())
+                .await
+                .map_err(StorageError::from)
         }
     }
 
@@ -107,7 +150,7 @@ impl Storage {
     // list all files under path
     // not recursion
     // accept relative path like "path/" "path" ""
-    pub async fn read_dir(&self, path: impl AsRef<Path>) -> Result<Vec<PathBuf>> {
+    pub async fn read_dir(&self, path: impl AsRef<Path>) -> StorageResult<Vec<PathBuf>> {
         match path.as_ref().to_str() {
             Some(path) => {
                 let path = if path.ends_with("/") {
@@ -133,17 +176,22 @@ impl Storage {
         }
     }
 
-    pub fn remove_file(&self, path: &PathBuf) -> Result<()> {
+    pub fn remove_file(&self, path: impl AsRef<Path>) -> StorageResult<()> {
         self.block_op
             .remove(vec![path
+                .as_ref()
                 .to_str()
                 .ok_or_else(|| StorageError::PathError)?
                 .to_string()])
             .map_err(StorageError::from)
     }
 
-    pub async fn remove_dir_all(&self, path: &str) -> Result<()> {
-        self.op.remove_all(path).await.map_err(StorageError::from)
+    pub async fn remove_dir_all(&self, path: impl AsRef<Path>) -> StorageResult<()> {
+        let path = Storage::path_to_string(path)?;
+        self.op
+            .remove_all(path.as_str())
+            .await
+            .map_err(StorageError::from)
     }
 
     pub fn add_tmp_suffix_to_path(path: &Path) -> PathBuf {
