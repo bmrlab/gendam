@@ -1,10 +1,10 @@
 'use client'
-import { useP2PEvents } from "@/hooks/useP2PEvents"
 import DeviceAuth from '@/components/DeviceAuth'
 import LibrariesSelect from '@/components/LibrariesSelect'
 import Shared from '@/components/Shared'
 import SonnerToaster from '@/components/SonnerToaster'
 import Viewport from '@/components/Viewport'
+import { useP2PEvents } from '@/hooks/useP2PEvents'
 import { Auth, LibrarySettings } from '@/lib/bindings'
 import { CurrentLibrary, type Library } from '@/lib/library'
 import { client, queryClient, rspc } from '@/lib/rspc'
@@ -203,7 +203,9 @@ export default function ClientLayout({
       // const fileFullPath = library.dir + '/files/' + assetObjectHash
       const fileFullPath = `${library.dir}/files/${getFileShardHex(assetObjectHash)}/${assetObjectHash}`
       if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-        return convertFileSrc(fileFullPath)
+        console.log('fileFullPath', fileFullPath)
+        return convertFileSrc(fileFullPath, 'storage')
+        // return convertFileSrc(fileFullPath)
       } else {
         return `http://localhost:3001/file/localhost/${fileFullPath}`
       }
