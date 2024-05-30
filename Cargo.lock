@@ -3220,6 +3220,7 @@ name = "gendam-desktop"
 version = "0.1.1"
 dependencies = [
  "analytics-tracing",
+ "anyhow",
  "api-server",
  "chrono",
  "content-library",
@@ -3231,6 +3232,7 @@ dependencies = [
  "prisma-client-rust",
  "prisma-client-rust-cli",
  "prisma-lib",
+ "rand 0.8.5",
  "rspc",
  "rspc-tauri",
  "serde",
@@ -3243,6 +3245,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+ "url",
  "vector-db",
 ]
 
