@@ -6,6 +6,15 @@ async fn copy_data_from_legacy_db(
     legacy_client: &PrismaClient,
 ) -> Result<(), ()> {
     // copy AssetObject, MediaData, FilePath from legacy db to new db
+    // disable foreign key check
+    client
+        ._execute_raw(prisma_client_rust::raw!("PRAGMA foreign_keys = OFF;"))
+        .exec()
+        .await
+        .map_err(|e| {
+            tracing::error!("error PRAGMA foreign_keys = OFF; {}", e);
+            ()
+        })?;
     client
         ._transaction()
         .run(|client| async move {
@@ -80,6 +89,15 @@ async fn copy_data_from_legacy_db(
         .await
         .map_err(|e| {
             tracing::error!("failed to copy legacy data: {}", e);
+            ()
+        })?;
+    // enable foreign key check
+    client
+        ._execute_raw(prisma_client_rust::raw!("PRAGMA foreign_keys = ON;"))
+        .exec()
+        .await
+        .map_err(|e| {
+            tracing::error!("error PRAGMA foreign_keys = ON; {}", e);
             ()
         })?;
     Ok(())
