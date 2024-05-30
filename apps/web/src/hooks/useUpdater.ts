@@ -48,9 +48,9 @@ export function useUpdater() {
     async (manifest: UpdateManifest) => {
       const { installUpdate } = await import('@tauri-apps/api/updater')
       const { confirm } = await import('@tauri-apps/api/dialog')
-      const message = `GenDAM ${manifest.version} is available. You have ${currentVersion}. Would you like to update?`
+      const message = `${manifest.body}`
       const yes = await confirm(message, {
-        title: 'A new version of GenDAM is available!',
+        title: `GenDAM ${manifest.version} is available. You have ${currentVersion}. Would you like to update?`,
         okLabel: 'Yes',
         cancelLabel: 'No',
       })
