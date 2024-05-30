@@ -51,6 +51,9 @@ const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemC
         directory: true,
         defaultPath: await downloadDir(),
       })
+      if (!selectedDir) {
+        return
+      }
       for (const { filePath, metadata } of selectedSearchResultItems) {
         if (!filePath.assetObjectId) {
           continue
