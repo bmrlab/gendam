@@ -10,7 +10,7 @@ use ai::{
     ImageCaptionOutput, MultiModalEmbeddingInput, MultiModalEmbeddingOutput, TextEmbeddingInput,
     TextEmbeddingOutput,
 };
-use anyhow::{bail, Ok};
+use anyhow::bail;
 use async_trait::async_trait;
 pub use constants::*;
 use content_library::Library;
@@ -271,7 +271,8 @@ impl VideoHandler {
         }
     }
 
-    pub fn save_video_segment(&self,
+    pub fn save_video_segment(
+        &self,
         verbose_file_name: &str,
         output_dir: impl AsRef<std::path::Path>,
         milliseconds_from: u32,
@@ -282,8 +283,24 @@ impl VideoHandler {
             verbose_file_name,
             output_dir,
             milliseconds_from,
-            milliseconds_to
+            milliseconds_to,
         )
+    }
+
+    pub async fn get_video_duration(&self) -> anyhow::Result<f64> {
+        let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
+        video_decoder.get_video_duration().await
+    }
+
+    pub async fn generate_ts(&self, ts_index: u32) -> anyhow::Result<Vec<u8>> {
+        let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
+        // let m3u8_file_path = self.artifacts_dir.clone().join("out").join("index.m3u8");
+        let ts_folder = self.artifacts_dir.clone().join("out");
+
+        // 创建ts_folder
+        tokio::fs::create_dir_all(ts_folder.clone()).await?;
+
+        Ok(video_decoder.generate_ts(ts_index, ts_folder).await?)
     }
 }
 

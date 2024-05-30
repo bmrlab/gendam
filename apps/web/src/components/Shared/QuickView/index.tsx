@@ -1,47 +1,16 @@
+import { Video } from '@/components/Video'
 import { useCurrentLibrary } from '@/lib/library'
 import Icon from '@gendam/ui/icons'
 import Image from 'next/image'
-import { useEffect, useRef } from 'react'
 import { useQuickViewStore, type QuickViewItem } from './store'
 
 const Player = ({ data }: { data: QuickViewItem }) => {
   const currentLibrary = useCurrentLibrary()
 
-  const videoRef = useRef<HTMLVideoElement | null>(null)
-  useEffect(() => {
-    const $video = videoRef?.current
-    if (!$video) {
-      return
-    }
-    const startTime = Math.max(0, (data.video?.currentTime || 0) - 0.5)
-    // const endTime = startTime + 2
-    const videoSrc = currentLibrary.getFileSrc(data.assetObject.hash)
-    // 重新赋值才能在 src 变化了以后重新加载视频
-    if ($video.src != videoSrc) {
-      $video.src = videoSrc
-      $video.currentTime = startTime
-      // $video.ontimeupdate = () => {
-      //   if ($video.currentTime >= endTime) {
-      //     $video.pause()
-      //     $video.ontimeupdate = null
-      //   }
-      // }
-    }
-  }, [currentLibrary, data])
-
   return (
-    <div className="flex h-full w-full items-center justify-center overflow-hidden">
+    <div className="flex h-full w-full items-center justify-center">
       {data.assetObject.mimeType?.includes('video/') ? (
-        <video
-          ref={videoRef}
-          controls
-          controlsList="nodownload"
-          autoPlay
-          muted
-          className="h-auto max-h-full w-auto max-w-full overflow-hidden rounded-md"
-        >
-          {/* <source src={currentLibrary.getFileSrc(assetObject.hash)} /> */}
-        </video>
+        <Video hash={data.assetObject.hash} />
       ) : (
         <div className="relative h-full w-full">
           <Image

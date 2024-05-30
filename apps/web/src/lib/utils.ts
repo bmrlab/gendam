@@ -35,3 +35,28 @@ export function formatDateTime(date: string) {
   const second = d.getSeconds()
   return `${year}-${pad(month)}-${pad(day)} ${pad(hour)}:${pad(minute)}:${pad(second)}`
 }
+
+export function timeToSeconds(time: string) {
+  const parts = time.split(':').map(Number) // 将字符串按冒号分割并转换为数字
+  let seconds = 0
+
+  // 处理不同长度的时间格式
+  if (parts.length === 3) {
+    // "hh:mm:ss" 格式
+    let hours = parts[0]
+    let minutes = parts[1]
+    seconds = parts[2]
+    return hours * 3600 + minutes * 60 + seconds
+  } else if (parts.length === 2) {
+    // "mm:ss" 格式
+    let minutes = parts[0]
+    seconds = parts[1]
+    return minutes * 60 + seconds
+  } else if (parts.length === 1) {
+    // "ss" 格式
+    return parts[0]
+  } else {
+    // 无效格式
+    throw new Error('Invalid time format')
+  }
+}

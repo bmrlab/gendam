@@ -18,7 +18,10 @@ use crate::metadata::{
 use super::FRAME_FILE_EXTENSION;
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::path::Path;
+use std::str;
+use tokio::process::Command;
 
 #[cfg(feature = "ffmpeg-dylib")]
 impl VideoDecoder {
@@ -366,6 +369,114 @@ impl VideoDecoder {
             }
         }
     }
+
+    pub async fn get_video_duration(&self) -> anyhow::Result<f64> {
+        match std::process::Command::new(&self.ffprobe_file_path)
+            .args(&[
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "json",
+                self.video_file_path
+                    .to_str()
+                    .expect("invalid video file path"),
+            ])
+            .output()
+        {
+            Ok(output) => {
+                let stdout = str::from_utf8(&output.stdout)?;
+                let json: Value = serde_json::from_str(stdout)?;
+                if let Some(duration) = json["format"]["duration"].as_str() {
+                    let duration: f64 = duration.parse()?;
+                    Ok(duration)
+                } else {
+                    Err(anyhow::anyhow!(
+                        "Failed to get duration from ffprobe output"
+                    ))
+                }
+            }
+            Err(e) => {
+                bail!("Failed to get video duration: {e}");
+            }
+        }
+    }
+
+    pub async fn generate_ts(
+        &self,
+        ts_index: u32,
+        output_dir: impl AsRef<Path>,
+    ) -> anyhow::Result<Vec<u8>> {
+        tracing::debug!("generate_ts ts_index:{ts_index:?}");
+        let output = Command::new(&self.binary_file_path)
+            .args(&[
+                "-i",
+                self.video_file_path
+                    .to_str()
+                    .expect("invalid video file path"),
+                "-c:v",
+                "libx264",
+                "-crf",
+                "28",
+                "-preset",
+                "ultrafast",
+                "-ss",
+                format!("{}", ts_index * 10).to_string().as_str(), // Start time for the segment
+                "-t",
+                "10", // Duration of the segment
+                "-start_number",
+                &ts_index.to_string(), // Start generating from the specified segment number
+                "-hls_time",
+                "10",
+                "-hls_list_size",
+                "1", // Only one segment in the list
+                "-f",
+                "hls",
+                "-muxdelay", // 设置starttime 每个视频10 * index秒开始
+                format!("{}", 5 * ts_index).to_string().as_str(),
+                "-vf",
+                "scale=426:-1", // 设置视频高度， 用于降低4k视频尺寸
+                format!(
+                    "{}/index.m3u8",
+                    output_dir.as_ref().to_str().expect("invalid output path")
+                )
+                .as_str(),
+            ])
+            .output()
+            .await;
+
+        match output {
+            Ok(ffmpeg_output) => {
+                if ffmpeg_output.status.success() {
+                    // 成功
+                    // 读取这个文件
+                    let ts_file_path = format!(
+                        "{}/index{}.ts",
+                        output_dir.as_ref().to_str().expect("invalid output path"),
+                        ts_index
+                    );
+
+                    // let ffprobe_out = Command::new(&self.ffprobe_file_path)
+                    //     .args(&["-show_format", "-show_streams", &ts_file_path])
+                    //     .output()
+                    //     .await?;
+
+                    // tracing::debug!("ffprobe: {}", String::from_utf8_lossy(&ffprobe_out.stdout));
+
+                    let file = tokio::fs::read(ts_file_path.clone()).await?;
+                    // 再删除这个文件
+                    let _ = tokio::fs::remove_file(ts_file_path).await?;
+                    Ok(file)
+                } else {
+                    bail!("FFmpeg failed generate_ts");
+                }
+            }
+            Err(e) => {
+                bail!("FFmpeg failed generate_ts: {}", e);
+            }
+        }
+    }
 }
 
 #[cfg(feature = "ffmpeg-dylib")]
@@ -422,12 +533,7 @@ async fn test_save_video_segment() {
         let video_decoder = VideoDecoder::new(video_file).unwrap();
         let output_dir = "/Users/xddotcom/Downloads";
         let _result = video_decoder
-            .save_video_segment(
-                "test.mp4",
-                output_dir,
-                3000,
-                5000,
-            )
+            .save_video_segment("test.mp4", output_dir, 3000, 5000)
             .unwrap();
         // println!("{result:#?}");
     }

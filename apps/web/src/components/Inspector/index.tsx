@@ -7,7 +7,8 @@ import { Folder_Light } from '@gendam/assets/images'
 import Icon from '@gendam/ui/icons'
 import { Button } from '@gendam/ui/v2/button'
 import Image from 'next/image'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
+import { Video } from '../Video'
 import { useInspector } from './store'
 
 const FolderDetail = ({ data }: { data: FilePath }) => {
@@ -100,18 +101,6 @@ const AssetObjectDetail = ({ data }: { data: FilePath }) => {
     })
   }, [tasksQuery.data])
 
-  const videoRef = useRef<HTMLVideoElement | null>(null)
-  useEffect(() => {
-    if (!videoRef?.current || !data.assetObject?.hash) {
-      return
-    }
-    const videoSrc = currentLibrary.getFileSrc(data.assetObject.hash)
-    // 重新赋值才能在 src 变化了以后重新加载视频
-    if (videoRef.current.src != videoSrc) {
-      videoRef.current.src = videoSrc
-    }
-  }, [currentLibrary, data, videoRef])
-
   if (!data.assetObject || !data.assetObject.mediaData) {
     return
   }
@@ -125,9 +114,7 @@ const AssetObjectDetail = ({ data }: { data: FilePath }) => {
     <div className="p-3">
       {assetObject.mimeType?.includes('video/') ? (
         <div className="w-58 bg-app-overlay/50 relative h-48 overflow-hidden">
-          <video ref={videoRef} controls autoPlay muted loop className="h-full w-full object-contain object-center">
-            {/* <source src={currentLibrary.getFileSrc(assetObject.hash)} /> */}
-          </video>
+          <Video hash={data.assetObject?.hash!} />
         </div>
       ) : (
         <div className="w-58 relative h-48">
