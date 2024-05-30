@@ -50,7 +50,15 @@ pub async fn create_asset_object(
     let kind = infer::get_from_path(&local_full_path);
     let file_mime_type = match kind {
         Ok(Some(mime)) => Some(mime.to_string()),
-        _ => None,
+        _ => {
+            if local_full_path.ends_with(".rm") {
+                Some("video/vnd.rn-realmedia".to_string()) // 正规的mime type 前面是 application/
+            } else if local_full_path.ends_with(".rmvb") {
+                Some("video/vnd.rn-realmedia-vbr".to_string()) // 正规的mime type 前面是 application/
+            } else {
+                None
+            }
+        }
     };
     let file_size_in_bytes = fs_metadata.len() as i32;
     let file_hash = generate_file_hash(&local_full_path, fs_metadata.len() as u64)
@@ -127,7 +135,7 @@ pub async fn create_asset_object(
                     let name = file_path_data.name.as_str();
                     let (name_wo_ext_1, ext_1) = match name.rsplit_once('.') {
                         Some((wo_ext, ext)) => (wo_ext, ext),
-                        None => (name, "")
+                        None => (name, ""),
                     };
                     if ext_1 == ext && name_wo_ext_1 == name_wo_ext {
                         return Some(0);
@@ -137,13 +145,17 @@ pub async fn create_asset_object(
                         None => (name_wo_ext_1, "0"),
                     };
                     if ext_1 == ext && name_wo_ext_1 == name_wo_ext {
-                        num.parse::<u32>().ok()  // Converts from Result<T, E> to Option<T>
+                        num.parse::<u32>().ok() // Converts from Result<T, E> to Option<T>
                     } else {
                         None
                     }
                 })
                 .max();
-            let ext_with_dot = if ext == "" { "".to_string() } else { format!(".{}", ext) };
+            let ext_with_dot = if ext == "" {
+                "".to_string()
+            } else {
+                format!(".{}", ext)
+            };
             let new_name = match max_num {
                 Some(max_num) => format!("{} {}{}", name_wo_ext, max_num + 1, ext_with_dot),
                 None => format!("{}{}", name_wo_ext, ext_with_dot), // same as name
