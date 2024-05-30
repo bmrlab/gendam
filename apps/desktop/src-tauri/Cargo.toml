@@ -48,6 +48,9 @@ chrono = { workspace = true }
 tauri-plugin-clipboard = "1.0.1"
 
 percent-encoding = "2.3.1"
+url = { version = "2.3" }
+rand = "0.8"
+anyhow = { workspace = true }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.
