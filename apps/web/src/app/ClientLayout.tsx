@@ -203,7 +203,6 @@ export default function ClientLayout({
       // const fileFullPath = library.dir + '/files/' + assetObjectHash
       const fileFullPath = `${library.dir}/files/${getFileShardHex(assetObjectHash)}/${assetObjectHash}`
       if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-        console.log('fileFullPath', fileFullPath)
         return convertFileSrc(fileFullPath, 'storage')
         // return convertFileSrc(fileFullPath)
       } else {
@@ -229,7 +228,7 @@ export default function ClientLayout({
       })()
 
       if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-        return convertFileSrc(fileFullPath)
+        return convertFileSrc(fileFullPath, 'storage')
       } else {
         return `http://localhost:3001/file/localhost/${fileFullPath}`
       }
