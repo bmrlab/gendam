@@ -8,6 +8,7 @@ use opendal::services::Fs;
 pub use opendal::Buffer;
 pub use opendal::Metakey;
 use opendal::{BlockingOperator, Operator};
+use std::ops::RangeBounds;
 use std::path::{Path, PathBuf};
 use std::vec;
 pub use traits::StorageTrait;
@@ -79,6 +80,19 @@ impl Storage {
         let path = Storage::path_to_string(path)?;
         self.op
             .read(path.as_str())
+            .await
+            .map_err(StorageError::from)
+    }
+
+    pub async fn read_with_range(
+        &self,
+        path: impl AsRef<Path>,
+        range: impl RangeBounds<u64>,
+    ) -> StorageResult<Buffer> {
+        let path = Storage::path_to_string(path)?;
+        self.op
+            .read_with(path.as_str())
+            .range(range)
             .await
             .map_err(StorageError::from)
     }
