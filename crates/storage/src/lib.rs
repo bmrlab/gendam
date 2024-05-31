@@ -6,10 +6,12 @@ pub use bytes::Bytes;
 pub use error::StorageResult;
 use opendal::services::Fs;
 pub use opendal::Buffer;
+pub use opendal::Metakey;
 use opendal::{BlockingOperator, Operator};
 use std::path::{Path, PathBuf};
 use std::vec;
 pub use traits::StorageTrait;
+pub mod utils;
 
 #[derive(Clone, Debug)]
 pub struct Storage {

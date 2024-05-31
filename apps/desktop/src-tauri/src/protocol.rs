@@ -1,12 +1,35 @@
+use file_handler::metadata;
 use rand::RngCore;
 use std::future::Future;
 use std::io::SeekFrom;
+use storage::Metakey;
+use storage::Storage;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
+use tracing::info;
 use url::Position;
 use url::Url;
 
 use tauri::http::HttpRange;
 use tauri::http::{header::*, status::StatusCode, MimeType, Request, Response, ResponseBuilder};
+
+use crate::init_storage_map;
+use crate::STORAGE_MAP;
+
+fn get_or_insert_storage(root_path: String) -> Storage {
+    let map = STORAGE_MAP.get_or_init(init_storage_map);
+    {
+        let read_guard = map.read().unwrap();
+        if read_guard.contains_key(&root_path) {
+            return read_guard.get(&root_path).unwrap().clone();
+        }
+    }
+    let default_storage = Storage::new_fs(root_path.clone()).unwrap();
+    let mut write_guard = map.write().unwrap();
+    write_guard
+        .entry(root_path.clone())
+        .or_insert(default_storage.clone());
+    default_storage
+}
 
 pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std::error::Error>> {
     let parsed_path = Url::parse(request.uri())?;
@@ -37,9 +60,23 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
 
     let (mut file, len, mime_type, read_bytes) = safe_block_on(async move {
         // TODO: 优化项: 1. 每次获取 range 都会读取完整文件 2. 每个都会创建 Storage
-        let storage = storage::Storage::new_fs(root_path)?;
-        let buffer = storage.read(relative_path).await?.to_vec();
 
+        let storage = get_or_insert_storage(root_path);
+
+        let metadata = storage.operator().stat(relative_path.as_str()).await?;
+        dbg!(metadata);
+
+        // let a = storage
+        //     .operator()
+        //     .read_with(&relative_path)
+        //     .range(0..1024)
+        //     .await?;
+        // dbg!(&a);
+
+        // TODO: 首先检查是否 206
+        // 如果是 206，使用 opendal 来获取相对的 range
+        // 如果不是 206，那么直接返回文件
+        let buffer = storage.read(relative_path).await?.to_vec();
         let mut file = std::io::Cursor::new(buffer);
 
         // get file length

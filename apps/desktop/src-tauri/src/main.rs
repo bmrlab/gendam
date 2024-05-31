@@ -4,14 +4,22 @@ use api_server::{ctx::default::Ctx, CtxWithLibrary};
 use dotenvy::dotenv;
 use protocol::asset_protocol_handler;
 use std::{
-    path::PathBuf,
-    sync::{Arc, Mutex},
+    collections::HashMap,
+    sync::{Arc, Mutex, OnceLock, RwLock},
 };
+use storage::Storage;
 use tauri::{http::Request, Manager};
 use vector_db::kill_qdrant_server;
 mod store;
 use store::Store;
 mod protocol;
+
+// Map<root_path, Storage>
+static STORAGE_MAP: OnceLock<Arc<RwLock<HashMap<String, Storage>>>> = OnceLock::new();
+
+pub fn init_storage_map() -> Arc<RwLock<HashMap<String, Storage>>> {
+    Arc::new(RwLock::new(HashMap::new()))
+}
 
 #[tokio::main]
 async fn main() {
@@ -19,6 +27,9 @@ async fn main() {
         Ok(path) => println!(".env read successfully from {}", path.display()),
         Err(e) => println!("Could not load .env file: {e}"),
     };
+
+    // init STORAGE_MAP
+    STORAGE_MAP.get_or_init(|| Arc::new(RwLock::new(HashMap::new())));
 
     let app = tauri::Builder::default()
         .register_uri_scheme_protocol("storage", move |_, request: &Request| {
