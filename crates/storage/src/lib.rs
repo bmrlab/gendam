@@ -11,7 +11,6 @@ use opendal::{BlockingOperator, Operator};
 use std::path::{Path, PathBuf};
 use std::vec;
 pub use traits::StorageTrait;
-pub mod utils;
 
 #[derive(Clone, Debug)]
 pub struct Storage {
@@ -219,6 +218,8 @@ impl Storage {
 mod storage_test {
     use std::path::PathBuf;
 
+    use opendal::Metakey;
+
     use crate::Storage;
 
     fn init_storage() -> super::Storage {
@@ -359,5 +360,39 @@ mod storage_test {
         println!("New path: {:?}", new_path);
 
         assert_eq!("artifacts/bdc/bdca61586e79f6ba/audio-2762e699-07bb-4c81-b958-73325e0dedc5/transcript-tmp", new_path.to_str().unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_metadata() {
+        clear_test_dir();
+        let storage = init_storage();
+        let data = b"hello world".to_vec();
+        storage.write("test.txt", data.clone()).await.unwrap();
+        let metadata = storage.operator().stat("test.txt").await.unwrap();
+        println!("test: {:?}", metadata);
+
+        storage
+            .operator()
+            .write_with("test2.txt", data.clone())
+            .content_type("text/plain")
+            .await
+            .unwrap();
+        let metadata = storage.operator().stat("test2.txt").await.unwrap();
+        println!("test2: {:?}", metadata);
+
+        let entry = storage
+            .operator()
+            .list_with("")
+            .metakey(
+                Metakey::ContentLength
+                    | Metakey::ContentType
+                    | Metakey::ContentRange
+                    | Metakey::LastModified,
+            )
+            .await
+            .unwrap();
+        println!("entry: {entry:?}");
+
+        clear_test_dir();
     }
 }

@@ -1,11 +1,8 @@
-use file_handler::metadata;
 use rand::RngCore;
 use std::future::Future;
 use std::io::SeekFrom;
-use storage::Metakey;
 use storage::Storage;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
-use tracing::info;
 use url::Position;
 use url::Url;
 
@@ -63,8 +60,8 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
 
         let storage = get_or_insert_storage(root_path);
 
-        let metadata = storage.operator().stat(relative_path.as_str()).await?;
-        dbg!(metadata);
+        // let metadata = storage.operator().stat(relative_path.as_str()).await?;
+        // dbg!(metadata);
 
         // let a = storage
         //     .operator()
