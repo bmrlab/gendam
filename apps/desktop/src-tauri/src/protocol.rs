@@ -1,8 +1,7 @@
 use rand::RngCore;
 use std::future::Future;
-use std::io::SeekFrom;
 use storage::Storage;
-use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 use url::Position;
 use url::Url;
 
@@ -42,8 +41,9 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
 
     let mut resp = ResponseBuilder::new();
 
+    // split path
+    // get `root path` and `relative path`
     let part_split: Vec<&str> = path.split('/').collect();
-
     let index_res = part_split
         .iter()
         .position(|&x| x == "artifacts" || x == "files");
@@ -51,57 +51,30 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
         return resp.status(StatusCode::NOT_FOUND).body(vec![]);
     }
     let index = index_res.unwrap();
-    // 提取从 "artifacts or files" 开始的部分
+    // extract the part starting from "artifacts or files"
     let root_path = part_split[..index].join("/");
     let relative_path = part_split[index..].join("/");
+    let storage = get_or_insert_storage(root_path);
 
-    let (mut file, len, mime_type, read_bytes) = safe_block_on(async move {
-        // TODO: 优化项: 1. 每次获取 range 都会读取完整文件 2. 每个都会创建 Storage
+    let relative_path_clone = relative_path.clone();
+    let storage_clone = storage.clone();
+    let (len, mime_type, read_bytes) = safe_block_on(async move {
+        let len = storage_clone.len(&relative_path_clone).await?;
+        let range_vec = storage_clone
+            .read_with_range(&relative_path_clone, 0..8192)
+            .await?
+            .to_vec();
 
-        let storage = get_or_insert_storage(root_path);
-
-        // let metadata = storage.operator().stat(relative_path.as_str()).await?;
-        // dbg!(metadata);
-
-        // let a = storage
-        //     .operator()
-        //     .read_with(&relative_path)
-        //     .range(0..1024)
-        //     .await?;
-        // dbg!(&a);
-
-        // TODO: 首先检查是否 206
-        // 如果是 206，使用 opendal 来获取相对的 range
-        // 如果不是 206，那么直接返回文件
-        let buffer = storage.read(relative_path).await?.to_vec();
-        let mut file = std::io::Cursor::new(buffer);
-
-        // get file length
-        let len = {
-            let old_pos = file.stream_position().await?;
-            let len = file.seek(SeekFrom::End(0)).await?;
-            file.seek(SeekFrom::Start(old_pos)).await?;
-            len
-        };
-
-        // // get file mime type
         let (mime_type, read_bytes) = {
-            let nbytes = len.min(8192);
-            let mut magic_buf = Vec::with_capacity(nbytes as usize);
-            let old_pos = file.stream_position().await?;
-            (&mut file).take(nbytes).read_to_end(&mut magic_buf).await?;
-            file.seek(SeekFrom::Start(old_pos)).await?;
             (
-                MimeType::parse(&magic_buf, &path),
+                MimeType::parse(&range_vec, &path),
                 // return the `magic_bytes` if we read the whole file
                 // to avoid reading it again later if this is not a range request
-                if len < 8192 { Some(magic_buf) } else { None },
+                if len < 8192 { Some(range_vec) } else { None },
             )
         };
 
-        Ok::<(std::io::Cursor<Vec<u8>>, u64, String, Option<Vec<u8>>), anyhow::Error>((
-            file, len, mime_type, read_bytes,
-        ))
+        Ok::<(u64, String, Option<Vec<u8>>), anyhow::Error>((len, mime_type, read_bytes))
     })?;
 
     resp = resp.header(CONTENT_TYPE, &mime_type);
@@ -151,12 +124,13 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
             end = start + (end - start).min(len - start).min(MAX_LEN - 1);
 
             // calculate number of bytes needed to be read
-            let nbytes = end + 1 - start;
+            let nbytes = end + 1;
 
             let buf = safe_block_on(async move {
-                let mut buf = Vec::with_capacity(nbytes as usize);
-                file.seek(SeekFrom::Start(start)).await?;
-                file.take(nbytes).read_to_end(&mut buf).await?;
+                let buf = storage
+                    .read_with_range(&relative_path, start..nbytes)
+                    .await?
+                    .to_vec();
                 Ok::<Vec<u8>, anyhow::Error>(buf)
             })?;
 
@@ -213,9 +187,11 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
                     // calculate number of bytes needed to be read
                     let nbytes = end + 1 - start;
 
-                    let mut local_buf = Vec::with_capacity(nbytes as usize);
-                    file.seek(SeekFrom::Start(start)).await?;
-                    (&mut file).take(nbytes).read_to_end(&mut local_buf).await?;
+                    let local_buf = storage
+                        .read_with_range(&relative_path, start..nbytes)
+                        .await?
+                        .to_vec();
+
                     buf.extend_from_slice(&local_buf);
                 }
                 // all ranges have been written, write the closing boundary
@@ -232,8 +208,7 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
             b
         } else {
             safe_block_on(async move {
-                let mut local_buf = Vec::with_capacity(len as usize);
-                file.read_to_end(&mut local_buf).await?;
+                let local_buf = storage.read(&relative_path).await?.to_vec();
                 Ok::<Vec<u8>, anyhow::Error>(local_buf)
             })?
         };
