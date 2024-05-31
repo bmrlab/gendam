@@ -118,6 +118,15 @@ impl Storage {
             .map_err(StorageError::from)
     }
 
+    pub async fn len(&self, path: impl AsRef<Path>) -> StorageResult<u64> {
+        let path = Storage::path_to_string(path)?;
+        self.op
+            .stat(path.as_str())
+            .await
+            .map(|stat| stat.content_length())
+            .map_err(StorageError::from)
+    }
+
     // check if path is under root of opendal
     fn under_root(&self, path: impl AsRef<Path>) -> bool {
         path.as_ref().is_relative()
@@ -394,5 +403,14 @@ mod storage_test {
         println!("entry: {entry:?}");
 
         clear_test_dir();
+    }
+
+    #[tokio::test]
+    async fn test_len() {
+        let storage = init_storage();
+        let data = b"hello world".to_vec();
+        storage.write("test.txt", data.clone()).await.unwrap();
+        let len = storage.len("test.txt").await.unwrap();
+        assert_eq!(len, 11);
     }
 }
