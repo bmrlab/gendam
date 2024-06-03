@@ -6,6 +6,7 @@ mod transcode;
 mod utils;
 
 #[cfg(feature = "ffmpeg-dylib")]
+#[derive(StorageTrait)]
 pub struct VideoDecoder {
     video_file_path: std::path::PathBuf,
 }
@@ -21,8 +22,6 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{path::Path, process::Stdio};
-use storage::Storage;
-use storage::*;
 use storage_macro::*;
 use tokio::process::Command;
 
@@ -93,12 +92,11 @@ pub struct VideoDecoder {
     video_file_path: std::path::PathBuf,
     binary_file_path: std::path::PathBuf,
     ffprobe_file_path: std::path::PathBuf,
-    storage: Storage,
 }
 
 #[cfg(feature = "ffmpeg-binary")]
 impl VideoDecoder {
-    pub fn new(filename: impl AsRef<Path>, storage: Storage) -> anyhow::Result<Self> {
+    pub fn new(filename: impl AsRef<Path>) -> anyhow::Result<Self> {
         let current_exe_path = std::env::current_exe().expect("failed to get current executable");
         let current_dir = current_exe_path
             .parent()
@@ -110,7 +108,6 @@ impl VideoDecoder {
             video_file_path: filename.as_ref().to_path_buf(),
             binary_file_path,
             ffprobe_file_path,
-            storage,
         })
     }
 }
@@ -332,7 +329,7 @@ impl VideoDecoder {
     }
 
     pub async fn save_video_audio(&self, audio_path: impl AsRef<Path>) -> anyhow::Result<()> {
-        let actual_path = self.get_actual_path(audio_path.as_ref().to_path_buf());
+        let actual_path = self.get_actual_path(audio_path.as_ref().to_path_buf())?;
         let tmp_path = Storage::add_tmp_suffix_to_path(&actual_path);
         tracing::debug!("tmp_path: {:?}", tmp_path);
         match std::process::Command::new(&self.binary_file_path)
@@ -363,11 +360,7 @@ impl VideoDecoder {
                 match content {
                     Ok(data) => {
                         if let Ok(()) = self
-                            .storage
-                            .write(
-                                audio_path.as_ref().to_str().expect("invalid audio path"),
-                                data,
-                            )
+                            .write(audio_path.as_ref().to_path_buf(), data.into())
                             .await
                         {
                             // 删除临时文件
@@ -619,11 +612,8 @@ async fn test_video_decoder() {
 
     #[cfg(feature = "ffmpeg-binary")]
     {
-        let video_decoder = VideoDecoder::new(
-            "/Users/zhuo/Desktop/1-4 插件-整页截屏.mp4",
-            Storage::new_fs("").unwrap(),
-        )
-        .expect("failed to find ffmpeg binary file");
+        let video_decoder = VideoDecoder::new("/Users/zhuo/Desktop/1-4 插件-整页截屏.mp4")
+            .expect("failed to find ffmpeg binary file");
 
         // let frames_fut = video_decoder.save_video_frames("/Users/zhuo/Desktop/frames");
         // let audio_fut = video_decoder.save_video_audio("/Users/zhuo/Desktop/audio.wav");
@@ -646,7 +636,7 @@ async fn test_save_video_segment() {
     #[cfg(feature = "ffmpeg-binary")]
     {
         let video_file = "/Users/xddotcom/Library/Application Support/ai.gendam.desktop/libraries/d3a13702-8f11-4dc6-86ea-42f63a92c3ad/files/fb6/fb62c84c5e20d5d0";
-        let video_decoder = VideoDecoder::new(video_file, Storage::new_fs("").unwrap()).unwrap();
+        let video_decoder = VideoDecoder::new(video_file).unwrap();
         let output_dir = "/Users/xddotcom/Downloads";
         let _result = video_decoder
             .save_video_segment("test.mp4", output_dir, 3000, 5000)

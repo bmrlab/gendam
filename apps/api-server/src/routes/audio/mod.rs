@@ -6,7 +6,6 @@ use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::{fmt, path::PathBuf};
-use storage::Storage;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 use tracing::{error, warn};
@@ -42,7 +41,7 @@ where
                     rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string())
                 })?;
                 tracing::debug!("get path: {}", path.display());
-                Ok(get_all_audio_format(path, library.storage.clone()))
+                Ok(get_all_audio_format(path))
             })
         })
         .mutation("export", |t| {
@@ -96,8 +95,8 @@ struct AudioResp {
     content: String,
 }
 
-fn get_all_audio_format(path: PathBuf, storage: Storage) -> Vec<AudioResp> {
-    let reader = AudioReader::new(path, storage);
+fn get_all_audio_format(path: PathBuf) -> Vec<AudioResp> {
+    let reader = AudioReader::new(path);
     AudioType::iter()
         .map(|audio_type| {
             let content = match audio_type {
@@ -122,10 +121,7 @@ fn audio_export(library: &Library, input: ExportInput) -> anyhow::Result<Vec<Aud
     let save_dir = PathBuf::from(input.path);
     let types = input.type_group.clone();
     let video_handler = VideoHandler::new(&input.hash, library)?;
-    let reader = AudioReader::new(
-        video_handler.get_transcript_path()?,
-        library.storage.clone(),
-    );
+    let reader = AudioReader::new(video_handler.get_transcript_path()?);
     let downloader = DownloadHelper::new(reader, save_dir.clone());
 
     let mut error_list = vec![];

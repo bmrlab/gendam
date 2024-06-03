@@ -1,7 +1,7 @@
-mod error;
+pub mod error;
 mod traits;
 
-use crate::error::StorageError;
+pub use crate::error::StorageError;
 pub use bytes::Bytes;
 pub use error::StorageResult;
 use opendal::services::Fs;

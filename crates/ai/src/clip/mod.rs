@@ -11,19 +11,19 @@ pub use model::*;
 use ndarray::{Array1, Axis};
 use ort::Session;
 use std::path::{Path, PathBuf};
-use storage::Storage;
+use storage_macro::StorageTrait;
 use tokenizers::tokenizer::Tokenizer;
 use utils::normalize;
 
 pub mod model;
 mod preprocess;
 
+#[derive(StorageTrait)]
 pub struct CLIP {
     image_model: Option<Session>,
     text_model: Option<Session>,
     text_tokenizer: Option<Tokenizer>,
     dim: usize,
-    storage: Storage,
 }
 
 type CLIPEmbedding = Array1<f32>;
@@ -80,7 +80,6 @@ impl CLIP {
         text_model_path: impl AsRef<Path>,
         text_tokenizer_vocab_path: impl AsRef<Path>,
         model_type: model::CLIPModel,
-        storage: Storage,
     ) -> anyhow::Result<Self> {
         // let (image_model_uri, text_model_uri, text_tokenizer_vocab_uri) = model_type.model_uri();
         let dim = model_type.dim();
@@ -101,7 +100,6 @@ impl CLIP {
             text_model_path,
             text_tokenizer_vocab_path,
             dim,
-            storage,
         )
     }
 
@@ -110,7 +108,6 @@ impl CLIP {
         text_model_path: impl AsRef<Path>,
         text_tokenizer_vocab_path: impl AsRef<Path>,
         dim: usize,
-        storage: Storage,
     ) -> anyhow::Result<Self> {
         let image_model = load_onnx_model(image_model_path, None)?;
         let text_model = load_onnx_model(text_model_path, None)?;
@@ -134,7 +131,6 @@ impl CLIP {
             text_model: Some(text_model),
             text_tokenizer,
             dim,
-            storage,
         })
     }
 
@@ -147,10 +143,7 @@ impl CLIP {
         &self,
         image_path: impl AsRef<Path>,
     ) -> anyhow::Result<CLIPEmbedding> {
-        let image_data = self
-            .storage
-            .read(image_path.as_ref().to_str().expect("invald image_path"))
-            .await?;
+        let image_data = self.read(image_path.as_ref().to_path_buf()).await?;
         let image = image::load_from_memory(image_data.to_vec().as_slice())?;
         self.get_image_embedding_from_image(&image.to_rgb8()).await
     }
@@ -230,7 +223,6 @@ async fn test_clip() {
         "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
         "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
         model::CLIPModel::MViTB32,
-        Storage::new_fs("").unwrap(),
     )
     .await
     .expect("failed to load model");

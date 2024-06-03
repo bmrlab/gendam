@@ -1,4 +1,4 @@
-use global_variable::{set_current_library_dir, write_current_library_dir};
+use global_variable::set_current_library_dir;
 use prisma_lib::PrismaClient;
 use qdrant::create_qdrant_server;
 pub use qdrant::{make_sure_collection_created, QdrantCollectionInfo, QdrantServerInfo};
@@ -7,7 +7,6 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use storage::Storage;
 use vector_db::QdrantServer;
 
 pub mod bundle;
@@ -19,7 +18,6 @@ mod qdrant;
 pub struct Library {
     pub id: String,
     pub dir: PathBuf,
-    pub storage: Storage,
     files_dir: PathBuf, // for content files
     artifacts_dir: PathBuf,
     // db_url: String,
@@ -120,12 +118,6 @@ pub async fn load_library(
     let library = Library {
         id: library_id.to_string(),
         dir: library_dir.clone(),
-        storage: Storage::new_fs(library_dir.to_str().expect("Invalid library dir")).map_err(
-            |e| {
-                tracing::error!("Failed to create library storage: {}", e);
-                ()
-            },
-        )?,
         files_dir,
         artifacts_dir,
         prisma_client,

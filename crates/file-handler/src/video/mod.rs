@@ -24,8 +24,7 @@ use std::{
     str::FromStr,
     sync::{Arc, Mutex},
 };
-use storage::*;
-use storage_macro::*;
+use storage_macro::StorageTrait;
 use strum_macros::{EnumIter, EnumString};
 
 /// Video Handler
@@ -199,8 +198,7 @@ impl VideoHandler {
     }
 
     pub async fn save_thumbnail(&self, seconds: Option<u64>) -> anyhow::Result<()> {
-        let video_decoder =
-            decoder::VideoDecoder::new(&self.video_path, self.library.storage.clone())?;
+        let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
         video_decoder
             .save_video_thumbnail(&self.artifacts_dir.join(THUMBNAIL_FILE_NAME), seconds)
             .await
@@ -267,8 +265,7 @@ impl VideoHandler {
             Some(v) => Ok(v.clone()),
             _ => {
                 // TODO ffmpeg-dylib not implemented
-                let video_decoder =
-                    decoder::VideoDecoder::new(&self.video_path, self.library.storage.clone())?;
+                let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
                 let data = video_decoder.get_video_metadata()?;
                 *metadata = Some(data.clone());
                 Ok(data)
@@ -283,8 +280,7 @@ impl VideoHandler {
         milliseconds_from: u32,
         milliseconds_to: u32,
     ) -> anyhow::Result<()> {
-        let video_decoder =
-            decoder::VideoDecoder::new(&self.video_path, self.library.storage.clone())?;
+        let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
         video_decoder.save_video_segment(
             verbose_file_name,
             output_dir,
@@ -393,13 +389,7 @@ impl FileHandler for VideoHandler {
 
         // delete artifacts on file system
 
-        self.library
-            .storage
-            .remove_dir_all(
-                self.artifacts_dir
-                    .to_str()
-                    .expect("invalid artifacts dir path"),
-            )
+        self.remove_dir_all(self.artifacts_dir.clone())
             .await
             .map_err(|e| {
                 tracing::error!("failed to delete artifacts: {}", e);

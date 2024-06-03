@@ -29,10 +29,10 @@ macro_rules! init_global_variables {
 #[macro_export]
 macro_rules! read_storage_map {
     () => {{
-        STORAGE_MAP
-            .get_or_init(|| init_storage_map())
+        $crate::STORAGE_MAP
+            .get_or_init(|| $crate::init_storage_map())
             .read()
-            .map_err(|e| anyhow::anyhow!("Could not read storage map: {e}"))
+            .map_err(|_| StorageError::MutexPoisonError("Fail to read storage map".to_string()))
     }};
 }
 
@@ -51,9 +51,9 @@ macro_rules! read_current_library_dir {
     () => {{
         let current_library_dir =
             $crate::CURRENT_LIBRARY_DIR.get_or_init(|| $crate::init_current_library_dir!());
-        current_library_dir
-            .read()
-            .map_err(|e| anyhow::anyhow!("Could not read current library dir: {e}"))
+        current_library_dir.read().map_err(|e| {
+            StorageError::MutexPoisonError("Fail to read current library dir".to_string())
+        })
     }};
 }
 
@@ -71,11 +71,11 @@ macro_rules! write_current_library_dir {
 #[macro_export]
 macro_rules! get_current_storage {
     () => {{
-        let current_library_dir = read_current_library_dir!()?.clone();
-        let map = read_storage_map!()?;
+        let current_library_dir = $crate::read_current_library_dir!().unwrap().clone();
+        let map = $crate::read_storage_map!().unwrap();
         map.get(&current_library_dir)
             .map(|s| s.clone())
-            .ok_or_else(|| anyhow::anyhow!("No storage found for {current_library_dir}"))
+            .ok_or_else(|| StorageError::NoStorageFound)
     }};
 }
 

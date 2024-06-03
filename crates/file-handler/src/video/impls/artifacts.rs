@@ -30,16 +30,11 @@ impl VideoHandler {
         &self,
         artifacts_settings: ArtifactsSettings,
     ) -> anyhow::Result<()> {
-        self.library
-            .storage
-            .write(
-                self.artifacts_dir
-                    .join(ARTIFACTS_SETTINGS_FILE_NAME)
-                    .to_str()
-                    .expect("Failed to convert ARTIFACTS_SETTINGS_FILE_NAME path to string"),
-                serde_json::to_string(&artifacts_settings)?,
-            )
-            .await?;
+        self.write(
+            self.artifacts_dir.join(ARTIFACTS_SETTINGS_FILE_NAME),
+            serde_json::to_string(&artifacts_settings)?.into(),
+        )
+        .await?;
         Ok(())
     }
 
@@ -153,12 +148,7 @@ impl VideoHandler {
         };
 
         let output_dir = self.artifacts_dir.join(PathBuf::from(output_dir));
-        if !self
-            .library
-            .storage
-            .is_exist(output_dir.to_str().expect("invalid output_dir path"))
-            .await?
-        {
+        if !self.is_exist(output_dir.clone()).await? {
             self.create_dir(output_dir).await?;
         }
 
@@ -171,8 +161,6 @@ impl VideoHandler {
         let output_info = self.get_output_info_in_settings(task_type)?;
 
         let artifacts_result = self
-            .library
-            .storage
             .read_dir(self.artifacts_dir.join(&output_info.dir))
             .await?
             .into_iter()
@@ -244,14 +232,7 @@ impl VideoHandler {
         let output_path_map = settings.results.remove(&task_type.to_string());
         if let Some(output_path_map) = output_path_map {
             for output_path in output_path_map.values() {
-                self.library
-                    .storage
-                    .remove_dir_all(
-                        self.artifacts_dir
-                            .join(output_path.dir.to_owned())
-                            .to_str()
-                            .expect("invalid output_path path"),
-                    )
+                self.remove_dir_all(self.artifacts_dir.join(output_path.dir.to_owned()))
                     .await?;
             }
         }

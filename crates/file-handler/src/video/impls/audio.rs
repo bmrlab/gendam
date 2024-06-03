@@ -6,6 +6,7 @@ use ai::AudioTranscriptOutput;
 use qdrant_client::qdrant::PointStruct;
 use serde_json::json;
 use std::path::PathBuf;
+use storage::StorageTrait;
 use tracing::error;
 
 impl VideoHandler {
@@ -26,10 +27,7 @@ impl VideoHandler {
     pub fn get_transcript(&self) -> anyhow::Result<AudioTranscriptOutput> {
         let transcript_path = self.get_transcript_path()?;
 
-        let data = self
-            .library
-            .storage
-            .read_to_string(transcript_path.to_str().expect("invalid transcript path"))?;
+        let data = self.read_to_string(transcript_path)?;
         let transcription: AudioTranscriptOutput = serde_json::from_str(data.as_str())?;
 
         Ok(transcription)
@@ -74,8 +72,7 @@ impl VideoHandler {
 
         #[cfg(feature = "ffmpeg-binary")]
         {
-            let video_decoder =
-                decoder::VideoDecoder::new(&self.video_path, self.library.storage.clone())?;
+            let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
             video_decoder.save_video_audio(audio_path).await?;
         }
 
@@ -107,12 +104,7 @@ impl VideoHandler {
 
         let result_path = self.get_transcript_path()?;
 
-        self.library
-            .storage
-            .write(
-                result_path.to_str().expect("invalid transcript path"),
-                serde_json::to_string(&result)?,
-            )
+        self.write(result_path, serde_json::to_string(&result)?.into())
             .await?;
 
         Ok(())
