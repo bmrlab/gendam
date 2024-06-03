@@ -5,26 +5,16 @@ use tokio::io::AsyncWriteExt;
 use url::Position;
 use url::Url;
 
+use crate::global::{init_storage_map, STORAGE_MAP};
+use crate::write_storage_map;
 use tauri::http::HttpRange;
 use tauri::http::{header::*, status::StatusCode, MimeType, Request, Response, ResponseBuilder};
 
-use crate::init_storage_map;
-use crate::STORAGE_MAP;
-
 fn get_or_insert_storage(root_path: String) -> Storage {
-    let map = STORAGE_MAP.get_or_init(init_storage_map);
-    {
-        let read_guard = map.read().unwrap();
-        if read_guard.contains_key(&root_path) {
-            return read_guard.get(&root_path).unwrap().clone();
-        }
-    }
-    let default_storage = Storage::new_fs(root_path.clone()).unwrap();
-    let mut write_guard = map.write().unwrap();
-    write_guard
-        .entry(root_path.clone())
-        .or_insert(default_storage.clone());
-    default_storage
+    let mut map = write_storage_map!().unwrap();
+    map.entry(root_path.clone())
+        .or_insert_with(|| Storage::new_fs(&root_path).unwrap())
+        .clone()
 }
 
 pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std::error::Error>> {
