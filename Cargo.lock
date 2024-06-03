@@ -1556,6 +1556,7 @@ name = "content-library"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "global-variable",
  "p2p",
  "prisma-client-rust",
  "prisma-lib",
@@ -3227,6 +3228,7 @@ dependencies = [
  "dotenvy",
  "file-downloader",
  "file-handler",
+ "global-variable",
  "p2p",
  "percent-encoding",
  "prisma-client-rust",
@@ -3412,6 +3414,14 @@ name = "glob"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
+
+[[package]]
+name = "global-variable"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "storage",
+]
 
 [[package]]
 name = "globset"

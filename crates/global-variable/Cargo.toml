@@ -1,0 +1,8 @@
+[package]
+name = "global-variable"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+storage = { path = "../storage" }
+anyhow = { workspace = true }
