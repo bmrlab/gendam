@@ -118,6 +118,7 @@ dependencies = [
  "derivative",
  "file-downloader",
  "futures",
+ "global-variable",
  "half",
  "image 0.24.9",
  "ndarray",
@@ -281,6 +282,7 @@ dependencies = [
  "file-handler",
  "futures",
  "glob",
+ "global-variable",
  "infer 0.15.0",
  "libp2p",
  "mime_guess",
@@ -301,6 +303,7 @@ dependencies = [
  "serde_json",
  "specta",
  "storage",
+ "storage-macro",
  "strum",
  "strum_macros",
  "test-log",
@@ -2724,6 +2727,7 @@ dependencies = [
  "ffmpeg-next",
  "file-downloader",
  "futures",
+ "global-variable",
  "image 0.24.9",
  "llm",
  "ndarray",
@@ -9015,6 +9019,7 @@ dependencies = [
 name = "storage-macro"
 version = "0.1.1"
 dependencies = [
+ "global-variable",
  "quote",
  "storage",
  "syn 2.0.58",

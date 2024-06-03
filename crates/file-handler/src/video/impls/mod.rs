@@ -3,6 +3,8 @@ pub mod audio;
 pub mod caption;
 pub mod frame;
 
+use storage::StorageTrait;
+
 use super::VideoHandler;
 use std::path::Path;
 
@@ -39,21 +41,16 @@ impl VideoHandler {
             .process_single(text.to_string())
             .await?;
 
-        self.library
-            .storage
-            .write(
-                path.as_ref().to_str().expect("invalid text embedding path"),
-                serde_json::to_string(&embedding)?,
-            )
-            .await?;
+        self.write(
+            path.as_ref().to_path_buf(),
+            serde_json::to_string(&embedding)?.into(),
+        )
+        .await?;
         Ok(())
     }
 
     pub fn get_embedding_from_file(&self, path: impl AsRef<Path>) -> anyhow::Result<Vec<f32>> {
-        let embedding: String = self
-            .library
-            .storage
-            .read_to_string(path.as_ref().to_str().expect("invalid embedding file"))?;
+        let embedding: String = self.read_to_string(path.as_ref().to_path_buf())?;
         serde_json::from_str::<Vec<f32>>(&embedding).map_err(|e| anyhow::anyhow!(e))
     }
 }

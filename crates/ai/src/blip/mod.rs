@@ -12,16 +12,16 @@ use candle_transformers::models::blip::VisionConfig;
 use candle_transformers::models::quantized_blip;
 use candle_transformers::models::{blip, blip_text};
 use std::path::Path;
-use storage::Storage;
+use storage_macro::StorageTrait;
 use tokenizers::Tokenizer;
 use tracing::debug;
 
+#[derive(StorageTrait)]
 pub struct BLIP {
     tokenizer: Tokenizer,
     model: quantized_blip::BlipForConditionalGeneration,
     logits_processor: LogitsProcessor,
     device: Device,
-    storage: Storage,
 }
 
 const SEP_TOKEN_ID: u32 = 102;
@@ -98,7 +98,6 @@ impl BLIP {
         model_path: impl AsRef<Path>,
         tokenizer_path: impl AsRef<Path>,
         model_type: BLIPModel,
-        storage: Storage,
     ) -> anyhow::Result<Self> {
         let tokenizer = Tokenizer::from_file(tokenizer_path)
             .map_err(|_| anyhow!("failed to initialize tokenizer"))?;
@@ -121,7 +120,6 @@ impl BLIP {
             model,
             logits_processor,
             device,
-            storage,
         })
     }
 
@@ -164,8 +162,7 @@ impl BLIP {
 
     pub fn load_image<P: AsRef<std::path::Path>>(&self, p: P) -> candle_core::Result<Tensor> {
         let data = self
-            .storage
-            .read_blocking(p.as_ref().to_str().expect("invalid path"))
+            .read_blocking(p.as_ref().to_path_buf())
             .map_err(candle_core::Error::wrap)?;
         let img = image::io::Reader::new(std::io::Cursor::new(data.to_vec()))
             .with_guessed_format()?
@@ -191,7 +188,6 @@ async fn test_caption() {
         "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
         "/Users/zhuo/dev/tezign/bmrlab/tauri-dam-test-playground/apps/desktop/src-tauri/resources",
         BLIPModel::Base,
-        Storage::new_fs("").unwrap(),
     )
     .await;
 

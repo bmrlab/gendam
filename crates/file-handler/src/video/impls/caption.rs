@@ -8,6 +8,7 @@ use crate::{
 use qdrant_client::qdrant::PointStruct;
 use serde_json::{json, Value};
 use std::path::PathBuf;
+use storage::StorageTrait;
 use tracing::{debug, error};
 
 impl VideoHandler {
@@ -27,10 +28,7 @@ impl VideoHandler {
 
     pub fn get_frame_caption(&self, timestamp: i64) -> anyhow::Result<String> {
         let path = self.get_frame_caption_path(timestamp)?;
-        let content_str = self
-            .library
-            .storage
-            .read_to_string(path.to_str().expect("invalid caption path"))?;
+        let content_str = self.read_to_string(path)?;
         let json_string: Value = serde_json::from_str(&content_str)?;
         let caption = json_string["caption"]
             .as_str()
@@ -81,16 +79,15 @@ impl VideoHandler {
 
             // write into file
 
-            self.library
-                .storage
-                .write(
-                    caption_path.to_str().expect("invalid caption path"),
-                    json!({
-                        "caption": caption
-                    })
-                    .to_string(),
-                )
-                .await?;
+            self.write(
+                caption_path,
+                json!({
+                    "caption": caption
+                })
+                .to_string()
+                .into(),
+            )
+            .await?;
         }
 
         Ok(())

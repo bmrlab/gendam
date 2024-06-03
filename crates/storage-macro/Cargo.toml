@@ -10,3 +10,4 @@ proc-macro = true
 syn = { version = "2" }
 quote = "1"
 storage = { path = "../storage" }
+global-variable = { path = "../global-variable" }

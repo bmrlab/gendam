@@ -5,9 +5,9 @@ use opendal::Buffer;
 
 #[async_trait]
 pub trait StorageTrait {
-    fn get_storage(&self) -> Storage;
+    fn get_storage(&self) -> StorageResult<Storage>;
 
-    fn get_actual_path(&self, path: std::path::PathBuf) -> std::path::PathBuf;
+    fn get_actual_path(&self, path: std::path::PathBuf) -> StorageResult<std::path::PathBuf>;
 
     fn read_blocking(&self, path: std::path::PathBuf) -> StorageResult<Buffer>;
 

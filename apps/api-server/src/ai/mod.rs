@@ -81,7 +81,6 @@ impl AIHandler {
             move || {
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
-                let storage = library.storage.clone();
                 async move {
                     match model_clone.model_type {
                         ConcreteModelType::BLIP => {
@@ -95,7 +94,7 @@ impl AIHandler {
                                 "Large" => ai::blip::BLIPModel::Large,
                                 _ => ai::blip::BLIPModel::Base,
                             };
-                            BLIP::new(model_path, tokenizer_path, model_type, storage).await
+                            BLIP::new(model_path, tokenizer_path, model_type).await
                         }
                         _ => {
                             bail!(
@@ -125,7 +124,6 @@ impl AIHandler {
             move || {
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
-                let storage = library.storage.clone();
                 async move {
                     let params = model_clone.params;
                     match model_clone.model_type {
@@ -142,7 +140,6 @@ impl AIHandler {
                                 text_model_path,
                                 text_tokenizer_vocab_path,
                                 CLIPModel::MViTB32,
-                                storage,
                             )
                             .await
                         }
@@ -172,7 +169,6 @@ impl AIHandler {
         let model = get_model_info_by_id(ctx, &settings.models.audio_transcript)?;
         let handler = AIModelLoader::new(
             move || {
-                let storage_clone = library.storage.clone();
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
                 async move {
@@ -181,7 +177,7 @@ impl AIHandler {
                         ConcreteModelType::Whisper => {
                             let model_path = resources_dir_clone
                                 .join(get_str_from_params(&params, "model_path")?);
-                            Whisper::new(model_path, storage_clone).await
+                            Whisper::new(model_path).await
                         }
                         _ => {
                             bail!(

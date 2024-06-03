@@ -2,8 +2,10 @@ use std::path::PathBuf;
 
 use super::utils::generate_file_hash;
 use content_library::Library;
+use global_variable::get_current_storage;
 use prisma_client_rust::QueryError;
 use prisma_lib::{asset_object, file_path};
+use storage::StorageError;
 
 pub async fn create_dir(
     library: &Library,
@@ -81,8 +83,14 @@ pub async fn create_asset_object(
     let destination_path = library.file_path(&file_hash);
 
     if PathBuf::from(local_full_path) != destination_path {
-        library
-            .storage
+        let storage = get_current_storage!().map_err(|e| {
+            rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                format!("failed to get current storage: {}", e),
+            )
+        })?;
+
+        storage
             .copy(
                 local_full_path,
                 &library
