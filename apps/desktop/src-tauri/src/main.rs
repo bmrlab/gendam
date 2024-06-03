@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use api_server::{ctx::default::Ctx, CtxWithLibrary};
 use dotenvy::dotenv;
+use global_variable::init_global_variables;
 use protocol::asset_protocol_handler;
 use std::sync::{Arc, Mutex};
 use tauri::{http::Request, Manager};
@@ -9,7 +10,6 @@ use vector_db::kill_qdrant_server;
 mod store;
 use store::Store;
 
-mod global;
 mod protocol;
 
 #[tokio::main]

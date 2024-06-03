@@ -33,6 +33,7 @@ vector-db = { path = "../../../crates/vector-db", features = ["qdrant"] }
 analytics-tracing = { path = "../../../crates/analytics-tracing" }
 p2p = { path = "../../../crates/p2p" }
 storage = { path = "../../../crates/storage" }
+global-variable = { path = "../../../crates/global-variable" }
 
 rspc = { workspace = true }
 rspc-tauri = { workspace = true }

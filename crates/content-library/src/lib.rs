@@ -1,3 +1,4 @@
+use global_variable::{set_current_library_dir, write_current_library_dir};
 use prisma_lib::PrismaClient;
 use qdrant::create_qdrant_server;
 pub use qdrant::{make_sure_collection_created, QdrantCollectionInfo, QdrantServerInfo};
@@ -108,6 +109,13 @@ pub async fn load_library(
     let prisma_client = Arc::new(client);
 
     let qdrant_server = create_qdrant_server(qdrant_dir).await?;
+
+    let dir = library_dir.to_str().unwrap().to_string();
+
+    set_current_library_dir!(dir).map_err(|e| {
+        tracing::error!("Failed to set current library dir: {e}");
+        ()
+    })?;
 
     let library = Library {
         id: library_id.to_string(),

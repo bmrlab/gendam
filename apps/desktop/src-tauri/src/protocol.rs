@@ -5,8 +5,7 @@ use tokio::io::AsyncWriteExt;
 use url::Position;
 use url::Url;
 
-use crate::global::{init_storage_map, STORAGE_MAP};
-use crate::write_storage_map;
+use global_variable::write_storage_map;
 use tauri::http::HttpRange;
 use tauri::http::{header::*, status::StatusCode, MimeType, Request, Response, ResponseBuilder};
 
