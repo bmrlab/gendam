@@ -169,7 +169,6 @@ impl AIHandler {
         let model = get_model_info_by_id(ctx, &settings.models.audio_transcript)?;
         let handler = AIModelLoader::new(
             move || {
-                let storage_clone = library.storage.clone();
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
                 async move {
@@ -178,7 +177,7 @@ impl AIHandler {
                         ConcreteModelType::Whisper => {
                             let model_path = resources_dir_clone
                                 .join(get_str_from_params(&params, "model_path")?);
-                            Whisper::new(model_path, storage_clone).await
+                            Whisper::new(model_path).await
                         }
                         _ => {
                             bail!(
