@@ -69,13 +69,39 @@ macro_rules! write_current_library_dir {
 }
 
 #[macro_export]
+macro_rules! get_or_insert_storage {
+    ($root_path:expr) => {{
+        use storage::{Storage, StorageError};
+
+        if let std::result::Result::Ok(mut map) = $crate::write_storage_map!() {
+            std::result::Result::Ok(
+                map.entry($root_path.clone())
+                    .or_insert_with(|| {
+                        Storage::new_fs(&$root_path)
+                            .map_err(|e| StorageError::UnexpectedError)
+                            .unwrap()
+                    })
+                    .clone(),
+            )
+        } else {
+            std::result::Result::Err(StorageError::MutexPoisonError(
+                "Fail to get storage map".to_string(),
+            ))
+        }
+    }};
+}
+
+#[macro_export]
 macro_rules! get_current_storage {
     () => {{
+        use std::io::ErrorKind;
         let current_library_dir = $crate::read_current_library_dir!().unwrap().clone();
-        let map = $crate::read_storage_map!().unwrap();
-        map.get(&current_library_dir)
-            .map(|s| s.clone())
-            .ok_or_else(|| StorageError::NoStorageFound)
+        let current_library_dir = match $crate::read_current_library_dir!() {
+            std::result::Result::Ok(current_library_dir) => current_library_dir.clone(),
+            std::result::Result::Err(e) => panic!(""),
+        };
+
+        $crate::get_or_insert_storage!(current_library_dir)
     }};
 }
 

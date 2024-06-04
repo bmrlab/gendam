@@ -1,20 +1,12 @@
+use global_variable::get_or_insert_storage;
 use rand::RngCore;
 use std::future::Future;
-use storage::Storage;
 use tokio::io::AsyncWriteExt;
 use url::Position;
 use url::Url;
 
-use global_variable::write_storage_map;
 use tauri::http::HttpRange;
 use tauri::http::{header::*, status::StatusCode, MimeType, Request, Response, ResponseBuilder};
-
-fn get_or_insert_storage(root_path: String) -> Storage {
-    let mut map = write_storage_map!().unwrap();
-    map.entry(root_path.clone())
-        .or_insert_with(|| Storage::new_fs(&root_path).unwrap())
-        .clone()
-}
 
 pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std::error::Error>> {
     let parsed_path = Url::parse(request.uri())?;
@@ -43,7 +35,7 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
     // extract the part starting from "artifacts or files"
     let root_path = part_split[..index].join("/");
     let relative_path = part_split[index..].join("/");
-    let storage = get_or_insert_storage(root_path);
+    let storage = get_or_insert_storage!(root_path)?;
 
     let relative_path_clone = relative_path.clone();
     let storage_clone = storage.clone();
