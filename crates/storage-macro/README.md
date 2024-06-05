@@ -3,7 +3,7 @@
 use storage::*;
 use storage_macro::*;
 
-#[derive(StorageTrait)]
+#[derive(Storage)]
 pub struct VideoHandler {
   // must have one
   storage: Storage,

@@ -21,13 +21,14 @@ macro_rules! write_storage_map {
 #[macro_export]
 macro_rules! get_or_insert_storage {
     ($root_path:expr) => {{
-        use storage::{Storage, StorageError};
+        use storage::FsStorage;
+        use storage::StorageError;
 
         match $crate::write_storage_map!() {
             std::result::Result::Ok(mut map) => std::result::Result::Ok(
                 map.entry($root_path.clone())
                     .or_insert_with(|| {
-                        Storage::new_fs(&$root_path)
+                        FsStorage::new(&$root_path)
                             .map_err(|e| StorageError::UnexpectedError)
                             .unwrap()
                     })

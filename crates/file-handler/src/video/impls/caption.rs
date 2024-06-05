@@ -8,7 +8,7 @@ use crate::{
 use qdrant_client::qdrant::PointStruct;
 use serde_json::{json, Value};
 use std::path::PathBuf;
-use storage::StorageTrait;
+use storage::Storage;
 use tracing::{debug, error};
 
 impl VideoHandler {

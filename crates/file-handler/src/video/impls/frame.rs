@@ -6,7 +6,7 @@ use crate::{
 use qdrant_client::qdrant::PointStruct;
 use serde_json::json;
 use std::path::PathBuf;
-use storage::StorageTrait;
+use storage::Storage;
 
 impl VideoHandler {
     pub(crate) fn get_frames_dir(&self) -> anyhow::Result<PathBuf> {
