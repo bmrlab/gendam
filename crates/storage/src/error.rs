@@ -23,6 +23,9 @@ pub enum StorageError {
     #[error("{0}")]
     MutexPoisonError(String),
 
+    #[error("Path not directory")]
+    NotDir,
+
     #[error("Path error")]
     PathError,
 }
