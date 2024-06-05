@@ -2,9 +2,11 @@ pub mod error;
 mod traits;
 
 pub use crate::error::StorageError;
+use async_recursion::async_recursion;
 pub use bytes::Bytes;
 pub use error::StorageResult;
 use opendal::services::Fs;
+use opendal::services::S3;
 pub use opendal::Buffer;
 pub use opendal::Metakey;
 use opendal::{BlockingOperator, Operator};
@@ -29,6 +31,43 @@ impl Storage {
 
         let mut builder = Fs::default();
         builder.root(root.as_str());
+        let block_op = Operator::new(builder)?.finish().blocking();
+
+        Ok(Self {
+            op,
+            block_op,
+            root: PathBuf::from(root),
+        })
+    }
+
+    pub fn new_s3(root: impl AsRef<Path>) -> StorageResult<Self> {
+        let root = Storage::path_to_string(root)?;
+        // Create s3 backend builder.
+        let mut builder = S3::default();
+        // Set the root for s3, all operations will happen under this root.
+        //
+        // NOTE: the root must be absolute path.
+        builder.root(&root);
+        // Set the bucket name. This is required.
+        // TODO: replace with real config
+        builder.bucket("my-test-bucket-131");
+        builder.endpoint("http://127.0.0.1:9000");
+        builder.access_key_id("plEXyNod8DWttxmCt3Db");
+        builder.secret_access_key("IuJYIdJIdJm8LWQgCXP7af9pmis0dz4soEs7vp0U");
+        let op: Operator = Operator::new(builder)?.finish();
+
+        // Create s3 backend builder.
+        let mut builder = S3::default();
+        // Set the root for s3, all operations will happen under this root.
+        //
+        // NOTE: the root must be absolute path.
+        builder.root(&root);
+        // Set the bucket name. This is required.
+        builder.bucket("my-test-bucket-131");
+        builder.endpoint("http://127.0.0.1:9000");
+        builder.access_key_id("plEXyNod8DWttxmCt3Db");
+        builder.secret_access_key("IuJYIdJIdJm8LWQgCXP7af9pmis0dz4soEs7vp0U");
+        builder.server_side_encryption_with_s3_key();
         let block_op = Operator::new(builder)?.finish().blocking();
 
         Ok(Self {
@@ -218,6 +257,36 @@ impl Storage {
             .map_err(StorageError::from)
     }
 
+    /// upload local dir recursively to opendal
+    #[async_recursion]
+    pub async fn upload_dir_recursive(
+        &self,
+        // relative path to root path
+        dir: PathBuf,
+    ) -> StorageResult<()> {
+        dbg!(&dir);
+        dbg!(self.root.as_os_str());
+        let actual_path = self.get_actual_path(dir);
+        println!("actual_path: {actual_path:?}");
+
+        for entry in std::fs::read_dir(actual_path)? {
+            let entry_path = entry?.path();
+            let path = entry_path
+                .strip_prefix(self.root.as_os_str())
+                .map_err(|_| StorageError::PathError)?
+                .to_path_buf();
+
+            if entry_path.is_dir() {
+                self.upload_dir_recursive(path).await?;
+            } else {
+                let data = tokio::fs::read(&entry_path).await?;
+                self.write(path, data).await?;
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn add_tmp_suffix_to_path(path: &Path) -> PathBuf {
         let mut new_path = path.to_path_buf();
         if let Some(file_stem) = new_path.file_stem() {
@@ -248,6 +317,11 @@ mod storage_test {
     fn init_storage() -> super::Storage {
         let test_path = "/Users/zingerbee/Downloads/test/gendam";
         super::Storage::new_fs(test_path).unwrap()
+    }
+
+    fn init_s3_storage() -> super::Storage {
+        let test_path = "/Users/zingerbee/Downloads/test/gendam";
+        super::Storage::new_s3(test_path).unwrap()
     }
 
     fn clear_test_dir() {
@@ -426,5 +500,28 @@ mod storage_test {
         storage.write("test.txt", data.clone()).await.unwrap();
         let len = storage.len("test.txt").await.unwrap();
         assert_eq!(len, 11);
+    }
+
+    #[tokio::test]
+    async fn test_upload_dir_recursive() {
+        let storage = init_storage();
+        let data = b"hello world".to_vec();
+        storage.write("file/test.txt", data.clone()).await.unwrap();
+        storage.write("file/test2.txt", data.clone()).await.unwrap();
+        storage
+            .write("file/fo/test.txt", data.clone())
+            .await
+            .unwrap();
+        storage
+            .write("file/fo2/test.txt", data.clone())
+            .await
+            .unwrap();
+
+        let storage_s3 = init_s3_storage();
+
+        storage_s3
+            .upload_dir_recursive(PathBuf::from("file"))
+            .await
+            .unwrap();
     }
 }
