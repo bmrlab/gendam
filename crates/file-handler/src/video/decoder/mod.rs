@@ -6,7 +6,7 @@ mod transcode;
 mod utils;
 
 #[cfg(feature = "ffmpeg-dylib")]
-#[derive(StorageTrait)]
+#[derive(Storage)]
 pub struct VideoDecoder {
     video_file_path: std::path::PathBuf,
 }
@@ -22,6 +22,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{path::Path, process::Stdio};
+use storage::add_tmp_suffix_to_path;
 use storage_macro::*;
 use tokio::process::Command;
 
@@ -87,7 +88,7 @@ impl From<&RawProbeStreamOutput> for AudioMetadata {
 }
 
 #[cfg(feature = "ffmpeg-binary")]
-#[derive(StorageTrait)]
+#[derive(Storage)]
 pub struct VideoDecoder {
     video_file_path: std::path::PathBuf,
     binary_file_path: std::path::PathBuf,
@@ -299,7 +300,7 @@ impl VideoDecoder {
         frames_dir: impl AsRef<Path>,
     ) -> Result<(), anyhow::Error> {
         let mut start = 0;
-        let mut end = 0;
+        let mut end;
         let mut count = 0;
         Ok(while start < data.len() {
             if data[start] == 0xFF && data[start + 1] == 0xD8 {
@@ -330,7 +331,7 @@ impl VideoDecoder {
 
     pub async fn save_video_audio(&self, audio_path: impl AsRef<Path>) -> anyhow::Result<()> {
         let actual_path = self.get_actual_path(audio_path.as_ref().to_path_buf())?;
-        let tmp_path = Storage::add_tmp_suffix_to_path(&actual_path);
+        let tmp_path = add_tmp_suffix_to_path!(&actual_path);
         tracing::debug!("tmp_path: {:?}", tmp_path);
         match std::process::Command::new(&self.binary_file_path)
             .args([

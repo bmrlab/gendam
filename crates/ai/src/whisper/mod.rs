@@ -8,12 +8,11 @@ use std::convert::AsRef;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use storage_macro::StorageTrait;
+use storage_macro::Storage;
 use tracing::warn;
-
 mod language;
 
-#[derive(StorageTrait)]
+#[derive(Storage)]
 pub struct Whisper {
     binary_path: PathBuf,
     model_path: PathBuf,

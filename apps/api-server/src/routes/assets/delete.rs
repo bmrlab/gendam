@@ -3,6 +3,7 @@ use global_variable::get_current_storage;
 use prisma_client_rust::{Direction, QueryError};
 use prisma_lib::{asset_object, file_path};
 use std::{collections::HashSet, sync::Arc};
+use storage::Storage;
 use storage::StorageError;
 use tokio::sync::Mutex;
 use tracing::error;
@@ -183,7 +184,7 @@ pub async fn delete_file_path_and_unlinked_asset_objects(
         .for_each(|data| {
             let file_path = library.relative_file_path(&data.hash);
 
-            if let Err(e) = storage.remove_file(&file_path) {
+            if let Err(e) = storage.remove_file(file_path.clone()) {
                 error!("failed to delete file({}): {}", file_path.display(), e);
             };
         });

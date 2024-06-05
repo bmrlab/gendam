@@ -5,7 +5,7 @@ use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize, Serializer};
 use std::fmt::Write;
 use std::path::PathBuf;
-use storage_macro::StorageTrait;
+use storage_macro::Storage;
 use tracing::debug;
 
 // 检查 content 是否为空，如何为空直接返回空字符串
@@ -66,7 +66,7 @@ impl AudioData {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, StorageTrait)]
+#[derive(Debug, Deserialize, Serialize, Clone, Storage)]
 pub struct AudioReader {
     content: Vec<AudioData>,
 }
@@ -95,7 +95,7 @@ impl AudioReader {
             )
         })?;
 
-        let content = storage.read_to_string(path.to_str().expect("invalid path in parse"))?;
+        let content = storage.read_to_string(path)?;
         let raw_content = serde_json::from_str::<AudioTranscriptOutput>(&content)?;
 
         Ok(raw_content

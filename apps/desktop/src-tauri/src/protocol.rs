@@ -1,6 +1,8 @@
 use global_variable::get_or_insert_storage;
 use rand::RngCore;
 use std::future::Future;
+use std::path::PathBuf;
+use storage::Storage;
 use tokio::io::AsyncWriteExt;
 use url::Position;
 use url::Url;
@@ -40,9 +42,11 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
     let relative_path_clone = relative_path.clone();
     let storage_clone = storage.clone();
     let (len, mime_type, read_bytes) = safe_block_on(async move {
-        let len = storage_clone.len(&relative_path_clone).await?;
+        let len = storage_clone
+            .len(PathBuf::from(relative_path_clone.clone()))
+            .await?;
         let range_vec = storage_clone
-            .read_with_range(&relative_path_clone, 0..8192)
+            .read_with_range(PathBuf::from(relative_path_clone), 0..8192)
             .await?
             .to_vec();
 
@@ -109,7 +113,7 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
 
             let buf = safe_block_on(async move {
                 let buf = storage
-                    .read_with_range(&relative_path, start..nbytes)
+                    .read_with_range(PathBuf::from(relative_path.clone()), start..nbytes)
                     .await?
                     .to_vec();
                 Ok::<Vec<u8>, anyhow::Error>(buf)
@@ -169,7 +173,7 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
                     let nbytes = end + 1 - start;
 
                     let local_buf = storage
-                        .read_with_range(&relative_path, start..nbytes)
+                        .read_with_range(PathBuf::from(relative_path.clone()), start..nbytes)
                         .await?
                         .to_vec();
 
@@ -189,7 +193,7 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
             b
         } else {
             safe_block_on(async move {
-                let local_buf = storage.read(&relative_path).await?.to_vec();
+                let local_buf = storage.read(PathBuf::from(relative_path)).await?.to_vec();
                 Ok::<Vec<u8>, anyhow::Error>(local_buf)
             })?
         };

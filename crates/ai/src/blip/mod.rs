@@ -12,11 +12,11 @@ use candle_transformers::models::blip::VisionConfig;
 use candle_transformers::models::quantized_blip;
 use candle_transformers::models::{blip, blip_text};
 use std::path::Path;
-use storage_macro::StorageTrait;
+use storage_macro::Storage;
 use tokenizers::Tokenizer;
 use tracing::debug;
 
-#[derive(StorageTrait)]
+#[derive(Storage)]
 pub struct BLIP {
     tokenizer: Tokenizer,
     model: quantized_blip::BlipForConditionalGeneration,

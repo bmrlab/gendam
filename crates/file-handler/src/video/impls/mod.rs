@@ -3,7 +3,7 @@ pub mod audio;
 pub mod caption;
 pub mod frame;
 
-use storage::StorageTrait;
+use storage::Storage;
 
 use super::VideoHandler;
 use std::path::Path;

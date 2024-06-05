@@ -11,14 +11,14 @@ pub use model::*;
 use ndarray::{Array1, Axis};
 use ort::Session;
 use std::path::{Path, PathBuf};
-use storage_macro::StorageTrait;
+use storage_macro::Storage;
 use tokenizers::tokenizer::Tokenizer;
 use utils::normalize;
 
 pub mod model;
 mod preprocess;
 
-#[derive(StorageTrait)]
+#[derive(Storage)]
 pub struct CLIP {
     image_model: Option<Session>,
     text_model: Option<Session>,

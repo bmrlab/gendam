@@ -24,14 +24,14 @@ use std::{
     str::FromStr,
     sync::{Arc, Mutex},
 };
-use storage_macro::StorageTrait;
+use storage_macro::Storage;
 use strum_macros::{EnumIter, EnumString};
 
 /// Video Handler
 ///
 /// VideoHandler is a helper to extract video artifacts and embeddings, and save results into databases.
 /// ```
-#[derive(Clone, StorageTrait)]
+#[derive(Clone, Storage)]
 pub struct VideoHandler {
     video_path: std::path::PathBuf,
     file_identifier: String,

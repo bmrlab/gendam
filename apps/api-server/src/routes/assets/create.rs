@@ -5,6 +5,7 @@ use content_library::Library;
 use global_variable::get_current_storage;
 use prisma_client_rust::QueryError;
 use prisma_lib::{asset_object, file_path};
+use storage::Storage;
 use storage::StorageError;
 
 pub async fn create_dir(
@@ -92,11 +93,8 @@ pub async fn create_asset_object(
 
         storage
             .copy(
-                local_full_path,
-                &library
-                    .relative_file_path(&file_hash)
-                    .to_str()
-                    .expect("Invalid file hash"),
+                PathBuf::from(local_full_path),
+                library.relative_file_path(&file_hash),
             )
             .await
             .map_err(|e| {
