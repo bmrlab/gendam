@@ -71,7 +71,7 @@ async fn main() {
         p2p::Node::new().expect("create node error"),
     ));
 
-    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, temp_dir, store, node);
+    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, temp_dir, None, store, node);
 
     let app: axum::Router = axum::Router::new()
         .route("/", get(|| async { "Hello 'rspc'!" }))

@@ -292,10 +292,9 @@ impl VideoHandler {
         video_decoder.get_video_duration().await
     }
 
-    pub async fn generate_ts(&self, ts_index: u32) -> anyhow::Result<Vec<u8>> {
+    pub async fn generate_ts(&self, ts_index: u32, cache_dir: PathBuf) -> anyhow::Result<Vec<u8>> {
         let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
-        // let m3u8_file_path = self.artifacts_dir.clone().join("out").join("index.m3u8");
-        let ts_folder = self.artifacts_dir.clone().join("out");
+        let ts_folder = cache_dir.join("ts").join(self.file_identifier.clone());
 
         // 创建ts_folder
         tokio::fs::create_dir_all(ts_folder.clone()).await?;

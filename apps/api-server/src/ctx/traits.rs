@@ -30,6 +30,7 @@ pub trait CtxWithLibrary: Sync + CtxWithP2P + CtxWithAI + CtxWithDownload {
     fn get_local_data_root(&self) -> PathBuf;
     fn get_resources_dir(&self) -> PathBuf;
     fn get_temp_dir(&self) -> PathBuf;
+    fn get_cache_dir(&self) -> Option<PathBuf>;
 
     async fn load_library(&self, library_id: &str) -> Result<Library, rspc::Error>;
     async fn unload_library(&self) -> Result<(), rspc::Error>;
