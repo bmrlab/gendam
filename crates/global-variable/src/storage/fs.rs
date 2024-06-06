@@ -43,13 +43,8 @@ macro_rules! get_current_fs_storage {
 }
 
 #[macro_export]
-macro_rules! set_storage {
-    (library_dir = $dir:expr, storage = $storage:expr) => {{
-        let map = $crate::STORAGE_MAP.get_or_init(|| init_storage_map!());
-        let mut write_guard = map
-            .write()
-            .map_err(|e| anyhow::anyhow!("Could not write storage map: {e}"))?;
-        write_guard.insert(library_dir, storage);
-        Ok(())
+macro_rules! set_fs_storage {
+    ($dir:expr,$storage:expr) => {{
+        $crate::set_storage!($crate::STORAGE_MAP, $dir, $storage)
     }};
 }
