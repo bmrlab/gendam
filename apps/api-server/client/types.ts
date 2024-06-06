@@ -44,6 +44,7 @@ export type Procedures = {
         { key: "p2p.finish_file_share", input: string, result: string[] } | 
         { key: "p2p.reject_file_share", input: string, result: any } | 
         { key: "p2p.share", input: SharePayload, result: any } | 
+        { key: "storage.upload_to_s3", input: string, result: null } | 
         { key: "users.set", input: Auth, result: Auth } | 
         { key: "video.tasks.cancel", input: TaskCancelRequestPayload, result: null } | 
         { key: "video.tasks.create", input: string, result: null } | 

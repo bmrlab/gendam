@@ -148,21 +148,21 @@ pub trait Storage {
         // relative path to root path
         dir: std::path::PathBuf,
     ) -> StorageResult<()> {
-        // let actual_path = self.get_actual_path(dir)?;
-        // for entry in std::fs::read_dir(actual_path)? {
-        //     let entry_path = entry?.path();
-        //     let path = entry_path
-        //         .strip_prefix(self.root()?.as_os_str())
-        //         .map_err(|_| StorageError::PathError)?
-        //         .to_path_buf();
+        let actual_path = self.get_actual_path(dir)?;
+        for entry in std::fs::read_dir(actual_path)? {
+            let entry_path = entry?.path();
+            let path = entry_path
+                .strip_prefix(self.root()?.as_os_str())
+                .map_err(|_| StorageError::PathError)?
+                .to_path_buf();
 
-        //     if entry_path.is_dir() {
-        //         self.upload_dir_recursive(path).await?;
-        //     } else {
-        //         let data = tokio::fs::read(&entry_path).await?;
-        //         self.write(path, data.into()).await?;
-        //     }
-        // }
+            if entry_path.is_dir() {
+                self.upload_dir_recursive(path).await?;
+            } else {
+                let data = tokio::fs::read(&entry_path).await?;
+                self.write(path, data.into()).await?;
+            }
+        }
         Ok(())
     }
 

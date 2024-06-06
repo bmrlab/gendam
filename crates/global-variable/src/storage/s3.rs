@@ -26,7 +26,11 @@ macro_rules! write_s3_storage_map {
 #[macro_export]
 macro_rules! get_or_insert_s3_storage {
     ($root_path:expr) => {{
-        $crate::get_or_insert_storage!($root_path, $crate::s3_storage_new!($root_path))
+        $crate::get_or_insert_storage!(
+            $root_path,
+            $crate::s3_storage_new!($root_path),
+            $crate::write_s3_storage_map!()
+        )
     }};
 }
 

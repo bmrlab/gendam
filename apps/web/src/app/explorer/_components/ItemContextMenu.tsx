@@ -1,16 +1,16 @@
 import { useExplorerContext } from '@/Explorer/hooks'
 import { useExplorerStore } from '@/Explorer/store'
-import { rspc, queryClient } from '@/lib/rspc'
-import { ContextMenu } from '@gendam/ui/v2/context-menu'
-import { useRouter } from 'next/navigation'
-import { forwardRef, useCallback, useMemo } from 'react'
+import { type ExplorerItem } from '@/Explorer/types'
+import { useAudioDialog } from '@/components/Audio/AudioDialog'
+import { useInspector } from '@/components/Inspector/store'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { useMoveTargetSelected } from '@/hooks/useMoveTargetSelected'
 import { useOpenFileSelection } from '@/hooks/useOpenFileSelection'
-import { useInspector } from '@/components/Inspector/store'
-import { useAudioDialog } from '@/components/Audio/AudioDialog'
 import { type FilePath } from '@/lib/bindings'
-import { type ExplorerItem } from '@/Explorer/types'
+import { queryClient, rspc } from '@/lib/rspc'
+import { ContextMenu } from '@gendam/ui/v2/context-menu'
+import { useRouter } from 'next/navigation'
+import { forwardRef, useCallback, useMemo } from 'react'
 
 type ItemContextMenuProps = {
   data: FilePath
@@ -47,6 +47,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   const processJobsMut = rspc.useMutation(['video.tasks.regenerate'])
   const p2pStateQuery = rspc.useQuery(['p2p.state'])
   const p2pMut = rspc.useMutation(['p2p.share'])
+  const { mutateAsync: uploadToS3 } = rspc.useMutation(['storage.upload_to_s3'])
 
   /**
    * 这里都改成处理 selectedItems 而不只是处理当前的 item
@@ -146,9 +147,18 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
     [selectedFilePathItems, p2pMut],
   )
 
+  const handleUpload = useCallback(() => {
+    let hash = selectedFilePathItems[0].assetObject?.hash
+    if (hash) {
+      uploadToS3(hash)
+    }
+  }, [selectedFilePathItems])
+
   return (
     <ContextMenu.Content
-      ref={forwardedRef as any} {...prpos} onClick={(e) => e.stopPropagation()}
+      ref={forwardedRef as any}
+      {...prpos}
+      onClick={(e) => e.stopPropagation()}
       className="data-[state=closed]:animate-none data-[state=closed]:duration-0"
     >
       <ContextMenu.Item onSelect={handleOpen} disabled={explorer.selectedItems.size > 1}>
@@ -185,6 +195,10 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       </ContextMenu.Item>
       <ContextMenu.Item onSelect={handleRename} disabled={explorer.selectedItems.size > 1}>
         <div>Rename</div>
+      </ContextMenu.Item>
+      <ContextMenu.Separator className="bg-app-line my-1 h-px" />
+      <ContextMenu.Item onSelect={handleUpload} disabled={explorer.selectedItems.size > 1}>
+        <div>Upload</div>
       </ContextMenu.Item>
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />
       <ContextMenu.Sub>
