@@ -2,7 +2,7 @@
 import { open } from '@tauri-apps/api/dialog'
 import { HTMLAttributes, PropsWithChildren, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { SUPPORTED_IMAGE_CONTENT_TYPES, SUPPORTED_VIDEO_CONTENT_TYPES } from '@/config'
+import { SUPPORTED_IMAGE_CONTENT_TYPES, SUPPORTED_VIDEO_CONTENT_TYPES } from '@/constants'
 
 type Props = {
   onSelectFiles: (fileFullPath: string[]) => void

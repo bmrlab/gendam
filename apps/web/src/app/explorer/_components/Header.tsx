@@ -4,19 +4,17 @@ import PageNav from '@/components/PageNav'
 import UploadButton from '@/components/UploadButton'
 import Viewport from '@/components/Viewport'
 // import { rspc } from '@/lib/rspc'
-import { useUploadQueueStore } from '@/components/UploadQueue/store'
 import Icon from '@gendam/ui/icons'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { type SearchRequestPayload } from '@/lib/bindings'
 import SearchForm, { type SearchFormRef } from '../../search/SearchForm'  // TODO: 这样不大好，应该是一个公共组件
 import { useInspector } from '@/components/Inspector/store'
 import TitleDialog, { useTitleDialog } from './TitleDialog'
 import { Button } from '@gendam/ui/v2/button'
 import { useClipboardPaste } from '@/hooks/useClipboardPaste'
-import { useUpload } from '@/hooks/useUpload'
-import { fiterFiles } from '@/lib/upload'
+import { useUploadQueueStore } from '@/components/UploadQueue/store'
+import { filterFiles } from '@/components/UploadQueue/utils'
 import { toast } from 'sonner'
 
 export default function Header() {
@@ -25,8 +23,6 @@ export default function Header() {
   const explorer = useExplorerContext()
 
   const inspector = useInspector()
-
-  const { handleSelectFiles } = useUpload()
 
   const searchFormRef = useRef<SearchFormRef>(null)
   // const [searchPayload, setSearchPayload] = useState<SearchRequestPayload | null>(null)
@@ -42,6 +38,28 @@ export default function Header() {
     }
   }, [router])
 
+  const uploadQueueStore = useUploadQueueStore()
+
+  const handleSelectFiles = useCallback(
+    (fileFullPaths: string[]) => {
+      const { supportedFiles, unsupportedExtensionsSet } = filterFiles(fileFullPaths)
+      if (Array.from(unsupportedExtensionsSet).length > 0) {
+        toast.error(`Unsupported file types: ${Array.from(unsupportedExtensionsSet).join(',')}`)
+      }
+      if (explorer.materializedPath && supportedFiles.length > 0) {
+        for (const fileFullPath of fileFullPaths) {
+          const name = fileFullPath.split('/').slice(-1).join('')
+          uploadQueueStore.enqueue({
+            materializedPath: explorer.materializedPath,
+            name: name,
+            localFullPath: fileFullPath,
+          })
+        }
+      }
+    },
+    [explorer.materializedPath, uploadQueueStore],
+  )
+
   useEffect(() => {
     if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
       let unlisten: () => void
@@ -52,14 +70,8 @@ export default function Header() {
         }
         unlisten = await listen('tauri://file-drop', (event) => {
           const files = event.payload as string[]
-          const { supportedFiles, unsupportedExtensionsSet } = fiterFiles(files)
-          if (supportedFiles.length > 0) {
-            handleSelectFiles(supportedFiles)
-            console.log('files dropped', supportedFiles)
-          }
-          if (Array.from(unsupportedExtensionsSet).length > 0) {
-            toast.error(`Unsupported file types: ${Array.from(unsupportedExtensionsSet).join(',')}`)
-          }
+          console.log('files dropped', files)
+          handleSelectFiles(files)
         })
       })
       return () => {
@@ -70,8 +82,13 @@ export default function Header() {
       }
     }
   }, [handleSelectFiles])
-  
-  useClipboardPaste();
+
+  const { filesPasted } = useClipboardPaste()
+  useEffect(() => {
+    if (filesPasted.length > 0) {
+      handleSelectFiles(filesPasted)
+    }
+  }, [filesPasted])
 
   return (
     <>
