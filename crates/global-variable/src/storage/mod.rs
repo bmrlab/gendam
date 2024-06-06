@@ -21,10 +21,10 @@ macro_rules! write_storage_map {
 
 #[macro_export]
 macro_rules! get_or_insert_storage {
-    ($root_path:expr, $storage:expr) => {{
+    ($root_path:expr, $storage:expr, $write_map:expr) => {{
         use storage::prelude::*;
 
-        match $crate::write_fs_storage_map!() {
+        match $write_map {
             std::result::Result::Ok(mut map) => std::result::Result::Ok(
                 map.entry($root_path.clone())
                     .or_insert_with(|| $storage)

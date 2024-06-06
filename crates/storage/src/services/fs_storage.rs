@@ -48,11 +48,7 @@ mod storage_test {
 
     use opendal::Metakey;
 
-    use crate::{
-        add_tmp_suffix_to_path,
-        services::{fs_storage::FsStorage, s3_storage::S3Storage},
-        Storage,
-    };
+    use crate::{add_tmp_suffix_to_path, services::s3_storage::S3Storage, Storage};
 
     fn init_storage() -> super::FsStorage {
         let test_path = "/Users/zingerbee/Downloads/test/gendam";
