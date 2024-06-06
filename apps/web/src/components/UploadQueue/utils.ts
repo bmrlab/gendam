@@ -1,6 +1,6 @@
-import { SUPPORTED_IMAGE_CONTENT_TYPES, SUPPORTED_VIDEO_CONTENT_TYPES } from '@/config'
+import { SUPPORTED_IMAGE_CONTENT_TYPES, SUPPORTED_VIDEO_CONTENT_TYPES } from '@/constants'
 
-export const fiterFiles = (files: string[]) => {
+export const filterFiles = (files: string[]) => {
   const supportedFiles: string[] = []
   const unsupportedExtensionsSet: Set<string> = new Set()
   // 过滤
