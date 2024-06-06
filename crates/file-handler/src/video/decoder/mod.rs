@@ -436,7 +436,7 @@ impl VideoDecoder {
                 "-muxdelay", // 设置starttime 每个视频10 * index秒开始
                 format!("{}", 5 * ts_index).to_string().as_str(),
                 "-vf",
-                "scale=426:-1", // 设置视频高度， 用于降低4k视频尺寸
+                "scale=-2:426", // 设置视频高度， 用于降低4k视频尺寸
                 format!(
                     "{}/index.m3u8",
                     output_dir.as_ref().to_str().expect("invalid output path")
@@ -469,6 +469,10 @@ impl VideoDecoder {
                     let _ = tokio::fs::remove_file(ts_file_path).await?;
                     Ok(file)
                 } else {
+                    tracing::error!(
+                        "ffmpeg error: {}",
+                        String::from_utf8_lossy(&ffmpeg_output.stderr)
+                    );
                     bail!("FFmpeg failed generate_ts");
                 }
             }
