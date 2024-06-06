@@ -1,3 +1,4 @@
+use global_variable::get_or_insert_fs_storage;
 use global_variable::get_or_insert_storage;
 use rand::RngCore;
 use std::future::Future;
@@ -37,7 +38,7 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
     // extract the part starting from "artifacts or files"
     let root_path = part_split[..index].join("/");
     let relative_path = part_split[index..].join("/");
-    let storage = get_or_insert_storage!(root_path)?;
+    let storage = get_or_insert_fs_storage!(root_path)?;
 
     let relative_path_clone = relative_path.clone();
     let storage_clone = storage.clone();

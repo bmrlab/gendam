@@ -1,9 +1,11 @@
 use std::sync::{Arc, OnceLock, RwLock};
 
-use ::storage::services::{fs_storage::FsStorage, s3_storage::S3Storage};
-
 pub mod library;
 pub mod storage;
+
+pub use ::storage::*;
+pub use library::*;
+pub use storage::*;
 
 // Map<root_path, Storage>
 pub static STORAGE_MAP: OnceLock<Arc<RwLock<std::collections::HashMap<String, FsStorage>>>> =
