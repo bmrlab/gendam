@@ -1,8 +1,8 @@
 #[macro_export]
 macro_rules! fs_storage_new {
     ($root_path:expr) => {{
+        use storage::prelude::*;
         use storage::FsStorage;
-        use storage::StorageError;
 
         FsStorage::new(&$root_path)
             .map_err(|e| StorageError::UnexpectedError)
@@ -27,6 +27,7 @@ macro_rules! write_fs_storage_map {
 #[macro_export]
 macro_rules! get_or_insert_fs_storage {
     ($root_path:expr) => {{
+        use storage::Storage;
         $crate::get_or_insert_storage!($root_path, $crate::fs_storage_new!($root_path))
     }};
 }

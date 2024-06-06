@@ -2,7 +2,7 @@ use global_variable::get_or_insert_fs_storage;
 use rand::RngCore;
 use std::future::Future;
 use std::path::PathBuf;
-use storage::Storage;
+use storage::prelude::*;
 use tokio::io::AsyncWriteExt;
 use url::Position;
 use url::Url;

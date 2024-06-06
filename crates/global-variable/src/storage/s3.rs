@@ -1,8 +1,7 @@
 #[macro_export]
 macro_rules! s3_storage_new {
     ($root_path:expr) => {{
-        use storage::S3Storage;
-        use storage::StorageError;
+        use storage::prelude::*;
 
         S3Storage::new(&$root_path)
             .map_err(|e| StorageError::UnexpectedError)
