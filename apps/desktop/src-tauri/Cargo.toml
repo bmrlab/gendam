@@ -13,7 +13,7 @@ rust-version = "1.60"
 tauri-build = { version = "1.5.1", features = [] }
 
 [dependencies]
-tauri = { version = "1.5.4", features = [ "shell-all", "macos-private-api", "window-start-dragging", "window-minimize", "window-hide", "window-unminimize", "window-unmaximize", "window-show", "window-close", "window-maximize", "dialog-save", "dialog-confirm", "updater", "process-exit", "process-relaunch", "dialog-message", "os-all", "path-all",
+tauri = { version = "1.5.4", features = [ "clipboard-all", "shell-all", "macos-private-api", "window-start-dragging", "window-minimize", "window-hide", "window-unminimize", "window-unmaximize", "window-show", "window-close", "window-maximize", "dialog-save", "dialog-confirm", "updater", "process-exit", "process-relaunch", "dialog-message", "os-all", "path-all",
   "dialog-ask",
   "dialog-open",
   "protocol-all",
@@ -44,6 +44,7 @@ tokio-util = { workspace = true }
 dotenvy = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
+tauri-plugin-clipboard = "1.0.1"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.
