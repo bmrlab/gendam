@@ -1,5 +1,4 @@
 use global_variable::get_or_insert_fs_storage;
-use global_variable::get_or_insert_storage;
 use rand::RngCore;
 use std::future::Future;
 use std::path::PathBuf;

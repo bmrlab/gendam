@@ -48,3 +48,16 @@ macro_rules! get_current_storage {
         }
     }};
 }
+
+#[macro_export]
+macro_rules! set_storage {
+    ($map:expr, $dir:expr, $storage:expr) => {{
+        match $crate::write_storage_map!($map:expr) {
+            std::result::Result::Ok(mut map) => {
+                map.insert($dir, $storage);
+                std::result::Result::Ok(())
+            }
+            std::result::Result::Err(e) => std::result::Result::Err(e),
+        }
+    }};
+}
