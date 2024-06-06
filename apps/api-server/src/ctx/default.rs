@@ -79,6 +79,7 @@ pub struct Ctx<S: CtxStore> {
     local_data_root: PathBuf,
     resources_dir: PathBuf,
     temp_dir: PathBuf,
+    cache_dir: Option<PathBuf>,
     store: Arc<Mutex<S>>,
     current_library: Arc<Mutex<Option<Library>>>,
     tx: Arc<Mutex<Option<Sender<TaskPayload>>>>,
@@ -99,6 +100,7 @@ impl<S: CtxStore> Clone for Ctx<S> {
             is_busy: self.is_busy.clone(),
             download_hub: self.download_hub.clone(),
             temp_dir: self.temp_dir.clone(),
+            cache_dir: self.cache_dir.clone(),
             node: Arc::clone(&self.node),
         }
     }
@@ -127,6 +129,7 @@ impl<S: CtxStore> Ctx<S> {
         local_data_root: PathBuf,
         resources_dir: PathBuf,
         temp_dir: PathBuf,
+        cache_dir: Option<PathBuf>,
         store: Arc<Mutex<S>>,
         node: Arc<Mutex<Node<ShareInfo>>>,
     ) -> Self {
@@ -134,6 +137,7 @@ impl<S: CtxStore> Ctx<S> {
             local_data_root,
             resources_dir,
             temp_dir,
+            cache_dir,
             store,
             current_library: Arc::new(Mutex::new(None)),
             tx: Arc::new(Mutex::new(None)),
@@ -247,6 +251,10 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
     fn get_temp_dir(&self) -> PathBuf {
         self.temp_dir.clone()
+    }
+
+    fn get_cache_dir(&self) -> Option<PathBuf> {
+        self.cache_dir.clone()
     }
 
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking

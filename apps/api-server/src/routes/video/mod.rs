@@ -75,6 +75,9 @@ where
             }
             t(|ctx: TCtx, input: TsRequestPayload| async move {
                 let library = ctx.library()?;
+                let temp_dir = ctx.get_temp_dir();
+                let cache_dir = ctx.get_cache_dir();
+                let ts_dir = cache_dir.unwrap_or(temp_dir);
 
                 let video_handler =
                     VideoHandler::new(&input.hash.clone(), &library).map_err(|e| {
@@ -84,7 +87,7 @@ where
                         )
                     })?;
 
-                let file = video_handler.generate_ts(input.index).await.map_err(|e| {
+                let file = video_handler.generate_ts(input.index, ts_dir).await.map_err(|e| {
                     rspc::Error::new(
                         rspc::ErrorCode::InternalServerError,
                         format!("failed to get ts file: {}", e),

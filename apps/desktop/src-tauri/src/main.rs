@@ -3,7 +3,7 @@
 use api_server::{ctx::default::Ctx, CtxWithLibrary};
 use dotenvy::dotenv;
 use std::sync::{Arc, Mutex};
-use tauri::Manager;
+use tauri::{api::path::cache_dir, Manager};
 use vector_db::kill_qdrant_server;
 mod store;
 use store::Store;
@@ -78,6 +78,7 @@ async fn main() {
         .resolve_resource("resources")
         .expect("failed to find resources dir");
     let temp_dir = std::env::temp_dir();
+    let cache_dir = cache_dir();
 
     // app.app_handle()
     window
@@ -105,7 +106,7 @@ async fn main() {
 
     let store = Arc::new(Mutex::new(Store::new(tauri_store)));
     let router = api_server::get_routes::<Ctx<Store>>();
-    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, temp_dir, store, p2p);
+    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, temp_dir, cache_dir, store, p2p);
 
     window.on_window_event({
         let ctx = ctx.clone();
