@@ -55,8 +55,8 @@ const DroppableInner: React.FC<
           )}
         >
           {/* <div className="line-clamp-2 max-h-[2.8em] break-all text-center leading-[1.4em]">{data.name}</div> */}
-          <div className="truncate">{name1}</div>
-          <div className="whitespace-nowrap">{name2}</div>
+          <div className="truncate whitespace-pre">{name1}</div>
+          <div className="whitespace-pre">{name2}</div>
         </div>
       )}
     </div>

@@ -54,8 +54,8 @@ const DroppableInner: React.FC<ItemWithSize> = ({ data, width, height }) => {
             highlight ? 'bg-accent text-white' : null,
           )}
         >
-          <div className="truncate">{name1}</div>
-          <div className="whitespace-nowrap">{name2}</div>
+          <div className="truncate whitespace-pre">{name1}</div>
+          <div className="whitespace-pre">{name2}</div>
         </div>
       )}
     </div>
