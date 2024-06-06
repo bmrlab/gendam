@@ -97,6 +97,12 @@ async fn main() {
         tracing::warn!("Failed to load tauri store: {:?}", e);
     });
 
+    // clipboard
+    window
+        .app_handle()
+        .plugin(tauri_plugin_clipboard::init())
+        .expect("fail to add clipboard plugin");
+
     let store = Arc::new(Mutex::new(Store::new(tauri_store)));
     let router = api_server::get_routes::<Ctx<Store>>();
     let ctx = Ctx::<Store>::new(local_data_root, resources_dir, temp_dir, store, p2p);

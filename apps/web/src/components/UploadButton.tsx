@@ -2,6 +2,7 @@
 import { open } from '@tauri-apps/api/dialog'
 import { HTMLAttributes, PropsWithChildren, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { SUPPORTED_IMAGE_CONTENT_TYPES, SUPPORTED_VIDEO_CONTENT_TYPES } from '@/config'
 
 type Props = {
   onSelectFiles: (fileFullPath: string[]) => void
@@ -18,11 +19,11 @@ const TauriUploadButton: React.FC<
       filters: [
         {
           name: 'Video',
-          extensions: ['mp4', 'mov', 'avi', 'mkv'],
+          extensions: Array.from(SUPPORTED_VIDEO_CONTENT_TYPES),
         },
         {
           name: 'Image',
-          extensions: ['jpg', 'jpeg', 'png', 'gif', "webp"]
+          extensions: Array.from(SUPPORTED_IMAGE_CONTENT_TYPES)
         }
       ],
     })

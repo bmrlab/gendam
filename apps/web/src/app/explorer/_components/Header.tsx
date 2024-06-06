@@ -14,30 +14,19 @@ import SearchForm, { type SearchFormRef } from '../../search/SearchForm'  // TOD
 import { useInspector } from '@/components/Inspector/store'
 import TitleDialog, { useTitleDialog } from './TitleDialog'
 import { Button } from '@gendam/ui/v2/button'
+import { useClipboardPaste } from '@/hooks/useClipboardPaste'
+import { useUpload } from '@/hooks/useUpload'
+import { fiterFiles } from '@/lib/upload'
+import { toast } from 'sonner'
 
 export default function Header() {
   const titleDialog = useTitleDialog()
   const router = useRouter()
   const explorer = useExplorerContext()
-  const uploadQueueStore = useUploadQueueStore()
 
   const inspector = useInspector()
 
-  const handleSelectFiles = useCallback(
-    (fileFullPaths: string[]) => {
-      if (explorer.materializedPath) {
-        for (const fileFullPath of fileFullPaths) {
-          const name = fileFullPath.split('/').slice(-1).join('')
-          uploadQueueStore.enqueue({
-            materializedPath: explorer.materializedPath,
-            name: name,
-            localFullPath: fileFullPath,
-          })
-        }
-      }
-    },
-    [explorer.materializedPath, uploadQueueStore],
-  )
+  const { handleSelectFiles } = useUpload()
 
   const searchFormRef = useRef<SearchFormRef>(null)
   // const [searchPayload, setSearchPayload] = useState<SearchRequestPayload | null>(null)
@@ -63,8 +52,14 @@ export default function Header() {
         }
         unlisten = await listen('tauri://file-drop', (event) => {
           const files = event.payload as string[]
-          console.log('files dropped', files)
-          handleSelectFiles(files)
+          const { supportedFiles, unsupportedExtensionsSet } = fiterFiles(files)
+          if (supportedFiles.length > 0) {
+            handleSelectFiles(supportedFiles)
+            console.log('files dropped', supportedFiles)
+          }
+          if (Array.from(unsupportedExtensionsSet).length > 0) {
+            toast.error(`Unsupported file types: ${Array.from(unsupportedExtensionsSet).join(',')}`)
+          }
         })
       })
       return () => {
@@ -75,6 +70,8 @@ export default function Header() {
       }
     }
   }, [handleSelectFiles])
+  
+  useClipboardPaste();
 
   return (
     <>
