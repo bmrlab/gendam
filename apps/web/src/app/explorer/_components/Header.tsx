@@ -12,6 +12,7 @@ import SearchForm, { type SearchFormRef } from '../../search/SearchForm'  // TOD
 import { useInspector } from '@/components/Inspector/store'
 import TitleDialog, { useTitleDialog } from './TitleDialog'
 import { Button } from '@gendam/ui/v2/button'
+import { useFileDrop } from '@/hooks/useFileDrop'
 import { useClipboardPaste } from '@/hooks/useClipboardPaste'
 import { useUploadQueueStore } from '@/components/UploadQueue/store'
 import { filterFiles } from '@/components/UploadQueue/utils'
@@ -60,28 +61,12 @@ export default function Header() {
     [explorer.materializedPath, uploadQueueStore],
   )
 
+  const { filesDropped } = useFileDrop()
   useEffect(() => {
-    if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-      let unlisten: () => void
-      let isExit = false
-      import('@tauri-apps/api/event').then(async ({ listen }) => {
-        if (isExit) {
-          return
-        }
-        unlisten = await listen('tauri://file-drop', (event) => {
-          const files = event.payload as string[]
-          console.log('files dropped', files)
-          handleSelectFiles(files)
-        })
-      })
-      return () => {
-        isExit = true
-        if (unlisten) {
-          unlisten()
-        }
-      }
+    if (filesDropped.length > 0) {
+      handleSelectFiles(filesDropped)
     }
-  }, [handleSelectFiles])
+  }, [filesDropped])
 
   const { filesPasted } = useClipboardPaste()
   useEffect(() => {
