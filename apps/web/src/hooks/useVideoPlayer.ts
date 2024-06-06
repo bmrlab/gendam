@@ -17,7 +17,7 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
   const loadedSegmentsRef = useRef<number[]>([])
   const lastTimeRef = useRef<number>(0)
 
-  const debounceSeeking = useDebouncedCallback((seekTimeSegment:number) => {
+  const debounceSeeking = useDebouncedCallback((seekTimeSegment: number) => {
     if (segmentsRef.current.includes(seekTimeSegment)) {
       console.log('seeking所在', seekTimeSegment)
       let index = segmentsRef.current.indexOf(seekTimeSegment)
@@ -32,17 +32,25 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
   const { mutateAsync: getTs } = rspc.useMutation(['video.get_ts'])
 
   const handleUpdateend = async () => {
-    transmuxerRef.current!.on('data', (event: any) => {
+    transmuxerRef.current?.on('data', (event: any) => {
       try {
         sourceBufferRef.current?.appendBuffer(new Uint8Array(event.data))
       } catch (e) {
         console.warn('sourceBuffer fail to append Buffer: ', e)
       }
-      transmuxerRef.current!.off('data')
+      transmuxerRef.current?.off('data')
     })
 
-    if (segmentsRef.current.length == 0 && !sourceBufferRef.current?.updating) {
-      mediaSourceRef.current.endOfStream()
+    if (
+      segmentsRef.current.length == 0 &&
+      !sourceBufferRef.current?.updating &&
+      mediaSourceRef.current.readyState === 'open'
+    ) {
+      try {
+        mediaSourceRef.current.endOfStream()
+      } catch (e) {
+        console.error('media source endOfStream error:', e)
+      }
     }
 
     let item = segmentsRef.current.shift()
@@ -85,14 +93,14 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
     let remuxedBytesLength = 0
     let remuxedInitSegment: any = null
 
-    transmuxerRef.current.on('data', function (event) {
+    transmuxerRef.current?.on('data', function (event) {
       remuxedSegments.push(event)
       remuxedBytesLength += event.data.byteLength
       remuxedInitSegment = event.initSegment
       transmuxerRef.current!.off('data')
     })
 
-    transmuxerRef.current.on('done', function () {
+    transmuxerRef.current?.on('done', function () {
       let offset = 0
       let bytes = new Uint8Array(remuxedInitSegment.byteLength + remuxedBytesLength)
       bytes.set(remuxedInitSegment, offset)
@@ -130,23 +138,17 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
     transferFormat(res.data)
 
     // 监听
-    playerRef.current!.on('timeupdate', () => {
-      if (lastTimeRef.current === playerRef.current!.currentTime() && lastTimeRef.current !== 0) {
-        console.log('卡住了')
-      } else {
-        lastTimeRef.current = playerRef.current!.currentTime() || 0
-      }
-    })
-
-    playerRef.current!.on('seeking', async () => {
-      const tooltipElement = document.querySelector('.vjs-time-tooltip')
-      if (tooltipElement) {
-        const innerHTML = tooltipElement.innerHTML
-        const seekTime = timeToSeconds(innerHTML)
-        const seekTimeSegment = Math.ceil(seekTime / 10) - 1
-        debounceSeeking(seekTimeSegment)
-      }
-    })
+    if (!!videoRef.current) {
+      playerRef.current?.on('seeking', async () => {
+        const tooltipElement = document.querySelector('.vjs-time-tooltip')
+        if (tooltipElement) {
+          const innerHTML = tooltipElement.innerHTML
+          const seekTime = timeToSeconds(innerHTML)
+          const seekTimeSegment = Math.ceil(seekTime / 10) - 1
+          debounceSeeking(seekTimeSegment)
+        }
+      })
+    }
   }
 
   const init = async () => {
@@ -184,10 +186,8 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
     init()
     return () => {
       if (playerRef.current) {
-        playerRef.current.off('timeupdate')
-        playerRef.current.off('stalled')
-        playerRef.current.off('seeking')
-        playerRef.current.dispose()
+        playerRef.current?.dispose()
+        playerRef.current?.off('seeking')
       }
       if (transmuxerRef.current) {
         transmuxerRef.current?.off('data')
