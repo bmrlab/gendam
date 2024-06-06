@@ -11,6 +11,7 @@ import { queryClient, rspc } from '@/lib/rspc'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback, useMemo } from 'react'
+import { toast } from 'sonner'
 
 type ItemContextMenuProps = {
   data: FilePath
@@ -147,10 +148,15 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
     [selectedFilePathItems, p2pMut],
   )
 
-  const handleUpload = useCallback(() => {
-    let hash = selectedFilePathItems[0].assetObject?.hash
-    if (hash) {
-      uploadToS3(hash)
+  const handleUpload = useCallback(async () => {
+    let hash = selectedFilePathItems.map((s) => s.assetObject?.hash).filter((s) => !!s) as string[]
+    if (hash.length > 0) {
+      try {
+        await uploadToS3(hash)
+        toast.success('Upload success')
+      } catch (error) {
+        toast.error('Upload failed')
+      }
     }
   }, [selectedFilePathItems])
 
@@ -197,7 +203,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
         <div>Rename</div>
       </ContextMenu.Item>
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />
-      <ContextMenu.Item onSelect={handleUpload} disabled={explorer.selectedItems.size > 1}>
+      <ContextMenu.Item onSelect={handleUpload}>
         <div>Upload</div>
       </ContextMenu.Item>
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />
