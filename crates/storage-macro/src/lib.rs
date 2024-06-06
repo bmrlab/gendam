@@ -9,11 +9,9 @@ pub fn storage_trait_derive(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         use global_variable::get_current_fs_storage;
-        use storage::StorageError;
-        use storage::StorageResult;
+        use storage::prelude::*;
         use storage::Bytes;
         use storage::Buffer;
-        use storage::Storage;
         use storage::Operator;
         use storage::BlockingOperator;
 

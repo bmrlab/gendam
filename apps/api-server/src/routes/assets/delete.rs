@@ -3,7 +3,7 @@ use global_variable::get_current_fs_storage;
 use prisma_client_rust::{Direction, QueryError};
 use prisma_lib::{asset_object, file_path};
 use std::{collections::HashSet, sync::Arc};
-use storage::Storage;
+use storage::prelude::*;
 use tokio::sync::Mutex;
 use tracing::error;
 

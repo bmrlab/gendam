@@ -22,8 +22,7 @@ macro_rules! write_storage_map {
 #[macro_export]
 macro_rules! get_or_insert_storage {
     ($root_path:expr, $storage:expr) => {{
-        use storage::FsStorage;
-        use storage::StorageError;
+        use storage::prelude::*;
 
         match $crate::write_fs_storage_map!() {
             std::result::Result::Ok(mut map) => std::result::Result::Ok(

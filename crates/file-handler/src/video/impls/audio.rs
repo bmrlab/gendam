@@ -6,7 +6,7 @@ use ai::AudioTranscriptOutput;
 use qdrant_client::qdrant::PointStruct;
 use serde_json::json;
 use std::path::PathBuf;
-use storage::Storage;
+use storage::prelude::*;
 use tracing::error;
 
 impl VideoHandler {

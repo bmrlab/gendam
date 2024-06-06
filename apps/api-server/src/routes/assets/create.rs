@@ -5,7 +5,7 @@ use content_library::Library;
 use global_variable::get_current_fs_storage;
 use prisma_client_rust::QueryError;
 use prisma_lib::{asset_object, file_path};
-use storage::Storage;
+use storage::prelude::*;
 
 pub async fn create_dir(
     library: &Library,
