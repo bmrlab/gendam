@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 
-use global_variable::{
-    current_library_dir, get_current_s3_storage, get_current_storage, get_or_insert_s3_storage,
-};
+use global_variable::{current_library_dir, get_current_s3_storage};
 use storage::prelude::*;
 
 fn dir_in_file(hash: &str) -> PathBuf {
