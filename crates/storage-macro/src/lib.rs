@@ -8,7 +8,7 @@ pub fn storage_trait_derive(input: TokenStream) -> TokenStream {
     let name = input.ident;
 
     let expanded = quote! {
-        use global_variable::get_current_storage;
+        use global_variable::get_current_fs_storage;
         use storage::StorageError;
         use storage::StorageResult;
         use storage::Bytes;
@@ -19,7 +19,7 @@ pub fn storage_trait_derive(input: TokenStream) -> TokenStream {
 
         impl #name {
             fn storage(&self) -> StorageResult<impl Storage> {
-                get_current_storage!()
+                get_current_fs_storage!()
             }
         }
 

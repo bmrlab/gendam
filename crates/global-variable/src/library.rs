@@ -32,3 +32,10 @@ macro_rules! set_current_library_dir {
         }
     }};
 }
+
+#[macro_export]
+macro_rules! current_library_dir {
+    () => {{
+        $crate::read_current_library_dir!().unwrap().clone()
+    }};
+}
