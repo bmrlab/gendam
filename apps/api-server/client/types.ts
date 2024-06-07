@@ -112,6 +112,8 @@ export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbeddin
 
 export type VideoWithTasksResult = { name: string; materializedPath: string; assetObject: AssetObject; tasks: FileHandlerTask[]; mediaData: MediaData | null }
 
+export type TsRequestPayload = { hash: string; index: number }
+
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
 export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string }
@@ -127,8 +129,6 @@ export type Result = { category: AIModelCategory; models: AIModelResult[] }
 export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
 
 export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
-
-export type TsRequestPayload = { hash: string; index: number }
 
 export type AcceptShareOutput = { fileList: string[] }
 

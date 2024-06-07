@@ -66,7 +66,7 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
     }
   }
 
-  const prepareSourceBuffer = (bytes: Uint8Array) => {
+  const prepareSourceBuffer = (combined: boolean, outputType: 'audio' | 'video', bytes: Uint8Array) => {
     if (!videoRef.current) {
       return
     }
@@ -76,18 +76,32 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
     var codecsArray = ['avc1.64001f', 'mp4a.40.2'] // todo 请求获取
 
     mediaSourceRef.current.addEventListener('sourceopen', function () {
-      sourceBufferRef.current = mediaSourceRef.current.addSourceBuffer(
-        'video/mp4;codecs="' + codecsArray.join(',') + '"',
-      )
+      let buffer
+      if (combined) {
+        buffer = 'video/mp4;codecs="' + codecsArray.join(',') + '"'
+      } else if (outputType === 'video') {
+        // 转换为只含视频的mp4
+        buffer = 'video/mp4;codecs="' + codecsArray[0] + '"'
+      } else {
+        // 转换为只含音频的mp4
+        buffer = 'audio/mp4;codecs="' + (codecsArray[1] || codecsArray[0]) + '"'
+      }
+
+      sourceBufferRef.current = mediaSourceRef.current.addSourceBuffer(buffer)
       sourceBufferRef.current.addEventListener('updateend', handleUpdateend)
       sourceBufferRef.current.appendBuffer(bytes)
     })
   }
 
-  const transferFormat = async (data: number[]) => {
+  const transferFormat = async (data: number[], hasVideo: boolean, hasAudio: boolean) => {
     const segment = new Uint8Array(data)
 
     transmuxerRef.current = new muxjs.mp4.Transmuxer()
+
+    // 注意：接收无音频ts文件，OutputType设置为'video'，并且设置combined为 'false',
+    // 在监听data事件的时候，控置转换流的类型
+    const combined = !!hasVideo && !!hasAudio
+    const outputType = hasAudio ? 'audio' : 'video'
 
     let remuxedSegments: any[] = []
     let remuxedBytesLength = 0
@@ -116,14 +130,14 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
       const vjsParsed = muxjs.mp4.tools.inspect(bytes)
       console.log('transmuxed', vjsParsed)
       // （3.准备资源数据，添加到标签的视频流中
-      prepareSourceBuffer(bytes)
+      prepareSourceBuffer(combined, outputType, bytes)
       transmuxerRef.current!.off('done')
     })
     transmuxerRef.current?.push(segment)
     transmuxerRef.current?.flush()
   }
 
-  const onPlayerReady = async (mimeType: string) => {
+  const onPlayerReady = async (mimeType: string, hasVideo: boolean, hasAudio: boolean) => {
     if (mimeType.includes('mp4')) {
       playerRef.current?.src({ type: 'video/mp4', src: currentLibrary.getFileSrc(hash) })
       return
@@ -135,7 +149,7 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
       index: segment!,
     })
     loadedSegmentsRef.current.push(segment!)
-    transferFormat(res.data)
+    transferFormat(res.data, hasVideo, hasAudio)
 
     // 监听
     if (!!videoRef.current) {
@@ -153,7 +167,7 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
 
   const init = async () => {
     // 获取时长
-    const { duration, mimeType } = await getVideoInfo({
+    const { duration, mimeType, hasVideo, hasAudio } = await getVideoInfo({
       hash,
     })
     segmentsRef.current = Array.from(new Array(Math.ceil(duration / 10))).map((_, i) => i)
@@ -171,7 +185,7 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
       },
     }
 
-    playerRef.current = videojs(videoRef.current!, option, () => onPlayerReady(mimeType))
+    playerRef.current = videojs(videoRef.current!, option, () => onPlayerReady(mimeType, hasVideo, hasAudio))
 
     // 覆盖duration
     playerRef.current.duration = function () {

@@ -292,6 +292,11 @@ impl VideoHandler {
         video_decoder.get_video_duration().await
     }
 
+    pub async fn check_video_audio(&self) -> anyhow::Result<(bool, bool)> {
+        let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
+        video_decoder.check_video_audio().await
+    }
+
     pub async fn generate_ts(&self, ts_index: u32, cache_dir: PathBuf) -> anyhow::Result<Vec<u8>> {
         let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
         let ts_folder = cache_dir.join("ts").join(self.file_identifier.clone());
