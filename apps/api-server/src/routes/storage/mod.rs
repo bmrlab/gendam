@@ -54,8 +54,6 @@ where
                     })
                     .collect::<Vec<String>>();
 
-                dbg!(&hashes_under_dir);
-
                 let mut hashes = input.hashes;
                 hashes.extend(hashes_under_dir);
                 // dedup

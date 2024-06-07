@@ -7,15 +7,18 @@ pub use ::storage::*;
 pub use library::*;
 pub use storage::*;
 
-// Map<root_path, Storage>
+// Map<CURRENT_LIBRARY_DIR, Storage>
 pub static STORAGE_MAP: OnceLock<Arc<RwLock<std::collections::HashMap<String, FsStorage>>>> =
     OnceLock::new();
 
-// Map<root_path, Storage>
+// Map<CURRENT_LIBRARY, Storage>
 pub static S3_STORAGE_MAP: OnceLock<Arc<RwLock<std::collections::HashMap<String, S3Storage>>>> =
     OnceLock::new();
 
 pub static CURRENT_LIBRARY_DIR: OnceLock<Arc<RwLock<String>>> = OnceLock::new();
+
+// current library id
+pub static CURRENT_LIBRARY: OnceLock<Arc<RwLock<String>>> = OnceLock::new();
 
 #[macro_export]
 macro_rules! init_storage_map {
@@ -37,5 +40,6 @@ macro_rules! init_global_variables {
         $crate::STORAGE_MAP.get_or_init(|| $crate::init_storage_map!());
         $crate::S3_STORAGE_MAP.get_or_init(|| $crate::init_storage_map!());
         $crate::CURRENT_LIBRARY_DIR.get_or_init(|| $crate::init_current_library_dir!());
+        $crate::CURRENT_LIBRARY.get_or_init(|| $crate::init_current_library_dir!());
     };
 }

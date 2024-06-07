@@ -39,11 +39,8 @@ macro_rules! get_or_insert_fs_storage {
 #[macro_export]
 macro_rules! get_current_fs_storage {
     () => {{
-        use storage::StorageError;
-
-        $crate::get_current_storage!($crate::get_or_insert_fs_storage!(
-            $crate::current_library_dir!()
-        ))
+        let current_library_dir = $crate::current_library_dir!();
+        $crate::get_or_insert_fs_storage!(current_library_dir)
     }};
 }
 

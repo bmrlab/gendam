@@ -1,4 +1,5 @@
-use crate::{traits::Storage, utils::path_to_string, StorageResult};
+use crate::{traits::Storage, utils::path_to_string, StorageError, StorageResult};
+use async_trait::async_trait;
 use opendal::{services::S3, BlockingOperator, Operator};
 use std::path::{Path, PathBuf};
 
@@ -11,7 +12,10 @@ pub struct S3Storage {
 
 impl S3Storage {
     pub fn new(root: impl AsRef<Path>) -> StorageResult<Self> {
-        let root = path_to_string(root)?;
+        let mut root = path_to_string(root)?;
+        if !root.starts_with("/") {
+            root = format!("/{}", root);
+        }
         // Create s3 backend builder.
         let mut builder = S3::default();
         // Set the root for s3, all operations will happen under this root.
@@ -48,6 +52,7 @@ impl S3Storage {
     }
 }
 
+#[async_trait]
 impl Storage for S3Storage {
     fn root(&self) -> StorageResult<PathBuf> {
         Ok(self.root.clone())
@@ -59,5 +64,26 @@ impl Storage for S3Storage {
 
     fn block_op(&self) -> StorageResult<BlockingOperator> {
         Ok(self.block_op.clone())
+    }
+
+    async fn upload_dir_recursive(
+        &self,
+        // relative path to root path
+        dir: std::path::PathBuf,
+    ) -> StorageResult<()> {
+        for entry in std::fs::read_dir(dir)? {
+            let entry_path = entry?.path();
+            if entry_path.is_dir() {
+                self.upload_dir_recursive(entry_path).await?;
+            } else {
+                let data = tokio::fs::read(&entry_path).await?;
+                let components = entry_path.components();
+                let path: PathBuf = components
+                    .skip_while(|c| c.as_os_str() != "artifacts" && c.as_os_str() != "files")
+                    .collect();
+                self.write(path, data.into()).await?;
+            }
+        }
+        Ok(())
     }
 }
