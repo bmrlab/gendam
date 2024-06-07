@@ -52,12 +52,21 @@ where
                 })?;
 
                 // let _ = video_handler.get_hls().await;
+                let (has_video, has_audio) =
+                    video_handler.check_video_audio().await.map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("failed to check video: {}", e),
+                        )
+                    })?;
 
                 match video_handler.get_video_duration().await {
                     Ok(duration) => Ok(json!({
                         "hash": input.hash,
                         "duration": duration,
-                        "mimeType": asset_object_data.mime_type
+                        "mimeType": asset_object_data.mime_type,
+                        "hasVideo": has_video,
+                        "hasAudio": has_audio
                     })),
                     Err(e) => Err(rspc::Error::new(
                         rspc::ErrorCode::InternalServerError,
@@ -88,11 +97,11 @@ where
                     })?;
 
                 let file = video_handler.generate_ts(input.index, ts_dir).await.map_err(|e| {
-                    rspc::Error::new(
-                        rspc::ErrorCode::InternalServerError,
-                        format!("failed to get ts file: {}", e),
-                    )
-                })?;
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("failed to get ts file: {}", e),
+                        )
+                    })?;
 
                 Ok(json!({
                     "data": file
