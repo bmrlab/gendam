@@ -131,7 +131,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
           await processJobsMut.mutateAsync({ assetObjectId })
         } catch (error) {}
         queryClient.invalidateQueries({
-          queryKey: ['tasks.list', { filter: { assetObjectId }}],
+          queryKey: ['tasks.list', { filter: { assetObjectId } }],
         })
       }
     },
@@ -149,10 +149,16 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   )
 
   const handleUpload = useCallback(async () => {
-    let hash = selectedFilePathItems.map((s) => s.assetObject?.hash).filter((s) => !!s) as string[]
-    if (hash.length > 0) {
+    let hashes = selectedFilePathItems.map((s) => s.assetObject?.hash).filter((s) => !!s) as string[]
+    let materializedPaths = selectedFilePathItems.filter((s) => s.isDir).map((s) => `${s.materializedPath}${s.name}/`)
+    let payload = {
+      hashes,
+      materializedPaths,
+    }
+
+    if (hashes.length > 0 || materializedPaths.length > 0) {
       try {
-        await uploadToS3(hash)
+        await uploadToS3(payload)
         toast.success('Upload success')
       } catch (error) {
         toast.error('Upload failed')
@@ -183,16 +189,15 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       >
         <div>Regen thumbnail</div>
       </ContextMenu.Item>
-      <ContextMenu.Item
-        onSelect={handleProcessJobs}
-        disabled={selectedFilePathItems.some((item) => !item.assetObject)}
-      >
+      <ContextMenu.Item onSelect={handleProcessJobs} disabled={selectedFilePathItems.some((item) => !item.assetObject)}>
         <div>Re-process jobs</div>
       </ContextMenu.Item>
-      <ContextMenu.Item onSelect={() => {
-        const items = selectedFilePathItems
-        return items.length === 1 ? audioDialog.singleExport(items[0]) : audioDialog.batchExport(items)
-      }}>
+      <ContextMenu.Item
+        onSelect={() => {
+          const items = selectedFilePathItems
+          return items.length === 1 ? audioDialog.singleExport(items[0]) : audioDialog.batchExport(items)
+        }}
+      >
         <div>Export transcript</div>
       </ContextMenu.Item>
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />

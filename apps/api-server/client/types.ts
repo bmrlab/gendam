@@ -44,7 +44,7 @@ export type Procedures = {
         { key: "p2p.finish_file_share", input: string, result: string[] } | 
         { key: "p2p.reject_file_share", input: string, result: any } | 
         { key: "p2p.share", input: SharePayload, result: any } | 
-        { key: "storage.upload_to_s3", input: string[], result: null[] } | 
+        { key: "storage.upload_to_s3", input: UploadPayload, result: null } | 
         { key: "users.set", input: Auth, result: Auth } | 
         { key: "video.tasks.cancel", input: TaskCancelRequestPayload, result: null } | 
         { key: "video.tasks.create", input: string, result: null } | 
@@ -66,6 +66,8 @@ export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPa
 export type Auth = { id: string; name: string }
 
 export type SharePayload = { fileIdList: number[]; peerId: string }
+
+export type UploadPayload = { materializedPaths: string[]; hashes: string[] }
 
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
