@@ -1,4 +1,5 @@
-use crate::{traits::Storage, utils::path_to_string, StorageResult};
+use crate::{traits::Storage, utils::path_to_string, StorageError, StorageResult};
+use async_trait::async_trait;
 use opendal::{services::Fs, BlockingOperator, Operator};
 use std::path::{Path, PathBuf};
 
@@ -28,6 +29,7 @@ impl FsStorage {
     }
 }
 
+#[async_trait]
 impl Storage for FsStorage {
     fn root(&self) -> StorageResult<PathBuf> {
         Ok(self.root.clone())
@@ -39,6 +41,14 @@ impl Storage for FsStorage {
 
     fn block_op(&self) -> StorageResult<BlockingOperator> {
         Ok(self.block_op.clone())
+    }
+
+    async fn upload_dir_recursive(
+        &self,
+        // relative path to root path
+        _: std::path::PathBuf,
+    ) -> StorageResult<()> {
+        Err(StorageError::NotImplemented)
     }
 }
 

@@ -28,4 +28,7 @@ pub enum StorageError {
 
     #[error("Path error")]
     PathError,
+
+    #[error("Not implemented")]
+    NotImplemented,
 }

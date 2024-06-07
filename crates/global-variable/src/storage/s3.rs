@@ -37,11 +37,8 @@ macro_rules! get_or_insert_s3_storage {
 #[macro_export]
 macro_rules! get_current_s3_storage {
     () => {{
-        use storage::StorageError;
-
-        $crate::get_current_storage!($crate::get_or_insert_s3_storage!(
-            $crate::current_library_dir!()
-        ))
+        let current_library = $crate::current_library!();
+        $crate::get_or_insert_s3_storage!(current_library)
     }};
 }
 

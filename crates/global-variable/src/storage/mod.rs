@@ -36,19 +36,6 @@ macro_rules! get_or_insert_storage {
 }
 
 #[macro_export]
-macro_rules! get_current_storage {
-    ($get_or_insert_storage:expr) => {{
-        match $crate::read_current_library_dir!() {
-            std::result::Result::Ok(current_library_dir) => {
-                let current_library_dir = current_library_dir.clone();
-                $get_or_insert_storage
-            }
-            std::result::Result::Err(e) => std::result::Result::Err(e),
-        }
-    }};
-}
-
-#[macro_export]
 macro_rules! set_storage {
     ($map:expr, $dir:expr, $storage:expr) => {{
         match $crate::write_storage_map!($map:expr) {

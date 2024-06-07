@@ -1,4 +1,4 @@
-use global_variable::set_current_library_dir;
+use global_variable::set_current;
 use prisma_lib::PrismaClient;
 use qdrant::create_qdrant_server;
 pub use qdrant::{make_sure_collection_created, QdrantCollectionInfo, QdrantServerInfo};
@@ -108,12 +108,9 @@ pub async fn load_library(
 
     let qdrant_server = create_qdrant_server(qdrant_dir).await?;
 
-    let dir = library_dir.to_str().unwrap().to_string();
+    let dir = library_dir.to_str().ok_or(())?.to_string();
 
-    set_current_library_dir!(dir).map_err(|e| {
-        tracing::error!("Failed to set current library dir: {e}");
-        ()
-    })?;
+    set_current!(library_id.to_string(), dir);
 
     let library = Library {
         id: library_id.to_string(),
