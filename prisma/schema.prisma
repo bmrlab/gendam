@@ -43,8 +43,9 @@ model AssetObject {
 
   mediaData MediaData?
 
-  filePaths FilePath[]
-  tasks     FileHandlerTask[]
+  filePaths    FilePath[]
+  tasks        FileHandlerTask[]
+  DataLocation DataLocation[]
 }
 
 model MediaData {
@@ -80,4 +81,24 @@ model FileHandlerTask {
   updatedAt DateTime  @updatedAt
 
   @@unique([assetObjectId, taskType])
+}
+
+model DataLocation {
+  id Int @id @default(autoincrement())
+
+  // fs, s3, etc
+  // https://github.com/prisma/prisma/issues/2219
+  medium String
+
+  // JSON string
+  // https://github.com/prisma/prisma/issues/3786
+  config String @default("{}")
+
+  assetObjectId Int
+  assetObject   AssetObject @relation(fields: [assetObjectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assetObjectId, medium])
 }
