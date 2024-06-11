@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use futures::{future::try_join_all, TryFutureExt};
-use prisma_lib::file_path::{self};
+use prisma_lib::{asset_object, data_location, file_path, read_filters::StringFilter};
 use rspc::{Router, RouterBuilder};
 use s3_handler::upload_to_s3;
 use serde::Deserialize;
@@ -54,14 +54,16 @@ where
                     })
                     .collect::<Vec<String>>();
 
-                let mut hashes = input.hashes;
+                let mut hashes = input.hashes.clone();
                 hashes.extend(hashes_under_dir);
                 // dedup
                 let set: HashSet<String> = hashes.drain(..).collect();
                 hashes.extend(set.into_iter());
 
+                // upload to s3
                 try_join_all(
                     hashes
+                        .clone()
                         .into_iter()
                         .map(|hash| {
                             upload_to_s3(hash.clone()).map_err(move |e| {
@@ -77,6 +79,55 @@ where
                         .collect::<Vec<_>>(),
                 )
                 .await?;
+
+                // update data location
+                let client = library.prisma_client();
+
+                // get assetObject id and hash conbination
+                let mut upsert_unique_group = client
+                    .asset_object()
+                    .find_many(vec![asset_object::WhereParam::Hash(StringFilter::InVec(
+                        input.hashes,
+                    ))])
+                    .exec()
+                    .await?
+                    .into_iter()
+                    .map(|a| (a.id, a.hash))
+                    .collect::<Vec<(i32, String)>>();
+
+                data.into_iter().for_each(|d| {
+                    if let Ok(Some(a)) = d.asset_object() {
+                        upsert_unique_group.push((a.id, a.hash.clone()));
+                    }
+                });
+
+                // crate or update data location
+                let batch_statement = upsert_unique_group.into_iter().map(|u| {
+                    client.data_location().upsert(
+                        data_location::UniqueWhereParam::AssetObjectIdMediumEquals(
+                            u.0,
+                            "s3".to_string(),
+                        ),
+                        (
+                            "s3".to_string(),
+                            asset_object::UniqueWhereParam::HashEquals(u.1),
+                            vec![],
+                        ),
+                        vec![],
+                    )
+                });
+
+                library
+                    .prisma_client()
+                    ._batch(batch_statement)
+                    .await
+                    .map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("failed to update data location error: {}", e),
+                        )
+                    })?;
+
                 Ok(())
             }
         })
