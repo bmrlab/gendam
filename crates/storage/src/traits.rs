@@ -6,7 +6,9 @@ use bytes::Bytes;
 use opendal::{BlockingOperator, Buffer, Operator};
 
 #[async_trait]
-pub trait Storage {
+pub trait Storage: Send + Sync {
+    fn clone_box(&self) -> Box<dyn Storage>;
+
     fn root(&self) -> StorageResult<std::path::PathBuf>;
 
     fn op(&self) -> StorageResult<Operator>;

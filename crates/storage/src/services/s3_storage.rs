@@ -54,6 +54,10 @@ impl S3Storage {
 
 #[async_trait]
 impl Storage for S3Storage {
+    fn clone_box(&self) -> Box<dyn Storage> {
+        Box::new(self.clone())
+    }
+
     fn root(&self) -> StorageResult<PathBuf> {
         Ok(self.root.clone())
     }
