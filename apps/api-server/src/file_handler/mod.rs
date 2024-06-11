@@ -1,9 +1,12 @@
 mod pool;
 mod priority;
 
-use crate::{file_handler::priority::TaskPriority, library::get_library_settings, CtxWithLibrary};
+use crate::{
+    ai::AIHandler, file_handler::priority::TaskPriority, library::get_library_settings,
+    CtxWithLibrary,
+};
 use anyhow::bail;
-use content_library::Library;
+use content_library::{Library, QdrantServerInfo};
 use file_handler::{video::VideoHandler, FileHandler};
 pub use pool::*;
 use prisma_client_rust::Direction;
@@ -160,7 +163,7 @@ pub fn get_file_handler(
                 let library_settings = get_library_settings(&library.dir);
 
                 let ai_handler = ctx.ai_handler()?;
-                let qdrant_info = ctx.qdrant_info()?;
+                let qdrant_info: content_library::QdrantServerInfo = ctx.qdrant_info()?;
 
                 let handler = handler
                     .with_multi_modal_embedding(
@@ -190,6 +193,74 @@ pub fn get_file_handler(
 
                 let ai_handler = ctx.ai_handler()?;
                 let qdrant_info = ctx.qdrant_info()?;
+
+                let handler = handler
+                    .with_multi_modal_embedding(
+                        ai_handler.multi_modal_embedding.as_ref(),
+                        &library_settings.models.multi_modal_embedding,
+                        &qdrant_info.vision_collection.name,
+                    )
+                    .with_image_caption(
+                        ai_handler.image_caption.as_ref(),
+                        &library_settings.models.image_caption,
+                    )
+                    .with_text_embedding(
+                        ai_handler.text_embedding.as_ref(),
+                        &library_settings.models.text_embedding,
+                        &qdrant_info.language_collection.name,
+                    );
+
+                Box::new(handler)
+            } else {
+                bail!("Unsupported mime type: {:?}", &asset_object_data.mime_type)
+            }
+        }
+        _ => {
+            bail!("Unsupported mime type: {:?}", &asset_object_data.mime_type)
+        }
+    };
+
+    Ok(Arc::new(handler))
+}
+
+pub fn get_file_handler_with_library(
+    asset_object_data: &asset_object::Data,
+    library: Arc<Library>,
+    ai_handler: AIHandler,
+    qdrant_info: QdrantServerInfo,
+) -> anyhow::Result<Arc<Box<dyn FileHandler>>> {
+    let handler: Box<dyn FileHandler> = match &asset_object_data.mime_type {
+        Some(mime_type) => {
+            if mime_type.starts_with("video") {
+                let handler = VideoHandler::new(&asset_object_data.hash, &library)?;
+
+                let library_settings = get_library_settings(&library.dir);
+
+                let handler = handler
+                    .with_multi_modal_embedding(
+                        ai_handler.multi_modal_embedding.as_ref(),
+                        &library_settings.models.multi_modal_embedding,
+                        &qdrant_info.vision_collection.name,
+                    )
+                    .with_image_caption(
+                        ai_handler.image_caption.as_ref(),
+                        &library_settings.models.image_caption,
+                    )
+                    .with_audio_transcript(
+                        ai_handler.audio_transcript.as_ref(),
+                        &library_settings.models.audio_transcript,
+                    )
+                    .with_text_embedding(
+                        ai_handler.text_embedding.as_ref(),
+                        &library_settings.models.text_embedding,
+                        &qdrant_info.language_collection.name,
+                    );
+
+                Box::new(handler)
+            } else if mime_type.starts_with("image") {
+                let handler = VideoHandler::new(&asset_object_data.hash, &library)?;
+
+                let library_settings = get_library_settings(&library.dir);
 
                 let handler = handler
                     .with_multi_modal_embedding(

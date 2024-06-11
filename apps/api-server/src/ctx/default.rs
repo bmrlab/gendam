@@ -1,5 +1,6 @@
 // Ctx 和 Store 的默认实现，主要给 api_server/main 用，不过目前 CtxWithLibrary 的实现也是可以给 tauri 用的，就先用着
 use super::traits::{CtxStore, CtxWithAI, CtxWithDownload, CtxWithLibrary, CtxWithP2P, StoreError};
+use crate::routes::delete_unlinked_assets;
 use crate::{
     ai::{models::get_model_info_by_id, AIHandler},
     download::{DownloadHub, DownloadReporter, DownloadStatus},
@@ -11,6 +12,7 @@ use async_trait::async_trait;
 use content_library::{
     load_library, make_sure_collection_created, Library, QdrantCollectionInfo, QdrantServerInfo,
 };
+use futures::FutureExt;
 use p2p::Node;
 use std::{
     boxed::Box,
@@ -18,6 +20,7 @@ use std::{
     path::PathBuf,
     sync::{atomic::AtomicBool, mpsc::Sender, Arc, Mutex},
 };
+use uuid::Uuid;
 use vector_db::{get_language_collection_name, get_vision_collection_name, kill_qdrant_server};
 
 /**
@@ -86,6 +89,7 @@ pub struct Ctx<S: CtxStore> {
     ai_handler: Arc<Mutex<Option<AIHandler>>>,
     download_hub: Arc<Mutex<Option<DownloadHub>>>,
     node: Arc<Mutex<Node<ShareInfo>>>,
+    cron: Arc<tokio::sync::Mutex<cron::Instance>>,
 }
 
 impl<S: CtxStore> Clone for Ctx<S> {
@@ -102,6 +106,7 @@ impl<S: CtxStore> Clone for Ctx<S> {
             temp_dir: self.temp_dir.clone(),
             cache_dir: self.cache_dir.clone(),
             node: Arc::clone(&self.node),
+            cron: Arc::clone(&self.cron),
         }
     }
 }
@@ -145,6 +150,7 @@ impl<S: CtxStore> Ctx<S> {
             is_busy: Arc::new(Mutex::new(AtomicBool::new(false))),
             download_hub: Arc::new(Mutex::new(None)),
             node,
+            cron: Arc::new(tokio::sync::Mutex::new(cron::Instance::init())),
         }
     }
 }
@@ -362,11 +368,19 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             // }
         }
 
+        // remove all cron job
+        {
+            let job_ids = self.cron.lock().await.get_all_job_id();
+            for id in job_ids {
+                let _ = self.cron.lock().await.delete_job(id).await;
+            }
+        }
+
         Ok(())
     }
 
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
-    async fn load_library(&self, library_id: &str) -> Result<Library, rspc::Error> {
+    async fn load_library(&mut self, library_id: &str) -> Result<Library, rspc::Error> {
         {
             let mut is_busy = self.is_busy.lock().unwrap();
             if *is_busy.get_mut() {
@@ -435,7 +449,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         }
 
         /* check qdrant */
-        {
+        let qdrant_info = {
             let qdrant_client = library.qdrant_client();
             // make sure qdrant collections are created
             let qdrant_info = self.qdrant_info()?;
@@ -471,7 +485,8 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 vision_collection = qdrant_info.vision_collection.name,
                 "Success"
             );
-        }
+            qdrant_info
+        };
 
         /* init task pool */
         {
@@ -500,7 +515,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         }
 
         /* init ai handler */
-        {
+        let ai_handler = {
             // init AI handler after library is loaded
             let ai_handler = AIHandler::new(self).map_err(|e| {
                 tracing::error!(task = "init ai handler", "Failed: {}", e);
@@ -511,13 +526,48 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             })?;
             tracing::info!(task = "init ai handler", "Success");
             let mut current_ai_handler = self.ai_handler.lock().map_err(unexpected_err)?;
-            current_ai_handler.replace(ai_handler);
-        }
+            current_ai_handler.replace(ai_handler.clone());
+            ai_handler
+        };
 
         /* trigger unfinished tasks */
         {
             self.trigger_unfinished_tasks().await;
             tracing::info!(task = "trigger unfinished tasks", "Success");
+        }
+
+        // init cron
+        {
+            // 添加 定期删除未引用的assetobject任务
+            let library_clone = library.clone();
+            let ai_handler_clone = ai_handler.clone();
+            let qdrant_info_clone = qdrant_info.clone();
+            let task = cron::Task {
+                title: Some("Delete unreferenced assetobject tasks periodically".to_string()),
+                description: Some("Delete unreferenced assetobject tasks periodically".to_string()),
+                enabled: true,
+                id: Uuid::new_v4(),
+                job_id: None,
+                cron: "0 0 */1 * * ?".to_string(), // 每小时 测试： "0/10 * * * * *" 每10秒
+                // job_fn: None
+                job_fn: cron::create_job_fn(move || {
+                    let library_arc = Arc::new(library_clone.clone());
+                    let ai_handler_job_clone = ai_handler_clone.clone();
+                    let qdrant_info_job_clone = qdrant_info_clone.clone();
+                    async move {
+                        delete_unlinked_assets(
+                            library_arc,
+                            ai_handler_job_clone,
+                            qdrant_info_job_clone,
+                        )
+                        .await
+                        .expect("delete_unlinked_assets error")
+                    }
+                    .boxed()
+                }),
+            };
+
+            let _ = self.add_task(task).await?;
         }
 
         Ok(library)
@@ -564,5 +614,15 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 dim: vision_dim,
             },
         })
+    }
+
+    async fn add_task(&self, task: cron::Task) -> Result<(), rspc::Error> {
+        let _ = self.cron.lock().await.create_job(task).await.map_err(|e| {
+            rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                format!("cron add task error: {:?}", e),
+            )
+        })?;
+        Ok(())
     }
 }

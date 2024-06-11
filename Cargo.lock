@@ -270,6 +270,7 @@ dependencies = [
  "blake3",
  "chrono",
  "content-library",
+ "cron 0.1.1",
  "csv",
  "dirs",
  "docx-rs",
@@ -406,6 +407,28 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "async-cron-scheduler"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "104faa0f00e40bec35c79a79ae72325de8f059203c068cf133bd9d17e2dbeb58"
+dependencies = [
+ "chrono",
+ "cron 0.12.1",
+ "futures",
+ "slotmap",
+ "tachyonix",
+]
+
+[[package]]
+name = "async-event"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4172595da7ffb68640606be5723e35a353555f2829e9209437627a003725bbdb"
+dependencies = [
+ "loom",
 ]
 
 [[package]]
@@ -1637,6 +1660,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "cron"
+version = "0.1.1"
+dependencies = [
+ "async-cron-scheduler",
+ "chrono",
+ "futures",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "cron"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f8c3e73077b4b4a6ab1ea5047c37c57aee77657bc8ecd6f29b0af082d0b0c07"
+dependencies = [
+ "chrono",
+ "nom",
+ "once_cell",
+]
+
+[[package]]
 name = "crossbeam-channel"
 version = "0.5.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2056,6 +2103,16 @@ dependencies = [
  "colored",
  "indoc",
  "pest",
+]
+
+[[package]]
+name = "diatomic-waker"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28025fb55a9d815acf7b0877555f437254f373036eec6ed265116c7a5c0825e9"
+dependencies = [
+ "loom",
+ "waker-fn",
 ]
 
 [[package]]
@@ -8412,6 +8469,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "slotmap"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbff4acf519f630b3a3ddcfaea6c06b42174d9a44bc70c620e9ed1649d58b82a"
+dependencies = [
+ "version_check",
+]
+
+[[package]]
 name = "smallvec"
 version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8908,6 +8974,19 @@ dependencies = [
  "pkg-config",
  "toml 0.8.12",
  "version-compare 0.2.0",
+]
+
+[[package]]
+name = "tachyonix"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64e0bf82be3359dbefbfea621d6365db00e1d7846561daad2ea74cc4cb4c9604"
+dependencies = [
+ "async-event",
+ "crossbeam-utils",
+ "diatomic-waker",
+ "futures-core",
+ "loom",
 ]
 
 [[package]]
@@ -10209,6 +10288,12 @@ dependencies = [
  "cc",
  "libc",
 ]
+
+[[package]]
+name = "waker-fn"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "317211a0dc0ceedd78fb2ca9a44aed3d7b9b26f81870d485c07122b4350673b7"
 
 [[package]]
 name = "walkdir"

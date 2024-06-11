@@ -89,7 +89,7 @@ where
                 pub id: String,
                 pub dir: String,
             }
-            t(|ctx, library_id: String| async move {
+            t(|mut ctx, library_id: String| async move {
                 let (tx, rx) = tokio::sync::oneshot::channel::<Result<LibraryLoadResult, rspc::Error>>();
                 tokio::spawn(async move {
                     match ctx.load_library(&library_id).await {
