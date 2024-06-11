@@ -31,7 +31,7 @@ pub trait CtxWithLibrary: Sync + CtxWithP2P + CtxWithAI + CtxWithDownload {
     fn get_resources_dir(&self) -> PathBuf;
     fn get_temp_dir(&self) -> PathBuf;
 
-    async fn load_library(&self, library_id: &str) -> Result<Library, rspc::Error>;
+    async fn load_library(&mut self, library_id: &str) -> Result<Library, rspc::Error>;
     async fn unload_library(&self) -> Result<(), rspc::Error>;
 
     fn library_id_in_store(&self) -> Option<String>;
@@ -39,6 +39,8 @@ pub trait CtxWithLibrary: Sync + CtxWithP2P + CtxWithAI + CtxWithDownload {
     fn library(&self) -> Result<Library, rspc::Error>;
     fn task_tx(&self) -> Result<Sender<TaskPayload>, rspc::Error>;
     fn qdrant_info(&self) -> Result<QdrantServerInfo, rspc::Error>;
+
+    async fn add_task(&self, task: cron::Task) -> Result<(), rspc::Error>;
 }
 
 pub trait CtxWithP2P {
