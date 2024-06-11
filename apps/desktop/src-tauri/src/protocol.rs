@@ -10,7 +10,10 @@ use url::Url;
 use tauri::http::HttpRange;
 use tauri::http::{header::*, status::StatusCode, MimeType, Request, Response, ResponseBuilder};
 
-pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std::error::Error>> {
+pub fn asset_protocol_handler(
+    app: &tauri::AppHandle,
+    request: &Request,
+) -> Result<Response, Box<dyn std::error::Error>> {
     let parsed_path = Url::parse(request.uri())?;
     let filtered_path = &parsed_path[..Position::AfterPath];
     let path = filtered_path
@@ -37,10 +40,26 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
     // extract the part starting from "artifacts or files"
     let root_path = part_split[..index].join("/");
     let relative_path = part_split[index..].join("/");
-    let storage = get_or_insert_fs_storage!(root_path)?;
+
+    // check if the file exists in the local
+    //  - if exists, use fs_storage
+    //  - if not, use s3_storage
+
+    // let state = app.state::<Ctx<Store>>();
+    // let a = state.inner().library()?;
+
+    let storage: Box<dyn Storage>;
+
+    if std::path::Path::new(&root_path).exists() {
+        storage = Box::new(get_or_insert_fs_storage!(root_path)?);
+    } else {
+        // TODO: check data location in the database
+        // TODO: use s3 storage
+        storage = Box::new(get_or_insert_fs_storage!(root_path)?);
+    }
 
     let relative_path_clone = relative_path.clone();
-    let storage_clone = storage.clone();
+    let storage_clone = storage.clone_box();
     let (len, mime_type, read_bytes) = safe_block_on(async move {
         let len = storage_clone
             .len(PathBuf::from(relative_path_clone.clone()))

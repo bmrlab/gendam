@@ -31,6 +31,10 @@ impl FsStorage {
 
 #[async_trait]
 impl Storage for FsStorage {
+    fn clone_box(&self) -> Box<dyn Storage> {
+        Box::new(self.clone())
+    }
+
     fn root(&self) -> StorageResult<PathBuf> {
         Ok(self.root.clone())
     }
