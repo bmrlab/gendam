@@ -3,14 +3,15 @@
 use api_server::{ctx::default::Ctx, CtxWithLibrary};
 use dotenvy::dotenv;
 use global_variable::init_global_variables;
-use protocol::asset_protocol_handler;
 use std::sync::{Arc, Mutex};
 use tauri::{http::Request, Manager};
 use vector_db::kill_qdrant_server;
+mod storage;
 mod store;
-use store::Store;
 
-mod protocol;
+use crate::storage::protocol::storage_protocol_handler;
+use crate::storage::state::StorageState;
+use store::Store;
 
 #[tokio::main]
 async fn main() {
@@ -22,8 +23,9 @@ async fn main() {
     init_global_variables!();
 
     let app = tauri::Builder::default()
-        .register_uri_scheme_protocol("storage", move |_, request: &Request| {
-            asset_protocol_handler(request)
+        .register_uri_scheme_protocol("storage", move |app, request: &Request| {
+            let state = app.state::<Arc<tokio::sync::Mutex<StorageState>>>().inner().clone();
+            storage_protocol_handler(state, request)
         })
         .setup(|_app| {
             #[cfg(debug_assertions)] // only include this code on debug builds
@@ -119,6 +121,10 @@ async fn main() {
     let store = Arc::new(Mutex::new(Store::new(tauri_store)));
     let router = api_server::get_routes::<Ctx<Store>>();
     let ctx = Ctx::<Store>::new(local_data_root, resources_dir, temp_dir, cache_dir, store, p2p);
+
+    app.manage(Arc::new(tokio::sync::Mutex::new(StorageState::new(
+        ctx.clone(),
+    ))));
 
     window.on_window_event({
         let ctx = ctx.clone();

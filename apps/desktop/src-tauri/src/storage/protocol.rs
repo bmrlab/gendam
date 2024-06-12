@@ -2,32 +2,35 @@ use global_variable::{get_current_s3_storage, get_or_insert_fs_storage};
 use rand::RngCore;
 use std::future::Future;
 use std::path::PathBuf;
+use std::sync::Arc;
 use storage::prelude::*;
 use tokio::io::AsyncWriteExt;
 use url::Position;
 use url::Url;
 
+use crate::storage::state::StorageState;
 use api_server::DataLocationType;
 use tauri::http::HttpRange;
 use tauri::http::{header::*, status::StatusCode, MimeType, Request, Response, ResponseBuilder};
 
-fn parse_data_location_from_url(url: &Url) -> DataLocationType {
-    let params = url.query_pairs().into_owned();
-    params
-        .into_iter()
-        .find_map(|(k, v)| {
-            if k == "location" {
-                Some(DataLocationType::from(v))
-            } else {
-                None
-            }
-        })
-        .unwrap_or(DataLocationType::Fs)
+fn get_hash_from_url(path: &str) -> Option<String> {
+    let parts: Vec<&str> = path.split('/').collect();
+    if let Some(artifacts_index) = parts.iter().position(|&r| r == "artifacts" || r == "files") {
+        if let Some(hash) = parts.get(artifacts_index + 2) {
+            return Some(hash.to_string());
+        } else {
+            None
+        }
+    } else {
+        return None;
+    }
 }
 
-pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std::error::Error>> {
+pub fn storage_protocol_handler(
+    state: Arc<tokio::sync::Mutex<StorageState>>,
+    request: &Request,
+) -> Result<Response, Box<dyn std::error::Error>> {
     let parsed_path = Url::parse(request.uri())?;
-    let location = parse_data_location_from_url(&parsed_path);
     let filtered_path = &parsed_path[..Position::AfterPath];
     let path = filtered_path
         .strip_prefix("storage://localhost/")
@@ -56,7 +59,20 @@ pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std
 
     // check if the file exists in the local
     //  - if exists, use fs_storage
-    //  - if not, use s3_storage
+    //  - if not, check if the file exists in the s3 storage
+    let local_exist =
+        std::path::Path::new(format!("{}/{}", root_path, relative_path).as_str()).exists();
+    let mut location = DataLocationType::Fs;
+    if !local_exist {
+        let hash = get_hash_from_url(&path);
+        if hash.is_some() {
+            location = safe_block_on(async move {
+                let mut state = state.lock().await;
+                state.get_location(hash.unwrap().as_str()).await.unwrap()
+            });
+        }
+    }
+
     let storage: Box<dyn Storage> = match location {
         DataLocationType::Fs => Box::new(get_or_insert_fs_storage!(root_path)?),
         DataLocationType::S3 => Box::new(get_current_s3_storage!()?),

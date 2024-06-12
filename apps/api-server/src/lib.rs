@@ -14,3 +14,4 @@ pub mod ctx;
 pub use ctx::traits::{CtxStore, CtxWithLibrary, StoreError};
 
 pub use routes::DataLocationType;
+pub use routes::get_asset_object_location;

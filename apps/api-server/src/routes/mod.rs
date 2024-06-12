@@ -8,7 +8,7 @@ mod tasks;
 mod users;
 mod video;
 
-pub use storage::location::DataLocationType;
+pub use storage::location::*;
 
 use crate::CtxWithLibrary;
 use rspc::Router;

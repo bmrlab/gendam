@@ -1,13 +1,19 @@
 use content_library::Library;
 use prisma_lib::asset_object;
-use serde::{Serialize, Serializer};
+use serde::Serializer;
 use specta::Type;
 use std::fmt;
 
-#[derive(Type, Eq, PartialEq)]
+#[derive(Type, Eq, PartialEq, Clone, Debug)]
 pub enum DataLocationType {
     Fs,
     S3,
+}
+
+impl Default for DataLocationType {
+    fn default() -> Self {
+        DataLocationType::Fs
+    }
 }
 
 impl From<String> for DataLocationType {
@@ -29,15 +35,6 @@ impl fmt::Display for DataLocationType {
     }
 }
 
-impl Serialize for DataLocationType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(format!("location={}", self.to_string()).as_str())
-    }
-}
-
 pub async fn get_asset_object_location(
     library: &Library,
     hash: String,
@@ -50,14 +47,17 @@ pub async fn get_asset_object_location(
         .exec()
         .await?;
 
+    dbg!(&asset_object);
+
     if let Some(asset_object) = asset_object {
         if let Some(data_location) = asset_object.data_location {
-            data_location
+            let res = data_location
                 .iter()
-                .find(|d| DataLocationType::from(d.medium.clone()) == DataLocationType::S3)
-                .map(|_| {
-                    return Ok::<DataLocationType, rspc::Error>(DataLocationType::S3);
-                });
+                .find(|d| DataLocationType::from(d.medium.clone()) == DataLocationType::S3);
+
+            if let Some(_) = res {
+                return Ok(DataLocationType::S3);
+            }
         }
     }
 
