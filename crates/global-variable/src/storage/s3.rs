@@ -1,9 +1,9 @@
 #[macro_export]
 macro_rules! s3_storage_new {
-    ($root_path:expr) => {{
+    ($library_id:expr) => {{
         use storage::prelude::*;
 
-        S3Storage::new(&$root_path)
+        S3Storage::new(&$library_id)
             .map_err(|e| StorageError::UnexpectedError)
             .unwrap()
     }};
@@ -25,10 +25,10 @@ macro_rules! write_s3_storage_map {
 
 #[macro_export]
 macro_rules! get_or_insert_s3_storage {
-    ($root_path:expr) => {{
+    ($library_id:expr) => {{
         $crate::get_or_insert_storage!(
-            $root_path,
-            $crate::s3_storage_new!($root_path),
+            $library_id,
+            $crate::s3_storage_new!($library_id),
             $crate::write_s3_storage_map!()
         )
     }};
