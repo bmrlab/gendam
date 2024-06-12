@@ -22,8 +22,8 @@ async fn main() {
     init_global_variables!();
 
     let app = tauri::Builder::default()
-        .register_uri_scheme_protocol("storage", move |app, request: &Request| {
-            asset_protocol_handler(app, request)
+        .register_uri_scheme_protocol("storage", move |_, request: &Request| {
+            asset_protocol_handler(request)
         })
         .setup(|_app| {
             #[cfg(debug_assertions)] // only include this code on debug builds
@@ -137,8 +137,6 @@ async fn main() {
             }
         }
     });
-
-    app.manage(ctx.clone());
 
     window
         .app_handle()

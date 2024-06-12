@@ -10,6 +10,7 @@ use specta::Type;
 use crate::CtxWithLibrary;
 
 mod s3_handler;
+pub mod location;
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where

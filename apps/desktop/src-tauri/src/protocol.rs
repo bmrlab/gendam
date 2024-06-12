@@ -1,4 +1,4 @@
-use global_variable::get_or_insert_fs_storage;
+use global_variable::{get_current_s3_storage, get_or_insert_fs_storage};
 use rand::RngCore;
 use std::future::Future;
 use std::path::PathBuf;
@@ -7,14 +7,27 @@ use tokio::io::AsyncWriteExt;
 use url::Position;
 use url::Url;
 
+use api_server::DataLocationType;
 use tauri::http::HttpRange;
 use tauri::http::{header::*, status::StatusCode, MimeType, Request, Response, ResponseBuilder};
 
-pub fn asset_protocol_handler(
-    app: &tauri::AppHandle,
-    request: &Request,
-) -> Result<Response, Box<dyn std::error::Error>> {
+fn parse_data_location_from_url(url: &Url) -> DataLocationType {
+    let params = url.query_pairs().into_owned();
+    params
+        .into_iter()
+        .find_map(|(k, v)| {
+            if k == "location" {
+                Some(DataLocationType::from(v))
+            } else {
+                None
+            }
+        })
+        .unwrap_or(DataLocationType::Fs)
+}
+
+pub fn asset_protocol_handler(request: &Request) -> Result<Response, Box<dyn std::error::Error>> {
     let parsed_path = Url::parse(request.uri())?;
+    let location = parse_data_location_from_url(&parsed_path);
     let filtered_path = &parsed_path[..Position::AfterPath];
     let path = filtered_path
         .strip_prefix("storage://localhost/")
@@ -44,19 +57,10 @@ pub fn asset_protocol_handler(
     // check if the file exists in the local
     //  - if exists, use fs_storage
     //  - if not, use s3_storage
-
-    // let state = app.state::<Ctx<Store>>();
-    // let a = state.inner().library()?;
-
-    let storage: Box<dyn Storage>;
-
-    if std::path::Path::new(&root_path).exists() {
-        storage = Box::new(get_or_insert_fs_storage!(root_path)?);
-    } else {
-        // TODO: check data location in the database
-        // TODO: use s3 storage
-        storage = Box::new(get_or_insert_fs_storage!(root_path)?);
-    }
+    let storage: Box<dyn Storage> = match location {
+        DataLocationType::Fs => Box::new(get_or_insert_fs_storage!(root_path)?),
+        DataLocationType::S3 => Box::new(get_current_s3_storage!()?),
+    };
 
     let relative_path_clone = relative_path.clone();
     let storage_clone = storage.clone_box();
