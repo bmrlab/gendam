@@ -68,8 +68,6 @@ export type Auth = { id: string; name: string }
 
 export type SharePayload = { fileIdList: number[]; peerId: string }
 
-export type DataLocationType = "Fs" | "S3"
-
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
 export type VideoTaskListRequestPayload = { pagination: Pagination; filter: VideoTaskListRequestFilter }
@@ -97,6 +95,8 @@ export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageC
 export type TaskRedoRequestPayload = { assetObjectId: number }
 
 export type AssetObjectReceivePayload = { hash: string; materializedPath: string }
+
+export type DataLocationType = "Fs" | "S3"
 
 export type Pagination = { pageSize: number; pageIndex: number }
 
