@@ -14,6 +14,7 @@ export type Procedures = {
         { key: "search.all", input: SearchRequestPayload, result: SearchResultPayload[] } | 
         { key: "search.recommend", input: RecommendRequestPayload, result: SearchResultPayload[] } | 
         { key: "search.suggestions", input: never, result: string[] } | 
+        { key: "storage.location", input: string, result: DataLocationType } | 
         { key: "tasks.get_assets_in_process", input: never, result: FilePath[] } | 
         { key: "tasks.list", input: TaskListRequestPayload, result: FileHandlerTask[] } | 
         { key: "users.get", input: never, result: Auth | null } | 
@@ -67,7 +68,7 @@ export type Auth = { id: string; name: string }
 
 export type SharePayload = { fileIdList: number[]; peerId: string }
 
-export type UploadPayload = { materializedPaths: string[]; hashes: string[] }
+export type DataLocationType = "Fs" | "S3"
 
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
@@ -85,6 +86,8 @@ export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
+export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
+
 export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
@@ -96,8 +99,6 @@ export type TaskRedoRequestPayload = { assetObjectId: number }
 export type AssetObjectReceivePayload = { hash: string; materializedPath: string }
 
 export type Pagination = { pageSize: number; pageIndex: number }
-
-export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
 export type TaskListRequestFilter = { assetObjectId?: number | null; assetObjectIds?: number[] | null }
 
@@ -121,13 +122,13 @@ export type VideoPlayerTsRequestPayload = { hash: string; index: number }
 
 export type VideoPlayerTsResponse = { data: number[] }
 
+export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
+
 export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string }
 
 export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
 
 export type VideoPlayerInfoResponse = { hash: string; duration: number; mimeType: string | null; hasVideo: boolean; hasAudio: boolean }
-
-export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
 
 export type AudioResp = { type: AudioType; content: string }
 
@@ -141,6 +142,10 @@ export type AcceptShareOutput = { fileList: string[] }
 
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
 
+export type UploadPayload = { materializedPaths: string[]; hashes: string[] }
+
+export type AssetObject = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string }
+
 export type AIModelResult = { info: AIModel; status: AIModelStatus }
 
 export type DownloadModelPayload = { modelId: string }
@@ -148,8 +153,6 @@ export type DownloadModelPayload = { modelId: string }
 export type FilePathGetPayload = { materializedPath: string; name: string }
 
 export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
-
-export type AssetObject = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string }
 
 export type TaskListRequestPayload = { filter: TaskListRequestFilter }
 
