@@ -9172,6 +9172,8 @@ dependencies = [
  "async-trait",
  "bytes",
  "opendal",
+ "serde",
+ "specta",
  "thiserror",
  "tokio",
  "tracing",

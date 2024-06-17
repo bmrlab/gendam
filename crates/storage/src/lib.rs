@@ -1,3 +1,4 @@
+mod config;
 pub mod error;
 mod traits;
 
@@ -8,6 +9,7 @@ pub use error::StorageResult;
 pub use opendal::Buffer;
 pub use opendal::Metakey;
 pub mod services;
+pub use config::S3Config;
 pub use opendal::BlockingOperator;
 pub use opendal::Operator;
 pub use traits::Storage;

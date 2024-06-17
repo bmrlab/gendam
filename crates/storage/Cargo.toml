@@ -10,6 +10,8 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["test-util", "macros"] }
 async-trait = { workspace = true }
 async-recursion = "1.1.1"
+serde = { workspace = true }
+specta = { workspace = true }
 
 opendal = { version = "0.46.0", features = ["services-fs", "services-s3"] }
 bytes = "1.6.0"

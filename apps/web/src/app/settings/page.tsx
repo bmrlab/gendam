@@ -9,6 +9,7 @@ import { Checkbox } from '@gendam/ui/v2/checkbox'
 import { Form } from '@gendam/ui/v2/form'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import S3Config from './s3_settings'
 
 const AccountDetail: React.FC = () => {
   const { data: auth } = rspc.useQuery(['users.get'])
@@ -111,6 +112,7 @@ export default function Settings() {
         <div className="bg-app-line my-4 h-px"></div>
         <LibrarySettings />
         <div className="bg-app-line my-4 h-px"></div>
+        <S3Config />
       </Viewport.Content>
     </Viewport.Page>
   )
