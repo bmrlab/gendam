@@ -7,7 +7,7 @@ use s3_handler::upload_to_s3;
 use serde::Deserialize;
 use specta::Type;
 
-use crate::CtxWithLibrary;
+use crate::{library::get_library_settings, CtxWithLibrary};
 
 pub mod location;
 mod s3_handler;
@@ -128,6 +128,27 @@ where
                             format!("failed to update data location error: {}", e),
                         )
                     })?;
+
+                // check delete local file or not on settings
+                let delete_local_or_not =
+                    get_library_settings(&library.dir).always_delete_local_file_after_upload;
+
+                if delete_local_or_not {
+                    // delete local file
+                    hashes.into_iter().for_each(|h| {
+                        let file = library.dir.join("files").join(&h[0..3]).join(h.clone());
+                        let artifacts_dir = library.dir.join("artifacts").join(&h[0..3]).join(h);
+
+                        match std::fs::remove_dir_all(artifacts_dir) {
+                            Ok(_) => {}
+                            Err(e) => tracing::error!("failed to delete local dir: {}", e),
+                        }
+                        match std::fs::remove_file(file) {
+                            Ok(_) => {}
+                            Err(e) => tracing::error!("failed to delete local file: {}", e),
+                        }
+                    });
+                }
 
                 Ok(())
             }
