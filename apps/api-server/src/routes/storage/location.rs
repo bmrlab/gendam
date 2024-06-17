@@ -1,6 +1,5 @@
 use content_library::Library;
 use prisma_lib::asset_object;
-use serde::Serializer;
 use specta::Type;
 use std::fmt;
 
