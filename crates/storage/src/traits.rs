@@ -110,11 +110,10 @@ pub trait Storage: Send + Sync {
     }
 
     async fn read_dir(&self, path: std::path::PathBuf) -> StorageResult<Vec<std::path::PathBuf>> {
-        let path = if path.ends_with("/") {
-            path
-        } else {
-            path.join("/")
-        };
+        let mut path = path;
+        if !path.ends_with("/") {
+            path.push("");
+        }
         self.op()?
             .list(path_to_string(path)?.as_str())
             .await
