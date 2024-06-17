@@ -1,4 +1,4 @@
-use crate::{traits::Storage, utils::path_to_string, StorageError, StorageResult};
+use crate::{traits::Storage, utils::path_to_string, StorageResult};
 use async_trait::async_trait;
 use opendal::{services::S3, BlockingOperator, Operator};
 use std::path::{Path, PathBuf};
