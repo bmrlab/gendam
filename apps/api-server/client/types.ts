@@ -55,7 +55,7 @@ export type Procedures = {
 
 export type SetModelPayload = { category: AIModelCategory; modelId: string }
 
-export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum; models: LibraryModels }
+export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum; models: LibraryModels; alwaysDeleteLocalFileAfterUpload: boolean }
 
 export type ModelArtifact = { url: string; checksum: string }
 
