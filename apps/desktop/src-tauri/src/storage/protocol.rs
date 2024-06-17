@@ -66,8 +66,9 @@ pub fn storage_protocol_handler(
     if !local_exist {
         let hash = get_hash_from_url(&path);
         if hash.is_some() {
+            let state_clone = state.clone();
             location = safe_block_on(async move {
-                let mut state = state.lock().await;
+                let mut state = state_clone.lock().await;
                 state.get_location(hash.unwrap().as_str()).await.unwrap()
             });
         }
@@ -75,7 +76,18 @@ pub fn storage_protocol_handler(
 
     let storage: Box<dyn Storage> = match location {
         DataLocationType::Fs => Box::new(get_or_insert_fs_storage!(root_path)?),
-        DataLocationType::S3 => Box::new(get_current_s3_storage!()?),
+        DataLocationType::S3 => {
+            match safe_block_on(async move {
+                let state = state.lock().await;
+                state.get_library_settings()
+            }) {
+                Ok(settings) => Box::new(get_current_s3_storage!(settings)?),
+                Err(e) => {
+                    tracing::error!("Failed to get library settings: {:?}", e);
+                    return resp.status(StatusCode::BAD_REQUEST).body(vec![]);
+                }
+            }
+        }
     };
 
     let relative_path_clone = relative_path.clone();

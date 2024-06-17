@@ -1,4 +1,4 @@
-use crate::{traits::Storage, utils::path_to_string, StorageResult};
+use crate::{traits::Storage, utils::path_to_string, S3Config, StorageResult};
 use async_trait::async_trait;
 use opendal::{services::S3, BlockingOperator, Operator};
 use std::path::{Path, PathBuf};
@@ -11,7 +11,7 @@ pub struct S3Storage {
 }
 
 impl S3Storage {
-    pub fn new(root: impl AsRef<Path>) -> StorageResult<Self> {
+    pub fn new(root: impl AsRef<Path>, config: S3Config) -> StorageResult<Self> {
         let mut root = path_to_string(root)?;
         if !root.starts_with("/") {
             root = format!("/{}", root);
@@ -24,10 +24,10 @@ impl S3Storage {
         builder.root(&root);
         // Set the bucket name. This is required.
         // TODO: replace with real config
-        builder.bucket("my-test-bucket-131");
-        builder.endpoint("http://127.0.0.1:9000");
-        builder.access_key_id("plEXyNod8DWttxmCt3Db");
-        builder.secret_access_key("IuJYIdJIdJm8LWQgCXP7af9pmis0dz4soEs7vp0U");
+        builder.bucket(&config.bucket);
+        builder.endpoint(&config.endpoint);
+        builder.access_key_id(&config.access_key_id);
+        builder.secret_access_key(&config.secret_access_key);
         let op: Operator = Operator::new(builder)?.finish();
 
         // Create s3 backend builder.
@@ -37,10 +37,10 @@ impl S3Storage {
         // NOTE: the root must be absolute path.
         builder.root(&root);
         // Set the bucket name. This is required.
-        builder.bucket("my-test-bucket-131");
-        builder.endpoint("http://127.0.0.1:9000");
-        builder.access_key_id("plEXyNod8DWttxmCt3Db");
-        builder.secret_access_key("IuJYIdJIdJm8LWQgCXP7af9pmis0dz4soEs7vp0U");
+        builder.bucket(&config.bucket);
+        builder.endpoint(&config.endpoint);
+        builder.access_key_id(&config.access_key_id);
+        builder.secret_access_key(&config.secret_access_key);
         builder.server_side_encryption_with_s3_key();
         let block_op = Operator::new(builder)?.finish().blocking();
 

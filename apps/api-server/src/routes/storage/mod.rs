@@ -26,6 +26,7 @@ where
         t({
             |ctx, input: UploadPayload| async move {
                 let library = ctx.library()?;
+                let library_settings = get_library_settings(&library.dir);
                 let where_param = input
                     .materialized_paths
                     .into_iter()
@@ -62,20 +63,29 @@ where
                 hashes.extend(set.into_iter());
 
                 // upload to s3
+                let s3_config = library_settings.s3_config;
+                if s3_config.is_none() {
+                    return Err(rspc::Error::new(
+                        rspc::ErrorCode::PreconditionFailed,
+                        "s3 config is not set".to_string(),
+                    ));
+                }
                 try_join_all(
                     hashes
                         .clone()
                         .into_iter()
                         .map(|hash| {
-                            upload_to_s3(hash.clone()).map_err(move |e| {
-                                rspc::Error::new(
-                                    rspc::ErrorCode::InternalServerError,
-                                    format!(
-                                        "failed to upload file with hash {} error: {}",
-                                        hash, e
-                                    ),
-                                )
-                            })
+                            upload_to_s3(hash.clone(), s3_config.clone().unwrap()).map_err(
+                                move |e| {
+                                    rspc::Error::new(
+                                        rspc::ErrorCode::InternalServerError,
+                                        format!(
+                                            "failed to upload file with hash {} error: {}",
+                                            hash, e
+                                        ),
+                                    )
+                                },
+                            )
                         })
                         .collect::<Vec<_>>(),
                 )
@@ -130,8 +140,7 @@ where
                     })?;
 
                 // check delete local file or not on settings
-                let delete_local_or_not =
-                    get_library_settings(&library.dir).always_delete_local_file_after_upload;
+                let delete_local_or_not = library_settings.always_delete_local_file_after_upload;
 
                 if delete_local_or_not {
                     // delete local file
@@ -149,7 +158,6 @@ where
                         }
                     });
                 }
-
                 Ok(())
             }
         })
