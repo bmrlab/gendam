@@ -14,7 +14,6 @@ export type Procedures = {
         { key: "search.all", input: SearchRequestPayload, result: SearchResultPayload[] } | 
         { key: "search.recommend", input: RecommendRequestPayload, result: SearchResultPayload[] } | 
         { key: "search.suggestions", input: never, result: string[] } | 
-        { key: "storage.location", input: string, result: DataLocationType } | 
         { key: "tasks.get_assets_in_process", input: never, result: FilePath[] } | 
         { key: "tasks.list", input: TaskListRequestPayload, result: FileHandlerTask[] } | 
         { key: "users.get", input: never, result: Auth | null } | 
@@ -95,8 +94,6 @@ export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageC
 export type TaskRedoRequestPayload = { assetObjectId: number }
 
 export type AssetObjectReceivePayload = { hash: string; materializedPath: string }
-
-export type DataLocationType = "Fs" | "S3"
 
 export type Pagination = { pageSize: number; pageIndex: number }
 
