@@ -4,10 +4,10 @@ use specta::Type;
 #[derive(Serialize, Deserialize, Type, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct S3Config {
-    bucket: String,
-    endpoint: String,
-    access_key_id: String,
-    secret_access_key: String,
+    pub bucket: String,
+    pub endpoint: String,
+    pub access_key_id: String,
+    pub secret_access_key: String,
 }
 
 impl S3Config {

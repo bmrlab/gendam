@@ -2,7 +2,7 @@ import { S3Config } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { Button } from '@gendam/ui/v2/button'
 import { Form, FormPrimitive } from '@gendam/ui/v2/form'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 export default function S3Config() {
@@ -16,6 +16,11 @@ export default function S3Config() {
   })
 
   const [isPending, setIsPending] = useState(false)
+
+  useEffect(() => {
+    if (!currentLibrary.librarySettings.s3Config) return
+    setConfig(currentLibrary.librarySettings.s3Config)
+  }, [currentLibrary.librarySettings.s3Config])
 
   const onSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {

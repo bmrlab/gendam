@@ -1,6 +1,9 @@
 use crate::store::Store;
 use api_server::ctx::default::Ctx;
-use api_server::{get_asset_object_location, CtxWithLibrary, DataLocationType};
+use api_server::{
+    get_asset_object_location, get_library_settings, CtxWithLibrary, DataLocationType,
+};
+use storage::S3Config;
 
 pub struct StorageState {
     pub ctx: Ctx<Store>,
@@ -13,6 +16,15 @@ impl StorageState {
             ctx,
             cache_map: std::collections::HashMap::new(),
         }
+    }
+
+    // TODO: replace read settings file with cache
+    pub fn get_library_settings(&self) -> anyhow::Result<S3Config> {
+        let library = self.ctx.library()?;
+        let library_settings = get_library_settings(&library.dir);
+        library_settings
+            .s3_config
+            .ok_or(anyhow::anyhow!("s3 config not found"))
     }
 
     pub async fn get_location(&mut self, hash: &str) -> anyhow::Result<DataLocationType> {

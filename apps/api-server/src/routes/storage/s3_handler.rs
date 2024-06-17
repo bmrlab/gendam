@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use global_variable::{current_library_dir, get_current_s3_storage};
-use storage::prelude::*;
+use storage::{prelude::*, S3Config};
 
 fn dir_in_file(hash: &str) -> PathBuf {
     PathBuf::from(current_library_dir!())
@@ -16,8 +16,8 @@ fn dir_in_artifacts(hash: &str) -> PathBuf {
         .join(hash)
 }
 
-pub async fn upload_to_s3(hash: String) -> StorageResult<()> {
-    let storage = get_current_s3_storage!()?;
+pub async fn upload_to_s3(hash: String, s3_config: S3Config) -> StorageResult<()> {
+    let storage = get_current_s3_storage!(s3_config)?;
 
     let file_path = dir_in_file(hash.as_str());
     let artifact_path = dir_in_artifacts(hash.as_str());

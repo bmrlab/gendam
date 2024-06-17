@@ -62,7 +62,7 @@ mod storage_test {
 
     use opendal::Metakey;
 
-    use crate::{add_tmp_suffix_to_path, services::s3_storage::S3Storage, Storage};
+    use crate::{add_tmp_suffix_to_path, services::s3_storage::S3Storage, S3Config, Storage};
 
     fn init_storage() -> super::FsStorage {
         let test_path = "/Users/zingerbee/Downloads/test/gendam";
@@ -71,7 +71,16 @@ mod storage_test {
 
     fn init_s3_storage() -> S3Storage {
         let test_path = "/Users/zingerbee/Downloads/test/gendam";
-        S3Storage::new(test_path).unwrap()
+        S3Storage::new(
+            test_path,
+            S3Config::new(
+                "my-test-bucket-131".into(),
+                "http://127.0.0.1:9000".into(),
+                "plEXyNod8DWttxmCt3Db".into(),
+                "IuJYIdJIdJm8LWQgCXP7af9pmis0dz4soEs7vp0U".into(),
+            ),
+        )
+        .unwrap()
     }
 
     fn clear_test_dir() {
