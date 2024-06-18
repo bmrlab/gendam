@@ -78,8 +78,8 @@ pub fn storage_protocol_handler(
         DataLocationType::Fs => Box::new(get_or_insert_fs_storage!(root_path)?),
         DataLocationType::S3 => {
             match safe_block_on(async move {
-                let state = state.lock().await;
-                state.get_library_settings()
+                let mut state = state.lock().await;
+                state.get_s3_config()
             }) {
                 Ok(settings) => Box::new(get_current_s3_storage!(settings)?),
                 Err(e) => {
