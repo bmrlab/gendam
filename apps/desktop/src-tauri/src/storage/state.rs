@@ -8,6 +8,7 @@ use storage::S3Config;
 pub struct StorageState {
     pub ctx: Ctx<Store>,
     pub(crate) cache_map: std::collections::HashMap<String, DataLocationType>,
+    pub(crate) s3_config_cache_map: std::collections::HashMap<String, S3Config>,
 }
 
 impl StorageState {
@@ -15,16 +16,33 @@ impl StorageState {
         Self {
             ctx,
             cache_map: std::collections::HashMap::new(),
+            s3_config_cache_map: std::collections::HashMap::new(),
         }
     }
 
-    // TODO: replace read settings file with cache
-    pub fn get_library_settings(&self) -> anyhow::Result<S3Config> {
+    fn get_s3_config_from_local(&self) -> anyhow::Result<S3Config> {
         let library = self.ctx.library()?;
-        let library_settings = get_library_settings(&library.dir);
-        library_settings
+        get_library_settings(&library.dir)
             .s3_config
             .ok_or(anyhow::anyhow!("s3 config not found"))
+    }
+
+    pub fn get_s3_config(&mut self) -> anyhow::Result<S3Config> {
+        let library_id = self.ctx.library()?.id;
+        return match self.s3_config_cache_map.entry(library_id.clone()) {
+            std::collections::hash_map::Entry::Occupied(entry) => {
+                let config = entry.get();
+                Ok(config.clone())
+            }
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                drop(entry);
+                let s3_config = self.get_s3_config_from_local();
+                s3_config.map(|config| {
+                    self.s3_config_cache_map.insert(library_id, config.clone());
+                    config
+                })
+            }
+        };
     }
 
     pub async fn get_location(&mut self, hash: &str) -> anyhow::Result<DataLocationType> {
