@@ -258,6 +258,7 @@ impl VideoDecoder {
             }
         }
 
+        let actual_frame_dir = self.get_actual_path(frames_dir.as_ref().to_path_buf())?;
         match std::process::Command::new(&self.binary_file_path)
             .args([
                 "-i",
@@ -270,9 +271,10 @@ impl VideoDecoder {
                 "vfr",
                 "-compression_level",
                 "9",
-                "-f",
-                "image2pipe",
-                "pipe:1",
+                actual_frame_dir
+                    .join(format!("%d000-tmp.{}", FRAME_FILE_EXTENSION))
+                    .to_str()
+                    .expect("invalid frames dir path"),
             ])
             .output()
         {
@@ -283,8 +285,7 @@ impl VideoDecoder {
                         String::from_utf8_lossy(&output.stderr)
                     );
                 }
-                let data = output.stdout; // 从 ffmpeg 命令获取数据
-                self.save_batch_framer(data, frames_dir).await?;
+                self.save_batch_framer(frames_dir).await?;
             }
             Err(e) => {
                 bail!("Failed to save video frames: {e}");
@@ -294,39 +295,26 @@ impl VideoDecoder {
         Ok(())
     }
 
-    async fn save_batch_framer(
-        &self,
-        data: Vec<u8>,
-        frames_dir: impl AsRef<Path>,
-    ) -> Result<(), anyhow::Error> {
-        let mut start = 0;
-        let mut end;
-        let mut count = 0;
-        Ok(while start < data.len() {
-            if data[start] == 0xFF && data[start + 1] == 0xD8 {
-                // JPEG 开始
-                end = start + 2;
-                while end < data.len() {
-                    if data[end] == 0xFF && data[end + 1] == 0xD9 {
-                        // JPEG 结束
-                        // 保存 JPEG 图像到文件
-                        self.write(
-                            frames_dir
-                                .as_ref()
-                                .join(format!("{}000.{FRAME_FILE_EXTENSION}", count + 1)),
-                            data[start..=end + 1].to_vec().into(),
-                        )
-                        .await?;
-
-                        count += 1;
-                        start = end + 2;
-                        break;
+    async fn save_batch_framer(&self, frames_dir: impl AsRef<Path>) -> Result<(), anyhow::Error> {
+        let actual_frame_dir = self.get_actual_path(frames_dir.as_ref().to_path_buf())?;
+        for entry in std::fs::read_dir(actual_frame_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(file_name) = path.file_name() {
+                    if let Some(name_str) = file_name.to_str() {
+                        if name_str.contains("-tmp") {
+                            let new_name = name_str.replace("-tmp", "");
+                            let new_path = frames_dir.as_ref().join(new_name);
+                            self.write(new_path, std::fs::read(path.clone())?.into())
+                                .await?;
+                            std::fs::remove_file(path)?;
+                        }
                     }
-                    end += 1;
                 }
             }
-            start += 1;
-        })
+        }
+        Ok(())
     }
 
     pub async fn save_video_audio(&self, audio_path: impl AsRef<Path>) -> anyhow::Result<()> {
