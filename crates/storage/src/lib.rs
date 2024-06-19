@@ -3,6 +3,7 @@ pub mod error;
 mod traits;
 
 pub use crate::error::StorageError;
+pub use opendal::EntryMode;
 pub mod utils;
 pub use bytes::Bytes;
 pub use error::StorageResult;

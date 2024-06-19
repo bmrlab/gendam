@@ -1,11 +1,13 @@
-use crate::CtxWithLibrary;
 use glob::glob;
 use rspc::{Router, RouterBuilder};
 
 mod recommend;
 mod search;
+use crate::{get_library_settings, CtxWithLibrary};
 use recommend::{recommend_frames, RecommendRequestPayload};
 use search::{search_all, SearchRequestPayload};
+use storage::Storage;
+use storage::{EntryMode, S3Storage};
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -53,6 +55,7 @@ where
                 //         Some("".to_string())
                 //     })
                 //     .collect::<Vec<String>>();
+                // Search local
                 let pattern = format!(
                     "{}/artifacts/*/*/frame-caption-*/*.json",
                     library.dir.to_string_lossy()
@@ -63,7 +66,7 @@ where
                         format!("glob failed: {}", e),
                     )
                 })?;
-                let results = entries
+                let mut results = entries
                     .into_iter()
                     .filter_map(|entry| {
                         let json_path = entry.ok()?;
@@ -73,6 +76,65 @@ where
                         Some(caption.to_owned())
                     })
                     .collect::<Vec<String>>();
+                // Search S3
+                // glob not support now https://github.com/apache/opendal/issues/1251
+                if let Ok(s3_config) = get_library_settings(&library.dir).s3_config.ok_or(()) {
+                    if let Ok(storage) = S3Storage::new(&library.id, s3_config) {
+                        if let Ok(op) = storage.op() {
+                            match op.list_with("artifacts").recursive(true).await {
+                                Ok(entries) => {
+                                    let mut s3_results = Vec::new();
+                                    for entry in entries {
+                                        match entry.metadata().mode() {
+                                            EntryMode::FILE => {
+                                                if entry.path().ends_with(".json")
+                                                    && entry.path().contains("frame-caption-")
+                                                    && !entry
+                                                        .path()
+                                                        .contains("frame-caption-embedding-")
+                                                {
+                                                    match op.read(entry.path()).await {
+                                                        Ok(data) => {
+                                                            if let Ok(data) =
+                                                                String::from_utf8(data.to_vec())
+                                                            {
+                                                                serde_json::from_str::<
+                                                                    serde_json::Value,
+                                                                >(
+                                                                    &data
+                                                                )
+                                                                .ok()
+                                                                .map(|value| {
+                                                                    value.get("caption").map(|v| {
+                                                                        v.as_str().map(|s| {
+                                                                            s3_results
+                                                                                .push(s.to_owned());
+                                                                        })
+                                                                    });
+                                                                });
+                                                            }
+                                                        }
+                                                        Err(e) => {
+                                                            tracing::error!(
+                                                                "failed to read file: {}",
+                                                                e
+                                                            );
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            _ => continue,
+                                        }
+                                    }
+                                    results.extend(s3_results);
+                                }
+                                Err(e) => {
+                                    tracing::error!("failed to list s3 entries: {}", e);
+                                }
+                            }
+                        }
+                    }
+                }
                 Ok(results)
             })
         })
