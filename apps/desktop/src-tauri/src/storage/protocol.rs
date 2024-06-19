@@ -9,22 +9,9 @@ use url::Position;
 use url::Url;
 
 use crate::storage::state::StorageState;
-use api_server::DataLocationType;
+use api_server::{get_hash_from_url, DataLocationType};
 use tauri::http::HttpRange;
 use tauri::http::{header::*, status::StatusCode, MimeType, Request, Response, ResponseBuilder};
-
-fn get_hash_from_url(path: &str) -> Option<String> {
-    let parts: Vec<&str> = path.split('/').collect();
-    if let Some(artifacts_index) = parts.iter().position(|&r| r == "artifacts" || r == "files") {
-        if let Some(hash) = parts.get(artifacts_index + 2) {
-            return Some(hash.to_string());
-        } else {
-            None
-        }
-    } else {
-        return None;
-    }
-}
 
 pub fn storage_protocol_handler(
     state: Arc<tokio::sync::Mutex<StorageState>>,

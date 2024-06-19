@@ -1,7 +1,11 @@
 use content_library::Library;
+use global_variable::{get_current_s3_storage, get_or_insert_fs_storage};
 use prisma_lib::asset_object;
 use specta::Type;
 use std::fmt;
+use storage::Storage;
+
+use crate::get_library_settings;
 
 #[derive(Type, Eq, PartialEq, Clone, Debug)]
 pub enum DataLocationType {
@@ -46,8 +50,6 @@ pub async fn get_asset_object_location(
         .exec()
         .await?;
 
-    dbg!(&asset_object);
-
     if let Some(asset_object) = asset_object {
         if let Some(data_location) = asset_object.data_location {
             let res = data_location
@@ -61,4 +63,66 @@ pub async fn get_asset_object_location(
     }
 
     return Ok(DataLocationType::Fs);
+}
+
+pub fn get_hash_from_url(path: &str) -> Option<String> {
+    let parts: Vec<&str> = path.split('/').collect();
+    if let Some(artifacts_index) = parts.iter().position(|&r| r == "artifacts" || r == "files") {
+        if let Some(hash) = parts.get(artifacts_index + 2) {
+            return Some(hash.to_string());
+        } else {
+            None
+        }
+    } else {
+        return None;
+    }
+}
+
+pub async fn get_storage_by_location(
+    library: &Library,
+    relative_path: String,
+    library_dir: Option<String>,
+) -> Result<Box<dyn Storage>, rspc::Error> {
+    let root_path = library_dir.unwrap_or(
+        library
+            .dir
+            .clone()
+            .to_str()
+            .expect("library dir")
+            .to_string(),
+    );
+
+    let local_exist =
+        std::path::Path::new(format!("{}/{}", root_path, relative_path).as_str()).exists();
+    let mut location = DataLocationType::Fs;
+    if !local_exist {
+        let hash = get_hash_from_url(&relative_path);
+        if hash.is_some() {
+            location = get_asset_object_location(&library, hash.unwrap().to_string()).await?;
+        }
+    }
+    let storage: Box<dyn Storage> = match location {
+        DataLocationType::Fs => Box::new(get_or_insert_fs_storage!(root_path).map_err(|_| {
+            rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                "Current FS config not found".to_string(),
+            )
+        })?),
+        DataLocationType::S3 => {
+            let s3_config =
+                get_library_settings(&library.dir)
+                    .s3_config
+                    .ok_or(rspc::Error::new(
+                        rspc::ErrorCode::PreconditionFailed,
+                        "S3 config not set".to_string(),
+                    ))?;
+            Box::new(get_current_s3_storage!(s3_config).map_err(|_| {
+                rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    "Current S3 config not found".to_string(),
+                )
+            })?)
+        }
+    };
+    Ok(storage)
 }

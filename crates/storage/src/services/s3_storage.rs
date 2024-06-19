@@ -91,3 +91,55 @@ impl Storage for S3Storage {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod storage_test {
+    use crate::{S3Config, S3Storage};
+    use opendal::EntryMode;
+
+    fn init_s3_storage() -> S3Storage {
+        let test_path = "/543d31d2-63c5-4fc6-8e11-6cd381aadc8e";
+        S3Storage::new(
+            test_path,
+            S3Config::new(
+                "my-test-bucket-131".into(),
+                "http://127.0.0.1:9000".into(),
+                "plEXyNod8DWttxmCt3Db".into(),
+                "IuJYIdJIdJm8LWQgCXP7af9pmis0dz4soEs7vp0U".into(),
+            ),
+        )
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_parent_path() {
+        let storage = init_s3_storage();
+        let entries = storage
+            .op
+            .list_with("artifacts")
+            .recursive(true)
+            .await
+            .unwrap();
+
+        for entry in entries {
+            match entry.metadata().mode() {
+                EntryMode::FILE => {
+                    println!("path: {:?}", entry.path());
+                    println!("end_with_json: {:?}", entry.path().ends_with(".json"));
+                    println!("contains frame-caption-: {:?}", entry.path().contains("frame-caption-"));
+                    println!("contains frame-caption-embedding-: {:?}", entry.path().contains("frame-caption-embedding-"));
+                    if entry.path().ends_with(".json")
+                        && entry.path().contains("frame-caption-")
+                        && !entry.path().contains("frame-caption-embedding-")
+                    {
+                        println!("need handle: {:?}", entry.path());
+                    }
+                }
+                EntryMode::DIR => {
+                    println!("Handling dir like start a new list via meta.path()")
+                }
+                EntryMode::Unknown => continue,
+            }
+        }
+    }
+}
