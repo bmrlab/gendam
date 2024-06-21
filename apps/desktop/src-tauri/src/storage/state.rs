@@ -56,7 +56,9 @@ impl StorageState {
                 let library = self.ctx.library()?;
                 let location = get_asset_object_location(&library, hash.to_string()).await?;
 
-                entry.insert(location.clone());
+                if !(location == DataLocationType::Fs) {
+                    entry.insert(location.clone());
+                }
                 Ok(location)
             }
         };
