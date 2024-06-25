@@ -137,11 +137,13 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
     transmuxerRef.current?.flush()
   }
 
-  const onPlayerReady = async (mimeType: string|null, hasVideo: boolean, hasAudio: boolean) => {
-    if (mimeType?.includes('mp4')) {
-      playerRef.current?.src({ type: 'video/mp4', src: currentLibrary.getFileSrc(hash) })
+  const onPlayerReady = async (mimeType: string | null, hasVideo: boolean, hasAudio: boolean) => {
+    let src = currentLibrary.getFileSrc(hash)
+    if (playerRef.current && mimeType?.includes('mp4')) {
+      playerRef.current.src({ type: 'video/mp4', src })
       return
     }
+
     const segment = segmentsRef.current.shift()
 
     const res = await client.query([
@@ -155,8 +157,8 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
     transferFormat(res.data, hasVideo, hasAudio)
 
     // 监听
-    if (!!videoRef.current) {
-      playerRef.current?.on('seeking', async () => {
+    if (videoRef.current && playerRef.current) {
+      playerRef.current.on('seeking', async () => {
         const tooltipElement = document.querySelector('.vjs-time-tooltip')
         if (tooltipElement) {
           const innerHTML = tooltipElement.innerHTML
@@ -191,18 +193,20 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
       },
     }
 
-    playerRef.current = videojs(videoRef.current!, option, () => onPlayerReady(mimeType, hasVideo, hasAudio))
-
-    // 覆盖duration
-    playerRef.current.duration = function () {
-      return duration
+    if (!playerRef.current) {
+      playerRef.current = videojs(videoRef.current!, option, () => onPlayerReady(mimeType, hasVideo, hasAudio))
+      // 覆盖duration
+      playerRef.current.duration = function () {
+        return duration
+      }
+      playerRef.current.play()
     }
-
-    playerRef.current.play()
   }
 
   useEffect(() => {
-    if (!videoRef.current) return
+    if (!videoRef.current) {
+      return
+    }
     init()
     return () => {
       if (playerRef.current) {
