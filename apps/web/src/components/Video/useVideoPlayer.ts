@@ -5,7 +5,7 @@ import muxjs from 'mux.js'
 import { MutableRefObject, useEffect, useRef } from 'react'
 import videojs from 'video.js'
 import type Player from 'video.js/dist/types/player'
-import useDebouncedCallback from './useDebouncedCallback'
+import useDebouncedCallback from '@/hooks/useDebouncedCallback'
 
 export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVideoElement | null>) => {
   const currentLibrary = useCurrentLibrary()
