@@ -380,7 +380,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
     }
 
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
-    async fn load_library(&mut self, library_id: &str) -> Result<Library, rspc::Error> {
+    async fn load_library(&self, library_id: &str) -> Result<Library, rspc::Error> {
         {
             let mut is_busy = self.is_busy.lock().unwrap();
             if *is_busy.get_mut() {
