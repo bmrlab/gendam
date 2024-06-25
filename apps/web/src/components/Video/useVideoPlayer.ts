@@ -1,11 +1,11 @@
+import useDebouncedCallback from '@/hooks/useDebouncedCallback'
 import { useCurrentLibrary } from '@/lib/library'
-import { rspc } from '@/lib/rspc'
+import { client } from '@/lib/rspc'
 import { timeToSeconds } from '@/lib/utils'
 import muxjs from 'mux.js'
 import { MutableRefObject, useEffect, useRef } from 'react'
 import videojs from 'video.js'
 import type Player from 'video.js/dist/types/player'
-import useDebouncedCallback from '@/hooks/useDebouncedCallback'
 
 export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVideoElement | null>) => {
   const currentLibrary = useCurrentLibrary()
@@ -27,9 +27,6 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
       console.log('segmentsRef.current', old, segmentsRef.current)
     }
   }, 100)
-
-  const { mutateAsync: getVideoInfo } = rspc.useMutation(['video.get_video_info'])
-  const { mutateAsync: getTs } = rspc.useMutation(['video.get_ts'])
 
   const handleUpdateend = async () => {
     transmuxerRef.current?.on('data', (event: any) => {
@@ -55,10 +52,13 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
 
     let item = segmentsRef.current.shift()
     if (item) {
-      const res = await getTs({
-        hash: hash,
-        index: item,
-      })
+      const res = await client.query([
+        'video.player.video_ts',
+        {
+          hash: hash,
+          index: item,
+        },
+      ])
       console.log('load segment:', item)
       loadedSegmentsRef.current.push(item)
       transmuxerRef.current?.push(new Uint8Array(res.data))
@@ -137,17 +137,20 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
     transmuxerRef.current?.flush()
   }
 
-  const onPlayerReady = async (mimeType: string, hasVideo: boolean, hasAudio: boolean) => {
-    if (mimeType.includes('mp4')) {
+  const onPlayerReady = async (mimeType: string|null, hasVideo: boolean, hasAudio: boolean) => {
+    if (mimeType?.includes('mp4')) {
       playerRef.current?.src({ type: 'video/mp4', src: currentLibrary.getFileSrc(hash) })
       return
     }
     const segment = segmentsRef.current.shift()
 
-    const res = await getTs({
-      hash: hash,
-      index: segment!,
-    })
+    const res = await client.query([
+      'video.player.video_ts',
+      {
+        hash: hash,
+        index: segment!,
+      },
+    ])
     loadedSegmentsRef.current.push(segment!)
     transferFormat(res.data, hasVideo, hasAudio)
 
@@ -167,9 +170,12 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
 
   const init = async () => {
     // 获取时长
-    const { duration, mimeType, hasVideo, hasAudio } = await getVideoInfo({
-      hash,
-    })
+    const { duration, mimeType, hasVideo, hasAudio } = await client.query([
+      'video.player.video_info',
+      {
+        hash,
+      },
+    ])
     segmentsRef.current = Array.from(new Array(Math.ceil(duration / 10))).map((_, i) => i)
     // https://docs.videojs.com/tutorial-options.html
     const option = {
