@@ -79,7 +79,7 @@ pub struct Ctx<S: CtxStore> {
     local_data_root: PathBuf,
     resources_dir: PathBuf,
     temp_dir: PathBuf,
-    cache_dir: Option<PathBuf>,
+    cache_dir: PathBuf,
     store: Arc<Mutex<S>>,
     current_library: Arc<Mutex<Option<Library>>>,
     tx: Arc<Mutex<Option<Sender<TaskPayload>>>>,
@@ -129,7 +129,7 @@ impl<S: CtxStore> Ctx<S> {
         local_data_root: PathBuf,
         resources_dir: PathBuf,
         temp_dir: PathBuf,
-        cache_dir: Option<PathBuf>,
+        cache_dir: PathBuf,
         store: Arc<Mutex<S>>,
         node: Arc<Mutex<Node<ShareInfo>>>,
     ) -> Self {
@@ -253,7 +253,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         self.temp_dir.clone()
     }
 
-    fn get_cache_dir(&self) -> Option<PathBuf> {
+    fn get_cache_dir(&self) -> PathBuf {
         self.cache_dir.clone()
     }
 

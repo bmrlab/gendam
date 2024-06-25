@@ -84,9 +84,9 @@ where
             }
             t(|ctx: TCtx, input: TsRequestPayload| async move {
                 let library = ctx.library()?;
-                let temp_dir = ctx.get_temp_dir();
+                // let temp_dir = ctx.get_temp_dir();
                 let cache_dir = ctx.get_cache_dir();
-                let ts_dir = cache_dir.unwrap_or(temp_dir);
+                let ts_dir = cache_dir;
 
                 let video_handler =
                     VideoHandler::new(&input.hash.clone(), &library).map_err(|e| {

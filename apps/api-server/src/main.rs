@@ -53,6 +53,8 @@ async fn main() {
     };
 
     let temp_dir = std::env::temp_dir();
+    let cache_dir = temp_dir.clone();
+    // 本地开发环境, cache_dir 直接和 temp_dir 共享一个目录, 暂时不会有问题
 
     let mut default_store = Store::new(local_data_root.join("settings.json"));
     default_store.load().unwrap_or_else(|e| {
@@ -71,7 +73,7 @@ async fn main() {
         p2p::Node::new().expect("create node error"),
     ));
 
-    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, temp_dir, None, store, node);
+    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, temp_dir, cache_dir, store, node);
 
     let app: axum::Router = axum::Router::new()
         .route("/", get(|| async { "Hello 'rspc'!" }))
