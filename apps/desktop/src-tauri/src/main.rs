@@ -3,7 +3,7 @@
 use api_server::{ctx::default::Ctx, CtxWithLibrary};
 use dotenvy::dotenv;
 use std::sync::{Arc, Mutex};
-use tauri::{api::path::cache_dir, Manager};
+use tauri::Manager;
 use vector_db::kill_qdrant_server;
 mod store;
 use store::Store;
@@ -78,7 +78,10 @@ async fn main() {
         .resolve_resource("resources")
         .expect("failed to find resources dir");
     let temp_dir = std::env::temp_dir();
-    let cache_dir = cache_dir();
+    let cache_dir = tauri::api::path::cache_dir().unwrap_or({
+        tracing::error!("Failed to get cache dir");
+        temp_dir.clone()
+    });
 
     // app.app_handle()
     window
