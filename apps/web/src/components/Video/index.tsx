@@ -1,4 +1,4 @@
-import { useVideoPlayer } from '@/hooks/useVideoPlayer'
+import { useVideoPlayer } from './useVideoPlayer'
 import { memo, useRef } from 'react'
 import 'video.js/dist/video-js.css'
 

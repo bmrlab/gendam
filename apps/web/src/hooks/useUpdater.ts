@@ -1,7 +1,6 @@
 import { type UpdateManifest, type UpdateStatus } from '@tauri-apps/api/updater'
 import { useCallback, useEffect, useState } from 'react'
 import { create } from 'zustand'
-import { useCurrentLibrary } from '@/lib/library'
 
 const isTauri = typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined'
 
