@@ -4,6 +4,7 @@ mod file_handler;
 mod ai;
 mod download;
 mod library;
+mod cron_jobs;
 
 mod routes;
 pub use routes::p2p::ShareInfo;

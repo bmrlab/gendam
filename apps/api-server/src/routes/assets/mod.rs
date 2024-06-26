@@ -10,7 +10,7 @@ use crate::routes::assets::utils::get_file_type;
 use crate::validators;
 use crate::CtxWithLibrary;
 use create::{create_asset_object, create_dir};
-pub use delete::{delete_file_path, delete_unlinked_assets};
+pub use delete::delete_file_path;
 use process::{export_video_segment, process_video_asset, process_video_metadata};
 use read::{get_file_path, list_file_path};
 use rspc::{Router, RouterBuilder};
