@@ -1,6 +1,6 @@
 // Ctx 和 Store 的默认实现，主要给 api_server/main 用，不过目前 CtxWithLibrary 的实现也是可以给 tauri 用的，就先用着
 use super::traits::{CtxStore, CtxWithAI, CtxWithDownload, CtxWithLibrary, CtxWithP2P, StoreError};
-use crate::routes::delete_unlinked_assets;
+use crate::cron_jobs::delete_unlinked_assets;
 use crate::{
     ai::{models::get_model_info_by_id, AIHandler},
     download::{DownloadHub, DownloadReporter, DownloadStatus},
@@ -20,7 +20,6 @@ use std::{
     path::PathBuf,
     sync::{atomic::AtomicBool, mpsc::Sender, Arc, Mutex},
 };
-use uuid::Uuid;
 use vector_db::{get_language_collection_name, get_vision_collection_name, kill_qdrant_server};
 
 /**
@@ -546,9 +545,10 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 title: Some("Delete unreferenced assetobject tasks periodically".to_string()),
                 description: Some("Delete unreferenced assetobject tasks periodically".to_string()),
                 enabled: true,
-                id: Uuid::new_v4(),
+                id: uuid::Uuid::new_v4(),
                 job_id: None,
-                cron: "0 0 */1 * * ?".to_string(), // 每小时 测试： "0/10 * * * * *" 每10秒
+                // cron: "0 0 */1 * * ?".to_string(), // 每小时
+                cron: "0/10 * * * * ?".to_string(), // 测试 每10秒
                 // job_fn: None
                 job_fn: cron::create_job_fn(move || {
                     let library_arc = Arc::new(library_clone.clone());

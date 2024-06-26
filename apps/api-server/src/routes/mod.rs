@@ -9,7 +9,6 @@ mod video;
 
 use crate::CtxWithLibrary;
 use rspc::Router;
-pub use assets::delete_unlinked_assets;
 
 pub fn get_routes<TCtx>() -> Router<TCtx>
 where
