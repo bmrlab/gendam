@@ -4,7 +4,8 @@ use std::path::Path;
 
 const TARGET_IMAGE_SIZE: u32 = 224;
 
-pub fn read_image(image_path: impl AsRef<Path>) -> anyhow::Result<RgbImage> {
+// 这个方法没用了，现在都通过 opendal 先读取到内存里再继续用
+pub fn _read_image(image_path: impl AsRef<Path>) -> anyhow::Result<RgbImage> {
     let image = image::open(image_path)?;
     Ok(image.to_rgb8())
 }
