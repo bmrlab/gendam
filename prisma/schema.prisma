@@ -43,9 +43,9 @@ model AssetObject {
 
   mediaData MediaData?
 
-  filePaths    FilePath[]
-  tasks        FileHandlerTask[]
-  DataLocation DataLocation[]
+  filePaths     FilePath[]
+  tasks         FileHandlerTask[]
+  dataLocations DataLocation[]
 }
 
 model MediaData {
