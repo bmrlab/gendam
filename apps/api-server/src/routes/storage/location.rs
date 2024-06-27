@@ -46,13 +46,13 @@ pub async fn get_asset_object_location(
         .prisma_client()
         .asset_object()
         .find_unique(asset_object::hash::equals(hash))
-        .with(asset_object::data_location::fetch(vec![]))
+        .with(asset_object::data_locations::fetch(vec![]))
         .exec()
         .await?;
 
     if let Some(asset_object) = asset_object {
-        if let Some(data_location) = asset_object.data_location {
-            let res = data_location
+        if let Some(data_locations) = asset_object.data_locations {
+            let res = data_locations
                 .iter()
                 .find(|d| DataLocationType::from(d.medium.clone()) == DataLocationType::S3);
 
@@ -78,6 +78,7 @@ pub fn get_hash_from_url(path: &str) -> Option<String> {
     }
 }
 
+#[allow(dead_code)]
 pub async fn get_storage_by_location(
     library: &Library,
     relative_path: String,
