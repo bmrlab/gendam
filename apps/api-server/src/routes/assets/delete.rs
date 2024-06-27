@@ -12,6 +12,58 @@ pub async fn delete_file_path(
 ) -> Result<(), rspc::Error> {
     let library = ctx.library()?;
 
+    library
+        .prisma_client()
+        ._transaction()
+        .run(|client| async move {
+
+            client
+                .file_path()
+                .delete(file_path::materialized_path_name(
+                    materialized_path.to_string(),
+                    name.to_string(),
+                ))
+                .exec()
+                .await
+                .map_err(|e| {
+                    tracing::error!("failed to delete file_path item: {}", e);
+                    e
+                })?;
+
+            let materialized_path_startswith = format!("{}{}/", &materialized_path, &name);
+            client
+                .file_path()
+                .delete_many(vec![
+                    file_path::materialized_path::starts_with(materialized_path_startswith)
+                ])
+                .exec()
+                .await
+                .map_err(|e| {
+                    tracing::error!("failed to delete file_path for children: {}", e);
+                    e
+                })?;
+
+            Ok(())
+        })
+        .await
+        .map_err(|e: QueryError| {
+            rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                format!("failed to delete file_path: {}", e),
+            )
+        })?;
+
+    Ok(())
+}
+
+#[allow(dead_code)]
+pub async fn delete_file_path_and_unlinked_asset_objects(
+    ctx: &dyn CtxWithLibrary,
+    materialized_path: &str,
+    name: &str,
+) -> Result<(), rspc::Error> {
+    let library = ctx.library()?;
+
     let deleted_asset_objects = Arc::new(Mutex::new(vec![]));
     let deleted_asset_objects_clone = deleted_asset_objects.clone();
 
