@@ -16,10 +16,7 @@ fn sql_error(e: QueryError) -> rspc::Error {
 
 fn error_404(msg: &str) -> rspc::Error {
     error!("{}", msg);
-    rspc::Error::new(
-        rspc::ErrorCode::NotFound,
-        String::from(msg),
-    )
+    rspc::Error::new(rspc::ErrorCode::NotFound, String::from(msg))
 }
 
 pub async fn process_video_asset(
@@ -105,7 +102,17 @@ pub async fn process_video_metadata(
             ));
         }
     };
-    let video_handler = VideoHandler::new(&asset_object_data.hash, &library).map_err(|e| {
+    // TODO: 暂时先使用绝对路径给 ffmpeg 使用，后续需要将文件加载到内存中传递给 ffmpeg
+    let video_path = library.file_path(&asset_object_data.hash);
+    let artifacts_dir = library.relative_artifacts_path(&asset_object_data.hash);
+    let qdrant_client = library.qdrant_client();
+    let video_handler = VideoHandler::new(
+        &video_path,
+        &asset_object_data.hash,
+        &artifacts_dir,
+        Some(qdrant_client),
+    )
+    .map_err(|e| {
         error!("Failed to create video handler: {e}");
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
@@ -167,27 +174,38 @@ pub async fn export_video_segment(
         .map_err(sql_error)?
     {
         Some(asset_object_data) => asset_object_data,
-        None => return Err(error_404("failed to find asset_object"))
+        None => return Err(error_404("failed to find asset_object")),
     };
-    let video_handler = VideoHandler::new(&asset_object_data.hash, &library).map_err(|e| {
+    let video_path = library.file_path(&asset_object_data.hash);
+    let artifacts_dir = library.relative_artifacts_path(&asset_object_data.hash);
+    let qdrant_client = library.qdrant_client();
+    let video_handler = VideoHandler::new(
+        &video_path,
+        &asset_object_data.hash,
+        &artifacts_dir,
+        Some(qdrant_client),
+    )
+    .map_err(|e| {
         error!("Failed to create video handler: {e}");
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
             format!("failed to get video metadata: {}", e),
         )
     })?;
-    video_handler.save_video_segment(
-        verbose_file_name.as_ref(),
-        output_dir,
-        milliseconds_from,
-        milliseconds_to,
-    ).map_err(|e| {
-        error!("failed to save video segment: {e}");
-        rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("failed to save video segment: {}", e),
+    video_handler
+        .save_video_segment(
+            verbose_file_name.as_ref(),
+            output_dir,
+            milliseconds_from,
+            milliseconds_to,
         )
-    })?;
+        .map_err(|e| {
+            error!("failed to save video segment: {e}");
+            rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                format!("failed to save video segment: {}", e),
+            )
+        })?;
 
     Ok(())
 }

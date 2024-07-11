@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use strum_macros::AsRefStr;
 
 #[derive(AsRefStr, Clone, Copy, strum_macros::Display, Debug)]
@@ -11,7 +10,6 @@ pub enum TaskPriority {
     #[strum(serialize = "10")]
     High,
 }
-pub trait FileMetadata: Clone + Serialize + for<'a> Deserialize<'a> {}
 
 #[async_trait]
 pub trait FileHandler: Send + Sync {

@@ -1,8 +1,5 @@
-use serde::{Deserialize, Serialize};
-
-use crate::traits::FileMetadata;
-
 use super::audio::AudioMetadata;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VideoAvgFrameRate {
@@ -39,5 +36,3 @@ impl VideoMetadata {
         self.audio = Some(metadata);
     }
 }
-
-impl FileMetadata for VideoMetadata {}

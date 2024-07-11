@@ -107,7 +107,7 @@ impl VideoHandler {
         &self,
         timestamp: i64,
     ) -> anyhow::Result<()> {
-        let qdrant = self.library.qdrant_client();
+        let qdrant = self.qdrant_client()?;
         let collection_name = self.vision_collection_name()?;
 
         let embedding = self.get_frame_embedding(timestamp)?;

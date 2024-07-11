@@ -55,7 +55,16 @@ where
 
                     let asset_object_data = asset_object_data.unwrap();
 
-                    let video_handler = VideoHandler::new(&input.hash, &library).map_err(|e| {
+                    let video_path = library.file_path(&asset_object_data.hash);
+                    let artifacts_dir = library.relative_artifacts_path(&asset_object_data.hash);
+                    let qdrant_client = library.qdrant_client();
+                    let video_handler = VideoHandler::new(
+                        &video_path,
+                        &asset_object_data.hash,
+                        &artifacts_dir,
+                        Some(qdrant_client),
+                    )
+                    .map_err(|e| {
                         rspc::Error::new(
                             rspc::ErrorCode::InternalServerError,
                             format!("failed to get video metadata: {}", e),
@@ -105,13 +114,21 @@ where
                 let cache_dir = ctx.get_cache_dir();
                 let ts_dir = cache_dir;
 
-                let video_handler =
-                    VideoHandler::new(&input.hash.clone(), &library).map_err(|e| {
-                        rspc::Error::new(
-                            rspc::ErrorCode::InternalServerError,
-                            format!("failed to get video metadata: {}", e),
-                        )
-                    })?;
+                let video_path = library.file_path(&input.hash);
+                let artifacts_dir = library.relative_artifacts_path(&input.hash);
+                let qdrant_client = library.qdrant_client();
+                let video_handler = VideoHandler::new(
+                    &video_path,
+                    &input.hash,
+                    &artifacts_dir,
+                    Some(qdrant_client),
+                )
+                .map_err(|e| {
+                    rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("failed to get video metadata: {}", e),
+                    )
+                })?;
 
                 let file = video_handler
                     .generate_ts(input.index, ts_dir)

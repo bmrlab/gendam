@@ -33,9 +33,14 @@ where
         .query("find_by_hash", |t| {
             t(|ctx, hash: String| async move {
                 let library = ctx.library()?;
-                let video_handler = VideoHandler::new(&hash, &library).map_err(|e| {
-                    rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string())
-                })?;
+                let video_path = library.file_path(&hash);
+                let artifacts_dir = library.relative_artifacts_path(&hash);
+                let qdrant_client = library.qdrant_client();
+                let video_handler =
+                    VideoHandler::new(&video_path, &hash, &artifacts_dir, Some(qdrant_client))
+                        .map_err(|e| {
+                            rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string())
+                        })?;
                 let path = video_handler.get_transcript_path().map_err(|e| {
                     tracing::error!("{}", e.to_string());
                     rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string())
@@ -120,7 +125,15 @@ fn get_all_audio_format(path: PathBuf) -> Vec<AudioResp> {
 fn audio_export(library: &Library, input: ExportInput) -> anyhow::Result<Vec<AudioType>> {
     let save_dir = PathBuf::from(input.path);
     let types = input.type_group.clone();
-    let video_handler = VideoHandler::new(&input.hash, library)?;
+    let video_path = library.file_path(&input.hash);
+    let artifacts_dir = library.relative_artifacts_path(&input.hash);
+    let qdrant_client = library.qdrant_client();
+    let video_handler = VideoHandler::new(
+        &video_path,
+        &input.hash,
+        &artifacts_dir,
+        Some(qdrant_client),
+    )?;
     let reader = AudioReader::new(video_handler.get_transcript_path()?);
     let downloader = DownloadHelper::new(reader, save_dir.clone());
 

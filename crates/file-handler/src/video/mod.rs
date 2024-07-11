@@ -13,14 +13,14 @@ use ai::{
 use anyhow::bail;
 use async_trait::async_trait;
 pub use constants::*;
-use content_library::Library;
 pub use impls::audio;
-use qdrant_client::qdrant::{
-    points_selector::PointsSelectorOneOf, Condition, Filter, PointsSelector,
+use qdrant_client::{
+    client::QdrantClient,
+    qdrant::{points_selector::PointsSelectorOneOf, Condition, Filter, PointsSelector},
 };
 use std::{
     collections::HashSet,
-    path::PathBuf,
+    path::{Path, PathBuf},
     str::FromStr,
     sync::{Arc, Mutex},
 };
@@ -36,7 +36,7 @@ pub struct VideoHandler {
     video_path: std::path::PathBuf,
     file_identifier: String,
     artifacts_dir: std::path::PathBuf,
-    library: Library,
+    qdrant_client: Option<Arc<qdrant_client::client::QdrantClient>>,
     language_collection_name: Option<String>,
     vision_collection_name: Option<String>,
     multi_modal_embedding: Option<(
@@ -107,18 +107,22 @@ impl VideoHandler {
     ///
     /// # Arguments
     ///
+    /// * `video_path` - The path of the video file
     /// * `video_file_hash` - The hash of the video file
-    /// * `library` - Current library reference
-    pub fn new(video_file_hash: &str, library: &Library) -> anyhow::Result<Self> {
-        let artifacts_dir = library.relative_artifacts_path(video_file_hash);
-        // TODO: 暂时先使用绝对路径给 ffmpeg 使用，后续需要将文件加载到内存中传递给 ffmpeg
-        let video_path = library.file_path(video_file_hash);
-
+    /// * `artifacts_dir` - The path of the artifacts directory
+    /// * `qdrant_client` - The qdrant client
+    pub fn new(
+        video_path: impl AsRef<Path>,
+        video_file_hash: &str,
+        artifacts_dir: impl AsRef<Path>,
+        qdrant_client: Option<Arc<qdrant_client::client::QdrantClient>>,
+    ) -> anyhow::Result<Self> {
         Ok(Self {
-            video_path,
+            // TODO: 暂时先使用绝对路径给 ffmpeg 使用，后续需要将文件加载到内存中传递给 ffmpeg
+            video_path: video_path.as_ref().to_path_buf(),
             file_identifier: video_file_hash.to_string(),
-            artifacts_dir,
-            library: library.clone(),
+            artifacts_dir: artifacts_dir.as_ref().to_path_buf(),
+            qdrant_client,
             vision_collection_name: None,
             language_collection_name: None,
             multi_modal_embedding: None,
@@ -258,6 +262,15 @@ impl VideoHandler {
         }
     }
 
+    fn qdrant_client(&self) -> anyhow::Result<Arc<QdrantClient>> {
+        match self.qdrant_client.as_ref() {
+            Some(v) => Ok(v.clone()),
+            _ => {
+                bail!("qdrant_client is not enabled")
+            }
+        }
+    }
+
     pub fn get_metadata(&self) -> anyhow::Result<VideoMetadata> {
         let mut metadata = self.metadata.lock().unwrap();
 
@@ -355,7 +368,7 @@ impl FileHandler for VideoHandler {
     }
 
     async fn delete_artifacts_in_db(&self) -> anyhow::Result<()> {
-        let qdrant = self.library.qdrant_client();
+        let qdrant = self.qdrant_client()?;
         match qdrant.list_collections().await {
             std::result::Result::Ok(collections) => {
                 for collection in collections.collections.iter() {
@@ -420,7 +433,7 @@ impl FileHandler for VideoHandler {
 
         // delete result in qdrant
         if need_to_delete_in_qdrant.len() > 0 {
-            let qdrant = self.library.qdrant_client();
+            let qdrant = self.qdrant_client()?;
             match qdrant.list_collections().await {
                 std::result::Result::Ok(collections) => {
                     for collection in collections.collections.iter() {

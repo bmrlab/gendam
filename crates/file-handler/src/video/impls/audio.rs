@@ -43,10 +43,6 @@ impl VideoHandler {
             .dir;
         let parent = self.artifacts_dir.join(output_path);
 
-        if !parent.exists() {
-            std::fs::create_dir_all(&parent)?;
-        }
-
         Ok(parent.join(format!(
             "{}-{}.{}",
             start_timestamp, end_timestamp, EMBEDDING_FILE_EXTENSION
@@ -150,7 +146,7 @@ impl VideoHandler {
         start_timestamp: i64,
         end_timestamp: i64,
     ) -> anyhow::Result<()> {
-        let qdrant = self.library.qdrant_client();
+        let qdrant = self.qdrant_client()?;
         let collection_name = self.language_collection_name()?;
 
         let embedding = self.get_transcript_embedding(start_timestamp, end_timestamp)?;

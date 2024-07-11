@@ -65,6 +65,8 @@ export type Auth = { id: string; name: string }
 
 export type SharePayload = { fileIdList: number[]; peerId: string }
 
+export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
+
 export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum; models: LibraryModels; alwaysDeleteLocalFileAfterUpload: boolean; s3Config: S3Config | null }
 
 export type LibrarySettingsThemeEnum = "light" | "dark"
@@ -89,6 +91,8 @@ export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean |
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
 
+export type AudioResp = { type: AudioType; content: string }
+
 export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
@@ -102,6 +106,8 @@ export type AssetObjectReceivePayload = { hash: string; materializedPath: string
 export type Pagination = { pageSize: number; pageIndex: number }
 
 export type TaskListRequestFilter = { assetObjectId?: number | null; assetObjectIds?: number[] | null }
+
+export type VideoPlayerTsResponse = { data: number[] }
 
 export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
 
@@ -119,19 +125,11 @@ export type VideoWithTasksResult = { name: string; materializedPath: string; ass
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
-export type VideoPlayerTsRequestPayload = { hash: string; index: number }
-
-export type VideoPlayerTsResponse = { data: number[] }
-
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
 export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
-export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
-
 export type VideoPlayerInfoResponse = { hash: string; duration: number; mimeType: string | null; hasVideo: boolean; hasAudio: boolean }
-
-export type AudioResp = { type: AudioType; content: string }
 
 export type Result = { category: AIModelCategory; models: AIModelResult[] }
 
@@ -156,6 +154,8 @@ export type FilePathGetPayload = { materializedPath: string; name: string }
 export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
 
 export type TaskListRequestPayload = { filter: TaskListRequestFilter }
+
+export type VideoPlayerTsRequestPayload = { hash: string; index: number }
 
 export type SearchResultMetadata = { startTime: number; endTime: number; score: number }
 
