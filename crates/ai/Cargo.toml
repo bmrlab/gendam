@@ -14,7 +14,7 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tracing = { workspace = true }
 test-log = { workspace = true }
 ndarray = { version = "0.15.6", features = ["serde"] }
-tokenizers = "0.15.1"
+tokenizers = "0.19.1"
 image = { workspace = true }
 candle-core = { git = "https://github.com/huggingface/candle.git", features = [
   "accelerate",
@@ -39,3 +39,4 @@ async-trait = { workspace = true }
 derivative = "2.2.0"
 strum = { workspace = true }
 strum_macros = { workspace = true }
+rand = "0.8.5"

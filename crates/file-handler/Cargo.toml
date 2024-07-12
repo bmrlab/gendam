@@ -7,7 +7,6 @@ edition = { workspace = true }
 ai = { path = "../ai" }
 file-downloader = { path = "../file-downloader" }
 content-library = { path = "../content-library" }
-llm = { path = "../llm", features = ["local"] }
 vector-db = { path = "../vector-db", features = ["qdrant"] }
 storage = { path = "../storage" }
 storage-macro = { path = "../storage-macro" }

@@ -1,5 +1,6 @@
 pub mod blip;
 pub mod clip;
+pub mod llm;
 mod loader;
 pub mod moondream;
 pub(crate) mod ort;
