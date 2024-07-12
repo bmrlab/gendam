@@ -31,6 +31,7 @@ pub struct LibraryModels {
     pub text_embedding: String,
     pub image_caption: String,
     pub audio_transcript: String,
+    pub llm: String
 }
 
 impl Default for LibraryModels {
@@ -40,6 +41,7 @@ impl Default for LibraryModels {
             text_embedding: "stella-base-zh-v3-1792d".to_string(),
             image_caption: "blip-base".to_string(),
             audio_transcript: "whisper-small".to_string(),
+            llm: "qwen2-7b-instruct".to_string()
         }
     }
 }

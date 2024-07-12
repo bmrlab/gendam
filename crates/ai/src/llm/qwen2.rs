@@ -77,8 +77,19 @@ impl Qwen2 {
     pub fn load(
         model_path: impl AsRef<Path>,
         tokenizer_path: impl AsRef<Path>,
-        device: Device,
+        device: &str,
     ) -> anyhow::Result<Self> {
+        let device = match device {
+            "metal" => match Device::new_metal(0) {
+                Ok(v) => v,
+                _ => Device::Cpu,
+            },
+            "cuda" => {
+                bail!("cuda device is not supported for now");
+            }
+            _ => Device::Cpu,
+        };
+
         let tokenizer = Tokenizer::from_file(tokenizer_path).map_err(|e| anyhow::anyhow!(e))?;
         let mut file = std::fs::File::open(&model_path)?;
         let model = gguf_file::Content::read(&mut file).map_err(|e| e.with_path(model_path))?;

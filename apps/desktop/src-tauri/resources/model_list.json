@@ -124,5 +124,26 @@
       "tokenizer_config_path": "./stella-base-zh-v3-1792d/tokenizer.json"
     },
     "dim": 1792
+  },
+  {
+    "id": "qwen2-7b-instruct",
+    "description": "",
+    "artifacts_dir": "./qwen2",
+    "artifacts": [
+      {
+        "url": "qwen2-7b-instruct-q4_0.gguf",
+        "checksum": ""
+      },
+      {
+        "url": "tokenizer.json",
+        "checksum": ""
+      }
+    ],
+    "model_type": "Qwen2",
+    "params": {
+      "model_path": "./qwen2-7b-instruct-q4_0.gguf",
+      "tokenizer_path": "./tokenizer.json",
+      "device": "metal"
+    }
   }
 ]

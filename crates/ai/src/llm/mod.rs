@@ -1,15 +1,18 @@
+use crate::Model;
+
 pub mod candle;
 pub mod native;
 pub mod openai;
 pub mod qwen2;
 
+#[derive(Debug, Clone)]
 pub enum LLMMessage {
     System(String),
     User(String),
     Assistant(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LLMInferenceParams {
     temperature: f64,
     seed: Option<u64>,
@@ -49,12 +52,44 @@ pub trait LLMModel {
     ) -> impl std::future::Future<Output = anyhow::Result<String>> + Send;
 }
 
+pub enum LLM {
+    OpenAI(openai::OpenAI),
+    Qwen2(qwen2::Qwen2),
+}
+
+#[async_trait::async_trait]
+impl Model for LLM {
+    type Item = (Vec<LLMMessage>, LLMInferenceParams);
+    type Output = String;
+
+    fn batch_size_limit(&self) -> usize {
+        1
+    }
+
+    async fn process(
+        &mut self,
+        items: Vec<Self::Item>,
+    ) -> anyhow::Result<Vec<anyhow::Result<Self::Output>>> {
+        let mut results = vec![];
+
+        for item in items {
+            let res = match self {
+                LLM::OpenAI(model) => model.get_completion(&item.0, item.1).await,
+                LLM::Qwen2(model) => model.get_completion(&item.0, item.1).await,
+            };
+            results.push(res);
+        }
+
+        Ok(results)
+    }
+}
+
 #[tokio::test]
 async fn test_qwen2() {
     let mut model = qwen2::Qwen2::load(
         "/Users/zhuo/Downloads/qwen2-7b-instruct-q4_0.gguf",
         "/Users/zhuo/Downloads/tokenizer-qwen2-7b.json",
-        candle_core::Device::new_metal(0).expect("failed to init metal device"),
+        "metal",
     )
     .expect("failed to load model");
 

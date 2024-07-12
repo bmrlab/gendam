@@ -3,6 +3,7 @@ mod image_caption;
 mod image_embedding;
 mod multi_modal_embedding;
 mod text_embedding;
+mod llm;
 
 use crate::{loader, HandlerPayload};
 use anyhow::bail;
@@ -12,6 +13,7 @@ use futures::Future;
 pub use image_caption::*;
 pub use image_embedding::*;
 pub use multi_modal_embedding::*;
+pub use llm::*;
 use std::{sync::Arc, time::Duration};
 pub use text_embedding::*;
 use tokio::sync::{mpsc, oneshot, Mutex};

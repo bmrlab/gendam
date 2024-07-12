@@ -1,7 +1,7 @@
 use super::LLMModel;
 
 #[allow(dead_code)]
-struct OpenAI {
+pub struct OpenAI {
     base_url: String,
     api_key: String,
 }

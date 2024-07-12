@@ -5,9 +5,10 @@ use crate::{library::get_library_settings, CtxWithLibrary};
 use ai::{
     blip::BLIP,
     clip::{CLIPModel, CLIP},
+    llm::{qwen2::Qwen2, LLM},
     text_embedding::OrtTextEmbedding,
     whisper::Whisper,
-    AIModelLoader, AsAudioTranscriptModel, AsImageCaptionModel, AsMultiModalEmbeddingModel,
+    AIModelLoader, AsAudioTranscriptModel, AsImageCaptionModel, AsLLM, AsMultiModalEmbeddingModel,
     AsTextEmbeddingModel,
 };
 use anyhow::bail;
@@ -19,6 +20,7 @@ pub struct AIHandler {
     pub image_caption: Box<dyn AsImageCaptionModel + Send + Sync>,
     pub audio_transcript: Box<dyn AsAudioTranscriptModel + Send + Sync>,
     pub text_embedding: Box<dyn AsTextEmbeddingModel + Send + Sync>,
+    pub llm: Box<dyn AsLLM + Send + Sync>,
 }
 
 impl Clone for AIHandler {
@@ -35,6 +37,9 @@ impl Clone for AIHandler {
             }),
             text_embedding: Box::new(AIModelLoader {
                 tx: self.text_embedding.get_texts_embedding_tx(),
+            }),
+            llm: Box::new(AIModelLoader {
+                tx: self.llm.get_llm_tx(),
             }),
         }
     }
@@ -66,6 +71,7 @@ impl AIHandler {
             image_caption: Self::get_image_caption(ctx)?,
             audio_transcript: Self::get_audio_transcript(ctx)?,
             text_embedding,
+            llm: Self::get_llm(ctx)?,
         })
     }
 
@@ -239,6 +245,46 @@ impl AIHandler {
                         _ => {
                             bail!(
                                 "unsupported model {} for multi modal embedding",
+                                model_clone.model_type.as_ref()
+                            )
+                        }
+                    }
+                }
+            },
+            Some(Duration::from_secs(30)),
+        )
+        .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
+
+        Ok(Box::new(handler))
+    }
+
+    fn get_llm(ctx: &dyn CtxWithLibrary) -> Result<Box<dyn AsLLM + Send + Sync>, rspc::Error> {
+        let resources_dir = ctx.get_resources_dir().to_path_buf();
+        let library = ctx.library()?;
+        let settings = get_library_settings(&library.dir);
+
+        let model = get_model_info_by_id(ctx, &settings.models.llm)?;
+        let handler = AIModelLoader::new(
+            move || {
+                let resources_dir_clone = resources_dir.clone();
+                let model_clone = model.clone();
+
+                async move {
+                    let params = model_clone.params;
+                    match model_clone.model_type {
+                        ConcreteModelType::Qwen2 => {
+                            let model_path = resources_dir_clone
+                                .join(get_str_from_params(&params, "model_path")?);
+                            let tokenizer_path = resources_dir_clone
+                                .join(get_str_from_params(&params, "tokenizer_path")?);
+                            let device = get_str_from_params(&params, "device")?;
+
+                            Qwen2::load(&model_path, &tokenizer_path, &device)
+                                .map(|v| LLM::Qwen2(v))
+                        }
+                        _ => {
+                            bail!(
+                                "unsupported model {} for LLM",
                                 model_clone.model_type.as_ref()
                             )
                         }
