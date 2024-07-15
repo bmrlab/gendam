@@ -127,6 +127,8 @@
   },
   {
     "id": "qwen2-7b-instruct",
+    "categories": ["LLM"],
+    "title": "Qwen2 7B Instruct",
     "description": "",
     "artifacts_dir": "./qwen2",
     "artifacts": [

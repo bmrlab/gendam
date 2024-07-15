@@ -94,7 +94,6 @@ impl VideoHandler {
 
         let audio_transcript = self.audio_transcript()?.0;
         let result = audio_transcript
-            .get_audio_transcript_tx()
             .process_single(self.get_audio_path()?)
             .await?;
 

@@ -1,5 +1,7 @@
-use super::{AIModelLoader, AIModelTx, AsImageEmbeddingModel, AsTextEmbeddingModel};
+use super::AIModel;
 use crate::HandlerPayload;
+use crate::ImageEmbeddingModel;
+use crate::TextEmbeddingModel;
 use std::path::PathBuf;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
@@ -12,15 +14,10 @@ pub enum MultiModalEmbeddingInput {
 }
 
 pub type MultiModalEmbeddingOutput = Vec<f32>;
+pub type MultiModalEmbeddingModel = AIModel<MultiModalEmbeddingInput, MultiModalEmbeddingOutput>;
 
-pub trait AsMultiModalEmbeddingModel: AsImageEmbeddingModel + AsTextEmbeddingModel {
-    fn get_inputs_embedding_tx(
-        &self,
-    ) -> AIModelTx<MultiModalEmbeddingInput, MultiModalEmbeddingOutput>;
-}
-
-impl AsTextEmbeddingModel for AIModelLoader<MultiModalEmbeddingInput, MultiModalEmbeddingOutput> {
-    fn get_texts_embedding_tx(&self) -> AIModelTx<String, MultiModalEmbeddingOutput> {
+impl Into<TextEmbeddingModel> for &MultiModalEmbeddingModel {
+    fn into(self) -> TextEmbeddingModel {
         let (tx, mut rx) = mpsc::channel::<
             HandlerPayload<(
                 Vec<String>,
@@ -28,13 +25,13 @@ impl AsTextEmbeddingModel for AIModelLoader<MultiModalEmbeddingInput, MultiModal
             )>,
         >(512);
 
-        let self_tx = self.tx.clone();
+        let self_clone = self.clone();
 
         tokio::spawn(async move {
             loop {
                 match rx.recv().await {
                     Some(HandlerPayload::BatchData(data)) => {
-                        let results = self_tx
+                        let results = self_clone
                             .process(
                                 data.0
                                     .into_iter()
@@ -46,7 +43,7 @@ impl AsTextEmbeddingModel for AIModelLoader<MultiModalEmbeddingInput, MultiModal
                         let _ = data.1.send(results);
                     }
                     Some(HandlerPayload::Shutdown) => {
-                        info!("Shutdown texts_embedding_tx");
+                        info!("Shutdown Into<TextEmbeddingModel> for MultiModalEmbeddingModel");
                         break;
                     }
                     _ => {
@@ -56,12 +53,12 @@ impl AsTextEmbeddingModel for AIModelLoader<MultiModalEmbeddingInput, MultiModal
             }
         });
 
-        AIModelTx { tx }
+        AIModel { tx }
     }
 }
 
-impl AsImageEmbeddingModel for AIModelLoader<MultiModalEmbeddingInput, MultiModalEmbeddingOutput> {
-    fn get_images_embedding_tx(&self) -> AIModelTx<PathBuf, MultiModalEmbeddingOutput> {
+impl Into<ImageEmbeddingModel> for &MultiModalEmbeddingModel {
+    fn into(self) -> ImageEmbeddingModel {
         let (tx, mut rx) = mpsc::channel::<
             HandlerPayload<(
                 Vec<PathBuf>,
@@ -69,13 +66,13 @@ impl AsImageEmbeddingModel for AIModelLoader<MultiModalEmbeddingInput, MultiModa
             )>,
         >(512);
 
-        let self_tx = self.tx.clone();
+        let self_clone = self.clone();
 
         tokio::spawn(async move {
             loop {
                 match rx.recv().await {
                     Some(HandlerPayload::BatchData(data)) => {
-                        let results = self_tx
+                        let results = self_clone
                             .process(
                                 data.0
                                     .into_iter()
@@ -87,7 +84,7 @@ impl AsImageEmbeddingModel for AIModelLoader<MultiModalEmbeddingInput, MultiModa
                         let _ = data.1.send(results);
                     }
                     Some(HandlerPayload::Shutdown) => {
-                        info!("Shutdown images_embedding_tx");
+                        info!("Shutdown Into<ImageEmbeddingModel> for MultiModalEmbeddingModel");
                         break;
                     }
                     _ => break,
@@ -95,16 +92,6 @@ impl AsImageEmbeddingModel for AIModelLoader<MultiModalEmbeddingInput, MultiModa
             }
         });
 
-        AIModelTx { tx }
-    }
-}
-
-impl AsMultiModalEmbeddingModel
-    for AIModelLoader<MultiModalEmbeddingInput, MultiModalEmbeddingOutput>
-{
-    fn get_inputs_embedding_tx(
-        &self,
-    ) -> AIModelTx<MultiModalEmbeddingInput, MultiModalEmbeddingOutput> {
-        self.tx.clone()
+        AIModel { tx }
     }
 }

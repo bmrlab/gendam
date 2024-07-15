@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::debug;
 
-pub(crate) struct ModelLoaderV2<T, TFn, TFut>
+pub(crate) struct ModelLoader<T, TFn, TFut>
 where
     T: Send,
     TFut: Future<Output = anyhow::Result<T>>,
@@ -13,7 +13,7 @@ where
     create_model_fn: TFn,
 }
 
-impl<T, TFn, TFut> ModelLoaderV2<T, TFn, TFut>
+impl<T, TFn, TFut> ModelLoader<T, TFn, TFut>
 where
     T: Send,
     TFut: Future<Output = anyhow::Result<T>>,

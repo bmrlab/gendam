@@ -59,8 +59,8 @@ pub async fn search_all(
         library.qdrant_client(),
         qdrant_info.vision_collection.name.as_ref(),
         qdrant_info.language_collection.name.as_ref(),
-        ai_handler.multi_modal_embedding.as_ref(),
-        ai_handler.text_embedding.as_ref(),
+        &ai_handler.multi_modal_embedding,
+        &ai_handler.text_embedding,
     )
     .await;
 

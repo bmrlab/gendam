@@ -3,6 +3,7 @@ use crate::{
     search::payload::SearchPayload,
     video::{decoder, VideoHandler, VideoTaskType, EMBEDDING_FILE_EXTENSION, FRAME_FILE_EXTENSION},
 };
+use ai::ImageEmbeddingModel;
 use qdrant_client::qdrant::PointStruct;
 use serde_json::json;
 use std::path::PathBuf;
@@ -82,15 +83,13 @@ impl VideoHandler {
         // 因为一个视频包含的帧数可能非常多，从 sqlite 读取反而麻烦了
         let frame_paths = self.list_frame_paths().await?;
         let (multi_modal_embedding, _) = self.multi_modal_embedding()?;
+        let image_embedding: ImageEmbeddingModel = multi_modal_embedding.into();
 
         for path in frame_paths {
             let timestamp = get_frame_timestamp_from_path(&path)?;
             if self.get_frame_embedding(timestamp).is_err() {
                 let embedding_path = self.get_frame_embedding_path(timestamp)?;
-                let embedding = multi_modal_embedding
-                    .get_images_embedding_tx()
-                    .process_single(path)
-                    .await?;
+                let embedding = image_embedding.process_single(path).await?;
 
                 self.write(embedding_path, serde_json::to_string(&embedding)?.into())
                     .await?;

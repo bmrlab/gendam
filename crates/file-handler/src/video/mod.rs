@@ -5,10 +5,9 @@ mod split;
 
 use crate::{metadata::video::VideoMetadata, traits::FileHandler, SearchRecordType, TaskPriority};
 use ai::{
-    AIModelLoader, AsAudioTranscriptModel, AsImageCaptionModel, AsMultiModalEmbeddingModel,
-    AsTextEmbeddingModel, AudioTranscriptInput, AudioTranscriptOutput, ImageCaptionInput,
-    ImageCaptionOutput, MultiModalEmbeddingInput, MultiModalEmbeddingOutput, TextEmbeddingInput,
-    TextEmbeddingOutput,
+    AIModel, AudioTranscriptInput, AudioTranscriptModel, AudioTranscriptOutput, ImageCaptionModel,
+    MultiModalEmbeddingInput, MultiModalEmbeddingModel, MultiModalEmbeddingOutput,
+    TextEmbeddingInput, TextEmbeddingModel, TextEmbeddingOutput,
 };
 use anyhow::bail;
 use async_trait::async_trait;
@@ -40,18 +39,12 @@ pub struct VideoHandler {
     language_collection_name: Option<String>,
     vision_collection_name: Option<String>,
     multi_modal_embedding: Option<(
-        AIModelLoader<MultiModalEmbeddingInput, MultiModalEmbeddingOutput>,
+        AIModel<MultiModalEmbeddingInput, MultiModalEmbeddingOutput>,
         String,
     )>,
-    image_caption: Option<(AIModelLoader<ImageCaptionInput, ImageCaptionOutput>, String)>,
-    audio_transcript: Option<(
-        AIModelLoader<AudioTranscriptInput, AudioTranscriptOutput>,
-        String,
-    )>,
-    text_embedding: Option<(
-        AIModelLoader<TextEmbeddingInput, TextEmbeddingOutput>,
-        String,
-    )>,
+    image_caption: Option<(ImageCaptionModel, String)>,
+    audio_transcript: Option<(AIModel<AudioTranscriptInput, AudioTranscriptOutput>, String)>,
+    text_embedding: Option<(AIModel<TextEmbeddingInput, TextEmbeddingOutput>, String)>,
     metadata: Arc<Mutex<Option<VideoMetadata>>>,
 }
 
@@ -143,13 +136,13 @@ impl VideoHandler {
 
     pub fn with_multi_modal_embedding(
         self,
-        multi_modal_embedding: &dyn AsMultiModalEmbeddingModel,
+        multi_modal_embedding: &MultiModalEmbeddingModel,
         multi_modal_model_name: &str,
         collection_name: &str,
     ) -> Self {
         Self {
             multi_modal_embedding: Some((
-                multi_modal_embedding.get_inputs_embedding_tx().into(),
+                multi_modal_embedding.clone(),
                 multi_modal_model_name.into(),
             )),
             vision_collection_name: Some(collection_name.to_string()),
@@ -159,43 +152,34 @@ impl VideoHandler {
 
     pub fn with_image_caption(
         self,
-        image_caption: &dyn AsImageCaptionModel,
+        image_caption: &ImageCaptionModel,
         image_caption_model_name: &str,
     ) -> Self {
         Self {
-            image_caption: Some((
-                image_caption.get_images_caption_tx().into(),
-                image_caption_model_name.into(),
-            )),
+            image_caption: Some((image_caption.clone(), image_caption_model_name.into())),
             ..self
         }
     }
 
     pub fn with_audio_transcript(
         self,
-        audio_transcript: &dyn AsAudioTranscriptModel,
+        audio_transcript: &AudioTranscriptModel,
         audio_transcript_model_name: &str,
     ) -> Self {
         Self {
-            audio_transcript: Some((
-                audio_transcript.get_audio_transcript_tx().into(),
-                audio_transcript_model_name.into(),
-            )),
+            audio_transcript: Some((audio_transcript.clone(), audio_transcript_model_name.into())),
             ..self
         }
     }
 
     pub fn with_text_embedding(
         self,
-        text_embedding: &dyn AsTextEmbeddingModel,
+        text_embedding: &TextEmbeddingModel,
         text_embedding_model_name: &str,
         collection_name: &str,
     ) -> Self {
         Self {
-            text_embedding: Some((
-                text_embedding.get_texts_embedding_tx().into(),
-                text_embedding_model_name.into(),
-            )),
+            text_embedding: Some((text_embedding.clone(), text_embedding_model_name.into())),
             language_collection_name: Some(collection_name.to_string()),
             ..self
         }
@@ -208,7 +192,7 @@ impl VideoHandler {
             .await
     }
 
-    fn multi_modal_embedding(&self) -> anyhow::Result<(&dyn AsMultiModalEmbeddingModel, &str)> {
+    fn multi_modal_embedding(&self) -> anyhow::Result<(&MultiModalEmbeddingModel, &str)> {
         match self.multi_modal_embedding.as_ref() {
             Some(v) => Ok((&v.0, &v.1)),
             _ => {
@@ -217,7 +201,7 @@ impl VideoHandler {
         }
     }
 
-    fn image_caption(&self) -> anyhow::Result<(&dyn AsImageCaptionModel, &str)> {
+    fn image_caption(&self) -> anyhow::Result<(&ImageCaptionModel, &str)> {
         match self.image_caption.as_ref() {
             Some(v) => Ok((&v.0, &v.1)),
             _ => {
@@ -226,7 +210,7 @@ impl VideoHandler {
         }
     }
 
-    fn audio_transcript(&self) -> anyhow::Result<(&dyn AsAudioTranscriptModel, &str)> {
+    fn audio_transcript(&self) -> anyhow::Result<(&AudioTranscriptModel, &str)> {
         match self.audio_transcript.as_ref() {
             Some(v) => Ok((&v.0, &v.1)),
             _ => {
@@ -235,7 +219,7 @@ impl VideoHandler {
         }
     }
 
-    fn text_embedding(&self) -> anyhow::Result<(&dyn AsTextEmbeddingModel, &str)> {
+    fn text_embedding(&self) -> anyhow::Result<(&TextEmbeddingModel, &str)> {
         match self.text_embedding.as_ref() {
             Some(v) => Ok((&v.0, &v.1)),
             _ => {

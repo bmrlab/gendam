@@ -8,39 +8,29 @@ use ai::{
     llm::{qwen2::Qwen2, LLM},
     text_embedding::OrtTextEmbedding,
     whisper::Whisper,
-    AIModelLoader, AsAudioTranscriptModel, AsImageCaptionModel, AsLLM, AsMultiModalEmbeddingModel,
-    AsTextEmbeddingModel,
+    AIModel, AudioTranscriptModel, ImageCaptionModel, LLMModel, MultiModalEmbeddingModel,
+    TextEmbeddingModel,
 };
 use anyhow::bail;
 use serde_json::Value;
 use std::{fmt, time::Duration};
 
 pub struct AIHandler {
-    pub multi_modal_embedding: Box<dyn AsMultiModalEmbeddingModel + Send + Sync>,
-    pub image_caption: Box<dyn AsImageCaptionModel + Send + Sync>,
-    pub audio_transcript: Box<dyn AsAudioTranscriptModel + Send + Sync>,
-    pub text_embedding: Box<dyn AsTextEmbeddingModel + Send + Sync>,
-    pub llm: Box<dyn AsLLM + Send + Sync>,
+    pub multi_modal_embedding: MultiModalEmbeddingModel,
+    pub image_caption: ImageCaptionModel,
+    pub audio_transcript: AudioTranscriptModel,
+    pub text_embedding: TextEmbeddingModel,
+    pub llm: LLMModel,
 }
 
 impl Clone for AIHandler {
     fn clone(&self) -> Self {
         Self {
-            multi_modal_embedding: Box::new(AIModelLoader {
-                tx: self.multi_modal_embedding.get_inputs_embedding_tx(),
-            }),
-            image_caption: Box::new(AIModelLoader {
-                tx: self.image_caption.get_images_caption_tx(),
-            }),
-            audio_transcript: Box::new(AIModelLoader {
-                tx: self.audio_transcript.get_audio_transcript_tx(),
-            }),
-            text_embedding: Box::new(AIModelLoader {
-                tx: self.text_embedding.get_texts_embedding_tx(),
-            }),
-            llm: Box::new(AIModelLoader {
-                tx: self.llm.get_llm_tx(),
-            }),
+            multi_modal_embedding: self.multi_modal_embedding.clone(),
+            image_caption: self.image_caption.clone(),
+            audio_transcript: self.audio_transcript.clone(),
+            text_embedding: self.text_embedding.clone(),
+            llm: self.llm.clone(),
         }
     }
 }
@@ -64,7 +54,7 @@ fn get_str_from_params(params: &Value, name: &str) -> Result<String, rspc::Error
 impl AIHandler {
     pub fn new(ctx: &dyn CtxWithLibrary) -> Result<Self, rspc::Error> {
         let multi_modal_embedding = Self::get_multi_modal_embedding(ctx)?;
-        let text_embedding = Self::get_text_embedding(ctx, &*multi_modal_embedding)?;
+        let text_embedding = Self::get_text_embedding(ctx, &multi_modal_embedding)?;
 
         Ok(Self {
             multi_modal_embedding,
@@ -75,15 +65,13 @@ impl AIHandler {
         })
     }
 
-    fn get_image_caption(
-        ctx: &dyn CtxWithLibrary,
-    ) -> Result<Box<dyn AsImageCaptionModel + Send + Sync>, rspc::Error> {
+    fn get_image_caption(ctx: &dyn CtxWithLibrary) -> Result<ImageCaptionModel, rspc::Error> {
         let resources_dir = ctx.get_resources_dir().to_path_buf();
         let library = ctx.library()?;
         let settings = get_library_settings(&library.dir);
 
         let model = get_model_info_by_id(ctx, &settings.models.image_caption)?;
-        let handler = AIModelLoader::new(
+        let handler = AIModel::new(
             move || {
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
@@ -115,18 +103,18 @@ impl AIHandler {
         )
         .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
 
-        Ok(Box::new(handler))
+        Ok(handler)
     }
 
     fn get_multi_modal_embedding(
         ctx: &dyn CtxWithLibrary,
-    ) -> Result<Box<dyn AsMultiModalEmbeddingModel + Send + Sync>, rspc::Error> {
+    ) -> Result<MultiModalEmbeddingModel, rspc::Error> {
         let resources_dir = ctx.get_resources_dir().to_path_buf();
         let library = ctx.library()?;
         let settings = get_library_settings(&library.dir);
 
         let model = get_model_info_by_id(ctx, &settings.models.multi_modal_embedding)?;
-        let handler = AIModelLoader::new(
+        let handler = AIModel::new(
             move || {
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
@@ -162,18 +150,16 @@ impl AIHandler {
         )
         .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
 
-        Ok(Box::new(handler))
+        Ok(handler)
     }
 
-    fn get_audio_transcript(
-        ctx: &dyn CtxWithLibrary,
-    ) -> Result<Box<dyn AsAudioTranscriptModel + Send + Sync>, rspc::Error> {
+    fn get_audio_transcript(ctx: &dyn CtxWithLibrary) -> Result<AudioTranscriptModel, rspc::Error> {
         let resources_dir = ctx.get_resources_dir().to_path_buf();
         let library = ctx.library()?;
         let settings = get_library_settings(&library.dir);
 
         let model = get_model_info_by_id(ctx, &settings.models.audio_transcript)?;
-        let handler = AIModelLoader::new(
+        let handler = AIModel::new(
             move || {
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
@@ -198,7 +184,7 @@ impl AIHandler {
         )
         .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
 
-        Ok(Box::new(handler))
+        Ok(handler)
     }
 
     /// Get text embedding model.
@@ -206,16 +192,14 @@ impl AIHandler {
     /// ⚠️ 因为 multi_modal_embedding_model 也能完成 text_embedding，所以这里也传入他，避免重复加载同样的模型
     fn get_text_embedding(
         ctx: &dyn CtxWithLibrary,
-        multi_modal_handler: &dyn AsMultiModalEmbeddingModel,
-    ) -> Result<Box<dyn AsTextEmbeddingModel + Send + Sync>, rspc::Error> {
+        multi_modal_handler: &MultiModalEmbeddingModel,
+    ) -> Result<TextEmbeddingModel, rspc::Error> {
         let resources_dir = ctx.get_resources_dir().to_path_buf();
         let library = ctx.library()?;
         let settings = get_library_settings(&library.dir);
 
         if settings.models.text_embedding == settings.models.multi_modal_embedding {
-            return Ok(Box::new(AIModelLoader {
-                tx: multi_modal_handler.get_texts_embedding_tx(),
-            }));
+            return Ok(multi_modal_handler.into());
         }
 
         let model = get_model_info_by_id(ctx, &settings.models.text_embedding)?;
@@ -223,12 +207,10 @@ impl AIHandler {
         if model.model_type == ConcreteModelType::CLIP {
             let handler = Self::get_multi_modal_embedding(ctx)?;
 
-            return Ok(Box::new(AIModelLoader {
-                tx: handler.get_texts_embedding_tx(),
-            }));
+            return Ok((&handler).into());
         }
 
-        let handler = AIModelLoader::new(
+        let handler = AIModel::new(
             move || {
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
@@ -255,16 +237,16 @@ impl AIHandler {
         )
         .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
 
-        Ok(Box::new(handler))
+        Ok(handler)
     }
 
-    fn get_llm(ctx: &dyn CtxWithLibrary) -> Result<Box<dyn AsLLM + Send + Sync>, rspc::Error> {
+    fn get_llm(ctx: &dyn CtxWithLibrary) -> Result<LLMModel, rspc::Error> {
         let resources_dir = ctx.get_resources_dir().to_path_buf();
         let library = ctx.library()?;
         let settings = get_library_settings(&library.dir);
 
         let model = get_model_info_by_id(ctx, &settings.models.llm)?;
-        let handler = AIModelLoader::new(
+        let handler = AIModel::new(
             move || {
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
@@ -295,52 +277,38 @@ impl AIHandler {
         )
         .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
 
-        Ok(Box::new(handler))
+        Ok(handler)
     }
 
     pub fn update_multi_modal_embedding(&mut self, ctx: &dyn CtxWithLibrary) {
-        let _ = self
-            .multi_modal_embedding
-            .get_inputs_embedding_tx()
-            .shutdown();
+        let _ = self.multi_modal_embedding.shutdown();
         self.multi_modal_embedding =
             Self::get_multi_modal_embedding(ctx).expect("failed to get multi modal embedding");
     }
 
     pub fn update_text_embedding(&mut self, ctx: &dyn CtxWithLibrary) {
-        let _ = self.text_embedding.get_texts_embedding_tx().shutdown();
-        self.text_embedding = Self::get_text_embedding(ctx, self.multi_modal_embedding.as_ref())
+        let _ = self.text_embedding.shutdown();
+        self.text_embedding = Self::get_text_embedding(ctx, &self.multi_modal_embedding)
             .expect("failed to get text embedding");
     }
 
     pub fn update_image_caption(&mut self, ctx: &dyn CtxWithLibrary) {
-        let _ = self.image_caption.get_images_caption_tx().shutdown();
+        let _ = self.image_caption.shutdown();
         self.image_caption = Self::get_image_caption(ctx).expect("");
     }
 
     pub fn update_audio_transcript(&mut self, ctx: &dyn CtxWithLibrary) {
-        let _ = self.audio_transcript.get_audio_transcript_tx().shutdown();
+        let _ = self.audio_transcript.shutdown();
         self.audio_transcript =
             Self::get_audio_transcript(ctx).expect("failed to get audio transcript");
     }
 
     pub async fn shutdown(&self) -> anyhow::Result<()> {
-        self.multi_modal_embedding
-            .get_inputs_embedding_tx()
-            .shutdown()
-            .await?;
-        self.text_embedding
-            .get_texts_embedding_tx()
-            .shutdown()
-            .await?;
-        self.image_caption
-            .get_images_caption_tx()
-            .shutdown()
-            .await?;
-        self.audio_transcript
-            .get_audio_transcript_tx()
-            .shutdown()
-            .await?;
+        self.multi_modal_embedding.shutdown().await?;
+        self.text_embedding.shutdown().await?;
+        self.image_caption.shutdown().await?;
+        self.audio_transcript.shutdown().await?;
+        self.llm.shutdown().await?;
 
         Ok(())
     }

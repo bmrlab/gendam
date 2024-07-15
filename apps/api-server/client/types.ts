@@ -67,21 +67,21 @@ export type SharePayload = { fileIdList: number[]; peerId: string }
 
 export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
 
-export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum; models: LibraryModels; alwaysDeleteLocalFileAfterUpload: boolean; s3Config: S3Config | null }
-
 export type LibrarySettingsThemeEnum = "light" | "dark"
 
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
 export type VideoTaskListRequestPayload = { pagination: Pagination; filter: VideoTaskListRequestFilter }
 
-export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string }
+export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string; Llm: string }
 
 export type VideoTaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
 
 export type FilePathDeletePayload = { materializedPath: string; name: string }
 
 export type VideoWithTasksPageResult = { data: VideoWithTasksResult[]; pagination: Pagination; maxPage: number }
+
+export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
 
 export type SearchRequestPayload = { text: string; recordType: string }
 
@@ -91,13 +91,17 @@ export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean |
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
 
+export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
+
 export type AudioResp = { type: AudioType; content: string }
 
 export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
 
-export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageCaption" | "AudioTranscript" | "TextEmbedding"
+export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageCaption" | "AudioTranscript" | "TextEmbedding" | "LLM"
+
+export type AIModelResult = { info: AIModel; status: AIModelStatus }
 
 export type TaskRedoRequestPayload = { assetObjectId: number }
 
@@ -105,11 +109,11 @@ export type AssetObjectReceivePayload = { hash: string; materializedPath: string
 
 export type Pagination = { pageSize: number; pageIndex: number }
 
+export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum; models: LibraryModels; alwaysDeleteLocalFileAfterUpload: boolean; s3Config: S3Config | null }
+
 export type TaskListRequestFilter = { assetObjectId?: number | null; assetObjectIds?: number[] | null }
 
 export type VideoPlayerTsResponse = { data: number[] }
-
-export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
 
 export type LibrariesListResult = { id: string; dir: string; title: string }
 
@@ -119,7 +123,7 @@ export type LibraryLoadResult = { id: string; dir: string }
 
 export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: string[] | null }
 
-export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo"
+export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo" | "Qwen2" | "OpenAI"
 
 export type VideoWithTasksResult = { name: string; materializedPath: string; assetObject: AssetObject; tasks: FileHandlerTask[]; mediaData: MediaData | null }
 
@@ -135,8 +139,6 @@ export type Result = { category: AIModelCategory; models: AIModelResult[] }
 
 export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
 
-export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
-
 export type AcceptShareOutput = { fileList: string[] }
 
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
@@ -144,8 +146,6 @@ export type FilePathMovePayload = { active: FilePathRequestPayload; target: File
 export type UploadPayload = { materializedPaths: string[]; hashes: string[] }
 
 export type AssetObject = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string }
-
-export type AIModelResult = { info: AIModel; status: AIModelStatus }
 
 export type DownloadModelPayload = { modelId: string }
 

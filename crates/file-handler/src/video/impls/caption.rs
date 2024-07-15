@@ -72,10 +72,7 @@ impl VideoHandler {
             }
 
             let caption_path = self.get_frame_caption_path(timestamp)?;
-            let caption = image_caption
-                .get_images_caption_tx()
-                .process_single(path)
-                .await?;
+            let caption = image_caption.process_single(path).await?;
 
             // write into file
 

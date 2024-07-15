@@ -1,11 +1,6 @@
-use crate::{llm::{LLMInferenceParams, LLMMessage}, AIModelLoader, AIModelTx};
+use crate::{
+    llm::{LLMInferenceParams, LLMMessage},
+    AIModel,
+};
 
-pub trait AsLLM: Send + Sync {
-    fn get_llm_tx(&self) -> AIModelTx<(Vec<LLMMessage>, LLMInferenceParams), String>;
-}
-
-impl AsLLM for AIModelLoader<(Vec<LLMMessage>, LLMInferenceParams), String> {
-    fn get_llm_tx(&self) -> AIModelTx<(Vec<LLMMessage>, LLMInferenceParams), String> {
-        self.tx.clone()
-    }
-}
+pub type LLMModel = AIModel<(Vec<LLMMessage>, LLMInferenceParams), String>;

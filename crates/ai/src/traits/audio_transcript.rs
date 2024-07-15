@@ -1,9 +1,7 @@
+use super::AIModel;
+use crate::whisper::TranscriptionLanguage;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-
-use crate::whisper::TranscriptionLanguage;
-
-use super::{AIModelLoader, AIModelTx};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Transcription {
@@ -20,12 +18,4 @@ pub struct AudioTranscriptOutput {
     pub transcriptions: Vec<Transcription>,
 }
 
-pub trait AsAudioTranscriptModel: Send + Sync {
-    fn get_audio_transcript_tx(&self) -> AIModelTx<AudioTranscriptInput, AudioTranscriptOutput>;
-}
-
-impl AsAudioTranscriptModel for AIModelLoader<AudioTranscriptInput, AudioTranscriptOutput> {
-    fn get_audio_transcript_tx(&self) -> AIModelTx<AudioTranscriptInput, AudioTranscriptOutput> {
-        self.tx.clone()
-    }
-}
+pub type AudioTranscriptModel = AIModel<AudioTranscriptInput, AudioTranscriptOutput>;

@@ -37,7 +37,6 @@ impl VideoHandler {
         let embedding = self
             .text_embedding()?
             .0
-            .get_texts_embedding_tx()
             .process_single(text.to_string())
             .await?;
 

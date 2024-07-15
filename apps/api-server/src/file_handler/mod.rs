@@ -190,20 +190,20 @@ pub fn get_file_handler_with_library(
 
                 let handler = handler
                     .with_multi_modal_embedding(
-                        ai_handler.multi_modal_embedding.as_ref(),
+                        &ai_handler.multi_modal_embedding,
                         &library_settings.models.multi_modal_embedding,
                         &qdrant_info.vision_collection.name,
                     )
                     .with_image_caption(
-                        ai_handler.image_caption.as_ref(),
+                        &ai_handler.image_caption,
                         &library_settings.models.image_caption,
                     )
                     .with_audio_transcript(
-                        ai_handler.audio_transcript.as_ref(),
+                        &ai_handler.audio_transcript,
                         &library_settings.models.audio_transcript,
                     )
                     .with_text_embedding(
-                        ai_handler.text_embedding.as_ref(),
+                        &ai_handler.text_embedding,
                         &library_settings.models.text_embedding,
                         &qdrant_info.language_collection.name,
                     );
@@ -226,16 +226,16 @@ pub fn get_file_handler_with_library(
 
                 let handler = handler
                     .with_multi_modal_embedding(
-                        ai_handler.multi_modal_embedding.as_ref(),
+                        &ai_handler.multi_modal_embedding,
                         &library_settings.models.multi_modal_embedding,
                         &qdrant_info.vision_collection.name,
                     )
                     .with_image_caption(
-                        ai_handler.image_caption.as_ref(),
+                        &ai_handler.image_caption,
                         &library_settings.models.image_caption,
                     )
                     .with_text_embedding(
-                        ai_handler.text_embedding.as_ref(),
+                        &ai_handler.text_embedding,
                         &library_settings.models.text_embedding,
                         &qdrant_info.language_collection.name,
                     );

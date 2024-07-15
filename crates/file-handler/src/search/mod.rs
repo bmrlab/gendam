@@ -2,7 +2,7 @@ mod constants;
 pub(crate) mod payload;
 
 use self::constants::RETRIEVAL_COUNT;
-use ai::{AsMultiModalEmbeddingModel, AsTextEmbeddingModel};
+use ai::{MultiModalEmbeddingModel, TextEmbeddingModel};
 use payload::{SearchPayload, SearchRecordType};
 use qdrant_client::{
     client::QdrantClient,
@@ -186,17 +186,14 @@ pub async fn handle_search(
     qdrant: Arc<QdrantClient>,
     vision_collection_name: &str,
     language_collection_name: &str,
-    multi_modal_embedding: &dyn AsMultiModalEmbeddingModel,
-    text_embedding: &dyn AsTextEmbeddingModel,
+    multi_modal_embedding: &MultiModalEmbeddingModel,
+    text_embedding: &TextEmbeddingModel,
 ) -> anyhow::Result<Vec<SearchResult>> {
-    let clip_text_embedding = multi_modal_embedding
-        .get_texts_embedding_tx()
+    let clip_text_embedding: TextEmbeddingModel = multi_modal_embedding.into();
+    let clip_text_embedding = clip_text_embedding
         .process_single(payload.text.clone())
         .await?;
-    let text_model_embedding = text_embedding
-        .get_texts_embedding_tx()
-        .process_single(payload.text.clone())
-        .await?;
+    let text_model_embedding = text_embedding.process_single(payload.text.clone()).await?;
 
     let record_types = payload.record_type.unwrap_or(vec![
         SearchRecordType::Frame,
@@ -282,12 +279,10 @@ pub async fn handle_recommend(
         positive: vec![point_id],
         limit: RETRIEVAL_COUNT,
         with_payload: Some(true.into()),
-        filter: Some(Filter::all(vec![
-            Condition::matches(
-                "record_type", // TODO maybe this can be better
-                SearchRecordType::Frame.to_string(),
-            ),
-        ])),
+        filter: Some(Filter::all(vec![Condition::matches(
+            "record_type", // TODO maybe this can be better
+            SearchRecordType::Frame.to_string(),
+        )])),
         // it's ok to include frames of the same asset
         // filter: Some(Filter::must_not(vec![
         //     Condition::matches("file_identifier", asset_object_hash.to_string()),
