@@ -1,8 +1,8 @@
 [alias]
 prisma = "run -p prisma-cli --bin prisma --"
 
-# [env]
-# OpenMP_ROOT = "/opt/homebrew/opt/libomp"
+[target.aarch64-apple-darwin]
+rustflags = ["-Clink-arg=-fapple-link-rtlib"]
 
-# [target.aarch64-apple-darwin]
-# rustflags = "-L/opt/homebrew/opt/llvm/lib"
+[target.x86_64-apple-darwin]
+rustflags = ["-Clink-arg=-fapple-link-rtlib"]
