@@ -7,7 +7,6 @@ mod text_embedding;
 
 use crate::{loader, HandlerPayload};
 use anyhow::bail;
-use async_trait::async_trait;
 pub use audio_transcript::*;
 use futures::Future;
 pub use image_caption::*;
@@ -17,30 +16,24 @@ pub use multi_modal_embedding::*;
 use std::{sync::Arc, time::Duration};
 pub use text_embedding::*;
 use tokio::sync::{mpsc, oneshot, Mutex};
-use tracing::{debug, error, info};
+use tracing::{debug, error, warn};
 
-#[async_trait]
 pub trait Model {
     type Item;
     type Output;
 
-    async fn process(
+    fn process(
         &mut self,
         items: Vec<Self::Item>,
-    ) -> anyhow::Result<Vec<anyhow::Result<Self::Output>>>;
+    ) -> impl std::future::Future<Output = anyhow::Result<Vec<anyhow::Result<Self::Output>>>> + Send;
     fn batch_size_limit(&self) -> usize;
 }
 
-pub type BatchHandlerTx<Item, Output> = mpsc::Sender<
-    HandlerPayload<(
-        Vec<Item>,
-        oneshot::Sender<anyhow::Result<Vec<anyhow::Result<Output>>>>,
-    )>,
->;
+pub type BatchHandlerTx<Item, Output> = mpsc::Sender<HandlerPayload<Item, Output>>;
 
 #[derive(Debug, Clone)]
 pub struct AIModel<TItem, TOutput> {
-    pub tx: BatchHandlerTx<TItem, TOutput>,
+    tx: BatchHandlerTx<TItem, TOutput>,
 }
 
 impl<TItem, TOutput> AIModel<TItem, TOutput>
@@ -58,16 +51,9 @@ where
         TFn: Fn() -> TFut + Send + 'static,
     {
         let loader = loader::ModelLoader::new(create_model);
+        let (tx, mut rx) = mpsc::channel::<HandlerPayload<TItem, TOutput>>(512);
 
-        let (tx, mut rx) = mpsc::channel::<
-            HandlerPayload<(
-                Vec<TItem>,
-                oneshot::Sender<anyhow::Result<Vec<anyhow::Result<TOutput>>>>,
-            )>,
-        >(512);
-
-        let cloned_tx = tx.clone();
-
+        // TODO I think this is better: not offload model when offload_duration is None
         let offload_duration = offload_duration.unwrap_or(Duration::from_secs(5));
 
         let rt = tokio::runtime::Builder::new_multi_thread()
@@ -89,16 +75,9 @@ where
                                 }
                             }
                         }
-                        _ = cloned_tx.closed() => {
-                            info!("Channel closed, offload model");
-                            if let Err(e) = loader.offload().await {
-                                error!("failed to offload model: {}", e);
-                            }
-                            break;
-                        }
                         payload = rx.recv() => {
                             match payload {
-                                Some(HandlerPayload::BatchData((items, result_tx))) => {
+                                Some((items, result_tx)) => {
                                     if let Err(e) = loader.load().await {
                                         error!("failed to load model: {}", e);
                                         // TODO here we need to use tx
@@ -136,14 +115,15 @@ where
                                         }
                                     }
                                 }
-                                Some(HandlerPayload::Shutdown) => {
-                                    if let Err(e) = loader.offload().await {
-                                        error!("failed to offload model in shutdown: {}", e);
+                                _ => {
+                                    // this means all tx has been dropped
+                                    if loader.model.lock().await.is_some() {
+                                        warn!("all tx dropped, offload model and end loop");
+                                        if let Err(e) = loader.offload().await {
+                                            error!("failed to offload model: {}", e);
+                                        }
                                     }
                                     break;
-                                }
-                                _ => {
-                                    error!("failed to receive payload");
                                 }
                             }
                         }
@@ -154,18 +134,13 @@ where
             rt.block_on(local);
         });
 
-        Ok(Self {
-            // tx: AIModelTx { tx },
-            tx,
-        })
+        Ok(Self { tx })
     }
 
     pub async fn process(&self, items: Vec<TItem>) -> anyhow::Result<Vec<anyhow::Result<TOutput>>> {
         let (result_tx, rx) = oneshot::channel();
 
-        self.tx
-            .send(HandlerPayload::BatchData((items, result_tx)))
-            .await?;
+        self.tx.send((items, result_tx)).await?;
         match rx.await {
             Ok(result) => result,
             Err(e) => {
@@ -183,14 +158,98 @@ where
         Ok(result)
     }
 
-    pub async fn shutdown(&self) -> anyhow::Result<()> {
-        self.tx.send(HandlerPayload::Shutdown).await?;
-        Ok(())
+    pub fn create_reference<TNewItem, TNewOutput, TFnItem, TFnOutput>(
+        &self,
+        convert_item: TFnItem,
+        convert_output: TFnOutput,
+    ) -> AIModel<TNewItem, TNewOutput>
+    where
+        TNewItem: Send + Sync + Clone + 'static,
+        TNewOutput: Send + Sync + Clone + 'static,
+        TFnItem: Fn(TNewItem) -> TItem + Send + 'static,
+        TFnOutput: Fn(TOutput) -> TNewOutput + Send + 'static,
+    {
+        let (tx, mut rx) = mpsc::channel::<HandlerPayload<TNewItem, TNewOutput>>(512);
+
+        let self_clone = self.clone();
+
+        tokio::spawn(async move {
+            loop {
+                match rx.recv().await {
+                    Some(data) => {
+                        let results = self_clone
+                            .process(data.0.into_iter().map(|v| convert_item(v)).collect())
+                            .await;
+
+                        let results = results.map(|v| {
+                            v.into_iter()
+                                .map(|t| t.map(|k| convert_output(k)))
+                                .collect()
+                        });
+
+                        let _ = data.1.send(results);
+                    }
+                    _ => {
+                        break;
+                    }
+                }
+            }
+        });
+
+        AIModel { tx }
     }
 }
 
-impl<TItem, TOutput> Into<AIModel<TItem, TOutput>> for BatchHandlerTx<TItem, TOutput> {
-    fn into(self) -> AIModel<TItem, TOutput> {
-        AIModel { tx: self }
-    }
+#[test_log::test(tokio::test)]
+async fn test_create_reference() {
+    use crate::clip::{CLIPModel, CLIP};
+
+    let original_clip = AIModel::new(
+        move || async move { CLIP::new("/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/CLIP-ViT-B-32-multilingual-v1/visual_quantize.onnx", "/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/CLIP-ViT-B-32-multilingual-v1/textual_quantize.onnx", "/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/CLIP-ViT-B-32-multilingual-v1/tokenizer.json", CLIPModel::MViTB32).await },
+        Some(Duration::from_secs(120)),
+    ).expect("create CLIP model");
+
+    let text_embedding_reference: TextEmbeddingModel = (&original_clip).into();
+    let image_embedding_reference: ImageEmbeddingModel = (&original_clip).into();
+
+    let text_embedding_reference_new = text_embedding_reference.create_reference(|v| v, |v| v);
+
+    tracing::info!("[TEST] original_clip: {:?}", original_clip);
+    tracing::info!(
+        "[TEST] text_embedding_reference: {:?}",
+        text_embedding_reference
+    );
+    tracing::info!(
+        "[TEST] image_embedding_reference: {:?}",
+        image_embedding_reference
+    );
+
+    tracing::info!("[TEST] shutdown original");
+    drop(original_clip);
+    tokio::time::sleep(Duration::from_secs(5)).await;
+
+    // after shutdown original, reference should work like normal
+    let result = text_embedding_reference
+        .process(vec!["hello".to_string()])
+        .await;
+    tracing::info!("[TEST] result: {:?}", result);
+
+    tracing::info!("[TEST] shutdown text embedding");
+    drop(text_embedding_reference);
+    tokio::time::sleep(Duration::from_secs(5)).await;
+
+    tracing::info!("[TEST] shutdown image embedding");
+    drop(image_embedding_reference);
+    tokio::time::sleep(Duration::from_secs(5)).await;
+
+    // after text embedding reference, new reference should work like normal
+    let result = text_embedding_reference_new
+        .process(vec!["hello".to_string()])
+        .await;
+    tracing::info!("[TEST] result: {:?}", result);
+
+    tracing::info!("[TEST] shutdown text embedding new");
+    drop(text_embedding_reference_new);
+
+    tokio::time::sleep(Duration::from_secs(30)).await;
 }

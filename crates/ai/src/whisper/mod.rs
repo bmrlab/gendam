@@ -226,7 +226,6 @@ impl Whisper {
     }
 }
 
-#[async_trait]
 impl Model for Whisper {
     type Item = AudioTranscriptInput;
     type Output = AudioTranscriptOutput;

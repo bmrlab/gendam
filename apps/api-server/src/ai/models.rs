@@ -33,7 +33,8 @@ pub enum ConcreteModelType {
     Whisper,
     Yolo,
     Qwen2,
-    OpenAI
+    OpenAI,
+    AzureOpenAI,
 }
 
 #[derive(Serialize, Deserialize, Type, Debug, Clone)]

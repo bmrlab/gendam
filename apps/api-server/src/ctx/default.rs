@@ -313,36 +313,14 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         }
 
         /* shutdown ai handler */
-        {
-            // MutexGuard is not `Send`, so we have to write in this way
-            // otherwise we can't send it to other thread, and compiler will throw error
-            //
-            // 下面是一种更常见的写法，但是会报错：原因是 MutexGuard 无法实现 Send
-            // 这里由于 ai_handler 实现了 Clone，因此可以避免这个问题
-            //
-            //     👇 MutexGuard
-            // let current_ai_handler = self.ai_handler.lock().unwrap();
-            // if let Some(ai_handler) = &*current_ai_handler {
-            //                                          👇 MutexGuard 还存在，但是调用了 await
-            //     if let Err(e) = ai_handler.shutdown().await {
-            //         tracing::warn!("Failed to shutdown AI handler: {}", e);
-            //     }
-            // }
-            let current_ai_handler = {
-                let ai_handler = self.ai_handler.lock().map_err(unexpected_err)?;
-                let ai_handler = ai_handler.as_ref().map(|v| v.clone());
-                ai_handler
-            };
-            if let Some(ai_handler) = current_ai_handler {
-                ai_handler.shutdown().await.map_err(|e| {
-                    tracing::error!(task = "shutdown ai handler", "Failed: {}", e);
-                    rspc::Error::new(
-                        rspc::ErrorCode::InternalServerError,
-                        format!("Failed to shutdown AI handler: {}", e),
-                    )
-                })?;
-                tracing::info!(task = "shutdown ai handler", "Success");
-            }
+        let current_ai_handler = {
+            let ai_handler = self.ai_handler.lock().map_err(unexpected_err)?;
+            let ai_handler = ai_handler.as_ref().map(|v| v.clone());
+            ai_handler
+        };
+        if let Some(ai_handler) = current_ai_handler {
+            drop(ai_handler);
+            tracing::info!(task = "shutdown ai handler", "Success");
         }
 
         /* update ctx */

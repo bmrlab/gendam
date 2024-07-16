@@ -9,9 +9,10 @@ mod traits;
 pub mod utils;
 pub mod whisper;
 pub mod yolo;
+use tokio::sync::oneshot;
 pub use traits::*;
 
-pub enum HandlerPayload<T> {
-    BatchData(T),
-    Shutdown,
-}
+pub type HandlerPayload<TItem, TOutput> = (
+    Vec<TItem>,
+    oneshot::Sender<anyhow::Result<Vec<anyhow::Result<TOutput>>>>,
+);

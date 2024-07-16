@@ -5,7 +5,7 @@ use crate::{library::get_library_settings, CtxWithLibrary};
 use ai::{
     blip::BLIP,
     clip::{CLIPModel, CLIP},
-    llm::{qwen2::Qwen2, LLM},
+    llm::{openai::OpenAI, qwen2::Qwen2, LLM},
     text_embedding::OrtTextEmbedding,
     whisper::Whisper,
     AIModel, AudioTranscriptModel, ImageCaptionModel, LLMModel, MultiModalEmbeddingModel,
@@ -41,9 +41,9 @@ impl fmt::Debug for AIHandler {
     }
 }
 
-fn get_str_from_params(params: &Value, name: &str) -> Result<String, rspc::Error> {
+fn get_str_from_params<'a>(params: &'a Value, name: &str) -> Result<&'a str, rspc::Error> {
     match params[name].as_str() {
-        Some(s) => Ok(s.into()),
+        Some(s) => Ok(s),
         _ => Err(rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
             format!("invalid {}", name),
@@ -84,7 +84,7 @@ impl AIHandler {
                             let tokenizer_path = resources_dir_clone
                                 .join(get_str_from_params(&params, "tokenizer_path")?);
                             let model_type = get_str_from_params(&params, "model_type")?;
-                            let model_type = match model_type.as_str() {
+                            let model_type = match model_type {
                                 "Large" => ai::blip::BLIPModel::Large,
                                 _ => ai::blip::BLIPModel::Base,
                             };
@@ -264,6 +264,22 @@ impl AIHandler {
                             Qwen2::load(&model_path, &tokenizer_path, &device)
                                 .map(|v| LLM::Qwen2(v))
                         }
+                        ConcreteModelType::OpenAI => {
+                            let base_url = get_str_from_params(&params, "base_url")?;
+                            let api_key = get_str_from_params(&params, "api_key")?;
+                            let model = get_str_from_params(&params, "model")?;
+
+                            OpenAI::new(base_url, api_key, model).map(|v| LLM::OpenAI(v))
+                        }
+                        ConcreteModelType::AzureOpenAI => {
+                            let azure_endpoint = get_str_from_params(&params, "azure_endpoint")?;
+                            let api_key = get_str_from_params(&params, "api_key")?;
+                            let deployment_name = get_str_from_params(&params, "deployment_name")?;
+                            let api_version = get_str_from_params(&params, "api_version")?;
+
+                            OpenAI::new_azure(azure_endpoint, api_key, deployment_name, api_version)
+                                .map(|v| LLM::OpenAI(v))
+                        }
                         _ => {
                             bail!(
                                 "unsupported model {} for LLM",
@@ -281,35 +297,22 @@ impl AIHandler {
     }
 
     pub fn update_multi_modal_embedding(&mut self, ctx: &dyn CtxWithLibrary) {
-        let _ = self.multi_modal_embedding.shutdown();
         self.multi_modal_embedding =
             Self::get_multi_modal_embedding(ctx).expect("failed to get multi modal embedding");
+        self.update_text_embedding(ctx);
     }
 
     pub fn update_text_embedding(&mut self, ctx: &dyn CtxWithLibrary) {
-        let _ = self.text_embedding.shutdown();
         self.text_embedding = Self::get_text_embedding(ctx, &self.multi_modal_embedding)
             .expect("failed to get text embedding");
     }
 
     pub fn update_image_caption(&mut self, ctx: &dyn CtxWithLibrary) {
-        let _ = self.image_caption.shutdown();
         self.image_caption = Self::get_image_caption(ctx).expect("");
     }
 
     pub fn update_audio_transcript(&mut self, ctx: &dyn CtxWithLibrary) {
-        let _ = self.audio_transcript.shutdown();
         self.audio_transcript =
             Self::get_audio_transcript(ctx).expect("failed to get audio transcript");
-    }
-
-    pub async fn shutdown(&self) -> anyhow::Result<()> {
-        self.multi_modal_embedding.shutdown().await?;
-        self.text_embedding.shutdown().await?;
-        self.image_caption.shutdown().await?;
-        self.audio_transcript.shutdown().await?;
-        self.llm.shutdown().await?;
-
-        Ok(())
     }
 }

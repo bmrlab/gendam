@@ -35,7 +35,6 @@ pub enum CLIPInput {
     Text(String),
 }
 
-#[async_trait]
 impl Model for CLIP {
     type Item = MultiModalEmbeddingInput;
     type Output = MultiModalEmbeddingOutput;

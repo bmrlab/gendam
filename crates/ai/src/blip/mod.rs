@@ -65,7 +65,6 @@ pub enum BLIPModel {
     Large,
 }
 
-#[async_trait]
 impl Model for BLIP {
     type Item = ImageCaptionInput;
     type Output = ImageCaptionOutput;

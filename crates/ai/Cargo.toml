@@ -40,3 +40,4 @@ derivative = "2.2.0"
 strum = { workspace = true }
 strum_macros = { workspace = true }
 rand = "0.8.5"
+reqwest-eventsource = "0.6.0"

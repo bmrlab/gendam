@@ -50,7 +50,8 @@ export type Procedures = {
         { key: "video.tasks.create", input: string, result: null } | 
         { key: "video.tasks.regenerate", input: TaskRedoRequestPayload, result: null },
     subscriptions: 
-        { key: "p2p.events", input: never, result: any }
+        { key: "p2p.events", input: never, result: any } | 
+        { key: "search.chat", input: ChatRequestPayload, result: ChatResponsePayload }
 };
 
 export type SetModelPayload = { category: AIModelCategory; modelId: string }
@@ -81,8 +82,6 @@ export type FilePathDeletePayload = { materializedPath: string; name: string }
 
 export type VideoWithTasksPageResult = { data: VideoWithTasksResult[]; pagination: Pagination; maxPage: number }
 
-export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
-
 export type SearchRequestPayload = { text: string; recordType: string }
 
 export type S3Config = { bucket: string; endpoint: string; accessKeyId: string; secretAccessKey: string }
@@ -90,8 +89,6 @@ export type S3Config = { bucket: string; endpoint: string; accessKeyId: string; 
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
-
-export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
 
 export type AudioResp = { type: AudioType; content: string }
 
@@ -101,19 +98,23 @@ export type FilePathCreatePayload = { materializedPath: string; name: string }
 
 export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageCaption" | "AudioTranscript" | "TextEmbedding" | "LLM"
 
-export type AIModelResult = { info: AIModel; status: AIModelStatus }
-
 export type TaskRedoRequestPayload = { assetObjectId: number }
 
 export type AssetObjectReceivePayload = { hash: string; materializedPath: string }
+
+export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
 
 export type Pagination = { pageSize: number; pageIndex: number }
 
 export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum; models: LibraryModels; alwaysDeleteLocalFileAfterUpload: boolean; s3Config: S3Config | null }
 
+export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
+
 export type TaskListRequestFilter = { assetObjectId?: number | null; assetObjectIds?: number[] | null }
 
 export type VideoPlayerTsResponse = { data: number[] }
+
+export type AIModelResult = { info: AIModel; status: AIModelStatus }
 
 export type LibrariesListResult = { id: string; dir: string; title: string }
 
@@ -123,17 +124,21 @@ export type LibraryLoadResult = { id: string; dir: string }
 
 export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: string[] | null }
 
-export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo" | "Qwen2" | "OpenAI"
+export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo" | "Qwen2" | "OpenAI" | "AzureOpenAI"
 
 export type VideoWithTasksResult = { name: string; materializedPath: string; assetObject: AssetObject; tasks: FileHandlerTask[]; mediaData: MediaData | null }
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
+
+export type ChatResponsePayload = { response: string | null }
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
 export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type VideoPlayerInfoResponse = { hash: string; duration: number; mimeType: string | null; hasVideo: boolean; hasAudio: boolean }
+
+export type ChatRequestPayload = { text: string }
 
 export type Result = { category: AIModelCategory; models: AIModelResult[] }
 

@@ -2,6 +2,7 @@ use super::{native::LocalLLMModel, LLMInferenceParams, LLMModel};
 use candle_core::{Device, Tensor};
 use candle_transformers::generation::{LogitsProcessor, Sampling};
 use tokenizers::Tokenizer;
+use tokio::sync::mpsc::Sender;
 
 /// This is a wrapper around a tokenizer to ensure that tokens can be returned to the user in a
 /// streaming way rather than having to wait for the full decoding.
@@ -88,8 +89,13 @@ impl TokenOutputStream {
     }
 }
 
-pub trait CandleLLMModel: LLMModel + LocalLLMModel {
-    fn forward(&mut self, input: &str, params: LLMInferenceParams) -> anyhow::Result<String> {
+pub(crate) trait CandleLLMModel: LLMModel + LocalLLMModel {
+    async fn forward(
+        &mut self,
+        input: &str,
+        params: LLMInferenceParams,
+        tx: Sender<anyhow::Result<Option<String>>>,
+    ) -> anyhow::Result<String> {
         let tos = TokenOutputStream::new(self.tokenizers());
 
         let prompt_str = input.to_string();
@@ -125,6 +131,8 @@ pub trait CandleLLMModel: LLMModel + LocalLLMModel {
         let mut next_token = logits_processor.sample(&logits)?;
         all_tokens.push(next_token);
 
+        tx.send(Ok(Some(tos.decode(&[next_token])?))).await?;
+
         let eos_token = self.end_of_turn();
         let eos_token = *tos.tokenizer().get_vocab(true).get(&eos_token).unwrap();
 
@@ -150,8 +158,11 @@ pub trait CandleLLMModel: LLMModel + LocalLLMModel {
             index += 1;
 
             if next_token == eos_token {
+                tx.send(Ok(None)).await?;
                 break;
             }
+
+            tx.send(Ok(Some(tos.decode(&[next_token])?))).await?;
 
             if let Some(max_tokens) = params.max_tokens {
                 if index >= max_tokens {

@@ -6,6 +6,7 @@ use candle_core::{quantized::gguf_file, Device};
 use candle_transformers::models::quantized_qwen2;
 use std::path::Path;
 use tokenizers::{tokenizer, Tokenizer};
+use tokio::sync::mpsc::Sender;
 
 pub struct Qwen2 {
     tokenizer: tokenizer::Tokenizer,
@@ -18,18 +19,10 @@ impl LLMModel for Qwen2 {
         &mut self,
         history: &[LLMMessage],
         params: LLMInferenceParams,
+        tx: Sender<anyhow::Result<Option<String>>>,
     ) -> anyhow::Result<String> {
         let prompt = self.with_chat_template(history);
-        self.forward(&prompt, params)
-    }
-
-    async fn get_completion_with_image(
-        &mut self,
-        _history: &[super::LLMMessage],
-        _image_url: &str,
-        _params: super::LLMInferenceParams,
-    ) -> anyhow::Result<String> {
-        bail!("Qwen2 does not support chat with image input")
+        self.forward(&prompt, params, tx).await
     }
 }
 

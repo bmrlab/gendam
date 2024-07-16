@@ -5,7 +5,6 @@ use crate::{
     Model,
 };
 use anyhow::anyhow;
-use async_trait::async_trait;
 use ndarray::{Array1, Axis};
 use ort::Session;
 use std::path::Path;
@@ -96,7 +95,6 @@ impl OrtTextEmbedding {
     }
 }
 
-#[async_trait]
 impl Model for OrtTextEmbedding {
     type Item = TextEmbeddingInput;
     type Output = TextEmbeddingOutput;

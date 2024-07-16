@@ -1,5 +1,8 @@
+use ai::llm::{LLMInferenceParams, LLMMessage};
 use glob::glob;
 use rspc::{Router, RouterBuilder};
+use serde::{Deserialize, Serialize};
+use specta::Type;
 
 mod recommend;
 mod search;
@@ -142,6 +145,50 @@ where
                     }
                 }
                 Ok(results)
+            })
+        })
+        .subscription("chat", |t| {
+            #[derive(Deserialize, Type)]
+            #[serde(rename_all = "camelCase")]
+            pub struct ChatRequestPayload {
+                pub text: String,
+            }
+
+            #[derive(Deserialize, Serialize, Type)]
+            pub struct ChatResponsePayload {
+                pub response: Option<String>,
+            }
+
+            t(|ctx, input: ChatRequestPayload| {
+                tracing::debug!("receive chat request");
+
+                let ai_handler = ctx.ai_handler().expect("");
+                let llm = ai_handler.llm;
+
+                tracing::debug!("got llm");
+
+                let (tx, mut rx) = tokio::sync::mpsc::channel(512);
+
+                tokio::spawn(async move {
+                    let _ = llm.process_single((
+                        vec![LLMMessage::User(input.text.into())],
+                        LLMInferenceParams::default(),
+                        tx,
+                    )).await;
+                });
+
+                return async_stream::stream! {
+                    while let Some(event) = rx.recv().await {
+                        match event {
+                            Ok(v) => {
+                                yield ChatResponsePayload { response: v }
+                            }
+                            _ => {
+                                yield ChatResponsePayload { response: None }
+                            }
+                        }
+                    }
+                };
             })
         })
 }

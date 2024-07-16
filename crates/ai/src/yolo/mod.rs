@@ -1,6 +1,5 @@
 use crate::{ort::load_onnx_model, Model};
 use anyhow::{anyhow, bail};
-use async_trait::async_trait;
 use candle_core::{IndexOp, Tensor};
 use candle_transformers::object_detection::{non_maximum_suppression, Bbox, KeyPoint};
 use image::GenericImageView;
@@ -10,7 +9,6 @@ use std::path::{Path, PathBuf};
 
 pub(self) mod coco_classes;
 
-#[async_trait]
 impl Model for YOLO {
     type Item = PathBuf;
     type Output = Vec<YOLODetectionResult>;
