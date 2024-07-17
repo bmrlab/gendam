@@ -11,6 +11,7 @@ pub mod whisper;
 pub mod yolo;
 use tokio::sync::oneshot;
 pub use traits::*;
+pub use tokenizers;
 
 pub type HandlerPayload<TItem, TOutput> = (
     Vec<TItem>,

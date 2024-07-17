@@ -2,6 +2,7 @@ pub mod artifacts;
 pub mod audio;
 pub mod caption;
 pub mod frame;
+pub mod transcript;
 
 use storage::prelude::*;
 

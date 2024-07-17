@@ -31,15 +31,21 @@ pub trait Model {
 
 pub type BatchHandlerTx<Item, Output> = mpsc::Sender<HandlerPayload<Item, Output>>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct AIModel<TItem, TOutput> {
     tx: BatchHandlerTx<TItem, TOutput>,
+}
+
+impl<TItem, TOutput> Clone for AIModel<TItem, TOutput> {
+    fn clone(&self) -> Self {
+        Self { tx: self.tx.clone() }
+    }
 }
 
 impl<TItem, TOutput> AIModel<TItem, TOutput>
 where
     TItem: Send + Sync + Clone + 'static,
-    TOutput: Send + Sync + Clone + 'static,
+    TOutput: Send + Sync + 'static,
 {
     pub fn new<T, TFut, TFn>(
         create_model: TFn,
@@ -171,7 +177,9 @@ where
     {
         let (tx, mut rx) = mpsc::channel::<HandlerPayload<TNewItem, TNewOutput>>(512);
 
-        let self_clone = self.clone();
+        let self_clone = Self {
+            tx: self.tx.clone(),
+        };
 
         tokio::spawn(async move {
             loop {

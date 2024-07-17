@@ -1,7 +1,7 @@
 use super::{native::LocalLLMModel, LLMInferenceParams, LLMModel};
 use candle_core::{Device, Tensor};
 use candle_transformers::generation::{LogitsProcessor, Sampling};
-use tokenizers::Tokenizer;
+use tokenizers::{Encoding, Tokenizer};
 use tokio::sync::mpsc::Sender;
 
 /// This is a wrapper around a tokenizer to ensure that tokens can be returned to the user in a
@@ -91,10 +91,10 @@ impl TokenOutputStream {
 
 pub(crate) trait CandleLLMModel: LLMModel + LocalLLMModel {
     async fn forward(
-        &mut self,
+        &self,
         input: &str,
         params: LLMInferenceParams,
-        tx: Sender<anyhow::Result<Option<String>>>,
+        tx: Option<Sender<anyhow::Result<Option<String>>>>,
     ) -> anyhow::Result<String> {
         let tos = TokenOutputStream::new(self.tokenizers());
 
@@ -131,7 +131,9 @@ pub(crate) trait CandleLLMModel: LLMModel + LocalLLMModel {
         let mut next_token = logits_processor.sample(&logits)?;
         all_tokens.push(next_token);
 
-        tx.send(Ok(Some(tos.decode(&[next_token])?))).await?;
+        if let Some(tx) = tx.clone() {
+            tx.send(Ok(Some(tos.decode(&[next_token])?))).await?;
+        }
 
         let eos_token = self.end_of_turn();
         let eos_token = *tos.tokenizer().get_vocab(true).get(&eos_token).unwrap();
@@ -158,11 +160,15 @@ pub(crate) trait CandleLLMModel: LLMModel + LocalLLMModel {
             index += 1;
 
             if next_token == eos_token {
-                tx.send(Ok(None)).await?;
+                if let Some(tx) = tx.clone() {
+                    tx.send(Ok(None)).await?;
+                }
                 break;
             }
 
-            tx.send(Ok(Some(tos.decode(&[next_token])?))).await?;
+            if let Some(tx) = tx.clone() {
+                tx.send(Ok(Some(tos.decode(&[next_token])?))).await?;
+            }
 
             if let Some(max_tokens) = params.max_tokens {
                 if index >= max_tokens {
@@ -174,7 +180,7 @@ pub(crate) trait CandleLLMModel: LLMModel + LocalLLMModel {
         tos.decode(&all_tokens).map_err(|err| anyhow::anyhow!(err))
     }
 
-    fn next_token_logits(&mut self, input: &Tensor, index_pos: usize) -> anyhow::Result<Tensor>;
+    fn next_token_logits(&self, input: &Tensor, index_pos: usize) -> anyhow::Result<Tensor>;
     fn tokenizers(&self) -> Tokenizer;
     fn device(&self) -> Device;
 }

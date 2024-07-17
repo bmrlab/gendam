@@ -1,13 +1,11 @@
 mod constants;
 mod decoder;
 mod impls;
-mod split;
+mod utils;
 
 use crate::{metadata::video::VideoMetadata, traits::FileHandler, SearchRecordType, TaskPriority};
 use ai::{
-    AIModel, AudioTranscriptInput, AudioTranscriptModel, AudioTranscriptOutput, ImageCaptionModel,
-    MultiModalEmbeddingInput, MultiModalEmbeddingModel, MultiModalEmbeddingOutput,
-    TextEmbeddingInput, TextEmbeddingModel, TextEmbeddingOutput,
+    AIModel, AudioTranscriptInput, AudioTranscriptModel, AudioTranscriptOutput, ImageCaptionModel, LLMModel, LLMOutput, MultiModalEmbeddingInput, MultiModalEmbeddingModel, MultiModalEmbeddingOutput, TextEmbeddingInput, TextEmbeddingModel, TextEmbeddingOutput
 };
 use anyhow::bail;
 use async_trait::async_trait;
@@ -38,13 +36,12 @@ pub struct VideoHandler {
     qdrant_client: Option<Arc<qdrant_client::client::QdrantClient>>,
     language_collection_name: Option<String>,
     vision_collection_name: Option<String>,
-    multi_modal_embedding: Option<(
-        AIModel<MultiModalEmbeddingInput, MultiModalEmbeddingOutput>,
-        String,
-    )>,
+    multi_modal_embedding: Option<(MultiModalEmbeddingModel, String)>,
     image_caption: Option<(ImageCaptionModel, String)>,
-    audio_transcript: Option<(AIModel<AudioTranscriptInput, AudioTranscriptOutput>, String)>,
-    text_embedding: Option<(AIModel<TextEmbeddingInput, TextEmbeddingOutput>, String)>,
+    audio_transcript: Option<(AudioTranscriptModel, String)>,
+    text_embedding: Option<(TextEmbeddingModel, String)>,
+    llm: Option<(LLMModel, String)>,
+    llm_tokenizer: Option<ai::tokenizers::Tokenizer>,
     metadata: Arc<Mutex<Option<VideoMetadata>>>,
 }
 
@@ -58,9 +55,14 @@ pub enum VideoTaskType {
     Audio,
     Transcript,
     TranscriptEmbedding,
+    TranscriptChunk,
+    TranscriptChunkSummarization,
+    TranscriptChunkEmbedding,
+    TranscriptChunkSummarizationEmbedding,
 }
 
 impl VideoTaskType {
+    // TODO use a static map to replace this
     fn get_parent_task(&self) -> Vec<VideoTaskType> {
         match self {
             VideoTaskType::Frame => vec![],
@@ -70,9 +72,16 @@ impl VideoTaskType {
             VideoTaskType::Audio => vec![],
             VideoTaskType::Transcript => vec![VideoTaskType::Audio],
             VideoTaskType::TranscriptEmbedding => vec![VideoTaskType::Transcript],
+            VideoTaskType::TranscriptChunk => vec![VideoTaskType::Transcript],
+            VideoTaskType::TranscriptChunkEmbedding => vec![VideoTaskType::TranscriptChunk],
+            VideoTaskType::TranscriptChunkSummarization => vec![VideoTaskType::TranscriptChunk],
+            VideoTaskType::TranscriptChunkSummarizationEmbedding => {
+                vec![VideoTaskType::TranscriptChunkSummarization]
+            }
         }
     }
 
+    // TODO use a static map to replace this
     fn get_child_task(&self) -> Vec<VideoTaskType> {
         match self {
             VideoTaskType::Frame => vec![VideoTaskType::FrameCaption],
@@ -80,8 +89,20 @@ impl VideoTaskType {
             VideoTaskType::FrameContentEmbedding => vec![],
             VideoTaskType::FrameCaptionEmbedding => vec![],
             VideoTaskType::Audio => vec![VideoTaskType::Transcript],
-            VideoTaskType::Transcript => vec![VideoTaskType::TranscriptEmbedding],
+            VideoTaskType::Transcript => vec![
+                VideoTaskType::TranscriptEmbedding,
+                VideoTaskType::TranscriptChunk,
+            ],
             VideoTaskType::TranscriptEmbedding => vec![],
+            VideoTaskType::TranscriptChunk => vec![
+                VideoTaskType::TranscriptChunkEmbedding,
+                VideoTaskType::TranscriptChunkSummarization,
+            ],
+            VideoTaskType::TranscriptChunkEmbedding => vec![],
+            VideoTaskType::TranscriptChunkSummarization => {
+                vec![VideoTaskType::TranscriptChunkSummarizationEmbedding]
+            }
+            VideoTaskType::TranscriptChunkSummarizationEmbedding => vec![],
         }
     }
 
@@ -122,6 +143,8 @@ impl VideoHandler {
             image_caption: None,
             audio_transcript: None,
             text_embedding: None,
+            llm: None,
+            llm_tokenizer: None,
             metadata: Arc::new(Mutex::new(None)),
         })
     }
@@ -185,6 +208,19 @@ impl VideoHandler {
         }
     }
 
+    pub fn with_llm(
+        self,
+        llm: &LLMModel,
+        llm_model_name: &str,
+        tokenizer: &ai::tokenizers::Tokenizer,
+    ) -> Self {
+        Self {
+            llm: Some((llm.clone(), llm_model_name.into())),
+            llm_tokenizer: Some(tokenizer.clone()), // TODO here clone will create a new tokenizer, which is not good
+            ..self
+        }
+    }
+
     pub async fn save_thumbnail(&self, seconds: Option<u64>) -> anyhow::Result<()> {
         let video_decoder = decoder::VideoDecoder::new(&self.video_path)?;
         video_decoder
@@ -224,6 +260,24 @@ impl VideoHandler {
             Some(v) => Ok((&v.0, &v.1)),
             _ => {
                 bail!("text_embedding is not enabled")
+            }
+        }
+    }
+
+    fn llm(&self) -> anyhow::Result<(&LLMModel, &str)> {
+        match self.llm.as_ref() {
+            Some(v) => Ok((&v.0, &v.1)),
+            _ => {
+                bail!("llm is not enabled")
+            }
+        }
+    }
+
+    fn tokenizer(&self) -> anyhow::Result<&ai::tokenizers::Tokenizer> {
+        match self.llm_tokenizer.as_ref() {
+            Some(v) => Ok(v),
+            _ => {
+                bail!("tokenizer is not enabled")
             }
         }
     }
@@ -343,7 +397,17 @@ impl FileHandler for VideoHandler {
             VideoTaskType::Audio => self.save_audio().await?,
             VideoTaskType::Transcript => self.save_transcript().await?,
             VideoTaskType::TranscriptEmbedding => self.save_transcript_embedding().await?,
-            // !! DO NOT add default arm here
+            VideoTaskType::TranscriptChunk => self.save_transcript_chunks().await?,
+            VideoTaskType::TranscriptChunkEmbedding => {
+                self.save_transcript_chunks_embedding().await?
+            }
+            VideoTaskType::TranscriptChunkSummarization => {
+                self.save_transcript_chunks_summarization().await?;
+            }
+            VideoTaskType::TranscriptChunkSummarizationEmbedding => {
+                self.save_transcript_chunks_summarization_embedding()
+                    .await?;
+            } // !! DO NOT add default arm here
         }
 
         self.set_artifacts_result(&task_type).await?;
@@ -456,31 +520,45 @@ impl FileHandler for VideoHandler {
     }
 
     fn get_supported_task_types(&self) -> Vec<(String, TaskPriority)> {
-        let mut task_types = vec![(VideoTaskType::Frame, TaskPriority::Normal)];
+        // let mut task_types = vec![(VideoTaskType::Frame, TaskPriority::Normal)];
 
-        if self.multi_modal_embedding.is_some() {
-            task_types.push((VideoTaskType::FrameContentEmbedding, TaskPriority::Normal));
-        }
+        // if self.multi_modal_embedding.is_some() {
+        //     task_types.push((VideoTaskType::FrameContentEmbedding, TaskPriority::Normal));
+        // }
 
-        if self.image_caption.is_some() {
-            task_types.push((VideoTaskType::FrameCaption, TaskPriority::Low));
-            if self.text_embedding.is_some() {
-                task_types.push((VideoTaskType::FrameCaptionEmbedding, TaskPriority::Low));
-            }
-        }
+        // if self.image_caption.is_some() {
+        //     task_types.push((VideoTaskType::FrameCaption, TaskPriority::Low));
+        //     if self.text_embedding.is_some() {
+        //         task_types.push((VideoTaskType::FrameCaptionEmbedding, TaskPriority::Low));
+        //     }
+        // }
 
-        if let anyhow::Result::Ok(metadata) = self.get_metadata() {
-            if metadata.audio.is_some() {
-                task_types.push((VideoTaskType::Audio, TaskPriority::Normal));
+        // if let anyhow::Result::Ok(metadata) = self.get_metadata() {
+        //     if metadata.audio.is_some() {
+        //         task_types.push((VideoTaskType::Audio, TaskPriority::Normal));
 
-                if self.audio_transcript.is_some() {
-                    task_types.push((VideoTaskType::Transcript, TaskPriority::Normal));
-                    if self.text_embedding.is_some() {
-                        task_types.push((VideoTaskType::TranscriptEmbedding, TaskPriority::Normal));
-                    }
-                }
-            }
-        }
+        //         if self.audio_transcript.is_some() {
+        //             task_types.push((VideoTaskType::Transcript, TaskPriority::Normal));
+        //             if self.text_embedding.is_some() {
+        //                 task_types.push((VideoTaskType::TranscriptEmbedding, TaskPriority::Normal));
+        //             }
+        //         }
+        //     }
+        // }
+        // FIXME test code
+        let task_types = vec![
+            (VideoTaskType::Audio, TaskPriority::Normal),
+            (VideoTaskType::Transcript, TaskPriority::Normal),
+            (VideoTaskType::TranscriptChunk, TaskPriority::Normal),
+            (
+                VideoTaskType::TranscriptChunkSummarization,
+                TaskPriority::Normal,
+            ),
+            (
+                VideoTaskType::TranscriptChunkSummarizationEmbedding,
+                TaskPriority::Normal,
+            ),
+        ];
 
         task_types
             .into_iter()

@@ -72,6 +72,9 @@ fn group_results_by_asset(
                         target_file_frames.push((timestamp, v.score))
                     }
                 }
+                _ => {
+                    todo!()
+                }
             }
         }
     });

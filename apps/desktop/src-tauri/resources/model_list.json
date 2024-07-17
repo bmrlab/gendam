@@ -157,13 +157,19 @@
     ],
     "title": "Ollama",
     "description": "",
-    "artifacts_dir": "",
-    "artifacts": [],
+    "artifacts_dir": "./qwen2",
+    "artifacts": [
+      {
+        "url": "tokenizer.json",
+        "checksum": ""
+      }
+    ],
     "model_type": "OpenAI",
     "params": {
       "base_url": "http://localhost:11434/v1",
       "api_key": "ollama",
-      "model": "qwen2:7b-instruct-q4_0"
+      "model": "qwen2:7b-instruct-q4_0",
+      "tokenizer_path": "./qwen2/tokenizer.json"
     }
   }
 ]

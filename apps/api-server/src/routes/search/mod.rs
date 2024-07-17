@@ -1,8 +1,11 @@
 use ai::llm::{LLMInferenceParams, LLMMessage};
+use file_handler::rag::{handle_rag, RAGResult};
 use glob::glob;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use tokio::sync::mpsc;
+use tracing::warn;
 
 mod recommend;
 mod search;
@@ -162,28 +165,33 @@ where
             t(|ctx, input: ChatRequestPayload| {
                 tracing::debug!("receive chat request");
 
-                let ai_handler = ctx.ai_handler().expect("");
-                let llm = ai_handler.llm;
-
-                tracing::debug!("got llm");
-
-                let (tx, mut rx) = tokio::sync::mpsc::channel(512);
-
-                tokio::spawn(async move {
-                    let _ = llm.process_single((
-                        vec![LLMMessage::User(input.text.into())],
-                        LLMInferenceParams::default(),
-                        tx,
-                    )).await;
-                });
+                let library = ctx.library().expect("");
+                let qdrant_client = library.qdrant_client();
+                let qdrant_info = ctx.qdrant_info().expect("");
+                let ai_handler = ctx.ai_handler().expect("ai handler should be correct");
 
                 return async_stream::stream! {
+                    let (tx, mut rx) = mpsc::channel(512);
+
+                    tokio::spawn(async move {
+                        if let Err(e) = handle_rag(&input.text, qdrant_client, &qdrant_info.language_collection.name.as_ref(), &ai_handler.text_embedding, &ai_handler.llm, tx).await {
+                            tracing::error!("RAG error: {}", e);
+                        }
+                    });
+
                     while let Some(event) = rx.recv().await {
                         match event {
-                            Ok(v) => {
-                                yield ChatResponsePayload { response: v }
+                            RAGResult::Reference(ref_item) => {
+                                tracing::info!("get RAG reference: {:?}", ref_item);
                             }
-                            _ => {
+                            RAGResult::Response(response) => {
+                                tracing::debug!("send response: {}", &response);
+                                yield ChatResponsePayload { response: Some(response) }
+                            }
+                            RAGResult::Error(err) => {
+                                tracing::warn!("RAGResult is error: {}", err);
+                            }
+                            RAGResult::Done => {
                                 yield ChatResponsePayload { response: None }
                             }
                         }

@@ -15,24 +15,14 @@ use anyhow::bail;
 use serde_json::Value;
 use std::{fmt, time::Duration};
 
+#[derive(Clone)]
 pub struct AIHandler {
     pub multi_modal_embedding: MultiModalEmbeddingModel,
     pub image_caption: ImageCaptionModel,
     pub audio_transcript: AudioTranscriptModel,
     pub text_embedding: TextEmbeddingModel,
     pub llm: LLMModel,
-}
-
-impl Clone for AIHandler {
-    fn clone(&self) -> Self {
-        Self {
-            multi_modal_embedding: self.multi_modal_embedding.clone(),
-            image_caption: self.image_caption.clone(),
-            audio_transcript: self.audio_transcript.clone(),
-            text_embedding: self.text_embedding.clone(),
-            llm: self.llm.clone(),
-        }
-    }
+    pub llm_tokenizer: ai::tokenizers::Tokenizer,
 }
 
 impl fmt::Debug for AIHandler {
@@ -55,13 +45,15 @@ impl AIHandler {
     pub fn new(ctx: &dyn CtxWithLibrary) -> Result<Self, rspc::Error> {
         let multi_modal_embedding = Self::get_multi_modal_embedding(ctx)?;
         let text_embedding = Self::get_text_embedding(ctx, &multi_modal_embedding)?;
+        let (llm, llm_tokenizer) = Self::get_llm(ctx)?;
 
         Ok(Self {
             multi_modal_embedding,
             image_caption: Self::get_image_caption(ctx)?,
             audio_transcript: Self::get_audio_transcript(ctx)?,
             text_embedding,
-            llm: Self::get_llm(ctx)?,
+            llm,
+            llm_tokenizer,
         })
     }
 
@@ -240,12 +232,17 @@ impl AIHandler {
         Ok(handler)
     }
 
-    fn get_llm(ctx: &dyn CtxWithLibrary) -> Result<LLMModel, rspc::Error> {
+    fn get_llm(
+        ctx: &dyn CtxWithLibrary,
+    ) -> Result<(LLMModel, ai::tokenizers::Tokenizer), rspc::Error> {
         let resources_dir = ctx.get_resources_dir().to_path_buf();
         let library = ctx.library()?;
         let settings = get_library_settings(&library.dir);
 
         let model = get_model_info_by_id(ctx, &settings.models.llm)?;
+        let tokenizer_path = get_str_from_params(&model.params, "tokenizer_path")?;
+        let tokenizer_path = resources_dir.join(tokenizer_path);
+
         let handler = AIModel::new(
             move || {
                 let resources_dir_clone = resources_dir.clone();
@@ -293,7 +290,11 @@ impl AIHandler {
         )
         .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
 
-        Ok(handler)
+        // TODO here use a fake tokenizer for now, should be updated in the future
+        let tokenizer = ai::tokenizers::Tokenizer::from_file(tokenizer_path)
+            .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
+
+        Ok((handler, tokenizer))
     }
 
     pub fn update_multi_modal_embedding(&mut self, ctx: &dyn CtxWithLibrary) {

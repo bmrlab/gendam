@@ -55,15 +55,11 @@ impl VideoHandler {
 
     /// Save frames' captions of video
     /// **this requires extracting frames in advance**
-    ///
-    /// The captions will be saved:
-    /// - To disk: as `.caption` file in the same place with frame file
-    /// - To prisma `VideoFrameCaption` model
     pub(crate) async fn save_frames_caption(&self) -> anyhow::Result<()> {
         let (image_caption, _) = self.image_caption()?;
         let frame_paths = self.list_frame_paths().await?;
         for path in frame_paths {
-            debug!("get_frames_caption: {:?}", path);
+            debug!("save_frames_caption: {:?}", path);
 
             let timestamp = get_frame_timestamp_from_path(&path)?;
 
@@ -75,7 +71,6 @@ impl VideoHandler {
             let caption = image_caption.process_single(path).await?;
 
             // write into file
-
             self.write(
                 caption_path,
                 json!({

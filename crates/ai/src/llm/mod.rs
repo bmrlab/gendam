@@ -1,13 +1,4 @@
-use std::{
-    pin::Pin,
-    task::{Context, Poll},
-    time::Duration,
-};
-
-use futures::Stream;
-use tokio::{sync::mpsc::Sender, time::sleep};
-
-use crate::Model;
+use crate::{LLMInput, LLMOutput, Model};
 
 pub mod candle;
 pub mod native;
@@ -48,11 +39,10 @@ impl Default for LLMInferenceParams {
 
 pub(crate) trait LLMModel {
     fn get_completion(
-        &mut self,
+        &self,
         history: &[LLMMessage],
         params: LLMInferenceParams,
-        tx: Sender<anyhow::Result<Option<String>>>,
-    ) -> impl std::future::Future<Output = anyhow::Result<String>> + Send;
+    ) -> impl std::future::Future<Output = anyhow::Result<LLMOutput>> + Send;
 }
 
 pub enum LLM {
@@ -61,12 +51,8 @@ pub enum LLM {
 }
 
 impl Model for LLM {
-    type Item = (
-        Vec<LLMMessage>,
-        LLMInferenceParams,
-        Sender<anyhow::Result<Option<String>>>,
-    );
-    type Output = String;
+    type Item = LLMInput;
+    type Output = LLMOutput;
 
     fn batch_size_limit(&self) -> usize {
         1
@@ -80,8 +66,8 @@ impl Model for LLM {
 
         for item in items {
             let res = match self {
-                LLM::OpenAI(model) => model.get_completion(&item.0, item.1, item.2).await,
-                LLM::Qwen2(model) => model.get_completion(&item.0, item.1, item.2).await,
+                LLM::OpenAI(model) => model.get_completion(&item.0, item.1).await,
+                LLM::Qwen2(model) => model.get_completion(&item.0, item.1).await,
             };
             results.push(res);
         }
@@ -90,47 +76,43 @@ impl Model for LLM {
     }
 }
 
-pub struct LLMOutput {
-    count: usize,
-}
+#[cfg(test)]
+mod test {
+    use crate::llm::{openai::OpenAI, qwen2, LLMInferenceParams, LLMMessage, LLMModel};
 
-impl Stream for LLMOutput {
-    type Item = String;
+    #[test_log::test(tokio::test)]
+    async fn test_openai() {
+        let client = OpenAI::new("http://localhost:11434/v1", "", "qwen2:7b-instruct-q4_0")
+            .expect("failed to create client");
 
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.get_mut();
-        if this.count < 10 {
-            this.count += 1;
+        let mut result = client
+            .get_completion(
+                &[LLMMessage::User("Who are you?".into())],
+                super::LLMInferenceParams::default(),
+            )
+            .await
+            .expect("");
 
-            // Simulate an async operation using sleep
-            let waker = cx.waker().clone();
-            tokio::spawn(async move {
-                sleep(Duration::from_millis(500)).await;
-                waker.wake();
-            });
+        tracing::info!("result: {:?}", result.to_string().await);
+    }
 
-            Poll::Pending
-        } else {
-            Poll::Ready(None)
-        }
+    #[test_log::test(tokio::test)]
+    async fn test_qwen2() {
+        let model = qwen2::Qwen2::load(
+            "/Users/zhuo/Downloads/qwen2-7b-instruct-q4_0.gguf",
+            "/Users/zhuo/Downloads/tokenizer-qwen2-7b.json",
+            "metal",
+        )
+        .expect("failed to load model");
+
+        let mut result = model
+            .get_completion(
+                &[LLMMessage::User("who are you?".into())],
+                LLMInferenceParams::default(),
+            )
+            .await
+            .expect("");
+
+        tracing::info!("result: {:?}", result.to_string().await);
     }
 }
-
-// #[tokio::test]
-// async fn test_qwen2() {
-//     let mut model = qwen2::Qwen2::load(
-//         "/Users/zhuo/Downloads/qwen2-7b-instruct-q4_0.gguf",
-//         "/Users/zhuo/Downloads/tokenizer-qwen2-7b.json",
-//         "metal",
-//     )
-//     .expect("failed to load model");
-
-//     let response = model
-//         .get_completion(
-//             &[LLMMessage::User("who are you?".into())],
-//             LLMInferenceParams::default(),
-//         )
-//         .await;
-
-//     println!("response: {:?}", response);
-// }

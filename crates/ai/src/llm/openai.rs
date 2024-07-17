@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use super::LLMModel;
-use crate::llm::LLMMessage;
+use crate::{llm::LLMMessage, LLMOutput};
 use futures::StreamExt;
 use reqwest::{
     self,
@@ -11,7 +11,7 @@ use reqwest::{
 use reqwest_eventsource::{Event, EventSource};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Deserializer, Value};
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc;
 
 #[allow(dead_code)]
 pub struct OpenAI {
@@ -45,42 +45,42 @@ struct OpenAIResponseChunk {
 
 impl LLMModel for OpenAI {
     async fn get_completion(
-        &mut self,
+        &self,
         history: &[super::LLMMessage],
         params: super::LLMInferenceParams,
-        tx: Sender<anyhow::Result<Option<String>>>,
-    ) -> anyhow::Result<String> {
+    ) -> anyhow::Result<LLMOutput> {
         let url = Url::parse(&self.base_url)?;
         let query = url.query();
         let mut url = url.join("chat/completions")?;
         url.set_query(query);
 
+        let (tx, mut rx) = mpsc::channel(512);
+
         tracing::debug!("openai url: {:?}", url);
 
-        let client = reqwest::Client::new()
-            .post(url)
-            .headers(self.headers.clone())
-            .body(
-                json!({
-                    "model": &self.model,
-                    "messages": history.iter().map(|v| {
-                        let (role, message) = match v {
-                            LLMMessage::System(v) => {
-                                ("system", v)
-                            }
-                            LLMMessage::User(v) => {
-                                ("user", v)
-                            }
-                            LLMMessage::Assistant(v) => {
-                                ("assistant", v)
-                            }
-                        };
+        let headers = self.headers.clone();
+        let model = self.model.clone();
+        let messages = history
+            .iter()
+            .map(|v| {
+                let (role, message) = match v {
+                    LLMMessage::System(v) => ("system", v),
+                    LLMMessage::User(v) => ("user", v),
+                    LLMMessage::Assistant(v) => ("assistant", v),
+                };
 
-                        json!({
-                            "role": role,
-                            "content": message
-                        })
-                    }).collect::<Vec<Value>>(),
+                json!({
+                    "role": role,
+                    "content": message
+                })
+            })
+            .collect::<Vec<Value>>();
+
+        tokio::spawn(async move {
+            let client = reqwest::Client::new().post(url).headers(headers).body(
+                json!({
+                    "model": &model,
+                    "messages": messages,
                     "stream": true,
                     "temperature": params.temperature,
                     "seed": params.seed,
@@ -90,94 +90,105 @@ impl LLMModel for OpenAI {
                 .to_string(),
             );
 
-        let mut es = EventSource::new(client)?;
-        let mut content = String::new();
-        let mut buffer = String::new(); // a buffer to contain possible incomplete message
+            let mut es = EventSource::new(client).expect("event source created");
+            let mut buffer = String::new(); // a buffer to contain possible incomplete message
 
-        while let Some(event) = es.next().await {
-            match event {
-                Ok(Event::Open) => {
-                    tracing::debug!("stream opened");
-                }
-                Ok(Event::Message(message)) => {
-                    tracing::debug!("receive message: {:?}", message);
-                    // sometimes message.data is not a complete JSON value, especially when using AzureOpenAI API
-                    // so here use a buffer to contain them and try to extract json from buffer
-                    buffer.push_str(&message.data);
+            while let Some(event) = es.next().await {
+                match event {
+                    Ok(Event::Open) => {
+                        tracing::debug!("stream opened");
+                    }
+                    Ok(Event::Message(message)) => {
+                        // sometimes message.data is not a complete JSON value, especially when using AzureOpenAI API
+                        // so here use a buffer to contain them and try to extract json from buffer
+                        buffer.push_str(&message.data);
 
-                    let mut deserialize_error = None;
-                    let byte_offset;
-                    {
-                        let mut stream_deserializer =
-                            Deserializer::from_str(&buffer).into_iter::<OpenAIResponseChunk>();
+                        let mut deserialize_error = None;
+                        let byte_offset;
+                        {
+                            let mut stream_deserializer =
+                                Deserializer::from_str(&buffer).into_iter::<OpenAIResponseChunk>();
 
-                        while let Some(result) = stream_deserializer.next() {
-                            match result {
-                                Ok(response) => {
-                                    for choice in &response.choices {
-                                        if let Some(OpenAIResponseChoiceDelta {
-                                            content: Some(response_content),
-                                            ..
-                                        }) = &choice.delta
-                                        {
-                                            // here role must be assistant, just ignore
-                                            if let Err(e) =
-                                                tx.send(Ok(Some(response_content.clone()))).await
+                            while let Some(result) = stream_deserializer.next() {
+                                match result {
+                                    Ok(response) => {
+                                        for choice in &response.choices {
+                                            if let Some(OpenAIResponseChoiceDelta {
+                                                content: Some(response_content),
+                                                ..
+                                            }) = &choice.delta
                                             {
-                                                tracing::error!("failed to send response: {}", e);
-                                            }
-                                            content += &response_content;
+                                                // here role must be assistant, just ignore
 
-                                            if let Some(finish_reason) = &choice.finish_reason {
-                                                tracing::debug!(
-                                                    "LLM finish reason: {:?}",
-                                                    finish_reason
-                                                );
-                                                if let Err(e) = tx.send(Ok(None)).await {
+                                                if let Err(e) = tx
+                                                    .send(Ok(Some(response_content.clone())))
+                                                    .await
+                                                {
                                                     tracing::error!(
-                                                        "failed to send finish reason: {}",
+                                                        "failed to send response: {}",
                                                         e
                                                     );
                                                 }
-                                                // to break or not to break, both work
-                                                // break;
+
+                                                if let Some(finish_reason) = &choice.finish_reason {
+                                                    tracing::debug!(
+                                                        "LLM finish reason: {:?}",
+                                                        finish_reason
+                                                    );
+
+                                                    if let Err(e) = tx.send(Ok(None)).await {
+                                                        tracing::error!(
+                                                            "failed to send finish reason: {}",
+                                                            e
+                                                        );
+                                                    }
+
+                                                    // to break or not to break, both work
+                                                    // break;
+                                                }
                                             }
                                         }
                                     }
-                                }
-                                Err(e) => {
-                                    deserialize_error = Some(e);
-                                    break;
+                                    Err(e) => {
+                                        deserialize_error = Some(e);
+                                        break;
+                                    }
                                 }
                             }
+
+                            byte_offset = stream_deserializer.byte_offset();
                         }
 
-                        byte_offset = stream_deserializer.byte_offset();
-                    }
+                        // Remove the parsed JSON part from the buffer
+                        buffer.drain(..byte_offset);
 
-                    // Remove the parsed JSON part from the buffer
-                    buffer.drain(..byte_offset);
-
-                    if let Some(err) = deserialize_error {
-                        if !err.is_eof() {
-                            // this is a real error
-                            tracing::error!("failed to parse response: {}", &buffer);
-                            buffer.clear();
+                        if let Some(err) = deserialize_error {
+                            if !err.is_eof() {
+                                // this is a real error
+                                tracing::error!("failed to parse response: {}", &buffer);
+                                buffer.clear();
+                            }
                         }
                     }
-                }
-                Err(reqwest_eventsource::Error::StreamEnded) => {
-                    tracing::debug!("stream ended");
-                    break;
-                }
-                Err(e) => {
-                    tracing::error!("failed to handle event source: {}", e);
-                    break;
+                    Err(reqwest_eventsource::Error::StreamEnded) => {
+                        tracing::debug!("stream ended");
+                        break;
+                    }
+                    Err(e) => {
+                        tracing::error!("failed to handle event source: {}", e);
+                        break;
+                    }
                 }
             }
-        }
+        });
 
-        Ok(content)
+        let stream = async_stream::stream! {
+            while let Some(result) = rx.recv().await {
+                yield result;
+            }
+        };
+
+        Ok(LLMOutput::new(Box::pin(stream)))
     }
 }
 
@@ -222,21 +233,4 @@ impl OpenAI {
             headers,
         })
     }
-}
-
-#[test_log::test(tokio::test)]
-async fn test_openai() {
-    let mut client = OpenAI::new("http://localhost:11434/v1", "", "qwen2:7b-instruct-q4_0")
-        .expect("failed to create client");
-    let (tx, _rx) = tokio::sync::mpsc::channel(512);
-
-    let result = client
-        .get_completion(
-            &[LLMMessage::User("Who are you?".into())],
-            super::LLMInferenceParams::default(),
-            tx,
-        )
-        .await;
-
-    tracing::info!("result: {:?}", result);
 }

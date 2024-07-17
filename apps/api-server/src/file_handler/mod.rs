@@ -206,6 +206,11 @@ pub fn get_file_handler_with_library(
                         &ai_handler.text_embedding,
                         &library_settings.models.text_embedding,
                         &qdrant_info.language_collection.name,
+                    )
+                    .with_llm(
+                        &ai_handler.llm,
+                        &library_settings.models.llm,
+                        &ai_handler.llm_tokenizer,
                     );
 
                 Box::new(handler)

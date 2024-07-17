@@ -1,6 +1,6 @@
 use ndarray::Array2;
 
-mod kts;
+use super::kts;
 
 /// Split video using frame features (e.g., CLIP feature) with Kernel Temporal Segmentation.
 ///

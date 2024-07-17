@@ -111,6 +111,7 @@ version = "0.1.0"
 dependencies = [
  "accelerate-src",
  "anyhow",
+ "async-stream",
  "async-trait",
  "candle-core",
  "candle-nn",

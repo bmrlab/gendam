@@ -83,10 +83,6 @@ impl VideoHandler {
 
     /// Convert audio of the video into text
     /// **This requires extracting audio in advance**
-    ///
-    /// This will also save results:
-    /// - Save into disk (a folder named by `library` and `video_file_hash`)
-    /// - Save into prisma `VideoTranscript` model
     pub(crate) async fn save_transcript(&self) -> anyhow::Result<()> {
         if self.get_transcript().is_ok() {
             return Ok(());
@@ -109,7 +105,7 @@ impl VideoHandler {
         let transcript_results = self.get_transcript()?.transcriptions;
 
         for item in transcript_results {
-            // if item is some like [MUSIC], just skip it
+            // if item is something like [MUSIC], just skip it
             // TODO need to make sure all filter rules
             if item.text.starts_with("[") || item.text.starts_with("(") {
                 continue;

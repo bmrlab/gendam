@@ -90,6 +90,8 @@ export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean |
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
 
+export type ChatResponsePayload = { response: string | null }
+
 export type AudioResp = { type: AudioType; content: string }
 
 export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
@@ -130,15 +132,11 @@ export type VideoWithTasksResult = { name: string; materializedPath: string; ass
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
-export type ChatResponsePayload = { response: string | null }
-
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
 export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type VideoPlayerInfoResponse = { hash: string; duration: number; mimeType: string | null; hasVideo: boolean; hasAudio: boolean }
-
-export type ChatRequestPayload = { text: string }
 
 export type Result = { category: AIModelCategory; models: AIModelResult[] }
 
@@ -159,6 +157,8 @@ export type FilePathGetPayload = { materializedPath: string; name: string }
 export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
 
 export type TaskListRequestPayload = { filter: TaskListRequestFilter }
+
+export type ChatRequestPayload = { text: string }
 
 export type VideoPlayerTsRequestPayload = { hash: string; index: number }
 
