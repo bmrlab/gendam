@@ -4,6 +4,7 @@ import { Button } from '@gendam/ui/v2/button'
 import { Dialog } from '@gendam/ui/v2/dialog'
 import { Form } from '@gendam/ui/v2/form'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { create } from 'zustand'
 
 interface TitleDialogState {
@@ -17,6 +18,7 @@ export const useTitleDialog = create<TitleDialogState>((set) => ({
 }))
 
 const TitleDialog: React.FC = () => {
+  const { t } = useTranslation()
   const titleDialog = useTitleDialog()
   const explorer = useExplorerContext()
   const createDirMut = rspc.useMutation(['assets.create_dir'])
@@ -53,10 +55,10 @@ const TitleDialog: React.FC = () => {
         <Dialog.Content onClick={(e) => e.stopPropagation()} className="w-96 px-4 pb-6 pt-4">
           <Form.Root onSubmit={onSubmit}>
             <Form.Field name="title" className="flex flex-col items-stretch justify-center gap-5">
-              <Form.Label>Folder Name</Form.Label>
+              <Form.Label>{t('explorer.titleDialog.folderName')}</Form.Label>
               <Form.Input size="md" value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
               <Button type="submit" variant="accent" disabled={createDirMut.isPending}>
-                Create
+                {t('explorer.titleDialog.create')}
               </Button>
             </Form.Field>
           </Form.Root>

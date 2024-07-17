@@ -7,12 +7,14 @@ import { useCallback, useState } from 'react'
 import { Dialog } from '@gendam/ui/v2/dialog'
 import { Form } from '@gendam/ui/v2/form'
 import { Button } from '@gendam/ui/v2/button'
+import { useTranslation } from 'react-i18next'
 
 export default function LibrariesSelect({
   switchCurrentLibraryById,
 }: {
   switchCurrentLibraryById: (libraryId: string) => Promise<void>
 }) {
+  const { t } = useTranslation()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [title, setTitle] = useState('')
   const librariesQuery = rspc.useQuery(['libraries.list'])
@@ -40,10 +42,10 @@ export default function LibrariesSelect({
         <div className="border-app-line bg-app-box my-4 w-80 rounded-md border p-1 shadow-sm">
           {librariesQuery.data.length === 0 ? (
             <div className="text-ink/60 px-3 py-2 text-center text-xs">
-              No library has been created yet, continue by clicking &quot;Create&quot; below.
+              {t('library.select.noData')}
             </div>
           ) : (
-            <div className="text-ink/60 px-3 py-2 text-center text-xs">Select Library</div>
+            <div className="text-ink/60 px-3 py-2 text-center text-xs">{t('library.select')}</div>
           )}
           {librariesQuery.data.map((library, index: number) => {
             return (
@@ -52,7 +54,7 @@ export default function LibrariesSelect({
                 className="hover:bg-app-hover flex items-center justify-start rounded-md px-3 py-2"
                 onClick={() => switchCurrentLibraryById(library.id)}
               >
-                <Image src={GenDAM_Logo} alt="GenDAM" className="h-8 w-8"></Image>
+                <Image src={GenDAM_Logo} alt={t('sidebar.logo')} className="h-8 w-8"></Image>
                 <div className="mx-2 w-64 truncate text-xs font-semibold">
                   {library.title ?? 'Untitled'} ({library.id})
                 </div>
@@ -60,13 +62,13 @@ export default function LibrariesSelect({
             )
           })}
           <div className="hover:bg-app-hover rounded-md px-3 py-2" onClick={() => setDialogOpen(true)}>
-            <div className="text-center text-sm">Create a library</div>
+            <div className="text-center text-sm">{t('library.create')}</div>
           </div>
         </div>
       ) : (
         <div className="text-ink/50 my-8 text-center text-sm">
           <Icon.Loading className="inline-block h-8 w-8 animate-spin" />
-          <div className="mt-8">Loading library</div>
+          <div className="mt-8">{t('library.loading')}</div>
         </div>
       )}
       <Dialog.Root open={dialogOpen} onOpenChange={(open) => {
@@ -78,10 +80,10 @@ export default function LibrariesSelect({
           <Dialog.Content onClick={(e) => e.stopPropagation()} className="w-96 px-4 pb-6 pt-4">
             <Form.Root onSubmit={onSubmit}>
               <Form.Field name="title" className="flex flex-col items-stretch justify-center gap-5">
-                <Form.Label>Library name</Form.Label>
+                <Form.Label>{t('library.dialog.name')}</Form.Label>
                 <Form.Input size="md" value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
                 <Button type="submit" variant="accent" disabled={libraryCreateMut.isPending}>
-                  Create
+                  {t('library.dialog.create')}
                 </Button>
               </Form.Field>
             </Form.Root>

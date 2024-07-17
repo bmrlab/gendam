@@ -11,10 +11,12 @@ import { DragCancelEvent, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { HTMLAttributes, useCallback } from 'react'
 import Selecto from 'react-selecto'
 import { uniqueId, type ExplorerItem } from '../types'
+import { useTranslation } from 'react-i18next'
 
 export default function ExplorerLayout({ renderLayout, ...props }: {
   renderLayout?: () => JSX.Element,
 } & HTMLAttributes<HTMLDivElement>) {
+  const { t } = useTranslation()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const moveMut = rspc.useMutation(['assets.move_file_path'])
@@ -131,7 +133,7 @@ export default function ExplorerLayout({ renderLayout, ...props }: {
   if (!explorer.items || explorer.items.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-neutral-400">No items</p>
+        <p className="text-sm text-neutral-400">{t('explore.layout.noData')}</p>
       </div>
     )
   }

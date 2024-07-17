@@ -10,6 +10,7 @@ import { HTMLAttributes, useMemo } from 'react'
 import TaskDropdownMenu from './TaskDropdownMenu'
 import { VideoTaskStatus } from './TaskStatus'
 import { useTaskActionOptions } from './useTaskActionOptions'
+import { useTranslation } from 'react-i18next'
 
 export type VideoTaskItemProps = {
   videoFile: VideoWithTasksResult
@@ -18,6 +19,7 @@ export type VideoTaskItemProps = {
 } & HTMLAttributes<HTMLDivElement>
 
 export default function VideoTaskItem({ videoFile, isSelect, handleSelect, ...props }: VideoTaskItemProps) {
+  const { t } = useTranslation()
   const currentLibrary = useCurrentLibrary()
   const { mutateAsync } = rspc.useMutation('video.tasks.cancel')
 
@@ -77,7 +79,7 @@ export default function VideoTaskItem({ videoFile, isSelect, handleSelect, ...pr
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="truncate text-xs font-normal leading-4 opacity-60">Deleted</span>
+              <span className="truncate text-xs font-normal leading-4 opacity-60">{t('task.item.deleted')}</span>
             </div>
           )}
           <div className="flex w-full items-center justify-between">
@@ -103,7 +105,7 @@ export default function VideoTaskItem({ videoFile, isSelect, handleSelect, ...pr
                     !isSelect && 'data-[state=open]:bg-app-hover',
                   )}
                 >
-                  <span className="sr-only">Open menu</span>
+                  <span className="sr-only">{t('task.item.openMenu')}</span>
                   <Icon.MoreVertical className="size-3" />
                 </div>
               </TaskDropdownMenu>
@@ -117,10 +119,11 @@ export default function VideoTaskItem({ videoFile, isSelect, handleSelect, ...pr
 }
 
 const NoAudio = () => {
+  const { t } = useTranslation()
   return (
     <div className="text-ink/50 flex items-center gap-1">
       <Icon.SpeakerSimpleX />
-      <span className="text-xs font-normal leading-4">No Audio</span>
+      <span className="text-xs font-normal leading-4">{t('task.item.noAudio')}</span>
     </div>
   )
 }

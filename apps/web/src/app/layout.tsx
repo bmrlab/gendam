@@ -1,5 +1,5 @@
-import { Inter } from 'next/font/google'
 import '@gendam/tailwind/globals.css'
+import { Inter } from 'next/font/google'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -9,11 +9,13 @@ const inter = Inter({ subsets: ['latin'] })
 //   ssr: false,
 // });
 
-import ClientLayout from './ClientLayout'
 import type { Metadata } from 'next'
+import ClientLayout from './ClientLayout'
+import { I18nLayout } from './I18nLayout'
 export const metadata: Metadata = {
   title: 'GenDAM | A privacy first generative DAM.',
-  description: 'A cross-platform desktop application for managing, processing, and searching multimedia content using Rust-based libraries and AI models.',
+  description:
+    'A cross-platform desktop application for managing, processing, and searching multimedia content using Rust-based libraries and AI models.',
 }
 
 export default function RootLayout({
@@ -24,9 +26,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ClientLayout>
-          {children}
-        </ClientLayout>
+        <I18nLayout>
+          <ClientLayout>{children}</ClientLayout>
+        </I18nLayout>
       </body>
     </html>
   )

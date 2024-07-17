@@ -15,8 +15,10 @@ import SearchItemContextMenu from './SearchItemContextMenu'
 import SearchResults from './SearchResults'
 import SearchSuggestions from './SearchSuggestions'
 import { SearchPageContextProvider, useSearchPageContext, type SearchResultPayload } from './context'
+import { useTranslation } from 'react-i18next'
 
 function SearchPage() {
+  const { t } = useTranslation()
   const searchQuery = useSearchPageContext()
   const { requestPayload } = searchQuery
 
@@ -99,18 +101,18 @@ function SearchPage() {
               className={classNames('px-4 py-2', requestPayload.recordType === 'Frame' && 'bg-app-hover')}
               onClick={() => handleSearch(requestPayload.text, 'Frame')}
             >
-              Visual
+              {t("search.page.visual")}
             </div>
             <div
               className={classNames('px-4 py-2', requestPayload.recordType === 'Transcript' && 'bg-app-hover')}
               onClick={() => handleSearch(requestPayload.text, 'Transcript')}
             >
-              Transcript
+              {t("search.page.transcript")}
             </div>
           </div>
         ) : requestPayload?.api === 'search.recommend' ? (
           <div className="text-ink/50 my-1 flex flex-1 items-center gap-1 truncate text-xs">
-            <span>Frames similar to</span>
+            <span>{t("search.page.similar")}</span>
             <span>&quot;{requestPayload.filePath.name}&quot;</span>
             <span className="relative inline-block h-6 w-6">
               <Image
@@ -136,7 +138,7 @@ function SearchPage() {
             <Checkbox.Indicator />
           </Checkbox.Root>
           <label className="text-xs" htmlFor="--group-frames">
-            Expand video frames
+            {t("search.page.expand")}
           </label>
         </form>
       </div>
@@ -158,16 +160,16 @@ function SearchPage() {
         {!requestPayload ? (
           <div className="flex flex-1 flex-col items-center justify-center">
             <Image src={Video_Files} alt="video files" priority className="h-60 w-60"></Image>
-            <div className="my-4 text-sm">Search for visual objects or processed transcripts</div>
-            <div className="mb-2 text-sm">Try searching for:</div>
+            <div className="my-4 text-sm">{t("search.page.search")}</div>
+            <div className="mb-2 text-sm">{t('search.page.trySearch')}</div>
             <SearchSuggestions onSelectText={(text) => handleSearch(text, 'Frame')} />
           </div>
         ) : searchQuery.isLoading ? (
-          <div className="text-ink/50 flex flex-1 items-center justify-center px-2 py-8 text-sm">Searching...</div>
+          <div className="text-ink/50 flex flex-1 items-center justify-center px-2 py-8 text-sm">{t('search.page.searchLoading')}</div>
         ) : searchQuery.isSuccess && searchQuery.data.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center">
             <Image src={Video_Files} alt="video files" priority className="h-60 w-60"></Image>
-            <div className="my-4 text-sm">No results found</div>
+            <div className="my-4 text-sm">{t('search.page.nofound')}</div>
           </div>
         ) : searchQuery.isSuccess && searchQuery.data.length > 0 ? (
           <>

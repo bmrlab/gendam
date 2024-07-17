@@ -7,6 +7,7 @@ import { useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 import { TaskStatus, getTaskStatus } from './utils'
 import { useRouter } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
 
 export type TaskActionOption =
   | 'Separator'
@@ -19,6 +20,7 @@ export type TaskActionOption =
     }
 
 function useTaskAction(videos: VideoWithTasksResult[]) {
+  const { t } = useTranslation()
   const router = useRouter()
   const taskListRefetch = useBoundStore.use.taskListRefetch()
 
@@ -39,17 +41,17 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
           assetObjectId: param.id,
         })
         await taskListRefetch()
-        toast.success('Successfully re-process job', {
+        toast.success(t('task.action.regenerate.success'), {
           action: {
-            label: 'Dismiss',
+            label: t('task.action.regenerate.success.action'),
             onClick: () => {},
           },
         })
       } catch (e) {
         console.error(e)
-        toast.error('Failed re-process job', {
+        toast.error(t('task.action.regenerate.failed'), {
           action: {
-            label: 'Retry',
+            label: t('task.action.regenerate.failed.action'),
             onClick: () => handleSingleRegenerate(param),
           },
         })
@@ -74,9 +76,9 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
         taskTypes: null,
       })
       await taskListRefetch()
-      toast.success('Job cancelled', {
+      toast.success(t('task.action.cancel.success'), {
         action: {
-          label: 'Dismiss',
+          label: t('task.action.cancel.success.action'),
           onClick: () => {},
         },
       })
@@ -98,18 +100,19 @@ function useTaskAction(videos: VideoWithTasksResult[]) {
 }
 
 export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
+  const { t } = useTranslation()
   const { handleRegenerate, handleCancel, handleReveal } = useTaskAction(videos)
 
   const options = useMemo(() => {
     const options: Array<TaskActionOption> = [
       {
-        label: 'Re-process job',
+        label: t("task.action.options.reprocess"),
         icon: <Icon.Cycle className="size-4" />,
         handleSelect: () => handleRegenerate(),
       },
       {
         disabled: videos.length > 1,
-        label: 'Reveal in explorer',
+        label: t('task.action.options.reveal'),
         icon: <Icon.MagnifyingGlass className="size-4" />,
         handleSelect: () => handleReveal(),
       }
@@ -125,7 +128,7 @@ export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
        * 已完成, 已取消, 出错的, 不可以取消
        */
       options.push({
-        label: 'Cancel job',
+        label: t('task.action.options.cancel'),
         icon: <Icon.CloseRounded className="size-4" />,
         handleSelect: () => handleCancel(),
       })
@@ -137,7 +140,7 @@ export function useTaskActionOptions(videos: VideoWithTasksResult[]) {
       {
         disabled: true,
         variant: 'destructive',
-        label: 'Delete job',
+        label: t('task.action.options.delete'),
         icon: <Icon.Trash className="size-4" />,
         handleClick: () => console.log('Delete job'),
       },

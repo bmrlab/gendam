@@ -7,10 +7,12 @@ import { useEffect } from 'react'
 import CompletedQueueList from './CompletedQueueList'
 import QueueItem from './QueueItem'
 import QueueStatusHeader from './QueueStatusHeader'
+import { useTranslation } from 'react-i18next'
 // import { twx } from '@/lib/utils'
 // const QueueItem = twx.div`flex items-center justify-start pl-2 pr-4 py-2`
 
 const QueueList = () => {
+  const { t } = useTranslation()
   const uploadQueueStore = useUploadQueueStore()
   return (
     <div className="h-80 w-80 overflow-y-auto overflow-x-hidden">
@@ -18,11 +20,11 @@ const QueueList = () => {
         <QueueItem
           file={uploadQueueStore.uploading}
           icon={<Icon.Loading className="size-4 animate-spin text-orange-600"></Icon.Loading>}
-          status={<div className="text-ink/50">Uploading</div>}
+          status={<div className="text-ink/50">{t('uploadQueue.uploading')}</div>}
         />
       ) : null}
       {uploadQueueStore.queue.map((file, index) => (
-        <QueueItem key={index} file={file} status={<div className="text-ink/50">Wait for import</div>} />
+        <QueueItem key={index} file={file} status={<div className="text-ink/50">{t('uploadQueue.waitForImport')}</div>} />
       ))}
       {uploadQueueStore.failed.map((file, index) => (
         <QueueItem
@@ -37,11 +39,11 @@ const QueueList = () => {
                 className="hidden text-xs text-orange-600 group-hover:block"
                 onClick={() => uploadQueueStore.retryFailed(file)}
               >
-                Retry
+                {t('uploadQueue.retry')}
               </Button>
             </>
           }
-          status={<div className="text-ink/50">Failed</div>}
+          status={<div className="text-ink/50">{t('uploadQueue.failed')}</div>}
         />
       ))}
       <CompletedQueueList />

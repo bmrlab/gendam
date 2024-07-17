@@ -10,20 +10,22 @@ import {
 import { type ExplorerItem } from '@/Explorer/types'
 import AudioDialog from '@/components/Audio/AudioDialog'
 import Inspector from '@/components/Inspector'
+import { useInspector } from '@/components/Inspector/store'
 import Viewport from '@/components/Viewport'
-import { rspc } from '@/lib/rspc'
 import { type FilePath } from '@/lib/bindings'
+import { rspc } from '@/lib/rspc'
 import { Drop_To_Folder } from '@gendam/assets/images'
 import { RSPCError } from '@rspc/client'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
 import ItemContextMenu from './_components/ItemContextMenu'
-import { useInspector } from '@/components/Inspector/store'
 
 export default function ExplorerPage() {
+  const { t } = useTranslation()
   // const explorerStore = useExplorerStore()
   const searchParams = useSearchParams()
   let dirInSearchParams = searchParams.get('dir') || '/'
@@ -76,10 +78,12 @@ export default function ExplorerPage() {
       setItems([...assetsQuery.data])
       // 重新获取数据要清空选中的项目，以免出现不在列表中但是还被选中的情况
       if (revealedFilePath) {
-        resetSelectedItems([{
-          type: 'FilePath',
-          filePath: revealedFilePath,
-        }])
+        resetSelectedItems([
+          {
+            type: 'FilePath',
+            filePath: revealedFilePath,
+          },
+        ])
         setShowInspector(true)
       } else {
         resetSelectedItems()
@@ -123,7 +127,7 @@ export default function ExplorerPage() {
           {assetsQuery.isSuccess && assetsQuery.data.length === 0 ? (
             <Viewport.Content className="flex flex-col items-center justify-center">
               <Image src={Drop_To_Folder} alt="drop to folder" priority className="h-60 w-60"></Image>
-              <div className="my-4 text-sm">Drag or paste videos here</div>
+              <div className="my-4 text-sm">{t('explore.page.content')}</div>
             </Viewport.Content>
           ) : (
             <Viewport.Content className="flex h-full flex-row overflow-hidden">

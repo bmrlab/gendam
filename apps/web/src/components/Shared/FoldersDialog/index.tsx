@@ -10,8 +10,10 @@ import classNames from 'classnames'
 import Image from 'next/image'
 import { useCallback, useEffect, useState } from 'react'
 import { useFoldersDialog } from './store'
+import { useTranslation } from 'react-i18next'
 
 export default function FoldersDialog() {
+  const { t } = useTranslation()
   const foldersDialog = useFoldersDialog()
   const [currentPath, setCurrentPath] = useState<string>('/')
   const [selectedFolder, setSelectedFolder] = useState<FilePath | null>(null)
@@ -93,14 +95,14 @@ export default function FoldersDialog() {
         <Dialog.Overlay onClick={(e) => e.stopPropagation()} />
         <Dialog.Content onClick={(e) => e.stopPropagation()} className="w-[40rem]">
           <div className="flex items-center justify-start border-b border-app-line px-4 py-3">
-            <div className="text-sm">Choose folder</div>
+            <div className="text-sm">{t('shared.chooseFolder')}</div>
             <Button
               variant="ghost"
               size="xs"
               className="ml-2 gap-1 px-1"
               onClick={() => gotoFolder('-1')}>
               <Icon.ArrowUpLeft className="h-4 w-4" />
-              <span>Back</span>
+              <span>{t('shared.back')}</span>
             </Button>
           </div>
           <div
@@ -135,7 +137,7 @@ export default function FoldersDialog() {
                 </div>
               ))
             ) : (
-              <div className="w-full py-8 text-center text-xs text-ink/50">No folders</div>
+              <div className="w-full py-8 text-center text-xs text-ink/50">{t('shared.noFolders')}</div>
             )}
           </div>
           <div className="border-app-line flex items-center justify-end gap-2 border-t px-4 py-2 text-sm">
@@ -145,7 +147,7 @@ export default function FoldersDialog() {
             <div className="text-xs">{currentPath}</div>
             <div className="mr-auto"></div>
             <Dialog.Close asChild>
-              <Button variant="outline" size="sm">Cancel</Button>
+              <Button variant="outline" size="sm">{t('shared.cancel')}</Button>
             </Dialog.Close>
             <Dialog.Close asChild onClick={() => {
               if (selectedFolder) {
@@ -155,7 +157,7 @@ export default function FoldersDialog() {
               }
             }}>
               <Button variant="accent" size="sm">
-                Choose {selectedFolder ? `folder "${selectedFolder.name}"` : 'current folder'}
+                {t('shared.choose', {folder: selectedFolder ? `folder "${selectedFolder.name}"` : t('shared.current')})}
               </Button>
             </Dialog.Close>
           </div>

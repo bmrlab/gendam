@@ -9,6 +9,7 @@ import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
 import { useBoundStore } from './store'
 import { Fragment, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export enum FileTypeEnum {
   txt = 'Plain Text (.txt)',
@@ -21,6 +22,7 @@ export enum FileTypeEnum {
 }
 
 export default function AudioExport() {
+  const { t } = useTranslation()
   const audioDialogProps = useBoundStore.use.audioDialogProps()
   const setIsOpenAudioDialog = useBoundStore.use.setIsOpenAudioDialog()
   const fileHash = useMemo(() => (audioDialogProps.params as SingleExportProps)?.fileHash, [audioDialogProps])
@@ -115,7 +117,7 @@ export default function AudioExport() {
           >
             <div className="flex gap-0.5">
               <Icon.CopySimple />
-              <span className="select-none">Copy</span>
+              <span className="select-none">{t('audio.export.copy')}</span>
             </div>
           </RoundedBadge>
         </div>
@@ -144,7 +146,7 @@ export default function AudioExport() {
         </div>
         <div className="flex w-full flex-1 items-end">
           <WithDownloadDialogButton className="mt-4 w-full" onSelection={handleDownload}>
-            Export
+            {t('audio.export.export')}
           </WithDownloadDialogButton>
         </div>
       </div>
