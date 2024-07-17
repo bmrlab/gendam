@@ -15,19 +15,21 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 const Version = () => {
+  const { t } = useTranslation()
   const { currentVersion, updateStatus, updateError } = useUpdater()
   // "PENDING" | "ERROR" | "DONE" | "UPTODATE"
   useEffect(() => {
     if (updateStatus === 'DONE') {
-      toast.success('Update completed', {
-        description: 'GenDAM has been updated to the latest version, it will apply after you restart the app.',
+      toast.success(t('version.update.done'), {
+        description: t('version.update.done.description'),
         duration: 86400 * 1000,
       })
     } else if (updateStatus === 'ERROR') {
-      toast.error('Update failed', {
+      toast.error(t('version.update.error'), {
         description: updateError,
         duration: 30 * 1000,
       })
@@ -40,7 +42,7 @@ const Version = () => {
       {updateStatus === 'PENDING' ? (
         <>
           <Icon.Loading className="h-3 w-3 animate-spin" />
-          <div className="text-ink/30">Updating</div>
+          <div className="text-ink/30">{t('version.update.updating')}</div>
         </>
       ) : null}
     </div>
@@ -48,6 +50,7 @@ const Version = () => {
 }
 
 export default function Sidebar() {
+  const { t } = useTranslation()
   const pathname = usePathname()
   const currentLibrary = useCurrentLibrary()
   const librariesQuery = rspc.useQuery(['libraries.list'])
@@ -74,7 +77,7 @@ export default function Sidebar() {
       try {
         await currentLibrary.switchCurrentLibraryById(library.id)
       } catch (error) {
-        toast.error('Failed to quit current library', {
+        toast.error(t('sidebar.switchLibraryError'), {
           description: `${error}`,
         })
       }
@@ -104,9 +107,9 @@ export default function Sidebar() {
         <Popover.Root>
           <Popover.Trigger asChild disabled={!librariesQuery.isSuccess || !librariesQuery.data.length}>
             <div className="flex cursor-default items-center">
-              <Image src={GenDAM_Logo} alt="GenDAM" className="h-8 w-8"></Image>
+              <Image src={GenDAM_Logo} alt={t('sidebar.logo')} className="h-8 w-8"></Image>
               <div className="mx-2 flex-1 overflow-hidden">
-                <div className="truncate text-xs font-semibold">{selectedLibrary?.title ?? 'Untitled'}</div>
+                <div className="truncate text-xs font-semibold">{selectedLibrary?.title ?? t('sidebar.noLibraryTitle')}</div>
               </div>
               <Icon.UpAndDownArrow className="h-4 w-4"></Icon.UpAndDownArrow>
             </div>
@@ -138,11 +141,11 @@ export default function Sidebar() {
       <section className="mx-3 text-sm">
         <Link href="/explorer" className={menuClassNames('/explorer')}>
           <Icon.File className="text-ink/70 h-4 w-4" />
-          <span>Library</span>
+          <span>{t('sidebar.library')}</span>
         </Link>
         <Link href="/search" className={menuClassNames('/search')}>
           <Icon.MagnifyingGlass className="text-ink/70 h-4 w-4" />
-          <span>Search</span>
+          <span>{t('sidebar.search')}</span>
         </Link>
         {/* <Link href="/video-tasks" className={menuClassNames('/video-tasks')}>
           <Icon.Briefcase className="text-ink/70 h-4 w-4" />

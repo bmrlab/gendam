@@ -13,6 +13,7 @@ import TaskFooter from './_components/footer'
 import VideoTasksList from './_components/TaskList'
 import { useBoundStore } from './_store'
 import useTaskList, { type TaskListProps } from './useTaskList'
+import { Trans, useTranslation } from 'react-i18next'
 
 type SearchPayloadInURL = {
   filter: string,
@@ -62,6 +63,7 @@ function validateSearchPayload(searchPayloadInURL: SearchPayloadInURL | null): T
 }
 
 export default function VideoTasksPage() {
+  const { t } = useTranslation()
   const clearVideoSelected = useBoundStore.use.clearVideoSelected()
   const [searchPayloadInURL, updateSearchPayloadInURL] = useSearchPayloadInURL()
 
@@ -90,7 +92,7 @@ export default function VideoTasksPage() {
         >
           <Checkbox.Indicator />
         </Checkbox.Root>
-        <label className="text-xs" htmlFor="--show-completed-tasks">Show completed tasks</label>
+        <label className="text-xs" htmlFor="--show-completed-tasks">{t('task.page.listFilter.checkbox')}</label>
       </form>
     )
   }
@@ -122,7 +124,7 @@ export default function VideoTasksPage() {
     <Viewport.Page>
       {/* <VideoTaskHeader /> */}
       <Viewport.Toolbar className="items-center justify-between">
-        <PageNav title="All jobs" />
+        <PageNav title={t('task.page.title')} />
         <ListFilter />
       </Viewport.Toolbar>
       <Viewport.Content onClick={() => clearVideoSelected()}>
@@ -130,7 +132,9 @@ export default function VideoTasksPage() {
           <div className="h-full flex flex-col items-center justify-center">
             <Link href="/explorer" className="cursor-default">
               <Image src={Drop_To_Folder} alt="drop to folder" priority className="w-60 h-60"></Image>
-              <div className="my-4 text-sm">Go to the <span className="underline">explorer</span> to add videos</div>
+              <div className="my-4 text-sm">
+                <Trans i18nKey='task.page.content' components={{1: <span className="underline" />}}></Trans>
+              </div>
             </Link>
           </div>
         ) : (

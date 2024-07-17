@@ -12,6 +12,7 @@ import { formatBytes, formatDateTime } from '@/lib/utils'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { HTMLAttributes, useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type WithFilePathExplorerItem = Extract<ExplorerItem, { type: 'FilePath' | 'SearchResult' }>
 
@@ -117,6 +118,7 @@ const ListItem: React.FC<
 }
 
 export default function ListView({ items }: { items: WithFilePathExplorerItem[] }) {
+  const { t } = useTranslation()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
@@ -149,11 +151,11 @@ export default function ListView({ items }: { items: WithFilePathExplorerItem[] 
   return (
     <>
       <div className="border-app-line flex items-center justify-start gap-2 border-b px-10 py-2">
-        <div className="text-ink pl-9 text-xs font-bold">Name</div>
+        <div className="text-ink pl-9 text-xs font-bold">{t('"explore.listview.name": "Name",')}</div>
         <div className="ml-auto" />
-        <div className="text-ink w-40 text-xs font-bold">Created</div>
-        <div className="text-ink w-24 text-xs font-bold">Size</div>
-        <div className="text-ink w-24 text-xs font-bold">Type</div>
+        <div className="text-ink w-40 text-xs font-bold">{t('explore.created')}</div>
+        <div className="text-ink w-24 text-xs font-bold">{t('explore.size')}</div>
+        <div className="text-ink w-24 text-xs font-bold">{t('explore.type')}</div>
       </div>
       <div className="px-4 py-2">
         {items.map((item, index) => (

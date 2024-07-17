@@ -3,9 +3,11 @@ import { useCurrentLibrary } from '@/lib/library'
 import { Button } from '@gendam/ui/v2/button'
 import { Form, FormPrimitive } from '@gendam/ui/v2/form'
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 export default function S3Config() {
+  const { t } = useTranslation()
   const currentLibrary = useCurrentLibrary()
 
   const [config, setConfig] = useState<S3Config>({
@@ -28,7 +30,7 @@ export default function S3Config() {
       setIsPending(true)
       try {
         await currentLibrary.updateLibrarySettings({ s3Config: config })
-        toast.success('Library settings updated')
+        toast.success(t('setting.s3.submit.success'))
       } catch (error) {
         console.error(error)
       }
@@ -42,10 +44,10 @@ export default function S3Config() {
 
   return (
     <div>
-      <div className="mb-8 text-xl font-medium">S3 Settings</div>
+      <div className="mb-8 text-xl font-medium">{t('setting.s3.title')}</div>
       <Form.Root onSubmit={onSubmit} className="mb-8 max-w-md space-y-4">
         <Form.Field name="bucket" className="grid">
-          <Form.Label>Bucket</Form.Label>
+          <Form.Label>{t('setting.s3.bucket')}</Form.Label>
           <Form.Input
             required
             size="md"
@@ -58,11 +60,11 @@ export default function S3Config() {
             }
           />
           <FormPrimitive.Message className="text-[13px] text-red-500 opacity-[0.8]" match="valueMissing">
-            Please enter your bucket
+            {t('setting.s3.bucket.placeholder')}
           </FormPrimitive.Message>
         </Form.Field>
         <Form.Field name="endpoint" className="grid">
-          <Form.Label>Endpoint</Form.Label>
+          <Form.Label>{t('setting.s3.endpoint')}</Form.Label>
           <Form.Input
             required
             size="md"
@@ -75,11 +77,11 @@ export default function S3Config() {
             }
           />
           <FormPrimitive.Message className="text-[13px] text-red-500 opacity-[0.8]" match="valueMissing">
-            Please enter your endpoint
+            {t('setting.s3.endpoint.placeholder')}
           </FormPrimitive.Message>
         </Form.Field>
         <Form.Field name="accessKeyId" className="grid">
-          <Form.Label>AccessKeyId</Form.Label>
+          <Form.Label>{t('setting.s3.accessKeyId')}</Form.Label>
           <Form.Input
             required
             size="md"
@@ -92,11 +94,11 @@ export default function S3Config() {
             }
           />
           <FormPrimitive.Message className="text-[13px] text-red-500 opacity-[0.8]" match="valueMissing">
-            Please enter your access key id
+            {t('setting.s3.accessKeyId.placeholder')}
           </FormPrimitive.Message>
         </Form.Field>
         <Form.Field name="secretAccessKey" className="grid">
-          <Form.Label>SecretAccessKey</Form.Label>
+          <Form.Label>{t('setting.s3.secretAccessKey')}</Form.Label>
           <Form.Input
             required
             size="md"
@@ -109,12 +111,12 @@ export default function S3Config() {
             }
           />
           <FormPrimitive.Message className="text-[13px] text-red-500 opacity-[0.8]" match="valueMissing">
-            Please enter your secret access key
+            {t('setting.s3.secretAccessKey.placeholder')}
           </FormPrimitive.Message>
         </Form.Field>
         <FormPrimitive.Submit asChild>
           <Button type="submit" variant="accent" disabled={isPending}>
-            Save
+            {t('setting.s3.save')}
           </Button>
         </FormPrimitive.Submit>
       </Form.Root>

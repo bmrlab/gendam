@@ -5,6 +5,7 @@ import classNames from 'classnames'
 import { type SearchPayload } from './context'
 // import classNames from 'classnames'
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type FormData = {
   text: string
@@ -22,6 +23,7 @@ const SearchFormWithRef = forwardRef<
     onSubmit: () => void
   }
 >(function SearchForm({ onSubmit }, ref) {
+  const { t } = useTranslation()
   const [text, setText] = useState('')
   const [recordType, setRecordType] = useState<'Frame' | 'Transcript' | null>(null)
   // const [value, setValue] = useState<T | null>(null)
@@ -67,7 +69,7 @@ const SearchFormWithRef = forwardRef<
           <CommandPrimitive.Input
             ref={searchInputRef}
             className="border-app-line bg-app-overlay text-ink block w-full rounded-md border px-4 py-[0.3rem] pl-7 pr-7 text-sm outline-none"
-            placeholder="Search"
+            placeholder={t('search.form.input.placholder')}
             value={text}
             onValueChange={(text) => setText(text)}
             onFocus={() => setTyping(true)}
@@ -85,7 +87,7 @@ const SearchFormWithRef = forwardRef<
         </div>
         {typing && (
           <div className="border-app-line bg-app-box absolute top-full z-10 w-full rounded-md border p-1 text-sm shadow-md">
-            <div className="text-ink/50 px-2 py-1">Search types</div>
+            <div className="text-ink/50 px-2 py-1">{t('search.form.types')}</div>
             <CommandPrimitive.List>
               <CommandPrimitive.Item
                 className="text-ink hover:bg-app-hover data-[selected]:bg-app-hover flex items-center justify-start overflow-hidden rounded-md px-2 py-2"
@@ -95,7 +97,7 @@ const SearchFormWithRef = forwardRef<
                   <Icon.Image className="w-4" />
                 </div>
                 <div className="mx-2 flex-1 break-all">
-                  <span>Visual search for </span>
+                  <span>{t('search.form.visual')}</span>
                   <strong>{text}</strong>
                 </div>
               </CommandPrimitive.Item>
@@ -107,7 +109,7 @@ const SearchFormWithRef = forwardRef<
                   <Icon.Mic className="w-4" />
                 </div>
                 <div className="mx-2 flex-1 break-all">
-                  <span>Transcript search for </span>
+                  <span>{t('search.form.transcript')}</span>
                   <strong>{text}</strong>
                 </div>
               </CommandPrimitive.Item>

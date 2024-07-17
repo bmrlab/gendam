@@ -7,6 +7,7 @@ import Icon from '@gendam/ui/icons'
 import Image from 'next/image'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { HTMLAttributes, useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 // interface SelectionState {
 //   id: number | null
@@ -96,6 +97,7 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
 
 export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement>) {
   // const selectionState = useSelectionState()
+  const { t } = useTranslation()
   const router = useRouter()
   const { data: dirs } = rspc.useQuery([
     'assets.list',
@@ -112,7 +114,7 @@ export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement
     >
       <div className="text-ink/50 mb-1 ml-5 flex text-xs font-medium">
         <div className="hover:bg-sidebar-hover rounded p-1" onClick={(e) => router.push('/explorer')}>
-          Folders
+          {t('folder.title')}
         </div>
       </div>
       {/* <div className="ml-5 flex items-center justify-start">

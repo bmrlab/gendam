@@ -2,8 +2,10 @@
 import { useUploadQueueStore } from '@/components/UploadQueue/store'
 import Icon from '@gendam/ui/icons'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const QueueStatusHeader = function () {
+  const { t } = useTranslation()
   const uploadQueueStore = useUploadQueueStore()
 
   const counts = useMemo(() => {
@@ -21,9 +23,9 @@ const QueueStatusHeader = function () {
           <Icon.Loading className="size-5 animate-spin text-orange-600"></Icon.Loading>
         </div>
         <div className="flex-1">
-          <span className="text-xs font-medium">Importing</span>
+          <span className="text-xs font-medium">{t('uploadQueue.importing')}</span>
           <span className="text-ink/50 ml-2 text-xs">
-            {counts.pending} of {counts.total} files left
+            {t('uploadQueue.counts.pending', { pending: counts.pending, total: counts.total })}
           </span>
         </div>
       </>
@@ -35,9 +37,9 @@ const QueueStatusHeader = function () {
           <Icon.Close className="size-full"></Icon.Close>
         </div>
         <div className="flex-1">
-          <span className="text-xs font-medium">Import failed</span>
+          <span className="text-xs font-medium">{t('uploadQueue.importFailed')}</span>
           <span className="text-ink/50 ml-2 text-xs">
-            {counts.failed} of {counts.total} files failed
+            {t('uploadQueue.counts.failed', { failed: counts.failed, total: counts.total })}
           </span>
         </div>
       </>
@@ -49,8 +51,8 @@ const QueueStatusHeader = function () {
           <Icon.Check className="size-full"></Icon.Check>
         </div>
         <div className="flex-1">
-          <span className="text-xs font-medium">Import completed</span>
-          <span className="text-ink/50 ml-2 text-xs">{counts.success} files imported</span>
+          <span className="text-xs font-medium">{t('uploadQueue.importCompleted')}</span>
+          <span className="text-ink/50 ml-2 text-xs">{t('uploadQueue.counts.success', {success: counts.success})}</span>
         </div>
       </>
     )
@@ -58,7 +60,7 @@ const QueueStatusHeader = function () {
     return (
       <>
         <div className="flex-1">
-          <span className="text-xs font-medium">No files to import</span>
+          <span className="text-xs font-medium">{t('uploadQueue.noFilesToImport')}</span>
         </div>
       </>
     )

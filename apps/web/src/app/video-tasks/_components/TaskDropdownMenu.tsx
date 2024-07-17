@@ -3,6 +3,7 @@ import classNames from 'classnames'
 import { DropdownMenu } from '@gendam/ui/v2/dropdown-menu'
 // import { cn } from '@/lib/utils'
 import { PropsWithChildren, ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export type DropdownMenuOptions =
   | {
@@ -23,6 +24,7 @@ export default function TaskDropdownMenu({
   triggerIcon,
   children,
 }: PropsWithChildren<_DropdownMenuProps>) {
+  const { t } = useTranslation()
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
@@ -33,7 +35,7 @@ export default function TaskDropdownMenu({
             'inline-flex items-center justify-center size-6 rounded border border-app-line',
             'cursor-default data-[state=open]:bg-app-hover',
           )}>
-            <span className="sr-only">Open menu</span>
+            <span className="sr-only">{t('task.dropdown.openMenu')}</span>
             {triggerIcon ? triggerIcon : <Icon.MoreVertical />}
           </div>
         )}

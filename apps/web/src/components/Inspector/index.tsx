@@ -8,10 +8,12 @@ import Icon from '@gendam/ui/icons'
 import { Button } from '@gendam/ui/v2/button'
 import Image from 'next/image'
 import { useCallback, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Video } from '../Video'
 import { useInspector } from './store'
 
 const FolderDetail = ({ data }: { data: FilePath }) => {
+  const { t } = useTranslation()
   return (
     <div className="p-4">
       <div className="flex items-start justify-start">
@@ -25,13 +27,13 @@ const FolderDetail = ({ data }: { data: FilePath }) => {
       </div>
       <div className="bg-app-line mb-3 mt-6 h-px"></div>
       <div className="text-xs">
-        <div className="text-md font-medium">Information</div>
+        <div className="text-md font-medium">{t('audio.inspector.information')}</div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Created</div>
+          <div className="text-ink/50">{t('audio.inspector.created')}</div>
           <div>{formatDateTime(data.createdAt)}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Modified</div>
+          <div className="text-ink/50">{t('audio.inspector.modified')}</div>
           <div>{formatDateTime(data.updatedAt)}</div>
         </div>
       </div>
@@ -65,6 +67,7 @@ export const TaskItemType: Record<string, [string, number]> = {
 }
 
 const AssetObjectDetail = ({ data }: { data: FilePath }) => {
+  const { t } = useTranslation()
   const currentLibrary = useCurrentLibrary()
 
   const tasksQueryParams = useMemo(() => {
@@ -129,75 +132,81 @@ const AssetObjectDetail = ({ data }: { data: FilePath }) => {
       )}
       <div className="mt-3 overflow-hidden">
         <div className="text-ink line-clamp-2 break-all text-sm font-medium">{data.name}</div>
-        <div className="text-ink/50 mt-1 line-clamp-2 text-xs">Location {data.materializedPath}</div>
+        <div className="text-ink/50 mt-1 line-clamp-2 text-xs">
+          {t('audio.inspector.location', { path: data.materializedPath })}
+        </div>
       </div>
       <div className="bg-app-line mb-3 mt-3 h-px"></div>
       <div className="text-xs">
-        <div className="text-md font-medium">Information</div>
+        <div className="text-md font-medium">{t('audio.inspector.information')}</div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Size</div>
+          <div className="text-ink/50">{t('audio.inspector.size')}</div>
           <div>{formatBytes(assetObject.size)}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Type</div>
+          <div className="text-ink/50">{t('audio.inspector.type')}</div>
           <div>{assetObject.mimeType}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Duration</div>
+          <div className="text-ink/50">{t('audio.inspector.duration')}</div>
           <div>{formatDuration(mediaData?.duration ?? 0)}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Dimensions</div>
+          <div className="text-ink/50">{t('audio.inspector.dimensions')}</div>
           <div>{`${mediaData?.width ?? 0} x ${mediaData?.height ?? 0}`}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Audio</div>
+          <div className="text-ink/50">{t('audio.inspector.audio')}</div>
           <div>{mediaData.hasAudio ? 'Yes' : 'No'}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Created</div>
+          <div className="text-ink/50">{t('audio.inspector.created')}</div>
           <div>{formatDateTime(data.createdAt)}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Modified</div>
+          <div className="text-ink/50">{t('audio.inspector.modified')}</div>
           <div>{formatDateTime(data.updatedAt)}</div>
         </div>
       </div>
       <div className="bg-app-line mb-3 mt-3 h-px"></div>
       <div className="text-xs">
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Content Hash</div>
+          <div className="text-ink/50">{t('audio.inspector.contentHash')}</div>
           <div>{assetObject.hash}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Asset Object ID</div>
+          <div className="text-ink/50">{t('audio.inspector.assetId')}</div>
           <div>{assetObject.id}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Visual Search</div>
+          <div className="text-ink/50">{t('audio.inspector.visual')}</div>
           {sortedTasks.some((item) => item.taskType === 'frame-content-embedding' && item.exitCode === 0) ? (
-            <div className="rounded-full bg-green-100 px-2 text-xs text-green-600">Ready</div>
+            <div className="rounded-full bg-green-100 px-2 text-xs text-green-600">{t('audio.inspector.ready')}</div>
           ) : (
-            <div className="rounded-full bg-orange-100 px-2 text-xs text-orange-600">Not ready</div>
+            <div className="rounded-full bg-orange-100 px-2 text-xs text-orange-600">
+              {t('audio.inspector.notReady')}
+            </div>
           )}
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Transcript Search</div>
+          <div className="text-ink/50">{t('audio.inspector.transcriptSearch')}</div>
           {sortedTasks.some((item) => item.taskType === 'transcript-embedding' && item.exitCode === 0) ? (
-            <div className="rounded-full bg-green-100 px-2 text-xs text-green-600">Ready</div>
+            <div className="rounded-full bg-green-100 px-2 text-xs text-green-600">{t('audio.inspector.ready')}</div>
           ) : (
-            <div className="rounded-full bg-orange-100 px-2 text-xs text-orange-600">Not ready</div>
+            <div className="rounded-full bg-orange-100 px-2 text-xs text-orange-600">
+              {t('audio.inspector.notReady')}
+            </div>
           )}
         </div>
       </div>
       <div className="bg-app-line mb-3 mt-3 h-px"></div>
       <div className="text-xs">
         <div className="text-md mt-2 flex items-center justify-between">
-          <div className="font-medium">Jobs</div>
+          <div className="font-medium">{t('audio.inspector.jobs')}</div>
           {sortedTasks.some((task) => task.exitCode === null) ? (
             <div className="text-ink/60 group flex items-center gap-1">
               <div className="px-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                Cancel pending jobs
+                {t('audio.inspector.jobs.cancel')}
               </div>
               <Button variant="ghost" size="xs" className="px-0" onClick={() => handleJobsCancel()}>
                 <Icon.Close className="h-3 w-3" />

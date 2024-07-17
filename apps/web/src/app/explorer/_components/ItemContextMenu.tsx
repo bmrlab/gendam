@@ -11,6 +11,7 @@ import { queryClient, rspc } from '@/lib/rspc'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 type ItemContextMenuProps = {
@@ -21,6 +22,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   { data, ...prpos },
   forwardedRef,
 ) {
+  const { t } = useTranslation()
   const router = useRouter()
 
   // Explorer Component's State and Context
@@ -159,9 +161,9 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
     if (hashes.length > 0 || materializedPaths.length > 0) {
       try {
         await uploadToS3(payload)
-        toast.success('Upload success')
+        toast.success(t("explorer.contextMenu.upload.success"))
       } catch (error) {
-        toast.error('Upload failed')
+        toast.error(t('explorer.contextMenu.upload.failed'))
       }
     }
   }, [selectedFilePathItems])
@@ -174,10 +176,10 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       className="data-[state=closed]:animate-none data-[state=closed]:duration-0"
     >
       <ContextMenu.Item onSelect={handleOpen} disabled={explorer.selectedItems.size > 1}>
-        <div>Open</div>
+        <div>{t("explorer.contextMenu.open")}</div>
       </ContextMenu.Item>
       <ContextMenu.Item onSelect={handleShowInspector} disabled={explorer.selectedItems.size > 1}>
-        <div>Details</div>
+        <div>{t("explorer.contextMenu.details")}</div>
       </ContextMenu.Item>
       {/* <ContextMenu.Item onSelect={() => {}} disabled={explorer.selectedItems.size > 1 }>
         <div>Quick view</div>
@@ -187,10 +189,10 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
         onSelect={handleProcessMetadata}
         disabled={selectedFilePathItems.some((item) => !item.assetObject)}
       >
-        <div>Regen thumbnail</div>
+        <div>{t('explorer.contextMenu.regenThumbnail')}</div>
       </ContextMenu.Item>
       <ContextMenu.Item onSelect={handleProcessJobs} disabled={selectedFilePathItems.some((item) => !item.assetObject)}>
-        <div>Re-process jobs</div>
+        <div>{t("explorer.contextMenu.reProcessJobs")}</div>
       </ContextMenu.Item>
       <ContextMenu.Item
         onSelect={() => {
@@ -198,18 +200,18 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
           return items.length === 1 ? audioDialog.singleExport(items[0]) : audioDialog.batchExport(items)
         }}
       >
-        <div>Export transcript</div>
+        <div>{t("explorer.contextMenu.exportTranscript")}</div>
       </ContextMenu.Item>
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />
       <ContextMenu.Item onSelect={() => openFileSelection().then((path) => onMoveTargetSelected(path))}>
-        <div>Move</div>
+        <div>{t('explorer.contextMenu.move')}</div>
       </ContextMenu.Item>
       <ContextMenu.Item onSelect={handleRename} disabled={explorer.selectedItems.size > 1}>
-        <div>Rename</div>
+        <div>{t('explorer.contextMenu.rename')}</div>
       </ContextMenu.Item>
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />
       <ContextMenu.Item onSelect={handleUpload}>
-        <div>Upload</div>
+        <div>{t('explorer.contextMenu.upload')}</div>
       </ContextMenu.Item>
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />
       <ContextMenu.Sub>
@@ -224,7 +226,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       </ContextMenu.Sub>
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />
       <ContextMenu.Item variant="destructive" onSelect={handleDelete}>
-        <div>Delete</div>
+        <div>{t('explorer.contextMenu.delete')}</div>
       </ContextMenu.Item>
     </ContextMenu.Content>
   )

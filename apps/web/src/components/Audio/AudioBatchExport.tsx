@@ -13,6 +13,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useBoundStore } from './store'
 import { WithDownloadDialogButton } from './withDownloadDialog'
 import { FileTypeEnum } from './AudioExport'
+import { useTranslation } from 'react-i18next'
 
 export type BatchExportProps = {
   id: string
@@ -22,6 +23,7 @@ export type BatchExportProps = {
 }[]
 
 export default function BatchExport() {
+  const { t } = useTranslation()
   const currentLibrary = useCurrentLibrary()
 
   const audioDialogProps = useBoundStore.use.audioDialogProps()
@@ -56,18 +58,18 @@ export default function BatchExport() {
     const errorList = await batchExport(input)
     setIsOpenAudioDialog(false)
     if (errorList.length > 0) {
-      toast.error(`${errorList.join(', ')}, export failed`)
+      toast.error(t("audio.export.failed", {error: errorList.join(', ')}))
     } else {
-      toast.success('Export successfully')
+      toast.success(t('audio.export.success'))
     }
   }
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="grid grid-cols-10 border-b border-app-line px-6 py-2 text-xs font-normal leading-4">
-        <p className="col-span-5">File</p>
-        <p className="col-span-3">Formats</p>
-        <p className="col-span-1">Quantity</p>
+        <p className="col-span-5">{t('audio.export.file')}</p>
+        <p className="col-span-3">{t('audio.export.formats')}</p>
+        <p className="col-span-1">{t('audio.export.quantity')}</p>
         <div className="col-span-1"></div>
       </div>
       <div className="flex-1 pb-16 overflow-auto">
@@ -99,7 +101,7 @@ export default function BatchExport() {
                 value={multiValues.find((v) => v.id === id)?.types || []}
                 onValueChange={(value) => updateItemTypes(id, value)}
                 showValue
-                placeholder="Select formats"
+                placeholder={t('audio.export.formats.select')}
                 options={Object.keys(FileTypeEnum).map((type) => ({
                   label: FileTypeEnum[type as keyof typeof FileTypeEnum],
                   value: type,
@@ -113,7 +115,7 @@ export default function BatchExport() {
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   <div className="inline-flex items-center justify-center size-6 rounded border border-app-line cursor-default data-[state=open]:bg-app-hover">
-                    <span className="sr-only">Open menu</span>
+                    <span className="sr-only">{t('audio.export.openMenu')}</span>
                     <Icon.MoreVertical />
                   </div>
                 </DropdownMenu.Trigger>
@@ -124,13 +126,13 @@ export default function BatchExport() {
                   }}>
                     <div className="flex items-center gap-1.5">
                       <Icon.Cycle />
-                      <span>Apply export formats to all</span>
+                      <span>{t('audio.export.apply')}</span>
                     </div>
                   </DropdownMenu.Item>
                   <DropdownMenu.Item onSelect={() => updateItemTypes(id, [])}>
                     <div className="flex items-center gap-1.5">
                       <Icon.ArrowUpLeft />
-                      <span>Reset export options</span>
+                      <span>{t('audio.export.reset')}</span>
                     </div>
                   </DropdownMenu.Item>
                 </DropdownMenu.Content>
@@ -141,10 +143,10 @@ export default function BatchExport() {
       </div>
       <div className="flex justify-end gap-2 border-t border-app-line px-6 py-2.5">
         <Button variant="outline" size="md" onClick={() => setIsOpenAudioDialog(false)}>
-          Cancel
+          {t('audio.export.cancel')}
         </Button>
         <WithDownloadDialogButton variant="accent" size="md" onSelection={handleExport}>
-          Export
+          {t('audio.export.export')}
         </WithDownloadDialogButton>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { Button } from '@gendam/ui/v2/button'
 import { useCallback, useEffect, useState } from 'react'
 import { Auth } from '@/lib/bindings'
 import { client } from '@/lib/rspc'
+import { useTranslation, Trans } from 'react-i18next'
 
 function generateRandomString(maxLength = 10) {
   const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -18,6 +19,7 @@ function generateRandomString(maxLength = 10) {
 export default function DeviceAuth({ onSuccess }: {
   onSuccess: (auth: Auth) => void
 }) {
+  const { t } = useTranslation()
   const [code, setCode] = useState<string|null>(null)
 
   const openLogin = useCallback(async () => {
@@ -80,10 +82,10 @@ export default function DeviceAuth({ onSuccess }: {
         <Image src={GenDAM_Logo.src} alt="GenDAM App Logo" fill={true} className="object-contain" />
       </div>
       <div className="mt-4">
-      Please log in to continue using <strong>GenDAM</strong>.
+        <Trans key={'auth.title'} components={{strong: <strong />}} />
       </div>
       <div className="mt-16">
-        <Button variant="accent" size="md" onClick={openLogin}>Log in</Button>
+        <Button variant="accent" size="md" onClick={openLogin}>{t('auth.logIn')}</Button>
       </div>
     </div>
   )

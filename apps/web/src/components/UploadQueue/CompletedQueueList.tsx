@@ -5,8 +5,10 @@ import Icon from '@gendam/ui/icons'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 import QueueItem from './QueueItem'
+import { useTranslation } from 'react-i18next'
 
 const CompletedQueueList = () => {
+  const { t } = useTranslation()
   const uploadQueueStore = useUploadQueueStore()
   const router = useRouter()
   const reveal = useCallback(
@@ -49,12 +51,12 @@ const CompletedQueueList = () => {
           status={
             item.processing ? (
               <div className="text-ink/50 flex items-center gap-2">
-                <div>being processed for search</div>
+                <div>{t('uploadQueue.processing')}</div>
                 <Icon.FlashStroke className="h-3 w-3 text-orange-400" />
               </div>
             ) : (
               <div className="text-ink/50 flex items-center gap-2">
-                <div>ready for search</div>
+                <div>{t('uploadQueue.processed')}</div>
                 {/* <Icon.Check className="h-3 w-3 text-green-400" /> */}
               </div>
             )

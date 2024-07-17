@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 import { useSearchPageContext, type SearchResultPayload } from './context'
+import { useTranslation } from 'react-i18next'
 
 type SearchItemContextMenuProps = {
   data: SearchResultPayload
@@ -15,6 +16,7 @@ type SearchItemContextMenuProps = {
 
 const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemContextMenuProps>(
   function SearchItemContextMenuComponent({ data, ...prpos }, forwardedRef) {
+    const { t } = useTranslation()
     const explorer = useExplorerContext()
     const router = useRouter()
     const quickViewStore = useQuickViewStore()
@@ -66,12 +68,12 @@ const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemC
             millisecondsFrom: metadata.startTime,
             millisecondsTo: Math.max(metadata.endTime, metadata.startTime + 1000),
           })
-          toast.success('Exported successfully', {
-            description: `Exported ${filePath.name} to ${selectedDir}`
+          toast.success(t('search.contextMenu.exportedSuccess'), {
+            description: t('search.contextMenu.exportedSuccess.description', { name: filePath.name, dir: selectedDir }),
           })
         } catch(err) {
-          toast.error('Export failed', {
-            description: `Failed to export ${filePath.name} to ${selectedDir}`
+          toast.error(t('search.contextMenu.exportedfailed'), {
+            description: t('search.contextMenu.exportedfailed.description', { name: filePath.name, dir: selectedDir })
           })
         }
       }
@@ -95,26 +97,26 @@ const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemC
           onSelect={() => quickview()}
           disabled={explorer.selectedItems.size > 1}
         >
-          <div>Quick view</div>
+          <div>{t('search.contextMenu.quickView')}</div>
         </ContextMenu.Item>
         <ContextMenu.Item
           onSelect={() => reveal()}
           disabled={explorer.selectedItems.size > 1}
         >
-          <div>Reveal in explorer</div>
+          <div>{t('search.contextMenu.reveal')}</div>
         </ContextMenu.Item>
         <ContextMenu.Separator />
         <ContextMenu.Item
           onSelect={() => recommendFrames()}
           disabled={explorer.selectedItems.size > 1}
         >
-          <div>Find similar items</div>
+          <div>{t('search.contextMenu.find')}</div>
         </ContextMenu.Item>
         <ContextMenu.Separator />
         <ContextMenu.Item
           onSelect={() => exportSegment()}
         >
-          <div>Export</div>
+          <div>{t('search.contextMenu.export')}</div>
         </ContextMenu.Item>
       </ContextMenu.Content>
     )

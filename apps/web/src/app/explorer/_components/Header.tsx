@@ -17,8 +17,10 @@ import { useClipboardPaste } from '@/hooks/useClipboardPaste'
 import { useUploadQueueStore } from '@/components/UploadQueue/store'
 import { filterFiles } from '@/components/UploadQueue/utils'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 export default function Header() {
+  const { t } = useTranslation()
   const titleDialog = useTitleDialog()
   const router = useRouter()
   const explorer = useExplorerContext()
@@ -45,7 +47,7 @@ export default function Header() {
     (fileFullPaths: string[]) => {
       const { supportedFiles, unsupportedExtensionsSet } = filterFiles(fileFullPaths)
       if (Array.from(unsupportedExtensionsSet).length > 0) {
-        toast.error(`Unsupported file types: ${Array.from(unsupportedExtensionsSet).join(',')}`)
+        toast.error(t('explorer.header.unsupportedFileType', { list: Array.from(unsupportedExtensionsSet).join(',') }))
       }
       if (explorer.materializedPath && supportedFiles.length > 0) {
         for (const fileFullPath of fileFullPaths) {
