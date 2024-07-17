@@ -100,7 +100,7 @@ const ListItem: React.FC<
       explorerStore.reset()
       if (data.filePath.isDir) {
         let newPath = data.filePath.materializedPath + data.filePath.name + '/'
-        router.push('/explorer?dir=' + newPath)
+        router.push(location.pathname + '?dir=' + newPath)
       } else if (data.filePath.assetObject) {
         const { name, assetObject } = data.filePath
         quickViewStore.open({ name, assetObject })

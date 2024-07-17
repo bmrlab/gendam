@@ -1,6 +1,6 @@
 // Ctx 和 Store 的默认实现，主要给 api_server/main 用，不过目前 CtxWithLibrary 的实现也是可以给 tauri 用的，就先用着
 use super::traits::{CtxStore, CtxWithAI, CtxWithDownload, CtxWithLibrary, CtxWithP2P, StoreError};
-use crate::cron_jobs::delete_unlinked_assets;
+use crate::cron_jobs::{delete_expired_trash, delete_unlinked_assets};
 use crate::{
     ai::{models::get_model_info_by_id, AIHandler},
     download::{DownloadHub, DownloadReporter, DownloadStatus},
@@ -562,6 +562,32 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                         )
                         .await
                         .expect("delete_unlinked_assets error")
+                    }
+                    .boxed()
+                }),
+            };
+
+            let _ = self.add_task(task).await?;
+        }
+
+        // 添加定期删除垃圾箱数据的任务
+        {
+            let library_clone = library.clone();
+            let task = cron::Task {
+                title: Some("Delete expired trash data".to_string()),
+                description: Some("Delete expired trash data".to_string()),
+                enabled: true,
+                id: uuid::Uuid::new_v4(),
+                job_id: None,
+                // cron: "0 0 */1 * * ?".to_string(), // 每小时
+                cron: "0/10 * * * * ?".to_string(), // 测试 每10秒
+                // job_fn: None
+                job_fn: cron::create_job_fn(move || {
+                    let library_arc = Arc::new(library_clone.clone());
+                    async move {
+                        delete_expired_trash(library_arc)
+                            .await
+                            .expect("delete_expired_trash error")
                     }
                     .boxed()
                 }),

@@ -11,9 +11,10 @@ import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { HTMLAttributes, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ExpiredTag } from '../View/ExpiredTag'
 // import styles from './GridView.module.css'
 
-type WithFilePathExplorerItem = Extract<ExplorerItem, { type: 'FilePath' | 'SearchResult' }>
+type WithFilePathExplorerItem = Extract<ExplorerItem, { type: 'FilePath' | 'SearchResult' | 'Trash' }>
 // type WithFilePathExplorerItem = Extract<ExplorerItem, { filePath: FilePath }>
 
 const DroppableInner: React.FC<
@@ -40,7 +41,8 @@ const DroppableInner: React.FC<
 
   return (
     <div {...props}>
-      <div className={classNames('mb-1 h-28 w-full rounded-lg p-2', highlight ? 'bg-app-hover' : null)}>
+      <div className={classNames('relative mb-1 h-28 w-full rounded-lg p-2', highlight ? 'bg-app-hover' : null)}>
+        <ExpiredTag data={data} />
         <FileThumb data={data} className="h-full w-full" />
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
@@ -82,7 +84,7 @@ const GridItem: React.FC<
       explorerStore.reset()
       if (data.filePath.isDir) {
         let newPath = data.filePath.materializedPath + data.filePath.name + '/'
-        router.push('/explorer?dir=' + newPath)
+        router.push(location.pathname + '?dir=' + newPath)
       } else if (data.filePath.assetObject) {
         const { name, assetObject } = data.filePath
         quickViewStore.open({ name, assetObject })

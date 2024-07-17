@@ -10,14 +10,19 @@ import { queryClient, rspc } from '@/lib/rspc'
 import { DragCancelEvent, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { HTMLAttributes, useCallback } from 'react'
 import Selecto from 'react-selecto'
+import { useExplorerApiContext } from '../hooks/useExplorerApi'
 import { uniqueId, type ExplorerItem } from '../types'
 
-export default function ExplorerLayout({ renderLayout, ...props }: {
-  renderLayout?: () => JSX.Element,
+export default function ExplorerLayout({
+  renderLayout,
+  ...props
+}: {
+  renderLayout?: () => JSX.Element
 } & HTMLAttributes<HTMLDivElement>) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
-  const moveMut = rspc.useMutation(['assets.move_file_path'])
+  const eplorerApi = useExplorerApiContext()
+  const moveMut = rspc.useMutation([eplorerApi.moveApi])
 
   const handleMoveRequest = useCallback(
     async (active: ExplorerItem, target: ExplorerItem | null) => {
@@ -44,11 +49,11 @@ export default function ExplorerLayout({ renderLayout, ...props }: {
         })
       } catch (error) {}
       queryClient.invalidateQueries({
-        queryKey: ['assets.list', { materializedPath: explorer.materializedPath }],
+        queryKey: [eplorerApi.listApi, { materializedPath: explorer.materializedPath }],
       })
       queryClient.invalidateQueries({
         queryKey: [
-          'assets.list',
+          eplorerApi.listApi,
           {
             materializedPath: target ? target.filePath.materializedPath + target.filePath.name + '/' : '/',
           },
@@ -137,11 +142,7 @@ export default function ExplorerLayout({ renderLayout, ...props }: {
   }
 
   return (
-    <div
-      data-selecto-container
-      onClick={() => explorer.resetSelectedItems()}
-      { ...props }
-    >
+    <div data-selecto-container onClick={() => explorer.resetSelectedItems()} {...props}>
       <DndContext onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
         {renderLayout ? renderLayout() : renderLayoutFromSettings()}
         <DragOverlay />

@@ -7,6 +7,7 @@ import Icon from '@gendam/ui/icons'
 import Image from 'next/image'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { HTMLAttributes, useCallback, useMemo, useState } from 'react'
+import { useExplorerApiContext } from '../hooks/useExplorerApi'
 
 // interface SelectionState {
 //   id: number | null
@@ -21,6 +22,7 @@ import { HTMLAttributes, useCallback, useMemo, useState } from 'react'
 const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
   // const selectionState = useSelectionState()
   const router = useRouter()
+  const explorerApi = useExplorerApiContext()
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -30,7 +32,7 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
 
   const { data: subDirs } = rspc.useQuery(
     [
-      'assets.list',
+      explorerApi.listApi,
       {
         materializedPath: filePath.materializedPath + filePath.name + '/',
         isDir: true,
@@ -45,7 +47,7 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
     (e: React.FormEvent<HTMLDivElement>) => {
       // e.stopPropagation()
       const newPath = filePath.materializedPath + filePath.name + '/'
-      router.push('/explorer?dir=' + newPath)
+      router.push(location.pathname + '?dir=' + newPath)
     },
     [filePath.materializedPath, filePath.name, router],
   )
@@ -97,8 +99,9 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
 export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement>) {
   // const selectionState = useSelectionState()
   const router = useRouter()
+  const explorerApi = useExplorerApiContext()
   const { data: dirs } = rspc.useQuery([
-    'assets.list',
+    explorerApi.listApi,
     {
       materializedPath: '/',
       isDir: true,

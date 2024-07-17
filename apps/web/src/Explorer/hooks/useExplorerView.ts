@@ -5,6 +5,7 @@ import { ExplorerItem } from '../types'
 export interface ExplorerViewContextProps {
   // ref: RefObject<HTMLDivElement>
   contextMenu?: (data: ExplorerItem) => ReactNode
+  headerTools?: ReactNode
 }
 
 const ExplorerViewContext = createContext<ExplorerViewContextProps | null>(null)

@@ -1,7 +1,8 @@
 use crate::{file_handler::get_file_handler, CtxWithLibrary};
+use chrono::Timelike;
 use global_variable::get_current_fs_storage;
 use prisma_client_rust::{Direction, QueryError};
-use prisma_lib::{asset_object, file_path};
+use prisma_lib::{asset_object, file_path, trash};
 use std::{collections::HashSet, sync::Arc};
 use storage::prelude::*;
 use tokio::sync::Mutex;
@@ -18,8 +19,34 @@ pub async fn delete_file_path(
         .prisma_client()
         ._transaction()
         .run(|client| async move {
+            let mut parent_id: Option<i32> = None;
+            if materialized_path != "/" {
+                let materialized_path_s = &materialized_path[..materialized_path.len()-1];
+                let parts = materialized_path_s.rsplit_once("/");
+                if let Some(parts) = parts {
+                    tracing::debug!("parts:{parts:?}");
+                    let parent_materialized_path = format!("{}/",parts.0);
+                    let parent_name = parts.1;
+                    tracing::debug!("parent_materialized_path: {parent_materialized_path}, parent_name:{parent_name}");
+                    let parent = client
+                        .file_path()
+                        .find_unique(file_path::materialized_path_name(
+                            parent_materialized_path.to_string(),
+                            parent_name.to_string(),
+                        ))
+                        .exec()
+                        .await
+                        .map_err(|e| {
+                            tracing::error!("failed to find parent item: {}", e);
+                            e
+                        })?;
+                    if let Some(parent) = parent {
+                        parent_id = Some(parent.id)
+                    }
+                }
+            }
 
-            client
+            let data = client
                 .file_path()
                 .delete(file_path::materialized_path_name(
                     materialized_path.to_string(),
@@ -33,11 +60,25 @@ pub async fn delete_file_path(
                 })?;
 
             let materialized_path_startswith = format!("{}{}/", &materialized_path, &name);
+
+            // 找到所有子文件夹
+            let sub_data_list = client
+                .file_path()
+                .find_many(vec![file_path::materialized_path::starts_with(
+                    materialized_path_startswith.clone(),
+                )])
+                .exec()
+                .await
+                .map_err(|e| {
+                    tracing::error!("failed to find: {}", e);
+                    e
+                })?;
+
             client
                 .file_path()
-                .delete_many(vec![
-                    file_path::materialized_path::starts_with(materialized_path_startswith)
-                ])
+                .delete_many(vec![file_path::materialized_path::starts_with(
+                    materialized_path_startswith.clone(),
+                )])
                 .exec()
                 .await
                 .map_err(|e| {
@@ -45,6 +86,135 @@ pub async fn delete_file_path(
                     e
                 })?;
 
+            // 检查trash是否有同名文件或者文件夹
+            let existing = client
+                .trash()
+                .find_unique(trash::materialized_path_name(
+                    materialized_path.to_string(),
+                    name.to_string(),
+                ))
+                .exec()
+                .await
+                .map_err(|e| {
+                    tracing::error!("failed to find file_path: {}", e);
+                    e
+                })?;
+            let mut new_name = data.name.clone();
+            if let Some(_existing) = existing {
+                let now = chrono::Local::now();
+                let timestamp =
+                    format!("{:02}.{:02}.{:02}", now.hour(), now.minute(), now.second());
+                new_name.push_str(&format!(" {}", timestamp));
+            }
+            // 创建文件
+            let new_data = client
+                .trash()
+                .create(
+                    data.is_dir,
+                    "/".to_string(),
+                    new_name,
+                    vec![
+                        trash::description::set(data.description),
+                        trash::asset_object_id::set(data.asset_object_id),
+                        trash::origin_parent_id::set(parent_id),
+                    ],
+                )
+                .exec()
+                .await
+                .map_err(|e| {
+                    tracing::error!("failed to create trash file_path: {}", e);
+                    e
+                })?;
+
+            // 创建子文件和子文件夹
+            for sub_data in sub_data_list {
+                let data_path = format!("{}{}", data.materialized_path.clone(), data.name);
+                let sub_data_path = sub_data.materialized_path.clone();
+                let suffix: &str = &sub_data_path[data_path.len()..];
+                let sub_materialized_path =
+                    format!("{}{}{}", new_data.materialized_path, new_data.name, suffix);
+                client
+                    .trash()
+                    .create(
+                        sub_data.is_dir,
+                        sub_materialized_path,
+                        sub_data.name,
+                        vec![
+                            trash::description::set(sub_data.description),
+                            trash::asset_object_id::set(sub_data.asset_object_id),
+                        ],
+                    )
+                    .exec()
+                    .await
+                    .map_err(|e| {
+                        tracing::error!("failed to create trash file_path: {}", e);
+                        e
+                    })?;
+            }
+            Ok(())
+        })
+        .await
+        .map_err(|e: QueryError| {
+            rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                format!("failed to delete file_path: {}", e),
+            )
+        })?;
+
+    Ok(())
+}
+
+pub async fn delete_trash_file_path(
+    ctx: &dyn CtxWithLibrary,
+    materialized_path: &str,
+    name: &str,
+) -> Result<(), rspc::Error> {
+    let library = ctx.library()?;
+
+    library
+        .prisma_client()
+        ._transaction()
+        .run(|client| async move {
+            client
+                .trash()
+                .delete(trash::materialized_path_name(
+                    materialized_path.to_string(),
+                    name.to_string(),
+                ))
+                .exec()
+                .await
+                .map_err(|e| {
+                    tracing::error!("failed to delete file_path item: {}", e);
+                    e
+                })?;
+
+            let materialized_path_startswith = format!("{}{}/", &materialized_path, &name);
+
+            // 找到所有子文件夹
+            let _sub_data_list = client
+                .trash()
+                .find_many(vec![trash::materialized_path::starts_with(
+                    materialized_path_startswith.clone(),
+                )])
+                .exec()
+                .await
+                .map_err(|e| {
+                    tracing::error!("failed to find: {}", e);
+                    e
+                })?;
+
+            client
+                .trash()
+                .delete_many(vec![trash::materialized_path::starts_with(
+                    materialized_path_startswith.clone(),
+                )])
+                .exec()
+                .await
+                .map_err(|e| {
+                    tracing::error!("failed to delete file_path for children: {}", e);
+                    e
+                })?;
+            // todo 删除未链接的asset
             Ok(())
         })
         .await

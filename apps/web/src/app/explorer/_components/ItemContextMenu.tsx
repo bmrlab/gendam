@@ -62,7 +62,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       explorerStore.reset()
       if (data.isDir) {
         let newPath = data.materializedPath + data.name + '/'
-        router.push('/explorer?dir=' + newPath)
+        router.push(location.pathname + '?dir=' + newPath)
       } else if (data.assetObject) {
         const { name, assetObject } = data
         quickViewStore.open({ name, assetObject })
@@ -224,7 +224,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       </ContextMenu.Sub>
       <ContextMenu.Separator className="bg-app-line my-1 h-px" />
       <ContextMenu.Item variant="destructive" onSelect={handleDelete}>
-        <div>Delete</div>
+        <div>Move to trash</div>
       </ContextMenu.Item>
     </ContextMenu.Content>
   )

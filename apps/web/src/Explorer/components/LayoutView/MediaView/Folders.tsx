@@ -51,7 +51,7 @@ const FolderItem: React.FC<{ data: WithFilePathExplorerItem }> = ({ data }) => {
       explorer.resetSelectedItems()
       explorerStore.reset()
       let newPath = data.filePath.materializedPath + data.filePath.name + '/'
-      router.push('/explorer?dir=' + newPath)
+      router.push(location.pathname + '?dir=' + newPath)
     },
     [data, explorer, router, explorerStore],
   )

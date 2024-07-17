@@ -1,9 +1,9 @@
-import type { FilePath, SearchResultMetadata } from '@/lib/bindings'
+import type { FilePath, SearchResultMetadata, Trash } from '@/lib/bindings'
 
 export type ExplorerItem =
   | {
       type: 'FilePath'
-      filePath: FilePath
+      filePath: FilePath | Trash
     }
   | {
       type: 'SearchResult'

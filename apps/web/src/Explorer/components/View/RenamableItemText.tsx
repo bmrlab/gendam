@@ -6,12 +6,14 @@ import { type ExplorerItem } from '@/Explorer/types'
 import { rspc, queryClient } from '@/lib/rspc'
 import { HTMLAttributes, useCallback, useEffect, useRef } from 'react'
 import classNames from 'classnames'
+import { useExplorerApiContext } from '@/Explorer/hooks/useExplorerApi'
 
 type T = Extract<ExplorerItem, { filePath: FilePath }>
 
 export default function RenamableItemText({
   data, className
 }: HTMLAttributes<HTMLDivElement> & { data: T }) {
+  const explorerApi = useExplorerApiContext()
   const explorerStore = useExplorerStore()
   // const explorer = useExplorerContext()
   const renameMut = rspc.useMutation(['assets.rename_file_path'])
@@ -58,7 +60,7 @@ export default function RenamableItemText({
         })
       } catch (error) {}
       queryClient.invalidateQueries({
-        queryKey: ['assets.list', { materializedPath: data.filePath.materializedPath }]
+        queryKey: [explorerApi.listApi, { materializedPath: data.filePath.materializedPath }]
       })
     },
     [explorerStore, renameMut, data],

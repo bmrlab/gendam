@@ -24,7 +24,7 @@ export default function Footer() {
   const goToFolder = useCallback((index: number) => {
     const joined = folders.slice(1, index + 1).join('/')
     const newPath = joined === '' ? '/' : `/${joined}/`
-    router.push('/explorer?dir=' + newPath)
+    router.push(location.pathname + '?dir=' + newPath)
   }, [folders, router])
 
   return (
