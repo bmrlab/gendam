@@ -76,6 +76,8 @@ export type VideoTaskListRequestPayload = { pagination: Pagination; filter: Vide
 
 export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string; Llm: string }
 
+export type ChatResponsePayload = { response: string | null }
+
 export type VideoTaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
 
 export type FilePathDeletePayload = { materializedPath: string; name: string }
@@ -89,8 +91,6 @@ export type S3Config = { bucket: string; endpoint: string; accessKeyId: string; 
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
 export type MediaData = { id: number; width: number | null; height: number | null; duration: number | null; bitRate: number | null; hasAudio: boolean | null; assetObjectId: number; createdAt: string; updatedAt: string }
-
-export type ChatResponsePayload = { response: string | null }
 
 export type AudioResp = { type: AudioType; content: string }
 
@@ -130,6 +130,8 @@ export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbeddin
 
 export type VideoWithTasksResult = { name: string; materializedPath: string; assetObject: AssetObject; tasks: FileHandlerTask[]; mediaData: MediaData | null }
 
+export type ChatRequestPayload = { text: string }
+
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
@@ -157,8 +159,6 @@ export type FilePathGetPayload = { materializedPath: string; name: string }
 export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
 
 export type TaskListRequestPayload = { filter: TaskListRequestFilter }
-
-export type ChatRequestPayload = { text: string }
 
 export type VideoPlayerTsRequestPayload = { hash: string; index: number }
 

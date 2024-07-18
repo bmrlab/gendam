@@ -5,7 +5,7 @@ use crate::{
         EMBEDDING_FILE_EXTENSION,
     },
 };
-use qdrant_client::qdrant::PointStruct;
+use qdrant_client::qdrant::{PointStruct, UpsertPointsBuilder};
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use storage::prelude::*;
@@ -124,15 +124,10 @@ impl VideoHandler {
             timestamp,
             method: image_caption_model_name.into(),
         };
-        let point = PointStruct::new(
-            payload.get_uuid().to_string(),
-            embedding.clone(),
-            json!(payload)
-                .try_into()
-                .map_err(|_| anyhow::anyhow!("invalid payload"))?,
-        );
+        let point = PointStruct::new(payload.get_uuid().to_string(), embedding.clone(), payload);
+
         qdrant
-            .upsert_points(collection_name, None, vec![point], None)
+            .upsert_points(UpsertPointsBuilder::new(collection_name, vec![point]))
             .await?;
 
         Ok(())

@@ -3,8 +3,7 @@ use crate::{
     video::{decoder, VideoHandler, VideoTaskType, EMBEDDING_FILE_EXTENSION},
 };
 use ai::AudioTranscriptOutput;
-use qdrant_client::qdrant::PointStruct;
-use serde_json::json;
+use qdrant_client::qdrant::{PointStruct, UpsertPointsBuilder};
 use std::path::PathBuf;
 use storage::prelude::*;
 use tracing::error;
@@ -154,15 +153,10 @@ impl VideoHandler {
             end_timestamp,
             method: audio_transcript_model_name.into(),
         };
-        let point = PointStruct::new(
-            payload.get_uuid().to_string(),
-            embedding.clone(),
-            json!(payload)
-                .try_into()
-                .map_err(|_| anyhow::anyhow!("invalid payload"))?,
-        );
+
+        let point = PointStruct::new(payload.get_uuid().to_string(), embedding.clone(), payload);
         qdrant
-            .upsert_points(collection_name, None, vec![point], None)
+            .upsert_points(UpsertPointsBuilder::new(collection_name, vec![point]))
             .await?;
 
         Ok(())

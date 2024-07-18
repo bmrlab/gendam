@@ -4,8 +4,8 @@ use ai::{
     LLMModel, TextEmbeddingModel,
 };
 use qdrant_client::{
-    client::QdrantClient,
-    qdrant::{Condition, Filter, SearchPoints},
+    qdrant::{Condition, Filter, SearchPointsBuilder},
+    Qdrant,
 };
 use serde_json::json;
 use std::sync::Arc;
@@ -29,7 +29,7 @@ pub enum RAGResult {
 
 pub async fn handle_rag(
     query: &str,
-    qdrant: Arc<QdrantClient>,
+    qdrant: Arc<Qdrant>,
     language_collection_name: &str,
     text_embedding: &TextEmbeddingModel,
     llm: &LLMModel,
@@ -37,19 +37,16 @@ pub async fn handle_rag(
 ) -> anyhow::Result<()> {
     let text_embedding = text_embedding.process_single(query.to_string()).await?;
 
-    let search_point = SearchPoints {
-        collection_name: language_collection_name.into(),
-        vector: text_embedding,
-        limit: 5,
-        with_payload: Some(true.into()),
-        filter: Some(Filter::all(vec![Condition::matches(
-            "record_type",
-            SearchRecordType::TranscriptChunkSummarization.to_string(),
-        )])),
-        ..Default::default()
-    };
-
-    let response = qdrant.search_points(&search_point).await?;
+    let response = qdrant
+        .search_points(
+            SearchPointsBuilder::new(language_collection_name, text_embedding, 5)
+                .filter(Filter::all(vec![Condition::matches(
+                    "record_type",
+                    SearchRecordType::TranscriptChunkSummarization.to_string(),
+                )]))
+                .with_payload(true),
+        )
+        .await?;
     let scored_points = response.result;
 
     let mut original_transcripts = vec![];

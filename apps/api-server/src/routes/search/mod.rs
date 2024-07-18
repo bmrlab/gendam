@@ -1,11 +1,9 @@
-use ai::llm::{LLMInferenceParams, LLMMessage};
 use file_handler::rag::{handle_rag, RAGResult};
 use glob::glob;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tokio::sync::mpsc;
-use tracing::warn;
 
 mod recommend;
 mod search;

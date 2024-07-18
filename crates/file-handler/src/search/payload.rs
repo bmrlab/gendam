@@ -1,3 +1,4 @@
+use qdrant_client::Payload;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use strum_macros::EnumDiscriminants;
@@ -60,5 +61,13 @@ impl SearchPayload {
                 file_identifier, ..
             } => file_identifier,
         }
+    }
+}
+
+impl Into<Payload> for SearchPayload {
+    fn into(self) -> Payload {
+        json!(self)
+            .try_into()
+            .expect("json should be valid payload")
     }
 }

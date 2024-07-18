@@ -2,7 +2,7 @@ use global_variable::set_current;
 use prisma_lib::PrismaClient;
 use qdrant::create_qdrant_server;
 pub use qdrant::{make_sure_collection_created, QdrantCollectionInfo, QdrantServerInfo};
-use qdrant_client::client::QdrantClient;
+use qdrant_client::Qdrant;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -30,7 +30,7 @@ impl Library {
         Arc::clone(&self.prisma_client)
     }
 
-    pub fn qdrant_client(&self) -> Arc<QdrantClient> {
+    pub fn qdrant_client(&self) -> Arc<Qdrant> {
         self.qdrant_server.get_client().clone()
     }
 

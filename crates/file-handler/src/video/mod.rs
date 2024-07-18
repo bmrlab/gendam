@@ -5,15 +5,15 @@ mod utils;
 
 use crate::{metadata::video::VideoMetadata, traits::FileHandler, SearchRecordType, TaskPriority};
 use ai::{
-    AIModel, AudioTranscriptInput, AudioTranscriptModel, AudioTranscriptOutput, ImageCaptionModel, LLMModel, LLMOutput, MultiModalEmbeddingInput, MultiModalEmbeddingModel, MultiModalEmbeddingOutput, TextEmbeddingInput, TextEmbeddingModel, TextEmbeddingOutput
+    AudioTranscriptModel, ImageCaptionModel, LLMModel, MultiModalEmbeddingModel, TextEmbeddingModel,
 };
 use anyhow::bail;
 use async_trait::async_trait;
 pub use constants::*;
 pub use impls::audio;
 use qdrant_client::{
-    client::QdrantClient,
-    qdrant::{points_selector::PointsSelectorOneOf, Condition, Filter, PointsSelector},
+    qdrant::{Condition, DeletePointsBuilder, Filter},
+    Qdrant,
 };
 use std::{
     collections::HashSet,
@@ -33,7 +33,7 @@ pub struct VideoHandler {
     video_path: std::path::PathBuf,
     file_identifier: String,
     artifacts_dir: std::path::PathBuf,
-    qdrant_client: Option<Arc<qdrant_client::client::QdrantClient>>,
+    qdrant_client: Option<Arc<qdrant_client::Qdrant>>,
     language_collection_name: Option<String>,
     vision_collection_name: Option<String>,
     multi_modal_embedding: Option<(MultiModalEmbeddingModel, String)>,
@@ -129,7 +129,7 @@ impl VideoHandler {
         video_path: impl AsRef<Path>,
         video_file_hash: &str,
         artifacts_dir: impl AsRef<Path>,
-        qdrant_client: Option<Arc<qdrant_client::client::QdrantClient>>,
+        qdrant_client: Option<Arc<qdrant_client::Qdrant>>,
     ) -> anyhow::Result<Self> {
         Ok(Self {
             // TODO: 暂时先使用绝对路径给 ffmpeg 使用，后续需要将文件加载到内存中传递给 ffmpeg
@@ -300,7 +300,7 @@ impl VideoHandler {
         }
     }
 
-    fn qdrant_client(&self) -> anyhow::Result<Arc<QdrantClient>> {
+    fn qdrant_client(&self) -> anyhow::Result<Arc<Qdrant>> {
         match self.qdrant_client.as_ref() {
             Some(v) => Ok(v.clone()),
             _ => {
@@ -422,17 +422,12 @@ impl FileHandler for VideoHandler {
                 for collection in collections.collections.iter() {
                     qdrant
                         .delete_points(
-                            &collection.name,
-                            None,
-                            &PointsSelector {
-                                points_selector_one_of: Some(PointsSelectorOneOf::Filter(
-                                    Filter::all(vec![Condition::matches(
-                                        "file_identifier",
-                                        self.file_identifier.to_string(),
-                                    )]),
-                                )),
-                            },
-                            None,
+                            DeletePointsBuilder::new(&collection.name)
+                                .points(Filter::all(vec![Condition::matches(
+                                    "file_identifier",
+                                    self.file_identifier().to_string(),
+                                )]))
+                                .wait(true),
                         )
                         .await?;
                 }
@@ -486,19 +481,21 @@ impl FileHandler for VideoHandler {
                 std::result::Result::Ok(collections) => {
                     for collection in collections.collections.iter() {
                         for record_type in need_to_delete_in_qdrant.iter() {
-                            let points_selector = PointsSelector {
-                                points_selector_one_of: Some(PointsSelectorOneOf::Filter(
-                                    Filter::all(vec![
-                                        Condition::matches(
-                                            "file_identifier",
-                                            self.file_identifier.to_string(),
-                                        ),
-                                        Condition::matches("record_type", record_type.to_string()),
-                                    ]),
-                                )),
-                            };
                             qdrant
-                                .delete_points(&collection.name, None, &points_selector, None)
+                                .delete_points(
+                                    DeletePointsBuilder::new(&collection.name)
+                                        .points(Filter::all(vec![
+                                            Condition::matches(
+                                                "file_identifier",
+                                                self.file_identifier.to_string(),
+                                            ),
+                                            Condition::matches(
+                                                "record_type",
+                                                record_type.to_string(),
+                                            ),
+                                        ]))
+                                        .wait(true),
+                                )
                                 .await?;
                         }
                     }

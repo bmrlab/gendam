@@ -5,8 +5,10 @@ use self::constants::RETRIEVAL_COUNT;
 use ai::{MultiModalEmbeddingModel, TextEmbeddingModel};
 use payload::{SearchPayload, SearchRecordType};
 use qdrant_client::{
-    client::QdrantClient,
-    qdrant::{Condition, Filter, PointId, RecommendPoints, ScoredPoint, SearchPoints},
+    qdrant::{
+        Condition, Filter, PointId, RecommendPointsBuilder, ScoredPoint, SearchPointsBuilder,
+    },
+    Qdrant,
 };
 use serde_json::json;
 use std::{collections::HashMap, sync::Arc};
@@ -186,7 +188,7 @@ async fn reorder_final_results(
 ///     - （亟待进一步优化）POOL 取 log_5^(min(5, 召回数量))，lambda 取 0.15
 pub async fn handle_search(
     payload: SearchRequest,
-    qdrant: Arc<QdrantClient>,
+    qdrant: Arc<Qdrant>,
     vision_collection_name: &str,
     language_collection_name: &str,
     multi_modal_embedding: &MultiModalEmbeddingModel,
@@ -208,34 +210,27 @@ pub async fn handle_search(
     let mut retrieval_results: HashMap<String, Vec<(i64, f32)>> = HashMap::new();
 
     for record_type in record_types {
-        let req = match record_type {
-            SearchRecordType::Frame => SearchPoints {
-                collection_name: vision_collection_name.into(),
-                vector: clip_text_embedding.clone(),
-                limit: 1,
-                with_payload: Some(true.into()),
-                filter: Some(Filter::all(vec![Condition::matches(
-                    "record_type", // TODO maybe this can be better
-                    record_type.to_string(),
-                )])),
-                score_threshold: Some(0.2),
-                ..Default::default()
-            },
-            _ => SearchPoints {
-                collection_name: language_collection_name.into(),
-                vector: text_model_embedding.clone(),
-                limit: RETRIEVAL_COUNT,
-                with_payload: Some(true.into()),
-                filter: Some(Filter::all(vec![Condition::matches(
-                    "record_type", // TODO maybe this can be better
-                    record_type.to_string(),
-                )])),
-                score_threshold: Some(0.8),
-                ..Default::default()
-            },
+        let search_points_builder = match record_type {
+            SearchRecordType::Frame => {
+                SearchPointsBuilder::new(vision_collection_name, clip_text_embedding.clone(), 1)
+                    .score_threshold(0.2)
+            }
+            _ => SearchPointsBuilder::new(
+                language_collection_name,
+                text_model_embedding.clone(),
+                RETRIEVAL_COUNT,
+            )
+            .score_threshold(0.8),
         };
 
-        let response = qdrant.search_points(&req).await?;
+        let search_points_builder = search_points_builder
+            .filter(Filter::all(vec![Condition::matches(
+                "record_type",
+                record_type.to_string(),
+            )]))
+            .with_payload(true);
+
+        let response = qdrant.search_points(search_points_builder).await?;
         let score_points = response.result;
         group_results_by_asset(&score_points, &mut retrieval_results);
 
@@ -263,7 +258,7 @@ pub async fn handle_search(
 }
 
 pub async fn handle_recommend(
-    qdrant: Arc<QdrantClient>,
+    qdrant: Arc<Qdrant>,
     vision_collection_name: &str,
     asset_object_hash: &str,
     timestamp: i64,
@@ -277,24 +272,18 @@ pub async fn handle_recommend(
     // asset => (timestamp, score)
     let mut recommend_results: HashMap<String, Vec<(i64, f32)>> = HashMap::new();
 
-    let req = RecommendPoints {
-        collection_name: vision_collection_name.to_string(),
-        positive: vec![point_id],
-        limit: RETRIEVAL_COUNT,
-        with_payload: Some(true.into()),
-        filter: Some(Filter::all(vec![Condition::matches(
-            "record_type", // TODO maybe this can be better
-            SearchRecordType::Frame.to_string(),
-        )])),
-        // it's ok to include frames of the same asset
-        // filter: Some(Filter::must_not(vec![
-        //     Condition::matches("file_identifier", asset_object_hash.to_string()),
-        // ])),
-        score_threshold: Some(0.2),
-        ..Default::default()
-    };
-
-    let response = qdrant.recommend(&req).await?;
+    let response = qdrant
+        .recommend(
+            RecommendPointsBuilder::new(vision_collection_name, RETRIEVAL_COUNT)
+                .add_positive(point_id)
+                .filter(Filter::all(vec![Condition::matches(
+                    "record_type",
+                    SearchRecordType::Frame.to_string(),
+                )]))
+                .with_payload(true)
+                .score_threshold(0.2),
+        )
+        .await?;
     let score_points = response.result;
     group_results_by_asset(&score_points, &mut recommend_results);
 

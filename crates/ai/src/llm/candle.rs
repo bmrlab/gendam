@@ -1,7 +1,7 @@
 use super::{native::LocalLLMModel, LLMInferenceParams, LLMModel};
 use candle_core::{Device, Tensor};
 use candle_transformers::generation::{LogitsProcessor, Sampling};
-use tokenizers::{Encoding, Tokenizer};
+use tokenizers::Tokenizer;
 use tokio::sync::mpsc::Sender;
 
 /// This is a wrapper around a tokenizer to ensure that tokens can be returned to the user in a

@@ -7,7 +7,7 @@ use ai::{
     Transcription,
 };
 use anyhow::bail;
-use qdrant_client::qdrant::PointStruct;
+use qdrant_client::qdrant::{PointStruct, UpsertPointsBuilder};
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use storage::Storage;
@@ -330,15 +330,9 @@ Additional Rules:
             chunk_content,
         };
 
-        let point = PointStruct::new(
-            payload.get_uuid().to_string(),
-            embedding,
-            json!(payload)
-                .try_into()
-                .map_err(|_| anyhow::anyhow!("invalid payload"))?,
-        );
+        let point = PointStruct::new(payload.get_uuid().to_string(), embedding, payload);
         qdrant
-            .upsert_points(collection_name, None, vec![point], None)
+            .upsert_points(UpsertPointsBuilder::new(collection_name, vec![point]))
             .await?;
 
         Ok(())

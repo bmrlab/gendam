@@ -1,5 +1,5 @@
 use anyhow::bail;
-pub use qdrant_client::client::QdrantClient;
+use qdrant_client::Qdrant;
 use std::io::BufRead;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::os::unix::process::CommandExt;
@@ -17,7 +17,7 @@ pub struct QdrantParams {
 
 #[derive(Clone)]
 pub struct QdrantServer {
-    client: Arc<QdrantClient>,
+    client: Arc<Qdrant>,
     pid: Pid,
 }
 
@@ -113,8 +113,8 @@ storage:
         if !liveness {
             bail!("qdrant start timeout");
         }
-
-        let client = QdrantClient::from_url(&url).build()?;
+;
+        let client = Qdrant::from_url(&url).build()?;
 
         Ok(Self {
             client: Arc::new(client),
@@ -122,7 +122,7 @@ storage:
         })
     }
 
-    pub fn get_client(&self) -> Arc<QdrantClient> {
+    pub fn get_client(&self) -> Arc<Qdrant> {
         self.client.clone()
     }
 
