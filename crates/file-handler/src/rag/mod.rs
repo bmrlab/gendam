@@ -59,7 +59,6 @@ pub async fn handle_rag(
                 file_identifier,
                 start_timestamp,
                 end_timestamp,
-                chunk_content,
             }) = payload
             {
                 original_transcripts.push(chunk_content);

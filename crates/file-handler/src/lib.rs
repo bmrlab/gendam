@@ -1,7 +1,6 @@
 pub mod artifacts;
 pub mod metadata;
 pub mod search;
-pub mod rag;
 mod traits;
 pub mod video;
 

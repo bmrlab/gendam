@@ -51,7 +51,7 @@ export type Procedures = {
         { key: "video.tasks.regenerate", input: TaskRedoRequestPayload, result: null },
     subscriptions: 
         { key: "p2p.events", input: never, result: any } | 
-        { key: "search.chat", input: ChatRequestPayload, result: ChatResponsePayload }
+        { key: "search.video_rag", input: RAGRequestPayload, result: RAGResult }
 };
 
 export type SetModelPayload = { category: AIModelCategory; modelId: string }
@@ -75,8 +75,6 @@ export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: 
 export type VideoTaskListRequestPayload = { pagination: Pagination; filter: VideoTaskListRequestFilter }
 
 export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string; Llm: string }
-
-export type ChatResponsePayload = { response: string | null }
 
 export type VideoTaskListRequestFilter = "all" | "processing" | "completed" | "failed" | "canceled" | "excludeCompleted" | { exitCode: number }
 
@@ -130,9 +128,9 @@ export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbeddin
 
 export type VideoWithTasksResult = { name: string; materializedPath: string; assetObject: AssetObject; tasks: FileHandlerTask[]; mediaData: MediaData | null }
 
-export type ChatRequestPayload = { text: string }
-
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
+
+export type RAGResult = { Reference: SearchResultPayload } | { Response: string } | { Error: string } | "Done"
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
@@ -145,6 +143,8 @@ export type Result = { category: AIModelCategory; models: AIModelResult[] }
 export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
 
 export type AcceptShareOutput = { fileList: string[] }
+
+export type RAGRequestPayload = { query: string }
 
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
 

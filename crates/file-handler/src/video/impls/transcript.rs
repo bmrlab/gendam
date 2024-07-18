@@ -319,7 +319,6 @@ Additional Rules:
         let qdrant = self.qdrant_client()?;
         let collection_name = self.language_collection_name()?;
 
-        let chunk_content = self.get_transcript_chunk(start_timestamp, end_timestamp)?;
         let embedding =
             self.get_transcript_chunk_summarization_embedding(start_timestamp, end_timestamp)?;
 
@@ -327,7 +326,6 @@ Additional Rules:
             file_identifier: self.file_identifier().to_string(),
             start_timestamp,
             end_timestamp,
-            chunk_content,
         };
 
         let point = PointStruct::new(payload.get_uuid().to_string(), embedding, payload);

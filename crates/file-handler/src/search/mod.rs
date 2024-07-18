@@ -1,4 +1,5 @@
 mod constants;
+mod rag;
 pub(crate) mod payload;
 
 use self::constants::RETRIEVAL_COUNT;
@@ -12,6 +13,7 @@ use qdrant_client::{
 };
 use serde_json::json;
 use std::{collections::HashMap, sync::Arc};
+pub use rag::{handle_rag_retrieval, RAGReference};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct RetrievalResult {

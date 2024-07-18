@@ -52,7 +52,6 @@ impl VideoHandler {
 
     /// Extract key frames from video and save results
     /// - Save into disk (a folder named by `library` and `video_file_hash`)
-    /// - Save into prisma `VideoFrame` model
     pub(crate) async fn save_frames(&self) -> anyhow::Result<()> {
         if self.check_artifacts(&VideoTaskType::Frame) {
             return Ok(());

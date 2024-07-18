@@ -1,17 +1,18 @@
-use file_handler::rag::{handle_rag, RAGResult};
-use glob::glob;
-use rspc::{Router, RouterBuilder};
-use serde::{Deserialize, Serialize};
-use specta::Type;
-use tokio::sync::mpsc;
-
+mod rag;
 mod recommend;
 mod search;
+
 use crate::{get_hash_from_url, get_library_settings, CtxWithLibrary};
+use glob::glob;
+use rag::{rag_with_video, RAGRequestPayload, RAGResult};
 use recommend::{recommend_frames, RecommendRequestPayload};
+use rspc::{Router, RouterBuilder};
 use search::{search_all, SearchRequestPayload};
+use serde::{Deserialize, Serialize};
+use specta::Type;
 use storage::Storage;
 use storage::{EntryMode, S3Storage};
+use tokio::sync::mpsc;
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -148,51 +149,25 @@ where
                 Ok(results)
             })
         })
-        .subscription("chat", |t| {
-            #[derive(Deserialize, Type)]
-            #[serde(rename_all = "camelCase")]
-            pub struct ChatRequestPayload {
-                pub text: String,
-            }
-
-            #[derive(Deserialize, Serialize, Type)]
-            pub struct ChatResponsePayload {
-                pub response: Option<String>,
-            }
-
-            t(|ctx, input: ChatRequestPayload| {
+        .subscription("video_rag", |t| {
+            t(|ctx, input: RAGRequestPayload| {
                 tracing::debug!("receive chat request");
 
-                let library = ctx.library().expect("");
-                let qdrant_client = library.qdrant_client();
-                let qdrant_info = ctx.qdrant_info().expect("");
-                let ai_handler = ctx.ai_handler().expect("ai handler should be correct");
+                let library = ctx.library().expect("library is valid");
+                let qdrant_info = ctx.qdrant_info().expect("qdrant info is valid");
+                let ai_handler = ctx.ai_handler().expect("ai handler is valid");
 
                 return async_stream::stream! {
                     let (tx, mut rx) = mpsc::channel(512);
 
                     tokio::spawn(async move {
-                        if let Err(e) = handle_rag(&input.text, qdrant_client, &qdrant_info.language_collection.name.as_ref(), &ai_handler.text_embedding, &ai_handler.llm, tx).await {
+                        if let Err(e) = rag_with_video(&library, &qdrant_info, &ai_handler, input, tx).await {
                             tracing::error!("RAG error: {}", e);
                         }
                     });
 
                     while let Some(event) = rx.recv().await {
-                        match event {
-                            RAGResult::Reference(ref_item) => {
-                                tracing::info!("get RAG reference: {:?}", ref_item);
-                            }
-                            RAGResult::Response(response) => {
-                                tracing::debug!("send response: {}", &response);
-                                yield ChatResponsePayload { response: Some(response) }
-                            }
-                            RAGResult::Error(err) => {
-                                tracing::warn!("RAGResult is error: {}", err);
-                            }
-                            RAGResult::Done => {
-                                yield ChatResponsePayload { response: None }
-                            }
-                        }
+                        yield event;
                     }
                 };
             })

@@ -24,17 +24,15 @@ pub enum SearchPayload {
         end_timestamp: i64,
         method: String,
     },
-    // TranscriptChunk {
-    //     file_identifier: String,
-    //     start_timestamp: i64,
-    //     end_timestamp: i64,
-    //     content: String,
-    // },
+    TranscriptChunk {
+        file_identifier: String,
+        start_timestamp: i64,
+        end_timestamp: i64,
+    },
     TranscriptChunkSummarization {
         file_identifier: String,
         start_timestamp: i64,
         end_timestamp: i64,
-        chunk_content: String,
     },
 }
 
@@ -54,9 +52,9 @@ impl SearchPayload {
             SearchPayload::Transcript {
                 file_identifier, ..
             } => file_identifier,
-            // SearchPayload::TranscriptChunk {
-            //     file_identifier, ..
-            // } => file_identifier,
+            SearchPayload::TranscriptChunk {
+                file_identifier, ..
+            } => file_identifier,
             SearchPayload::TranscriptChunkSummarization {
                 file_identifier, ..
             } => file_identifier,

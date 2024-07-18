@@ -9,17 +9,21 @@ export default function TestChatPage() {
   const [response, setResponse] = useState('')
   const [startChat, setStartChat] = useState(false)
 
-  rspc.useSubscription(['search.chat', { text }], {
+  rspc.useSubscription(['search.video_rag', { query: text }], {
     enabled: startChat,
     onStarted: () => {
       console.log('chat started')
     },
     onData: (data) => {
-      if (typeof data.response === 'undefined' || data.response === null) {
-        console.log('disable subscribe to chat')
+      if (data === 'Done') {
         setStartChat(false)
+        console.log('RAG Done')
+      } else if ('Reference' in data) {
+        console.log(data.Reference)
+      } else if ('Response' in data) {
+        setResponse((v) => (v += data.Response))
       } else {
-        setResponse((v) => (v += data.response))
+        console.log(data.Error)
       }
     },
     onError: (err) => {
