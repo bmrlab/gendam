@@ -1,3 +1,4 @@
+use super::search::{retrieve_assets_for_search, SearchResultPayload};
 use crate::ai::AIHandler;
 use ai::llm::{LLMInferenceParams, LLMMessage};
 use content_library::{Library, QdrantServerInfo};
@@ -10,8 +11,6 @@ use specta::Type;
 use tokio::sync::mpsc::Sender;
 use tracing::warn;
 
-use super::search::{retrieve_assets_for_search, SearchResultPayload};
-
 #[derive(Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RAGRequestPayload {
@@ -19,6 +18,7 @@ pub struct RAGRequestPayload {
 }
 
 #[derive(Serialize, Type)]
+#[serde(tag = "result_type", content = "data")]
 pub enum RAGResult {
     Reference(SearchResultPayload),
     Response(String),
@@ -65,34 +65,37 @@ pub async fn rag_with_video(
     let reference_content = references
         .iter()
         .filter_map(|ref_item| {
-            let file_handler = VideoHandler::new(
+            match VideoHandler::new(
                 library.file_path(&ref_item.file_identifier),
                 &ref_item.file_identifier,
                 library.relative_artifacts_path(&ref_item.file_identifier),
                 None,
-            )
-            .expect("no error when build video handler");
-            match file_handler.get_transcript() {
-                Ok(transcript) => Some(
-                    transcript
-                        .transcriptions
-                        .into_iter()
-                        // transcription is stored in order, so here just filter valid results
-                        // TODO no need to iterate all transcriptions
-                        .filter_map(|v| {
-                            if (v.start_timestamp as i32) >= ref_item.chunk_start_timestamp
-                                && (v.end_timestamp as i32) <= ref_item.chunk_end_timestamp
-                            {
-                                Some(v.text)
-                            } else {
-                                None
+            ) {
+                Ok(file_handler) => match file_handler.get_transcript() {
+                    Ok(transcript) => {
+                        let mut transcript_vec = vec![];
+                        for item in transcript.transcriptions {
+                            if (item.start_timestamp as i32) < ref_item.chunk_start_timestamp {
+                                continue;
                             }
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                ),
-                _ => {
-                    warn!("no transcript found for {}", ref_item.file_identifier);
+                            if (item.end_timestamp as i32) > ref_item.chunk_end_timestamp {
+                                break;
+                            }
+                            transcript_vec.push(item.text);
+                        }
+
+                        Some(transcript_vec.join("\n"))
+                    }
+                    _ => {
+                        warn!("no transcript found for {}", ref_item.file_identifier);
+                        None
+                    }
+                },
+                Err(e) => {
+                    warn!(
+                        "failed to build file handler for {}: {}",
+                        ref_item.file_identifier, e
+                    );
                     None
                 }
             }
@@ -103,7 +106,7 @@ pub async fn rag_with_video(
     let system_prompt = r#"You are an assistant good at answer questions according to pieces of video transcript.
 You should try to answer user question according to the provided video transcripts.
 Keep your answer ground in the facts of the DOCUMENT.
-Try to response in a structured format like markdown, with proper title, subtitles and bullet points.
+Try to response in markdown, with proper title, subtitles and bullet points.
 If the DOCUMENT doesn't contain the facts to answer the QUESTION return {I don't know} in the question's language.
 "#;
     let user_prompt = format!(

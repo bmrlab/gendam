@@ -143,4 +143,77 @@ where
                 Ok(VideoPlayerTsResponse { data: file })
             })
         })
+        .query("rag.transcript", |t| {
+            #[derive(Deserialize, Type, Debug)]
+            enum TranscriptType {
+                Original,
+                Summarization,
+            }
+            #[derive(Deserialize, Type, Debug)]
+            #[serde(rename_all = "camelCase")]
+            struct TranscriptRequestPayload {
+                hash: String,
+                start_timestamp: i32,
+                end_timestamp: i32,
+                request_type: TranscriptType,
+            }
+
+            #[derive(Serialize, Type, Debug)]
+            #[serde(rename_all = "camelCase")]
+            struct TranscriptResponse {
+                content: String,
+            }
+
+            t(|ctx: TCtx, input: TranscriptRequestPayload| async move {
+                let library = ctx.library()?;
+                let file_handler = VideoHandler::new(
+                    &library.file_path(&input.hash),
+                    &input.hash,
+                    &library.relative_artifacts_path(&input.hash),
+                    None,
+                )
+                .map_err(|e| {
+                    rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("failed to get video handler: {}", e),
+                    )
+                })?;
+
+                let content = {
+                    match input.request_type {
+                        TranscriptType::Original => match file_handler.get_transcript() {
+                            Ok(transcript) => {
+                                let mut transcript_vec = vec![];
+                                for item in transcript.transcriptions {
+                                    if item.start_timestamp < input.start_timestamp as i64 {
+                                        continue;
+                                    }
+                                    if item.end_timestamp > input.end_timestamp as i64 {
+                                        break;
+                                    }
+                                    transcript_vec.push(item.text);
+                                }
+
+                                Ok(transcript_vec.join("\n"))
+                            }
+                            Err(e) => Err(e),
+                        },
+                        TranscriptType::Summarization => file_handler
+                            .get_transcript_chunk_summarization(
+                                input.start_timestamp as i64,
+                                input.end_timestamp as i64,
+                            ),
+                    }
+                };
+
+                let content = content.map_err(|e| {
+                    rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("failed to get transcript: {}", e),
+                    )
+                })?;
+
+                Ok(TranscriptResponse { content })
+            })
+        })
 }

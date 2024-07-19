@@ -544,6 +544,7 @@ impl FileHandler for VideoHandler {
         // }
         // FIXME test code
         let task_types = vec![
+            (VideoTaskType::Frame, TaskPriority::Normal),
             (VideoTaskType::Audio, TaskPriority::Normal),
             (VideoTaskType::Transcript, TaskPriority::Normal),
             (VideoTaskType::TranscriptChunk, TaskPriority::Normal),

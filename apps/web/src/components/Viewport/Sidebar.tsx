@@ -146,7 +146,7 @@ export default function Sidebar() {
         </Link>
         <Link href="/search/chat" className={menuClassNames('/search/chat')}>
           <Icon.MagnifyingGlass className="text-ink/70 h-4 w-4" />
-          <span>Test Chat</span>
+          <span>Chat</span>
         </Link>
         {/* <Link href="/video-tasks" className={menuClassNames('/video-tasks')}>
           <Icon.Briefcase className="text-ink/70 h-4 w-4" />

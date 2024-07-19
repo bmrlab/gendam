@@ -4,12 +4,10 @@ mod search;
 
 use crate::{get_hash_from_url, get_library_settings, CtxWithLibrary};
 use glob::glob;
-use rag::{rag_with_video, RAGRequestPayload, RAGResult};
+use rag::{rag_with_video, RAGRequestPayload};
 use recommend::{recommend_frames, RecommendRequestPayload};
 use rspc::{Router, RouterBuilder};
 use search::{search_all, SearchRequestPayload};
-use serde::{Deserialize, Serialize};
-use specta::Type;
 use storage::Storage;
 use storage::{EntryMode, S3Storage};
 use tokio::sync::mpsc;
