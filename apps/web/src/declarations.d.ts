@@ -13,6 +13,10 @@ declare module '@/lib/bindings' {
     assetObject?: AssetObject | null
   }
 
+  export type Trash = T.Trash & {
+    assetObject?: AssetObject | null
+  }
+
   export type SearchResultPayload = Omit<T.SearchResultPayload, 'filePath'> & {
     filePath: FilePath
   }

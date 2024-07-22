@@ -1,6 +1,7 @@
 use crate::{ai::AIHandler, file_handler::get_file_handler_with_library};
+use chrono::{Duration, FixedOffset, Utc};
 use content_library::{Library, QdrantServerInfo};
-use prisma_lib::asset_object;
+use prisma_lib::{asset_object, trash};
 use std::sync::Arc;
 use tracing::error;
 
@@ -10,12 +11,12 @@ pub async fn delete_unlinked_assets(
     qdrant_info: QdrantServerInfo,
 ) -> Result<(), rspc::Error> {
     // 查找所有未关联file path的assobject
-    // todo 怎么优化更好点
     let all_assets = library
         .prisma_client()
         .asset_object()
         .find_many(vec![])
         .with(asset_object::file_paths::fetch(vec![]).take(1))
+        .with(asset_object::trashes::fetch(vec![]).take(1))
         .exec()
         .await
         .map_err(|e| {
@@ -32,6 +33,10 @@ pub async fn delete_unlinked_assets(
                 .file_paths
                 .as_ref()
                 .is_some_and(|paths| paths.len() == 0)
+                && asset
+                    .trashes
+                    .as_ref()
+                    .is_some_and(|trashes| trashes.len() == 0)
         })
         .collect::<Vec<_>>();
 
@@ -73,5 +78,44 @@ pub async fn delete_unlinked_assets(
         }
     }
 
+    Ok(())
+}
+
+pub async fn delete_expired_trash(library: Arc<Library>) -> Result<(), rspc::Error> {
+    // 获取60天前的日期时间
+    let sixty_days_ago_utc = Utc::now() - Duration::days(60);
+    let fixed_offset = FixedOffset::east_opt(0);
+    if let Some(fixed_offset) = fixed_offset {
+        let sixty_days_ago = sixty_days_ago_utc.with_timezone(&fixed_offset);
+
+        let trashes = library
+            .prisma_client()
+            .trash()
+            .find_many(vec![trash::created_at::lte(sixty_days_ago)])
+            .exec()
+            .await
+            .map_err(|e| {
+                rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    format!("failed to find trashes: {}", e),
+                )
+            })?;
+        tracing::debug!("expired_trashes: {trashes:?}");
+        // 删除数据
+        let ids = trashes.iter().map(|item| item.id).collect::<Vec<_>>();
+
+        library
+            .prisma_client()
+            .trash()
+            .delete_many(vec![trash::id::in_vec(ids)])
+            .exec()
+            .await
+            .map_err(|e| {
+                rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    format!("failed to delete trashes: {}", e),
+                )
+            })?;
+    }
     Ok(())
 }

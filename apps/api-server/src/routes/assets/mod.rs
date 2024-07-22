@@ -1,6 +1,7 @@
 mod create;
 mod delete;
 mod process;
+mod put_back;
 mod read;
 mod types;
 mod update;
@@ -10,15 +11,16 @@ use crate::routes::assets::utils::get_file_type;
 use crate::validators;
 use crate::CtxWithLibrary;
 use create::{create_asset_object, create_dir};
-pub use delete::delete_file_path;
+pub use delete::{delete_file_path, delete_trash_file_path};
 use process::{export_video_segment, process_video_asset, process_video_metadata};
-use read::{get_file_path, list_file_path};
+use put_back::put_back;
+use read::{get_file_path, list_file_path, list_trash_file_path};
 use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
 use specta::Type;
 use tracing::info;
 use types::FilePathRequestPayload;
-use update::{move_file_path, rename_file_path};
+use update::{move_file_path, move_trash_file_path, rename_file_path};
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -32,6 +34,36 @@ where
         name: String,
         local_full_path: String,
     }
+
+    #[derive(Deserialize, Type, Debug)]
+    #[serde(rename_all = "camelCase")]
+    struct FilePathQueryPayload {
+        // #[serde(rename = "materializedPath")]
+        #[serde(deserialize_with = "validators::materialized_path_string")]
+        materialized_path: String,
+        // export `isDir?: boolean` instead of `isDir: boolean | null`
+        #[serde(skip_serializing_if = "Option::is_none")]
+        is_dir: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        include_sub_dirs: Option<bool>,
+    }
+
+    #[derive(Deserialize, Type, Debug)]
+    #[serde(rename_all = "camelCase")]
+    struct FilePathDeletePayload {
+        #[serde(deserialize_with = "validators::materialized_path_string")]
+        materialized_path: String,
+        #[serde(deserialize_with = "validators::path_name_string")]
+        name: String,
+    }
+
+    #[derive(Deserialize, Type, Debug)]
+    #[serde(rename_all = "camelCase")]
+    struct FilePathMovePayload {
+        active: FilePathRequestPayload,
+        target: Option<FilePathRequestPayload>,
+    }
+
     Router::<TCtx>::new()
         .mutation("create_dir", |t| {
             t({
@@ -132,21 +164,24 @@ where
         })
         .query("list", |t| {
             t({
-                #[derive(Deserialize, Type, Debug)]
-                #[serde(rename_all = "camelCase")]
-                struct FilePathQueryPayload {
-                    // #[serde(rename = "materializedPath")]
-                    #[serde(deserialize_with = "validators::materialized_path_string")]
-                    materialized_path: String,
-                    // export `isDir?: boolean` instead of `isDir: boolean | null`
-                    #[serde(skip_serializing_if = "Option::is_none")]
-                    is_dir: Option<bool>,
-                    #[serde(skip_serializing_if = "Option::is_none")]
-                    include_sub_dirs: Option<bool>,
-                }
                 |ctx, input: FilePathQueryPayload| async move {
                     let library = ctx.library()?;
                     let res = list_file_path(
+                        &library,
+                        &input.materialized_path,
+                        input.is_dir,
+                        input.include_sub_dirs,
+                    )
+                    .await?;
+                    Ok(res)
+                }
+            })
+        })
+        .query("trash", |t| {
+            t({
+                |ctx, input: FilePathQueryPayload| async move {
+                    let library = ctx.library()?;
+                    let res = list_trash_file_path(
                         &library,
                         &input.materialized_path,
                         input.is_dir,
@@ -206,12 +241,6 @@ where
         })
         .mutation("move_file_path", |t| {
             t({
-                #[derive(Deserialize, Type, Debug)]
-                #[serde(rename_all = "camelCase")]
-                struct FilePathMovePayload {
-                    active: FilePathRequestPayload,
-                    target: Option<FilePathRequestPayload>,
-                }
                 |ctx, input: FilePathMovePayload| async move {
                     let library = ctx.library()?;
                     move_file_path(&library, input.active, input.target).await?;
@@ -219,19 +248,33 @@ where
                 }
             })
         })
+        .mutation("move_trash_file_path", |t| {
+            t({
+                |ctx, input: FilePathMovePayload| async move {
+                    let library = ctx.library()?;
+                    move_trash_file_path(&library, input.active, input.target).await?;
+                    Ok(())
+                }
+            })
+        })
         .mutation("delete_file_path", |t| {
             t({
-                #[derive(Deserialize, Type, Debug)]
-                #[serde(rename_all = "camelCase")]
-                struct FilePathDeletePayload {
-                    #[serde(deserialize_with = "validators::materialized_path_string")]
-                    materialized_path: String,
-                    #[serde(deserialize_with = "validators::path_name_string")]
-                    name: String,
-                }
                 |ctx, input: FilePathDeletePayload| async move {
-                    delete_file_path(&ctx, &input.materialized_path, &input.name).await?;
-                    Ok(())
+                    Ok(delete_file_path(&ctx, &input.materialized_path, &input.name).await?)
+                }
+            })
+        })
+        .mutation("delete_trash_file_path", |t| {
+            t({
+                |ctx, input: FilePathDeletePayload| async move {
+                    Ok(delete_trash_file_path(&ctx, &input.materialized_path, &input.name).await?)
+                }
+            })
+        })
+        .mutation("put_back", |t| {
+            t({
+                |ctx, input: FilePathDeletePayload| async move {
+                    Ok(put_back(&ctx, &input.materialized_path, &input.name).await?)
                 }
             })
         })

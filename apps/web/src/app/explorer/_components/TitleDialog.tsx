@@ -1,5 +1,6 @@
 import { useExplorerContext } from '@/Explorer/hooks'
-import { rspc, queryClient } from '@/lib/rspc'
+import { useExplorerApiContext } from '@/Explorer/hooks/useExplorerApi'
+import { queryClient, rspc } from '@/lib/rspc'
 import { Button } from '@gendam/ui/v2/button'
 import { Dialog } from '@gendam/ui/v2/dialog'
 import { Form } from '@gendam/ui/v2/form'
@@ -17,6 +18,7 @@ export const useTitleDialog = create<TitleDialogState>((set) => ({
 }))
 
 const TitleDialog: React.FC = () => {
+  const explorerApi = useExplorerApiContext()
   const titleDialog = useTitleDialog()
   const explorer = useExplorerContext()
   const createDirMut = rspc.useMutation(['assets.create_dir'])
@@ -37,17 +39,20 @@ const TitleDialog: React.FC = () => {
         setTitle('')
       } catch (error) {}
       queryClient.invalidateQueries({
-        queryKey: ['assets.list', { materializedPath: explorer.materializedPath }],
+        queryKey: [explorerApi.listApi, { materializedPath: explorer.materializedPath }],
       })
     },
     [createDirMut, explorer.materializedPath, title, titleDialog],
   )
 
   return (
-    <Dialog.Root open={titleDialog.open} onOpenChange={(open) => {
-      titleDialog.setOpen(open)
-      if (!open) setTitle('')
-    }}>
+    <Dialog.Root
+      open={titleDialog.open}
+      onOpenChange={(open) => {
+        titleDialog.setOpen(open)
+        if (!open) setTitle('')
+      }}
+    >
       <Dialog.Portal>
         <Dialog.Overlay onClick={(e) => e.stopPropagation()} />
         <Dialog.Content onClick={(e) => e.stopPropagation()} className="w-96 px-4 pb-6 pt-4">
