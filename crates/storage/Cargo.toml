@@ -13,5 +13,5 @@ async-recursion = "1.1.1"
 serde = { workspace = true }
 specta = { workspace = true }
 
-opendal = { version = "0.46.0", features = ["services-fs", "services-s3"] }
+opendal = { version = "0.47.3", features = ["services-fs", "services-s3"] }
 bytes = "1.6.0"
