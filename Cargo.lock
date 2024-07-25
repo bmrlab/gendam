@@ -1531,6 +1531,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7144d30dcf0fafbce74250a3963025d8d52177934239851c917d29f1df280c2"
 
 [[package]]
+name = "content-base"
+version = "0.1.0"
+dependencies = [
+ "ai",
+ "anyhow",
+ "async-trait",
+ "content-base-derive",
+ "file-handler",
+ "global-variable",
+ "qdrant-client",
+ "serde",
+ "serde_json",
+ "storage",
+ "storage-macro",
+ "strum",
+ "strum_macros",
+ "test-log",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "content-base-derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn 2.0.70",
+]
+
+[[package]]
 name = "content-library"
 version = "0.1.0"
 dependencies = [

@@ -105,6 +105,8 @@ impl VideoDecoder {
         let binary_file_path = current_dir.join("ffmpeg");
         let ffprobe_file_path = current_dir.join("ffprobe");
 
+        tracing::debug!("ffmpeg path {:?}", &binary_file_path);
+
         Ok(Self {
             video_file_path: filename.as_ref().to_path_buf(),
             binary_file_path,

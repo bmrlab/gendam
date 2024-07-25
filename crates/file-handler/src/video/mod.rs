@@ -1,5 +1,5 @@
 mod constants;
-mod decoder;
+pub mod decoder;
 mod impls;
 mod utils;
 
