@@ -1531,6 +1531,116 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7144d30dcf0fafbce74250a3963025d8d52177934239851c917d29f1df280c2"
 
 [[package]]
+name = "content-base"
+version = "0.1.0"
+dependencies = [
+ "ai",
+ "anyhow",
+ "async-recursion",
+ "async-trait",
+ "content-base-context",
+ "content-base-pool",
+ "content-base-task",
+ "content-handler",
+ "content-metadata",
+ "global-variable",
+ "qdrant-client",
+ "serde",
+ "serde_json",
+ "storage",
+ "storage-macro",
+ "test-log",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "content-base-context"
+version = "0.1.0"
+dependencies = [
+ "ai",
+ "anyhow",
+ "async-trait",
+ "global-variable",
+ "qdrant-client",
+ "serde",
+ "serde_json",
+ "storage",
+ "storage-macro",
+ "test-log",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "content-base-derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn 2.0.70",
+]
+
+[[package]]
+name = "content-base-pool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "content-base-context",
+ "content-base-task",
+ "priority-queue",
+ "strum",
+ "strum_macros",
+ "test-log",
+ "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
+name = "content-base-task"
+version = "0.1.0"
+dependencies = [
+ "ai",
+ "anyhow",
+ "async-trait",
+ "content-base-context",
+ "content-base-derive",
+ "content-handler",
+ "content-metadata",
+ "global-variable",
+ "qdrant-client",
+ "serde",
+ "serde_json",
+ "storage",
+ "storage-macro",
+ "strum",
+ "strum_macros",
+ "test-log",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "content-handler"
+version = "0.1.0"
+dependencies = [
+ "ai",
+ "anyhow",
+ "async-trait",
+ "content-metadata",
+ "global-variable",
+ "infer 0.15.0",
+ "serde",
+ "serde_json",
+ "storage",
+ "storage-macro",
+ "test-log",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "content-library"
 version = "0.1.0"
 dependencies = [
@@ -1548,6 +1658,16 @@ dependencies = [
  "vector-db",
  "walkdir",
  "zip 1.1.4",
+]
+
+[[package]]
+name = "content-metadata"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]
@@ -9109,6 +9229,7 @@ dependencies = [
 name = "storage-macro"
 version = "0.1.1"
 dependencies = [
+ "async-trait",
  "global-variable",
  "quote",
  "storage",

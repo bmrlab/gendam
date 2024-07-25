@@ -3,7 +3,6 @@ extern crate accelerate_src;
 use crate::traits::{ImageCaptionInput, ImageCaptionOutput};
 use crate::Model;
 use anyhow::{anyhow, bail};
-use async_trait::async_trait;
 use candle_core::backend::BackendDevice;
 use candle_core::MetalDevice;
 use candle_core::{Device, Tensor};

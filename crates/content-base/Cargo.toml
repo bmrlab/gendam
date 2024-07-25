@@ -1,0 +1,24 @@
+[package]
+name = "content-base"
+version = "0.1.0"
+edition = { workspace = true }
+
+[dependencies]
+tokio = { workspace = true, features = ["full"] }
+async-trait = { workspace = true }
+async-recursion = { workspace = true }
+anyhow = { workspace = true }
+qdrant-client = { workspace = true }
+tracing = { workspace = true }
+test-log = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+storage = { path = "../storage" }
+storage-macro = { path = "../storage-macro" }
+ai = { path = "../ai" }
+global-variable = { path = "../global-variable" }
+content-base-context = { path = "../content-base-context" }
+content-base-task = { path = "../content-base-task" }
+content-base-pool = { path = "../content-base-pool" }
+content-handler = { path = "../content-handler" }
+content-metadata = { path = "../content-metadata" }

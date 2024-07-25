@@ -21,7 +21,7 @@ pub fn storage_trait_derive(input: TokenStream) -> TokenStream {
             }
         }
 
-        #[async_trait]
+        #[async_trait::async_trait]
         impl Storage for #name {
             fn clone_box(&self) -> Box<dyn Storage> {
                 self.storage().unwrap().clone_box()

@@ -1,0 +1,16 @@
+[package]
+name = "content-base-pool"
+version = "0.1.0"
+edition = { workspace = true }
+
+[dependencies]
+content-base-context = { path = "../content-base-context" }
+content-base-task = { path = "../content-base-task" }
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
+test-log = { workspace = true }
+anyhow = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+priority-queue = "2.0.0"
+tokio-util = { workspace = true, features = ["full"] }
