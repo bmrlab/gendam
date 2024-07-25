@@ -6,4 +6,4 @@ mod traits;
 
 pub use task::*;
 pub use record::*;
-pub(crate) use traits::*;
+pub use traits::*;

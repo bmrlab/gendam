@@ -12,7 +12,7 @@ use std::{
 };
 use storage_macro::Storage;
 
-#[derive(Storage)]
+#[derive(Clone, Storage)]
 pub struct ContentBase {
     qdrant: Arc<Qdrant>,
     vision_collection_name: String,
