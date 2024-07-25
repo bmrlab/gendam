@@ -11,3 +11,4 @@ syn = { workspace = true }
 quote = { workspace = true }
 storage = { path = "../storage" }
 global-variable = { path = "../global-variable" }
+async-trait = { workspace = true }

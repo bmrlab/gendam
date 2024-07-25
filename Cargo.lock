@@ -1531,14 +1531,46 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7144d30dcf0fafbce74250a3963025d8d52177934239851c917d29f1df280c2"
 
 [[package]]
-name = "content-base"
+name = "content-base-core"
 version = "0.1.0"
 dependencies = [
  "ai",
  "anyhow",
  "async-trait",
+ "global-variable",
+ "qdrant-client",
+ "serde",
+ "serde_json",
+ "storage",
+ "storage-macro",
+ "test-log",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "content-base-derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn 2.0.70",
+]
+
+[[package]]
+name = "content-base-pool"
+version = "0.1.0"
+
+[[package]]
+name = "content-base-task"
+version = "0.1.0"
+dependencies = [
+ "ai",
+ "anyhow",
+ "async-trait",
+ "content-base-core",
  "content-base-derive",
- "file-handler",
+ "content-handler",
+ "content-metadata",
  "global-variable",
  "qdrant-client",
  "serde",
@@ -1554,11 +1586,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "content-base-derive"
+name = "content-handler"
 version = "0.1.0"
 dependencies = [
- "quote",
- "syn 2.0.70",
+ "ai",
+ "anyhow",
+ "async-trait",
+ "content-metadata",
+ "global-variable",
+ "serde",
+ "serde_json",
+ "storage",
+ "storage-macro",
+ "test-log",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -1579,6 +1621,16 @@ dependencies = [
  "vector-db",
  "walkdir",
  "zip 1.1.4",
+]
+
+[[package]]
+name = "content-metadata"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]
@@ -9140,6 +9192,7 @@ dependencies = [
 name = "storage-macro"
 version = "0.1.1"
 dependencies = [
+ "async-trait",
  "global-variable",
  "quote",
  "storage",

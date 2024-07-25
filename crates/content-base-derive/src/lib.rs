@@ -145,13 +145,13 @@ pub fn content_task_derive(input: TokenStream) -> TokenStream {
             quote! {
                 #[async_trait::async_trait]
                 impl crate::ContentTask for #name {
-                    async fn inner_run(&self, file_info: &crate::FileInfo, ctx: &crate::ContentBase, task_run_record: &mut crate::record::TaskRunRecord) -> anyhow::Result<()> {
+                    async fn inner_run(&self, file_info: &crate::FileInfo, ctx: &content_base_core::ContentBase, task_run_record: &mut crate::record::TaskRunRecord) -> anyhow::Result<()> {
                         match self {
                             #(#variant_matches_for_inner_run)*
                         }
                     }
 
-                    fn task_parameters(&self, ctx: &crate::ContentBase) -> serde_json::Value {
+                    fn task_parameters(&self, ctx: &content_base_core::ContentBase) -> serde_json::Value {
                         match self {
                             #(#variant_matches_for_task_parameters)*
                         }
