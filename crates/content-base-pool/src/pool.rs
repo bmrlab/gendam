@@ -82,9 +82,7 @@ impl TaskPool {
             };
         });
 
-        Ok(Self {
-            tx,
-        })
+        Ok(Self { tx })
     }
 
     pub async fn add_task(
@@ -314,8 +312,15 @@ async fn loop_until_queue_empty(
                     };
 
                     tokio::select! {
-                        _ = task.task_type.run(&file_info, &content_base) => {
-                            info!("Task finished: {} {}", file_identifier, task_type);
+                        result = task.task_type.run(&file_info, &content_base) => {
+                            match result {
+                                Err(e) => {
+                                    error!("Task error: {} {} {}", file_identifier, task_type, e);
+                                }
+                                _ => {
+                                    info!("Task finished: {} {}", file_identifier, task_type);
+                                }
+                            }
                         }
                         _ = current_cancel_token.cancelled() => {
                             info!("Task canceled: {} {}", file_identifier, task_type);

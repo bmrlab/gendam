@@ -1,9 +1,9 @@
-use std::path::PathBuf;
+use crate::{ContentTaskType, FileInfo, TaskRecord, TaskRunOutput, TaskRunRecord};
 use async_trait::async_trait;
 use content_base_context::ContentBaseCtx;
 use serde_json::Value;
+use std::path::PathBuf;
 use storage::Storage;
-use crate::{ContentTaskType, FileInfo, TaskRecord, TaskRunOutput, TaskRunRecord};
 
 #[async_trait]
 pub trait ContentTask: Into<ContentTaskType> + Clone + Storage {
@@ -11,14 +11,22 @@ pub trait ContentTask: Into<ContentTaskType> + Clone + Storage {
     async fn run(&self, file_info: &FileInfo, ctx: &ContentBaseCtx) -> anyhow::Result<()> {
         let task_type = self.clone().into();
 
-        // TODO check if the task is already exist
         let mut task_record = TaskRecord::from_content_base(&file_info.file_identifier, ctx).await;
-        let mut task_run_record = task_record
-            .add_task_run(ctx, &task_type)
-            .await?;
+
+        if let Some(target_task_run) = task_record.target_run(ctx, &task_type) {
+            if target_task_run.is_completed() {
+                tracing::info!("Completed task run found, finish task.");
+
+                return Ok(());
+            }
+        }
+
+        let mut task_run_record = task_record.add_task_run(ctx, &task_type).await?;
 
         self.inner_run(file_info, ctx, &mut task_run_record).await?;
 
+        task_run_record.complete();
+        task_run_record.update_deps(ctx, &task_record)?;
         task_record.update_task_run(ctx, &task_run_record).await?;
 
         Ok(())
@@ -32,13 +40,16 @@ pub trait ContentTask: Into<ContentTaskType> + Clone + Storage {
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()>;
 
-    /// Get task output path from the latest `TaskRunRecord`.
+    /// Get task output path from the target `TaskRunRecord`.
     async fn task_output_path(
         &self,
         file_info: &FileInfo,
         ctx: &ContentBaseCtx,
     ) -> anyhow::Result<PathBuf> {
-        let task_run_record = TaskRecord::latest_run(&file_info.file_identifier, ctx, &self.clone().into()).await?;
+        let task_record = TaskRecord::from_content_base(&file_info.file_identifier, ctx).await;
+        let task_run_record = task_record
+            .target_run(ctx, &self.clone().into())
+            .ok_or(anyhow::anyhow!("no target run found"))?;
         let task_output = self.task_output(&task_run_record).await?;
         let output_path = task_output
             .to_path_buf(&file_info.file_identifier, ctx)
