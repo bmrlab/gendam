@@ -1,7 +1,20 @@
+mod core;
+pub mod upsert;
+
+use content_base_context::ContentBaseCtx;
+use content_base_pool::TaskPool;
+
+#[derive(Clone)]
+pub struct ContentBase {
+    ctx: ContentBaseCtx,
+    task_pool: TaskPool,
+}
+
 #[cfg(test)]
 mod test {
     use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 
+    use crate::{upsert::UpsertPayload, ContentBase};
     use ai::{
         llm::{openai::OpenAI, LLM},
         text_embedding::OrtTextEmbedding,
@@ -40,7 +53,6 @@ mod test {
             "content-base-vision",
             "content-base-language",
             "gendam-test-artifacts",
-            "/Users/zhuo/Desktop/gendam-test-tmp",
         );
 
         // initialize AI models
@@ -103,10 +115,76 @@ mod test {
             VideoTransChunkSumEmbedTask.into(),
         ];
 
-        for (idx, task) in tasks.iter().enumerate() {
-            let result = task_pool.add_task(&file_identifier, &file_path, &task, None, Some(idx));
+        for task in tasks.iter() {
+            let result = task_pool
+                .add_task(&file_identifier, &file_path, &task, None)
+                .await;
             tracing::info!("task insert result: {:?}", result);
         }
+
+        tokio::time::sleep(Duration::from_secs(60)).await;
+    }
+
+    #[test_log::test(tokio::test(flavor = "multi_thread"))]
+    async fn test_core() {
+        init_global_variables!();
+        // set storage root path
+        set_current!("abcdefg".into(), "/Users/zhuo/Desktop".into());
+
+        let qdrant = Qdrant::from_url("http://localhost:6334")
+            .build()
+            .expect("qdrant build");
+
+        // the artifacts_dir is relative to the storage root
+        let ctx = ContentBaseCtx::new(
+            Arc::new(qdrant),
+            "content-base-vision",
+            "content-base-language",
+            "gendam-test-artifacts",
+        );
+
+        // initialize AI models
+        let whisper =
+            AIModel::new(|| async { Whisper::new("/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/whisper/ggml-medium-q5_0.bin").await }, None).expect("whisper initialized");
+        let llm = AIModel::new(
+            || async {
+                Ok(LLM::OpenAI(
+                    OpenAI::new(
+                        "http://localhost:11434/v1",
+                        "ollama",
+                        "qwen2:7b-instruct-q4_0",
+                    )
+                    .expect(""),
+                ))
+            },
+            None,
+        )
+        .expect("");
+        let text_embedding = AIModel::new(
+            || async {
+                OrtTextEmbedding::new("/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/stella-base-zh-v3-1792d/model_quantized.onnx", "/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/stella-base-zh-v3-1792d/tokenizer.json").await
+            },
+            None,
+        ).expect("");
+        let tokenizer = Tokenizer::from_file("/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/qwen2/tokenizer.json").expect("");
+
+        // add models to ContentBaseCtx
+        let ctx = ctx
+            .with_audio_transcript(Arc::new(whisper), "whisper")
+            .with_llm(Arc::new(llm), tokenizer, "qwen2")
+            .with_text_embedding(Arc::new(text_embedding), "stella");
+
+        let file_identifier = "abcdefghijklmn";
+        let file_path = PathBuf::from_str("/Users/zhuo/Desktop/测试视频/4月1日.mp4")
+            .expect("str should be valid path");
+
+        let content_base = ContentBase::new(&ctx).expect("content base created");
+
+        let upsert_result = content_base
+            .upsert(UpsertPayload::new(file_identifier.into(), file_path))
+            .await;
+
+        tracing::info!("upsert result: {:?}", upsert_result);
 
         tokio::time::sleep(Duration::from_secs(60)).await;
     }

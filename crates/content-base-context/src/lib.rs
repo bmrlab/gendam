@@ -18,7 +18,6 @@ pub struct ContentBaseCtx {
     vision_collection_name: String,
     language_collection_name: String,
     artifacts_dir: PathBuf,
-    tmp_dir: PathBuf,
     multi_modal_embedding: Option<(Arc<MultiModalEmbeddingModel>, String)>,
     text_embedding: Option<(Arc<TextEmbeddingModel>, String)>,
     audio_transcript: Option<(Arc<AudioTranscriptModel>, String)>,
@@ -32,14 +31,12 @@ impl ContentBaseCtx {
         vision_collection_name: &str,
         language_collection_name: &str,
         artifacts_dir: impl AsRef<Path>,
-        tmp_dir: impl AsRef<Path>,
     ) -> Self {
         Self {
             qdrant,
             vision_collection_name: vision_collection_name.to_string(),
             language_collection_name: language_collection_name.to_string(),
             artifacts_dir: artifacts_dir.as_ref().to_path_buf(),
-            tmp_dir: tmp_dir.as_ref().to_path_buf(),
             multi_modal_embedding: None,
             text_embedding: None,
             audio_transcript: None,

@@ -16,3 +16,4 @@ content-metadata = { path = "../content-metadata" }
 global-variable = { path = "../global-variable" }
 async-trait = { workspace = true }
 ai = { path = "../ai" }
+infer = "0.15.0"

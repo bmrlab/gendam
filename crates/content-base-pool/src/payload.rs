@@ -12,7 +12,7 @@ pub(crate) struct Task {
 }
 
 pub enum TaskPayload {
-    Task(String, PathBuf, ContentTaskType, TaskPriority, usize),
+    Task(String, PathBuf, ContentTaskType, TaskPriority),
     CancelByIdAndType(String, ContentTaskType),
     CancelById(String),
     CancelAll,

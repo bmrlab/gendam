@@ -77,7 +77,6 @@ mod test {
             "content-base-vision",
             "content-base-language",
             "gendam-test-artifacts",
-            "/Users/zhuo/Desktop/gendam-test-tmp",
         );
 
         // initialize AI models

@@ -11,10 +11,4 @@ impl ContentBaseCtx {
             .join(get_shard_hex(file_identifier))
             .join(file_identifier)
     }
-
-    pub fn tmp_dir(&self, file_identifier: &str) -> PathBuf {
-        self.tmp_dir
-            .join(get_shard_hex(file_identifier))
-            .join(file_identifier)
-    }
 }

@@ -1536,6 +1536,7 @@ version = "0.1.0"
 dependencies = [
  "ai",
  "anyhow",
+ "async-recursion",
  "async-trait",
  "content-base-context",
  "content-base-pool",
@@ -1629,6 +1630,7 @@ dependencies = [
  "async-trait",
  "content-metadata",
  "global-variable",
+ "infer 0.15.0",
  "serde",
  "serde_json",
  "storage",

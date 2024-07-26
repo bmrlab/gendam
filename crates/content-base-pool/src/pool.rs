@@ -17,6 +17,7 @@ use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 
+#[derive(Clone)]
 pub struct TaskPool {
     tx: Sender<TaskPayload>,
 }
@@ -81,23 +82,23 @@ impl TaskPool {
             };
         });
 
-        Ok(Self { tx })
+        Ok(Self {
+            tx,
+        })
     }
 
-    pub fn add_task(
+    pub async fn add_task(
         &self,
         file_identifier: &str,
         file_path: impl AsRef<Path>,
         task: &ContentTaskType,
         priority: Option<TaskPriority>,
-        insert_order: Option<usize>,
     ) -> anyhow::Result<()> {
         self.tx.send(TaskPayload::Task(
             file_identifier.to_string(),
             file_path.as_ref().to_path_buf(),
             task.clone(),
             priority.unwrap_or(TaskPriority::Normal),
-            insert_order.unwrap_or_default(),
         ))?;
 
         Ok(())
@@ -144,7 +145,7 @@ async fn handle_task_payload_input(
     loop {
         match rx.recv() {
             Ok(payload) => match payload {
-                TaskPayload::Task(file_identifier, file_path, task_type, priority, order) => {
+                TaskPayload::Task(file_identifier, file_path, task_type, priority) => {
                     let task_type = task_type.clone();
                     info!("Task received: {} {}", file_identifier, &task_type);
 
@@ -175,9 +176,9 @@ async fn handle_task_payload_input(
 
                     {
                         let mut task_queue = task_queue.write().await;
-                        // 通过 order 确保在相同优先级和时间戳的情况下，先加入的任务优先级相对更高
                         let priority: OrderedTaskPriority = priority.into();
-                        let priority = priority.with_insert_order(order);
+                        // 通过 order 确保在相同优先级和时间戳的情况下，先加入的任务优先级相对更高
+                        let priority = priority.with_insert_order(task_queue.len());
                         task_queue.push(
                             Task {
                                 file_identifier: file_identifier.clone(),
