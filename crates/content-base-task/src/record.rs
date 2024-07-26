@@ -9,10 +9,10 @@ use std::{
 };
 use storage_macro::Storage;
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct TaskRunDependency {
-    task_type: ContentTaskType,
-    run_id: String,
+    pub task_type: ContentTaskType,
+    pub run_id: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -75,12 +75,12 @@ impl TaskRunRecord {
         self.output.as_ref()
     }
 
-    pub fn complete(&mut self) {
-        self.completed = true;
+    pub fn parameters(&self) -> Option<&Value> {
+        self.parameters.as_ref()
     }
 
-    pub fn with_deps(&mut self, deps: &[TaskRunDependency]) {
-        self.dependencies = deps.into();
+    pub fn complete(&mut self) {
+        self.completed = true;
     }
 
     pub fn with_parameters(&mut self, parameters: &Value) {
@@ -98,6 +98,17 @@ impl TaskRunRecord {
     ) -> anyhow::Result<PathBuf> {
         let output = self.task_type.task_output(self).await?;
         output.to_path_buf(file_identifier, ctx).await
+    }
+
+    pub fn update_deps(
+        &mut self,
+        ctx: &ContentBaseCtx,
+        task_record: &TaskRecord,
+    ) -> anyhow::Result<()> {
+        let deps = task_record.task_run_dependencies(ctx, &self.task_type)?;
+        self.dependencies = deps;
+
+        Ok(())
     }
 }
 
@@ -127,13 +138,19 @@ impl TaskRecord {
         &self.tasks
     }
 
+    pub fn task_list(&self, task_type: &ContentTaskType) -> Option<&Vec<TaskRunRecord>> {
+        self.tasks.get(task_type)
+    }
+
     pub fn path(file_identifier: &str, ctx: &ContentBaseCtx) -> impl AsRef<Path> {
         ctx.artifacts_dir(file_identifier).join("artifacts.json")
     }
 
     async fn save(&self, ctx: &ContentBaseCtx) -> anyhow::Result<()> {
         self.write(
-            Self::path(&self.file_identifier, ctx).as_ref().to_path_buf(),
+            Self::path(&self.file_identifier, ctx)
+                .as_ref()
+                .to_path_buf(),
             serde_json::to_string(self)?.into(),
         )
         .await?;
@@ -149,18 +166,20 @@ impl TaskRecord {
             tasks: HashMap::new(),
         };
 
-        match fake_self.read_to_string(
-            Self::path(file_identifier, ctx).as_ref().to_path_buf()
-        ) {
+        match fake_self.read_to_string(Self::path(file_identifier, ctx).as_ref().to_path_buf()) {
             Ok(record) => match serde_json::from_str::<TaskRecord>(&record) {
                 Ok(record) => record,
-                _ => fake_self
-            }
-            _ => fake_self
+                _ => fake_self,
+            },
+            _ => fake_self,
         }
     }
 
-    pub async fn add_task_run(&mut self, ctx: &ContentBaseCtx, task_type: &ContentTaskType) -> anyhow::Result<TaskRunRecord> {
+    pub async fn add_task_run(
+        &mut self,
+        ctx: &ContentBaseCtx,
+        task_type: &ContentTaskType,
+    ) -> anyhow::Result<TaskRunRecord> {
         let mut tasks = self.tasks.clone();
         if !tasks.contains_key(task_type) {
             tasks.insert(task_type.clone(), vec![]);
@@ -184,7 +203,11 @@ impl TaskRecord {
         Ok(task_run_record)
     }
 
-    pub async fn update_task_run(&mut self, ctx: &ContentBaseCtx, task_run_record: &TaskRunRecord) -> anyhow::Result<()> {
+    pub async fn update_task_run(
+        &mut self,
+        ctx: &ContentBaseCtx,
+        task_run_record: &TaskRunRecord,
+    ) -> anyhow::Result<()> {
         let mut tasks = self.tasks().clone();
         let runs = tasks
             .get_mut(&task_run_record.task_type)
@@ -201,17 +224,76 @@ impl TaskRecord {
         Ok(())
     }
 
-    pub async fn latest_run(file_identifier: &str, ctx: &ContentBaseCtx, task_type: &ContentTaskType) -> anyhow::Result<TaskRunRecord> {
-        let record = Self::from_content_base(file_identifier, ctx).await;
-        record
-            .tasks()
-            .get(task_type)
-            .and_then(|v| v.last())
-            .cloned()
-            .ok_or(anyhow::anyhow!("task run record not found"))
+    pub async fn update_task_list(
+        &mut self,
+        ctx: &ContentBaseCtx,
+        task_type: &ContentTaskType,
+        runs: &[TaskRunRecord],
+    ) -> anyhow::Result<()> {
+        self.tasks.remove(task_type);
+        self.tasks
+            .insert(task_type.clone(), runs.into_iter().cloned().collect());
+
+        self.save(ctx).await?;
+
+        Ok(())
     }
 
-    pub async fn set_metadata(&mut self, ctx: &ContentBaseCtx, metadata: &ContentMetadata) -> anyhow::Result<()> {
+    pub fn target_run<'a, 'b, 'c>(
+        &'a self,
+        ctx: &'b ContentBaseCtx,
+        task_type: &'c ContentTaskType,
+    ) -> Option<&'a TaskRunRecord> {
+        match self.tasks.get(task_type) {
+            Some(task_list) => {
+                for task in task_list.iter().rev() {
+                    let deps = self.task_run_dependencies(ctx, task_type).ok()?;
+
+                    // Check if all deps are the same.
+                    for dep in deps {
+                        if !task.dependencies.contains(&dep) {
+                            return None;
+                        }
+                    }
+
+                    if let Some(params) = task.parameters() {
+                        if *params == task_type.task_parameters(ctx) && task.is_completed() {
+                            return Some(task);
+                        }
+                    }
+                }
+
+                None
+            }
+            _ => None,
+        }
+    }
+
+    pub fn task_run_dependencies(
+        &self,
+        ctx: &ContentBaseCtx,
+        task_type: &ContentTaskType,
+    ) -> anyhow::Result<Vec<TaskRunDependency>> {
+        let task_deps = task_type.task_dependencies();
+        let mut deps = vec![];
+        for dep in task_deps {
+            let dep_record = self
+                .target_run(ctx, &dep)
+                .ok_or(anyhow::anyhow!("no run dependencies found"))?;
+            deps.push(TaskRunDependency {
+                task_type: dep,
+                run_id: dep_record.id().into(),
+            })
+        }
+
+        Ok(deps)
+    }
+
+    pub async fn set_metadata(
+        &mut self,
+        ctx: &ContentBaseCtx,
+        metadata: &ContentMetadata,
+    ) -> anyhow::Result<()> {
         self.metadata = metadata.clone();
         self.save(ctx).await
     }

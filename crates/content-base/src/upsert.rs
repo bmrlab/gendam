@@ -6,7 +6,7 @@ use content_base_task::{
         frame::VideoFrameTask, thumbnail::VideoThumbnailTask,
         trans_chunk_sum_embed::VideoTransChunkSumEmbedTask,
     },
-    ContentTask, ContentTaskType, FileInfo,
+    ContentTask, ContentTaskType, FileInfo, TaskRecord,
 };
 use content_handler::file_metadata;
 use content_metadata::ContentMetadata;
@@ -39,21 +39,24 @@ impl UpsertPayload {
 impl ContentBase {
     pub async fn upsert(&self, payload: UpsertPayload) -> anyhow::Result<()> {
         let task_pool = self.task_pool.clone();
+        let file_identifier = &payload.file_identifier.clone();
+
+        let mut task_record = TaskRecord::from_content_base(file_identifier, &self.ctx).await;
+        let metadata = match payload.metadata.clone() {
+            Some(metadata) => metadata,
+            _ => match task_record.metadata() {
+                ContentMetadata::Unknown => {
+                    file_metadata(&payload.file_path).expect("got file metadata")
+                }
+                _ => task_record.metadata().clone(),
+            },
+        };
+
+        if let Err(e) = task_record.set_metadata(&self.ctx, &metadata).await {
+            warn!("failed to set metadata: {e:?}");
+        }
 
         tokio::spawn(async move {
-            tracing::debug!("enter upsert spawned task");
-
-            let metadata = match payload.metadata.clone() {
-                Some(metadata) => metadata,
-                _ => file_metadata(&payload.file_path).expect("got file metadata"),
-            };
-
-            tracing::debug!(
-                "({}): got metadata: {:#?}",
-                payload.file_identifier,
-                metadata
-            );
-
             match metadata {
                 ContentMetadata::Video(metadata) => {
                     let file_info = FileInfo {

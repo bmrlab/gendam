@@ -1,6 +1,6 @@
 use super::{
     trans_chunk::{AudioTransChunkTask, AudioTranscriptChunkTrait},
-    trans_chunk_sum::{AudioTransChunkSumTrait, AudioTransChunkSumTask},
+    trans_chunk_sum::{AudioTransChunkSumTask, AudioTransChunkSumTrait},
     AudioTaskType,
 };
 use crate::{
@@ -11,9 +11,9 @@ use async_trait::async_trait;
 use content_base_context::ContentBaseCtx;
 use qdrant_client::qdrant::{PointStruct, UpsertPointsBuilder};
 use serde_json::{json, Value};
-use uuid::Uuid;
-use std::{path::PathBuf};
+use std::path::PathBuf;
 use storage_macro::Storage;
+use uuid::Uuid;
 
 #[async_trait]
 pub trait AudioTransChunkSumEmbedTrait: Into<ContentTaskType> + Storage + Clone {
@@ -54,7 +54,11 @@ pub trait AudioTransChunkSumEmbedTrait: Into<ContentTaskType> + Storage + Clone 
             //     start_timestamp: chunk.start_timestamp,
             //     end_timestamp: chunk.end_timestamp,
             // };
-            let point = PointStruct::new(Uuid::new_v4().to_string(), embedding, serde_json::Map::new());
+            let point = PointStruct::new(
+                Uuid::new_v4().to_string(),
+                embedding,
+                serde_json::Map::new(),
+            );
             if let Err(e) = qdrant
                 .upsert_points(UpsertPointsBuilder::new(collection_name, vec![point]).wait(true))
                 .await
