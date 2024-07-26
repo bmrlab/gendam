@@ -6,7 +6,7 @@ use crate::{
     ContentTask, ContentTaskType, FileInfo,
 };
 use async_trait::async_trait;
-use content_base_core::ContentBase;
+use content_base_context::ContentBaseCtx;
 use storage_macro::Storage;
 
 #[derive(Clone, Storage, Debug, Default)]
@@ -14,7 +14,7 @@ pub struct VideoTranscriptTask;
 
 #[async_trait]
 impl AudioTranscriptTrait for VideoTranscriptTask {
-    async fn audio_path(&self, file_info: &FileInfo, ctx: &ContentBase) -> anyhow::Result<PathBuf> {
+    async fn audio_path(&self, file_info: &FileInfo, ctx: &ContentBaseCtx) -> anyhow::Result<PathBuf> {
         VideoAudioTask.task_output_path(file_info, ctx).await
     }
 }
@@ -28,14 +28,14 @@ impl ContentTask for VideoTranscriptTask {
     async fn inner_run(
         &self,
         file_info: &FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
         self.run_audio_transcript(file_info, ctx, task_run_record)
             .await
     }
 
-    fn task_parameters(&self, ctx: &ContentBase) -> serde_json::Value {
+    fn task_parameters(&self, ctx: &ContentBaseCtx) -> serde_json::Value {
         self.audio_task_parameters(ctx)
     }
 

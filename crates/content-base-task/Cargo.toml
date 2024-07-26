@@ -20,6 +20,6 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 uuid = { workspace = true }
 content-handler = { path = "../content-handler" }
-content-base-core = { path = "../content-base-core" }
+content-base-context = { path = "../content-base-context" }
 global-variable = { path = "../global-variable" }
 content-metadata = { path = "../content-metadata" }

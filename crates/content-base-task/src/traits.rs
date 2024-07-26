@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use async_trait::async_trait;
-use content_base_core::ContentBase;
+use content_base_context::ContentBaseCtx;
 use serde_json::Value;
 use storage::Storage;
 use crate::{ContentTaskType, FileInfo, TaskRecord, TaskRunOutput, TaskRunRecord};
@@ -8,7 +8,7 @@ use crate::{ContentTaskType, FileInfo, TaskRecord, TaskRunOutput, TaskRunRecord}
 #[async_trait]
 pub trait ContentTask: Into<ContentTaskType> + Clone + Storage {
     /// Task entrypoint. This should not be overridden.
-    async fn run(&self, file_info: &FileInfo, ctx: &ContentBase) -> anyhow::Result<()> {
+    async fn run(&self, file_info: &FileInfo, ctx: &ContentBaseCtx) -> anyhow::Result<()> {
         let task_type = self.clone().into();
 
         // TODO check if the task is already exist
@@ -28,7 +28,7 @@ pub trait ContentTask: Into<ContentTaskType> + Clone + Storage {
     async fn inner_run(
         &self,
         file_info: &FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()>;
 
@@ -36,7 +36,7 @@ pub trait ContentTask: Into<ContentTaskType> + Clone + Storage {
     async fn task_output_path(
         &self,
         file_info: &FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
     ) -> anyhow::Result<PathBuf> {
         let task_run_record = TaskRecord::latest_run(&file_info.file_identifier, ctx, &self.clone().into()).await?;
         let task_output = self.task_output(&task_run_record).await?;
@@ -46,7 +46,7 @@ pub trait ContentTask: Into<ContentTaskType> + Clone + Storage {
         Ok(output_path)
     }
 
-    fn task_parameters(&self, ctx: &ContentBase) -> Value;
+    fn task_parameters(&self, ctx: &ContentBaseCtx) -> Value;
     async fn task_output(&self, task_run_record: &TaskRunRecord) -> anyhow::Result<TaskRunOutput>;
 
     /// The direct dependencies of the task. Do not include the task itself and the dependencies of the dependencies.

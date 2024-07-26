@@ -54,7 +54,7 @@ mod test {
         whisper::Whisper,
         AIModel,
     };
-    use content_base_core::ContentBase;
+    use content_base_context::ContentBaseCtx;
     use content_handler::video::VideoDecoder;
     use content_metadata::ContentMetadata;
     use global_variable::{init_global_variables, set_current};
@@ -72,7 +72,7 @@ mod test {
             .expect("qdrant build");
 
         // the artifacts_dir is relative to the storage root
-        let content_base = ContentBase::new(
+        let content_base = ContentBaseCtx::new(
             Arc::new(qdrant),
             "content-base-vision",
             "content-base-language",
@@ -105,7 +105,7 @@ mod test {
         ).expect("");
         let tokenizer = Tokenizer::from_file("/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/qwen2/tokenizer.json").expect("");
 
-        // add models to ContentBase
+        // add models to ContentBaseCtx
         let content_base = content_base
             .with_audio_transcript(Arc::new(whisper), "whisper")
             .with_llm(Arc::new(llm), tokenizer, "qwen2")

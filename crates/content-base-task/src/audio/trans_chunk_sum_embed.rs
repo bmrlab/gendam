@@ -8,7 +8,7 @@ use crate::{
     ContentTask, ContentTaskType,
 };
 use async_trait::async_trait;
-use content_base_core::ContentBase;
+use content_base_context::ContentBaseCtx;
 use qdrant_client::qdrant::{PointStruct, UpsertPointsBuilder};
 use serde_json::{json, Value};
 use uuid::Uuid;
@@ -23,7 +23,7 @@ pub trait AudioTransChunkSumEmbedTrait: Into<ContentTaskType> + Storage + Clone 
     async fn run_sum_embed(
         &self,
         file_info: &crate::FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
         task_run_record: &mut crate::record::TaskRunRecord,
     ) -> anyhow::Result<()> {
         let qdrant = ctx.qdrant();
@@ -75,7 +75,7 @@ pub trait AudioTransChunkSumEmbedTrait: Into<ContentTaskType> + Storage + Clone 
         ))))
     }
 
-    fn embed_parameters(&self, ctx: &ContentBase) -> Value {
+    fn embed_parameters(&self, ctx: &ContentBaseCtx) -> Value {
         json!({
             "model": ctx.text_embedding().expect("text embedding is set").1
         })
@@ -104,13 +104,13 @@ impl ContentTask for AudioTransChunkSumEmbedTask {
     async fn inner_run(
         &self,
         file_info: &crate::FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
         self.run_sum_embed(file_info, ctx, task_run_record).await
     }
 
-    fn task_parameters(&self, ctx: &ContentBase) -> Value {
+    fn task_parameters(&self, ctx: &ContentBaseCtx) -> Value {
         self.embed_parameters(ctx)
     }
 

@@ -8,7 +8,7 @@ use crate::{
     ContentTask, ContentTaskType,
 };
 use async_trait::async_trait;
-use content_base_core::ContentBase;
+use content_base_context::ContentBaseCtx;
 use storage_macro::Storage;
 
 #[derive(Clone, Storage, Debug, Default)]
@@ -34,14 +34,14 @@ impl ContentTask for VideoTransChunkSumTask {
     async fn inner_run(
         &self,
         file_info: &crate::FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
         task_run_record: &mut crate::record::TaskRunRecord,
     ) -> anyhow::Result<()> {
         self.run_sum(file_info, ctx, task_run_record)
             .await
     }
 
-    fn task_parameters(&self, ctx: &ContentBase) -> serde_json::Value {
+    fn task_parameters(&self, ctx: &ContentBaseCtx) -> serde_json::Value {
         self.sum_parameters(ctx)
     }
 

@@ -13,7 +13,7 @@ use std::{
 use storage_macro::Storage;
 
 #[derive(Clone, Storage)]
-pub struct ContentBase {
+pub struct ContentBaseCtx {
     qdrant: Arc<Qdrant>,
     vision_collection_name: String,
     language_collection_name: String,
@@ -26,7 +26,7 @@ pub struct ContentBase {
     llm_tokenizer: Option<Tokenizer>,
 }
 
-impl ContentBase {
+impl ContentBaseCtx {
     pub fn new(
         qdrant: Arc<Qdrant>,
         vision_collection_name: &str,

@@ -1,5 +1,5 @@
 use crate::{task::ContentTaskType, ContentTask};
-use content_base_core::ContentBase;
+use content_base_context::ContentBaseCtx;
 use content_metadata::ContentMetadata;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -27,7 +27,7 @@ impl TaskRunOutput {
     pub async fn to_path_buf(
         &self,
         file_identifier: &str,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
     ) -> anyhow::Result<PathBuf> {
         let artifacts_dir = ctx.artifacts_dir(file_identifier);
         let path = match self {
@@ -94,7 +94,7 @@ impl TaskRunRecord {
     pub async fn output_path(
         &self,
         file_identifier: &str,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
     ) -> anyhow::Result<PathBuf> {
         let output = self.task_type.task_output(self).await?;
         output.to_path_buf(file_identifier, ctx).await
@@ -127,11 +127,11 @@ impl TaskRecord {
         &self.tasks
     }
 
-    pub fn path(file_identifier: &str, ctx: &ContentBase) -> impl AsRef<Path> {
+    pub fn path(file_identifier: &str, ctx: &ContentBaseCtx) -> impl AsRef<Path> {
         ctx.artifacts_dir(file_identifier).join("artifacts.json")
     }
 
-    async fn save(&self, ctx: &ContentBase) -> anyhow::Result<()> {
+    async fn save(&self, ctx: &ContentBaseCtx) -> anyhow::Result<()> {
         self.write(
             Self::path(&self.file_identifier, ctx).as_ref().to_path_buf(),
             serde_json::to_string(self)?.into(),
@@ -140,7 +140,7 @@ impl TaskRecord {
         Ok(())
     }
 
-    pub async fn from_content_base(file_identifier: &str, ctx: &ContentBase) -> Self {
+    pub async fn from_content_base(file_identifier: &str, ctx: &ContentBaseCtx) -> Self {
         // FIXME self.read_to_string can only be called by object not but Self::
         // so create a fake self to call read_to_string
         let fake_self = Self {
@@ -160,7 +160,7 @@ impl TaskRecord {
         }
     }
 
-    pub async fn add_task_run(&mut self, ctx: &ContentBase, task_type: &ContentTaskType) -> anyhow::Result<TaskRunRecord> {
+    pub async fn add_task_run(&mut self, ctx: &ContentBaseCtx, task_type: &ContentTaskType) -> anyhow::Result<TaskRunRecord> {
         let mut tasks = self.tasks.clone();
         if !tasks.contains_key(task_type) {
             tasks.insert(task_type.clone(), vec![]);
@@ -184,7 +184,7 @@ impl TaskRecord {
         Ok(task_run_record)
     }
 
-    pub async fn update_task_run(&mut self, ctx: &ContentBase, task_run_record: &TaskRunRecord) -> anyhow::Result<()> {
+    pub async fn update_task_run(&mut self, ctx: &ContentBaseCtx, task_run_record: &TaskRunRecord) -> anyhow::Result<()> {
         let mut tasks = self.tasks().clone();
         let runs = tasks
             .get_mut(&task_run_record.task_type)
@@ -201,7 +201,7 @@ impl TaskRecord {
         Ok(())
     }
 
-    pub async fn latest_run(file_identifier: &str, ctx: &ContentBase, task_type: &ContentTaskType) -> anyhow::Result<TaskRunRecord> {
+    pub async fn latest_run(file_identifier: &str, ctx: &ContentBaseCtx, task_type: &ContentTaskType) -> anyhow::Result<TaskRunRecord> {
         let record = Self::from_content_base(file_identifier, ctx).await;
         record
             .tasks()
@@ -211,7 +211,7 @@ impl TaskRecord {
             .ok_or(anyhow::anyhow!("task run record not found"))
     }
 
-    pub async fn set_metadata(&mut self, ctx: &ContentBase, metadata: &ContentMetadata) -> anyhow::Result<()> {
+    pub async fn set_metadata(&mut self, ctx: &ContentBaseCtx, metadata: &ContentMetadata) -> anyhow::Result<()> {
         self.metadata = metadata.clone();
         self.save(ctx).await
     }

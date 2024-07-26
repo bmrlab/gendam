@@ -2,7 +2,7 @@ use crate::{
     payload::{Task, TaskPayload},
     priority::{OrderedTaskPriority, TaskPriority},
 };
-use content_base_core::ContentBase;
+use content_base_context::ContentBaseCtx;
 use content_base_task::{ContentTask, ContentTaskType, FileInfo};
 use priority_queue::PriorityQueue;
 use std::{
@@ -17,13 +17,12 @@ use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 
-pub struct TaskPool<'a> {
+pub struct TaskPool {
     tx: Sender<TaskPayload>,
-    content_base: &'a ContentBase,
 }
 
-impl<'a> TaskPool<'a> {
-    pub fn new(content_base: &'a ContentBase) -> anyhow::Result<Self> {
+impl TaskPool {
+    pub fn new(content_base: &ContentBaseCtx) -> anyhow::Result<Self> {
         let task_mapping: HashMap<String, HashMap<ContentTaskType, CancellationToken>> =
             HashMap::new();
         let task_mapping = Arc::new(RwLock::new(task_mapping));
@@ -82,7 +81,7 @@ impl<'a> TaskPool<'a> {
             };
         });
 
-        Ok(Self { tx, content_base })
+        Ok(Self { tx })
     }
 
     pub fn add_task(
@@ -250,7 +249,7 @@ async fn loop_until_queue_empty(
     mut task_rx: tokio::sync::mpsc::Receiver<()>,
     mut priority_rx: tokio::sync::mpsc::Receiver<()>,
     asset_cancel_token: CancellationToken,
-    content_base: ContentBase,
+    content_base: ContentBaseCtx,
 ) {
     // TODO 优化这里的两层循环
     loop {

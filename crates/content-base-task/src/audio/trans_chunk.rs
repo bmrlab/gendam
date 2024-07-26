@@ -5,7 +5,7 @@ use crate::{
 };
 use ai::{AudioTranscriptOutput, Transcription};
 use async_trait::async_trait;
-use content_base_core::ContentBase;
+use content_base_context::ContentBaseCtx;
 use content_handler::doc::chunk::naive_chunk;
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -30,7 +30,7 @@ pub trait AudioTranscriptChunkTrait: Into<ContentTaskType> + Clone + Storage {
     async fn run_chunk(
         &self,
         file_info: &FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
         let tokenizer = ctx.llm_tokenizer()?;
@@ -77,7 +77,7 @@ pub trait AudioTranscriptChunkTrait: Into<ContentTaskType> + Clone + Storage {
         Ok(())
     }
 
-    fn chunk_parameters(&self, _ctx: &ContentBase) -> Value {
+    fn chunk_parameters(&self, _ctx: &ContentBaseCtx) -> Value {
         json!({
             "method": "naive"
         })
@@ -86,7 +86,7 @@ pub trait AudioTranscriptChunkTrait: Into<ContentTaskType> + Clone + Storage {
     async fn chunk_content(
         &self,
         file_info: &FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
     ) -> anyhow::Result<Vec<Transcription>> {
         let task_type: ContentTaskType = self.clone().into();
         let output_path = task_type.task_output_path(file_info, ctx).await?;
@@ -127,14 +127,14 @@ impl ContentTask for AudioTransChunkTask {
     async fn inner_run(
         &self,
         file_info: &crate::FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
         self.run_chunk(file_info, ctx, task_run_record)
             .await
     }
 
-    fn task_parameters(&self, ctx: &ContentBase) -> Value {
+    fn task_parameters(&self, ctx: &ContentBaseCtx) -> Value {
         self.chunk_parameters(ctx)
     }
 

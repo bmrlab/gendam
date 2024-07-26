@@ -11,7 +11,7 @@ use crate::{
 };
 use ai::llm::{LLMInferenceParams, LLMMessage};
 use async_trait::async_trait;
-use content_base_core::ContentBase;
+use content_base_context::ContentBaseCtx;
 use serde_json::{json, Value};
 use storage_macro::Storage;
 
@@ -23,7 +23,7 @@ pub trait AudioTransChunkSumTrait: Into<ContentTaskType> + Clone + Storage {
     async fn run_sum(
         &self,
         file_info: &crate::FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
         task_run_record: &mut crate::record::TaskRunRecord,
     ) -> anyhow::Result<()> {
         let transcript = self
@@ -123,7 +123,7 @@ Additional Rules:
         ))))
     }
 
-    fn sum_parameters(&self, ctx: &ContentBase) -> Value {
+    fn sum_parameters(&self, ctx: &ContentBaseCtx) -> Value {
         json!({
             "model": ctx.llm().expect("llm is set").1
         })
@@ -132,7 +132,7 @@ Additional Rules:
     async fn sum_content(
         &self,
         file_info: &crate::FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
         start_timestamp: i64,
         end_timestamp: i64,
     ) -> anyhow::Result<String> {
@@ -175,14 +175,14 @@ impl ContentTask for AudioTransChunkSumTask {
     async fn inner_run(
         &self,
         file_info: &crate::FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
         self.run_sum(file_info, ctx, task_run_record)
             .await
     }
 
-    fn task_parameters(&self, ctx: &ContentBase) -> Value {
+    fn task_parameters(&self, ctx: &ContentBaseCtx) -> Value {
         self.sum_parameters(ctx)
     }
 

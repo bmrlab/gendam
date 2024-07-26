@@ -1,5 +1,5 @@
 [package]
-name = "content-base-core"
+name = "content-base-context"
 version = "0.1.0"
 edition = { workspace = true }
 

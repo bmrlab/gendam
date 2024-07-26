@@ -1,7 +1,6 @@
 use crate::traits::{AudioTranscriptInput, AudioTranscriptOutput, Transcription};
 use crate::Model;
 use anyhow::bail;
-use async_trait::async_trait;
 pub use language::*;
 use serde::{Deserialize, Serialize};
 use std::convert::AsRef;

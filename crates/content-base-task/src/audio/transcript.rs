@@ -5,14 +5,14 @@ use crate::{
 };
 use ai::AudioTranscriptOutput;
 use async_trait::async_trait;
-use content_base_core::ContentBase;
+use content_base_context::ContentBaseCtx;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use storage_macro::Storage;
 
 #[async_trait]
 pub trait AudioTranscriptTrait: Into<ContentTaskType> + Clone + Storage {
-    async fn audio_path(&self, file_info: &FileInfo, ctx: &ContentBase) -> anyhow::Result<PathBuf>;
+    async fn audio_path(&self, file_info: &FileInfo, ctx: &ContentBaseCtx) -> anyhow::Result<PathBuf>;
 
     async fn transcript_output(
         &self,
@@ -29,7 +29,7 @@ pub trait AudioTranscriptTrait: Into<ContentTaskType> + Clone + Storage {
     async fn run_audio_transcript(
         &self,
         file_info: &FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
         let output_path = task_run_record
@@ -48,7 +48,7 @@ pub trait AudioTranscriptTrait: Into<ContentTaskType> + Clone + Storage {
         Ok(())
     }
 
-    fn audio_task_parameters(&self, ctx: &ContentBase) -> Value {
+    fn audio_task_parameters(&self, ctx: &ContentBaseCtx) -> Value {
         json!({
             "model": ctx.audio_transcript().expect("audio model is set").1,
         })
@@ -57,7 +57,7 @@ pub trait AudioTranscriptTrait: Into<ContentTaskType> + Clone + Storage {
     async fn transcript_content(
         &self,
         file_info: &FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
     ) -> anyhow::Result<AudioTranscriptOutput> {
         let task_type: ContentTaskType = self.clone().into();
         let output_path = task_type.task_output_path(file_info, ctx).await?;
@@ -74,7 +74,7 @@ impl AudioTranscriptTrait for AudioTranscriptTask {
     async fn audio_path(
         &self,
         file_info: &FileInfo,
-        _ctx: &ContentBase,
+        _ctx: &ContentBaseCtx,
     ) -> anyhow::Result<PathBuf> {
         Ok(file_info.file_path.clone())
     }
@@ -89,14 +89,14 @@ impl ContentTask for AudioTranscriptTask {
     async fn inner_run(
         &self,
         file_info: &FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
         self.run_audio_transcript(file_info, ctx, task_run_record)
             .await
     }
 
-    fn task_parameters(&self, ctx: &ContentBase) -> Value {
+    fn task_parameters(&self, ctx: &ContentBaseCtx) -> Value {
         self.audio_task_parameters(ctx)
     }
 

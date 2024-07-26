@@ -16,7 +16,7 @@ storage = { path = "../storage" }
 storage-macro = { path = "../storage-macro" }
 ai = { path = "../ai" }
 global-variable = { path = "../global-variable" }
-content-base-core = { path = "../content-base-core" }
+content-base-context = { path = "../content-base-context" }
 content-base-task = { path = "../content-base-task" }
 content-base-pool = { path = "../content-base-pool" }
 content-handler = { path = "../content-handler" }

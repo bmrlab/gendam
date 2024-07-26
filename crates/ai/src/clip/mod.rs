@@ -5,7 +5,6 @@ use crate::{
     Model,
 };
 use anyhow::anyhow;
-use async_trait::async_trait;
 use image::RgbImage;
 pub use model::*;
 use ndarray::{Array1, Axis};

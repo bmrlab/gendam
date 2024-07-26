@@ -4,7 +4,7 @@ use crate::{
     ContentTask, ContentTaskType,
 };
 use async_trait::async_trait;
-use content_base_core::ContentBase;
+use content_base_context::ContentBaseCtx;
 use content_handler::video::VideoDecoder;
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -22,7 +22,7 @@ impl ContentTask for VideoThumbnailTask {
     async fn inner_run(
         &self,
         file_info: &crate::FileInfo,
-        ctx: &ContentBase,
+        ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
         let output = self.task_output(task_run_record).await?;
@@ -36,7 +36,7 @@ impl ContentTask for VideoThumbnailTask {
         Ok(())
     }
 
-    fn task_parameters(&self, _: &ContentBase) -> Value {
+    fn task_parameters(&self, _: &ContentBaseCtx) -> Value {
         json!({
             "method": "ffmpeg",
         })

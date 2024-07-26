@@ -1537,7 +1537,7 @@ dependencies = [
  "ai",
  "anyhow",
  "async-trait",
- "content-base-core",
+ "content-base-context",
  "content-base-pool",
  "content-base-task",
  "content-handler",
@@ -1554,7 +1554,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "content-base-core"
+name = "content-base-context"
 version = "0.1.0"
 dependencies = [
  "ai",
@@ -1584,7 +1584,7 @@ name = "content-base-pool"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "content-base-core",
+ "content-base-context",
  "content-base-task",
  "priority-queue",
  "strum",
@@ -1602,7 +1602,7 @@ dependencies = [
  "ai",
  "anyhow",
  "async-trait",
- "content-base-core",
+ "content-base-context",
  "content-base-derive",
  "content-handler",
  "content-metadata",
