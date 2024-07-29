@@ -103,7 +103,7 @@ mod test {
         tracing::info!("metadata: {:?}", metadata);
 
         // init task pool
-        let task_pool = TaskPool::new(&content_base).expect("task pool created");
+        let task_pool = TaskPool::new(&content_base, None).expect("task pool created");
 
         let tasks: Vec<ContentTaskType> = vec![
             VideoThumbnailTask.into(),
