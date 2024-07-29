@@ -35,6 +35,12 @@ impl Into<OrderedTaskPriority> for TaskPriority {
     }
 }
 
+impl Into<TaskPriority> for OrderedTaskPriority {
+    fn into(self) -> TaskPriority {
+        self.raw
+    }
+}
+
 impl From<TaskPriority> for usize {
     fn from(priority: TaskPriority) -> Self {
         priority.to_string().parse().unwrap()

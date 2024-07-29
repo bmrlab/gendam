@@ -1,12 +1,11 @@
 use crate::ContentBase;
-use async_recursion::async_recursion;
 use content_base_pool::{TaskPool, TaskPriority};
 use content_base_task::{
     video::{
         frame::VideoFrameTask, thumbnail::VideoThumbnailTask,
         trans_chunk_sum_embed::VideoTransChunkSumEmbedTask,
     },
-    ContentTask, ContentTaskType, FileInfo, TaskRecord,
+    ContentTaskType, FileInfo, TaskRecord,
 };
 use content_handler::file_metadata;
 use content_metadata::ContentMetadata;
@@ -115,19 +114,12 @@ impl ContentBase {
     }
 }
 
-#[async_recursion]
 async fn run_task(
     task_pool: &TaskPool,
     file_info: &FileInfo,
     task_type: &ContentTaskType,
     priority: Option<TaskPriority>,
 ) -> anyhow::Result<()> {
-    let deps = task_type.task_dependencies();
-
-    for dep in deps {
-        run_task(task_pool, file_info, &dep, priority).await?;
-    }
-
     task_pool
         .add_task(
             &file_info.file_identifier,
