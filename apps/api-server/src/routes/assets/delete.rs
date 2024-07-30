@@ -1,4 +1,5 @@
-use crate::{file_handler::get_file_handler, CtxWithLibrary};
+use crate::CtxWithLibrary;
+use content_base::delete::DeletePayload;
 use global_variable::get_current_fs_storage;
 use prisma_client_rust::{Direction, QueryError};
 use prisma_lib::{asset_object, file_path};
@@ -18,7 +19,6 @@ pub async fn delete_file_path(
         .prisma_client()
         ._transaction()
         .run(|client| async move {
-
             client
                 .file_path()
                 .delete(file_path::materialized_path_name(
@@ -35,9 +35,9 @@ pub async fn delete_file_path(
             let materialized_path_startswith = format!("{}{}/", &materialized_path, &name);
             client
                 .file_path()
-                .delete_many(vec![
-                    file_path::materialized_path::starts_with(materialized_path_startswith)
-                ])
+                .delete_many(vec![file_path::materialized_path::starts_with(
+                    materialized_path_startswith,
+                )])
                 .exec()
                 .await
                 .map_err(|e| {
@@ -188,16 +188,11 @@ pub async fn delete_file_path_and_unlinked_asset_objects(
             };
         });
 
+    let content_base = ctx.content_base()?;
+
     for data in deleted_asset_objects_clone.lock().await.iter() {
-        match get_file_handler(data, ctx) {
-            Ok(handler) => {
-                if let Err(e) = handler.delete_artifacts().await {
-                    error!("failed to delete artifacts: {}", e);
-                }
-            }
-            _ => {
-                error!("failed to get file handler");
-            }
+        if let Err(e) = content_base.delete(DeletePayload::new(&data.hash)).await {
+            error!("failed to delete artifacts: {}", e);
         }
     }
 

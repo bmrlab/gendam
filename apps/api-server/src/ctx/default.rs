@@ -4,11 +4,11 @@ use crate::cron_jobs::delete_unlinked_assets;
 use crate::{
     ai::{models::get_model_info_by_id, AIHandler},
     download::{DownloadHub, DownloadReporter, DownloadStatus},
-    file_handler::{init_task_pool, trigger_unfinished, TaskPayload},
     library::get_library_settings,
     routes::p2p::ShareInfo,
 };
 use async_trait::async_trait;
+use content_base::{ContentBase, ContentBaseCtx};
 use content_library::{
     load_library, make_sure_collection_created, Library, QdrantCollectionInfo, QdrantServerInfo,
 };
@@ -18,7 +18,7 @@ use std::{
     boxed::Box,
     fmt::Debug,
     path::PathBuf,
-    sync::{atomic::AtomicBool, mpsc::Sender, Arc, Mutex},
+    sync::{atomic::AtomicBool, Arc, Mutex},
 };
 use vector_db::{get_language_collection_name, get_vision_collection_name, kill_qdrant_server};
 
@@ -75,7 +75,6 @@ impl CtxStore for Store {
  * default impl of a rspc Ctx
  */
 
-#[derive(Debug)]
 pub struct Ctx<S: CtxStore> {
     is_busy: Arc<Mutex<AtomicBool>>, // is loading or unloading a library
     local_data_root: PathBuf,
@@ -84,7 +83,7 @@ pub struct Ctx<S: CtxStore> {
     cache_dir: PathBuf,
     store: Arc<Mutex<S>>,
     current_library: Arc<Mutex<Option<Library>>>,
-    tx: Arc<Mutex<Option<Sender<TaskPayload>>>>,
+    content_base: Arc<Mutex<Option<ContentBase>>>,
     ai_handler: Arc<Mutex<Option<AIHandler>>>,
     download_hub: Arc<Mutex<Option<DownloadHub>>>,
     node: Arc<Mutex<Node<ShareInfo>>>,
@@ -98,7 +97,7 @@ impl<S: CtxStore> Clone for Ctx<S> {
             resources_dir: self.resources_dir.clone(),
             store: self.store.clone(),
             current_library: self.current_library.clone(),
-            tx: self.tx.clone(),
+            content_base: self.content_base.clone(),
             ai_handler: self.ai_handler.clone(),
             is_busy: self.is_busy.clone(),
             download_hub: self.download_hub.clone(),
@@ -144,7 +143,7 @@ impl<S: CtxStore> Ctx<S> {
             cache_dir,
             store,
             current_library: Arc::new(Mutex::new(None)),
-            tx: Arc::new(Mutex::new(None)),
+            content_base: Arc::new(Mutex::new(None)),
             ai_handler: Arc::new(Mutex::new(None)),
             is_busy: Arc::new(Mutex::new(AtomicBool::new(false))),
             download_hub: Arc::new(Mutex::new(None)),
@@ -213,14 +212,9 @@ fn unexpected_err(e: impl Debug) -> rspc::Error {
 
 impl<S: CtxStore + Send> Ctx<S> {
     async fn trigger_unfinished_tasks(&self) -> () {
-        if let Ok(library) = self.library() {
-            // Box::pin(async move {
-            // })
-            if let Err(e) = trigger_unfinished(&library, self).await {
-                tracing::warn!("Failed to trigger unfinished tasks: {}", e);
-            }
+        if let Ok(_library) = self.library() {
+            tracing::warn!("TODO: trigger unfinished tasks");
         } else {
-            // Box::pin(async move {})
         }
     }
 }
@@ -282,18 +276,9 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
         /* cancel tasks */
         {
-            let mut current_tx = self.tx.lock().map_err(unexpected_err)?;
-            if let Some(tx) = current_tx.as_ref() {
-                tx.send(TaskPayload::CancelAll).map_err(|e| {
-                    tracing::error!(task = "cancel tasks", "Failed: {}", e);
-                    rspc::Error::new(
-                        rspc::ErrorCode::InternalServerError,
-                        format!("Failed to cancel tasks: {}", e),
-                    )
-                })?;
-                tracing::info!(task = "cancel tasks", "Success");
-            }
-            *current_tx = None; // same as current_tx.take();
+            let mut content_base = self.content_base.lock().map_err(unexpected_err)?;
+            *content_base = None;
+            tracing::info!(task = "update content base", "Success");
         }
 
         /* kill qdrant */
@@ -465,20 +450,6 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             qdrant_info
         };
 
-        /* init task pool */
-        {
-            let mut current_tx = self.tx.lock().map_err(unexpected_err)?;
-            let tx = init_task_pool().map_err(|e| {
-                tracing::error!(task = "init task pool", "Failed: {}", e);
-                rspc::Error::new(
-                    rspc::ErrorCode::InternalServerError,
-                    format!("Failed to init task pool: {}", e),
-                )
-            })?;
-            tracing::info!(task = "init task pool", "Success");
-            current_tx.replace(tx);
-        }
-
         // init download hub
         {
             let download_hub = DownloadHub::new();
@@ -507,6 +478,45 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             ai_handler
         };
 
+        /* init content base */
+        let content_base = {
+            let cb_ctx = ContentBaseCtx::new(
+                library.qdrant_client(),
+                &qdrant_info.vision_collection.name,
+                &qdrant_info.language_collection.name,
+                &library.relative_artifacts_dir(),
+            )
+            .with_audio_transcript(
+                Arc::new(ai_handler.audio_transcript.0.clone()),
+                &ai_handler.audio_transcript.1,
+            )
+            .with_llm(
+                Arc::new(ai_handler.llm.0.clone()),
+                ai_handler.llm.1.clone(),
+                &ai_handler.llm.2,
+            )
+            .with_multi_modal_embedding(
+                Arc::new(ai_handler.multi_modal_embedding.0.clone()),
+                &ai_handler.multi_modal_embedding.1,
+            )
+            .with_text_embedding(
+                Arc::new(ai_handler.text_embedding.0.clone()),
+                &ai_handler.text_embedding.1,
+            );
+            let mut current_cb = self.content_base.lock().map_err(unexpected_err)?;
+            let cb = ContentBase::new(&cb_ctx).map_err(|e| {
+                tracing::error!(task = "init content base", "Failed: {}", e);
+                rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    format!("Failed to init content base: {}", e),
+                )
+            })?;
+            tracing::info!(task = "init task pool", "Success");
+            current_cb.replace(cb.clone());
+
+            cb
+        };
+
         /* trigger unfinished tasks */
         {
             self.trigger_unfinished_tasks().await;
@@ -517,8 +527,8 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         {
             // 添加 定期删除未引用的assetobject任务
             let library_clone = library.clone();
-            let ai_handler_clone = ai_handler.clone();
-            let qdrant_info_clone = qdrant_info.clone();
+            let content_base = content_base.clone();
+
             let task = cron::Task {
                 title: Some("Delete unreferenced assetobject tasks periodically".to_string()),
                 description: Some("Delete unreferenced assetobject tasks periodically".to_string()),
@@ -530,16 +540,11 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 // job_fn: None
                 job_fn: cron::create_job_fn(move || {
                     let library_arc = Arc::new(library_clone.clone());
-                    let ai_handler_job_clone = ai_handler_clone.clone();
-                    let qdrant_info_job_clone = qdrant_info_clone.clone();
+                    let content_base_arc = Arc::new(content_base.clone());
                     async move {
-                        delete_unlinked_assets(
-                            library_arc,
-                            ai_handler_job_clone,
-                            qdrant_info_job_clone,
-                        )
-                        .await
-                        .expect("delete_unlinked_assets error")
+                        delete_unlinked_assets(library_arc, content_base_arc)
+                            .await
+                            .expect("delete_unlinked_assets error")
                     }
                     .boxed()
                 }),
@@ -549,19 +554,14 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         }
 
         Ok(library)
-
-        // 这里本来应该触发一下未完成的任务
-        // 但是不await的话，没有特别好的写法
-        // 把这里的触发放到前端，前端切换完成后再触发一下接口
-        // 这样用户操作也不会被 block
     }
 
-    fn task_tx(&self) -> Result<Sender<TaskPayload>, rspc::Error> {
-        match self.tx.lock().unwrap().as_ref() {
-            Some(tx) => Ok(tx.clone()),
+    fn content_base(&self) -> Result<ContentBase, rspc::Error> {
+        match self.content_base.lock().unwrap().as_ref() {
+            Some(content_base) => Ok(content_base.clone()),
             None => Err(rspc::Error::new(
                 rspc::ErrorCode::BadRequest,
-                String::from("No task tx is set"),
+                String::from("No content base is set"),
             )),
         }
     }

@@ -24,9 +24,6 @@ tauri = { version = "1.5.4", features = [ "clipboard-all", "shell-all", "macos-p
 tauri-plugin-store = { git = "https://github.com/tauri-apps/plugins-workspace", rev = "dbe0277824676b978ed616ddb28f988689df6f7e" } # branch = "v1" }
 prisma-lib = { path = "../../../crates/prisma" }
 file-downloader = { path = "../../../crates/file-downloader" }
-file-handler = { path = "../../../crates/file-handler", features = [
-  "ffmpeg-binary",
-] }
 content-library = { path = "../../../crates/content-library" }
 api-server = { path = "../../api-server" }
 vector-db = { path = "../../../crates/vector-db", features = ["qdrant"] }

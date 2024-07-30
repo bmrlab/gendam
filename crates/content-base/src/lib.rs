@@ -1,8 +1,14 @@
 mod core;
+pub mod delete;
+pub mod query;
+pub mod task;
 pub mod upsert;
 
-use content_base_context::ContentBaseCtx;
+pub use content_base_context::ContentBaseCtx;
 use content_base_pool::TaskPool;
+pub use content_base_pool::{TaskNotification, TaskStatus};
+pub use content_base_task::*;
+pub use content_metadata::ContentMetadata;
 
 #[derive(Clone)]
 pub struct ContentBase {
@@ -117,7 +123,7 @@ mod test {
 
         for task in tasks.iter() {
             let result = task_pool
-                .add_task(&file_identifier, &file_path, &task, None)
+                .add_task(&file_identifier, &file_path, task, None, None)
                 .await;
             tracing::info!("task insert result: {:?}", result);
         }

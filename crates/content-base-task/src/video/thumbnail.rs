@@ -25,6 +25,8 @@ impl ContentTask for VideoThumbnailTask {
         ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
+        tracing::debug!("Running video thumbnail task for {:?}", file_info);
+
         let output = self.task_output(task_run_record).await?;
         let output_path = output.to_path_buf(&file_info.file_identifier, ctx).await?;
 

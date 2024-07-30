@@ -12,4 +12,8 @@ impl ContentBase {
             task_pool,
         })
     }
+
+    pub fn ctx(&self) -> &ContentBaseCtx {
+        &self.ctx
+    }
 }

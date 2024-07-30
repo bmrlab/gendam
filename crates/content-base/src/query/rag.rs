@@ -1,5 +1,5 @@
 use super::payload::SearchPayload;
-use crate::SearchRecordType;
+use super::payload::SearchRecordType;
 use ai::TextEmbeddingModel;
 use qdrant_client::{
     qdrant::{Condition, Filter, SearchPointsBuilder},

@@ -1,19 +1,16 @@
-mod constants;
-mod rag;
-pub(crate) mod payload;
-
-use self::constants::RETRIEVAL_COUNT;
 use ai::{MultiModalEmbeddingModel, TextEmbeddingModel};
-use payload::{SearchPayload, SearchRecordType};
+use super::payload::{SearchPayload, SearchRecordType};
 use qdrant_client::{
     qdrant::{
         Condition, Filter, PointId, RecommendPointsBuilder, ScoredPoint, SearchPointsBuilder,
     },
     Qdrant,
 };
+pub use super::rag::{handle_rag_retrieval, RAGReference};
 use serde_json::json;
 use std::{collections::HashMap, sync::Arc};
-pub use rag::{handle_rag_retrieval, RAGReference};
+
+const RETRIEVAL_COUNT: u64 = 20;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct RetrievalResult {

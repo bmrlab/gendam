@@ -1,7 +1,6 @@
 mod ai;
 mod download;
 mod error;
-mod file_handler;
 mod library;
 mod cron_jobs;
 mod validators;
