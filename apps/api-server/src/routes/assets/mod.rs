@@ -6,12 +6,13 @@ mod types;
 mod update;
 mod utils;
 
-use crate::routes::assets::utils::get_file_type;
 use crate::validators;
 use crate::CtxWithLibrary;
 use create::{create_asset_object, create_dir};
 pub use delete::delete_file_path;
-use process::{export_video_segment, process_video_asset, process_video_metadata};
+use process::export_video_segment;
+use process::process_asset;
+use process::process_asset_metadata;
 use read::{get_file_path, list_file_path};
 use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
@@ -55,6 +56,7 @@ where
                 |ctx: TCtx, input: AssetObjectCreatePayload| async move {
                     info!("received create_asset_object: {input:?}");
                     let library = ctx.library()?;
+                    let content_base = ctx.content_base()?;
                     let (file_path_data, asset_object_data, asset_object_existed) =
                         create_asset_object(
                             &library,
@@ -64,23 +66,24 @@ where
                         )
                         .await?;
                     if !asset_object_existed {
-                        match get_file_type(asset_object_data.mime_type) {
-                            utils::FileType::Video => {
-                                process_video_metadata(&library, asset_object_data.id).await?;
-                                info!("process video metadata finished");
-                                process_video_asset(&library, &ctx, file_path_data.id, None)
-                                    .await?;
-                                info!("process video asset finished");
-                            }
-                            utils::FileType::Image => {
-                                process_video_metadata(&library, asset_object_data.id).await?;
-                                info!("process image metadata finished");
-                                process_video_asset(&library, &ctx, file_path_data.id, None)
-                                    .await?;
-                                info!("process image asset finished");
-                            }
-                            utils::FileType::Other => todo!(),
-                        }
+                        // match get_file_type(asset_object_data.mime_type) {
+                        //     utils::FileType::Video => {
+
+                        //     }
+                        //     utils::FileType::Image => {
+                        //         process_video_metadata(&library, &content_base, asset_object_data.id).await?;
+                        //         info!("process image metadata finished");
+                        //         process_video_asset(&library, &ctx, file_path_data.id, None)
+                        //             .await?;
+                        //         info!("process image asset finished");
+                        //     }
+                        //     utils::FileType::Other => todo!(),
+                        // }
+                        process_asset_metadata(&library, &content_base, asset_object_data.id)
+                            .await?;
+                        info!("process metadata finished");
+                        process_asset(&library, &ctx, file_path_data.id, None).await?;
+                        info!("process asset finished");
                     }
                     let file_path = get_file_path(
                         &library,
@@ -105,6 +108,7 @@ where
                     tracing::debug!("received receive_asset: {input:?}");
 
                     let library = ctx.library()?;
+                    let content_base = ctx.content_base()?;
                     let (file_path_data, asset_object_data, asset_object_existed) =
                         create_asset_object(
                             &library,
@@ -121,9 +125,10 @@ where
                     if asset_object_existed {
                         // TODO add artifacts merging logic
                     } else {
-                        process_video_metadata(&library, asset_object_data.id).await?;
+                        process_asset_metadata(&library, &content_base, asset_object_data.id)
+                            .await?;
                         info!("process video metadata finished");
-                        process_video_asset(&library, &ctx, file_path_data.id, Some(true)).await?;
+                        process_asset(&library, &ctx, file_path_data.id, Some(true)).await?;
                     }
 
                     Ok(())
@@ -239,15 +244,16 @@ where
             t(|ctx, input: i32| async move {
                 let library = ctx.library()?;
                 let file_path_id = input;
-                process_video_asset(&library, &ctx, file_path_id, None).await?;
+                process_asset(&library, &ctx, file_path_id, None).await?;
                 Ok(())
             })
         })
         .mutation("process_video_metadata", |t| {
             t(|ctx, input: i32| async move {
                 let library = ctx.library()?;
+                let content_base = ctx.content_base()?;
                 let asset_object_id = input;
-                process_video_metadata(&library, asset_object_id).await?;
+                process_asset_metadata(&library, &content_base, asset_object_id).await?;
                 Ok(())
             })
         })

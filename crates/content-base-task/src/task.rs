@@ -27,6 +27,12 @@ impl fmt::Display for ContentTaskType {
     }
 }
 
+impl From<&ContentTaskType> for ContentTaskType {
+    fn from(value: &ContentTaskType) -> Self {
+        value.clone()
+    }
+}
+
 impl TryFrom<&str> for ContentTaskType {
     type Error = anyhow::Error;
 

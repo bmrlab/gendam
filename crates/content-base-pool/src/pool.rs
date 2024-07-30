@@ -1,7 +1,7 @@
 use crate::{
-    payload::{Task, TaskPayload},
+    payload::{NewTaskPayload, Task, TaskPayload},
     priority::OrderedTaskPriority,
-    TaskPriority,
+    TaskNotification, TaskPriority, TaskStatus,
 };
 use content_base_context::ContentBaseCtx;
 use content_base_task::{ContentTask, ContentTaskType, FileInfo};
@@ -13,7 +13,7 @@ use tokio::sync::{
 };
 use tokio_util::sync::CancellationToken;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TaskPool {
     tx: mpsc::Sender<TaskPayload>,
 }
@@ -29,6 +29,7 @@ struct TaskInQueue {
     task: Task,
     priority: OrderedTaskPriority,
     cancel_token: CancellationToken,
+    notifier: Option<mpsc::Sender<TaskNotification>>,
 }
 
 #[derive(Clone)]
@@ -103,7 +104,13 @@ impl TaskPool {
                 ];
 
                 match payload {
-                    TaskPayload::Task(file_identifier, file_path, task_type, priority) => {
+                    TaskPayload::Task(NewTaskPayload {
+                        file_identifier,
+                        file_path,
+                        task_type,
+                        priority,
+                        notifier,
+                    }) => {
                         let task_type = task_type.clone();
                         tracing::info!("Task received: {} {}", file_identifier, &task_type);
 
@@ -131,6 +138,19 @@ impl TaskPool {
                             task_type: task_type.clone(),
                         };
 
+                        if let Some(tx) = notifier.clone() {
+                            if let Err(_) = tx
+                                .send(TaskNotification {
+                                    task_type: task.task_type.clone(),
+                                    status: TaskStatus::Init,
+                                    message: None,
+                                })
+                                .await
+                            {
+                                tracing::error!("Failed to send task init notification");
+                            }
+                        }
+
                         // record task in hash map
                         {
                             let current_cancel_token = CancellationToken::new();
@@ -138,6 +158,7 @@ impl TaskPool {
                                 task: task.clone(),
                                 priority: priority.into(),
                                 cancel_token: current_cancel_token.clone(),
+                                notifier,
                             };
                             let mut task_mapping = task_ctx.task_mapping.write().await;
                             match task_mapping.get_mut(&file_identifier) {
@@ -250,17 +271,15 @@ impl TaskPool {
         &self,
         file_identifier: &str,
         file_path: impl AsRef<Path>,
-        task: &ContentTaskType,
+        task: impl Into<ContentTaskType>,
         priority: Option<TaskPriority>,
+        notifier: Option<mpsc::Sender<TaskNotification>>,
     ) -> anyhow::Result<()> {
-        self.tx
-            .send(TaskPayload::Task(
-                file_identifier.to_string(),
-                file_path.as_ref().to_path_buf(),
-                task.clone(),
-                priority.unwrap_or(TaskPriority::Normal),
-            ))
-            .await?;
+        let mut payload = NewTaskPayload::new(file_identifier, file_path, task.into());
+        payload.with_priority(priority);
+        payload.with_notifier(notifier);
+
+        self.tx.send(TaskPayload::Task(payload)).await?;
 
         Ok(())
     }
@@ -313,6 +332,10 @@ impl TaskPoolContext {
             if let Some((task, priority)) = task {
                 let semaphore = self.semaphore.clone();
 
+                // TODO 这里 clone current_task 不是明智之举
+                // 应该直接从 task_mapping 中拿出来
+                // 但是现在 task_mapping 会用于判断任务重复执行
+                // 需要用新的数据结构来承载这些任务
                 let current_task = match self.task_mapping.read().await.get(&task.file_identifier) {
                     Some(item) => match item.get(&task.task_type) {
                         Some(current_task) => current_task.clone(),
@@ -382,16 +405,16 @@ impl TaskPoolContext {
                                 }
 
                                 // add task to queue
-                                if let Err(e) = self
-                                    .tx
-                                    .send(TaskPayload::Task(
-                                        dep.file_identifier.clone(),
-                                        current_task.task.file_path.clone(),
-                                        dep.task_type.clone(),
-                                        current_task.priority.into(),
-                                    ))
-                                    .await
-                                {
+                                // 依赖任务不需要 notifier
+                                let mut payload = NewTaskPayload::new(
+                                    &dep.file_identifier,
+                                    &current_task.task.file_path.clone(),
+                                    dep.task_type.clone(),
+                                );
+                                payload.with_priority(Some(current_task.priority.into()));
+                                payload.with_notifier(current_task.notifier.clone());
+
+                                if let Err(e) = self.tx.send(TaskPayload::Task(payload)).await {
                                     tracing::error!("Failed to add dependent task: {}", e);
                                 }
                             }
@@ -441,14 +464,43 @@ impl TaskPoolContext {
                         file_path: task.file_path.clone(),
                     };
 
+                    if let Some(tx) = current_task.notifier.clone() {
+                        if let Err(_) = tx
+                            .send(TaskNotification {
+                                task_type: task.task_type.clone(),
+                                status: TaskStatus::Started,
+                                message: None,
+                            })
+                            .await
+                        {
+                            tracing::error!("Failed to send task start notification");
+                        }
+                    }
+
                     tokio::select! {
                         result = task.task_type.run(&file_info, &content_base) => {
-                            match result {
+                            let notification = match &result {
                                 Err(e) => {
                                     tracing::error!("Task error: {} {} {}", &task.file_identifier, &task.task_type, e);
+                                    TaskNotification {
+                                        task_type: task.task_type.clone(),
+                                        status: TaskStatus::Error,
+                                        message: Some(e.to_string()),
+                                    }
                                 }
                                 _ => {
                                     tracing::info!("Task finished: {} {}", &task.file_identifier, &task.task_type);
+                                    TaskNotification {
+                                        task_type: task.task_type.clone(),
+                                        status: TaskStatus::Finished,
+                                        message: None,
+                                    }
+                                }
+                            };
+
+                            if let Some(tx) = current_task.notifier.clone() {
+                                if let Err(_) = tx.send(notification).await {
+                                    tracing::error!("Failed to send task result");
                                 }
                             }
                         }
@@ -494,14 +546,17 @@ impl TaskPoolContext {
                                         v.retain(|x| x != &task_id);
 
                                         if v.is_empty() {
-                                            if let Err(e) = task_tx
-                                                .send(TaskPayload::Task(
-                                                    target.file_identifier.clone(),
-                                                    current_task.task.file_path.clone(),
-                                                    target.task_type.clone(),
-                                                    current_task.priority.into(),
-                                                ))
-                                                .await
+                                            let mut payload = NewTaskPayload::new(
+                                                &target.file_identifier,
+                                                &current_task.task.file_path,
+                                                target.task_type.clone(),
+                                            );
+                                            payload
+                                                .with_priority(Some(current_task.priority.into()));
+                                            payload.with_notifier(current_task.notifier.clone());
+
+                                            if let Err(e) =
+                                                task_tx.send(TaskPayload::Task(payload)).await
                                             {
                                                 tracing::error!("Failed to dispatch task: {}", e);
                                             }
@@ -515,7 +570,6 @@ impl TaskPoolContext {
                 });
             } else {
                 drop(permit);
-                self.notifier.notified().await;
             }
         }
     }

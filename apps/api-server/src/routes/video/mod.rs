@@ -1,7 +1,12 @@
 pub mod task;
 
 use crate::CtxWithLibrary;
-use file_handler::video::VideoHandler;
+use content_base::{
+    audio::{trans_chunk_sum::AudioTransChunkSumTrait, transcript::AudioTranscriptTrait},
+    video::{trans_chunk_sum::VideoTransChunkSumTask, transcript::VideoTranscriptTask},
+    FileInfo,
+};
+use content_handler::video::VideoDecoder;
 use prisma_lib::asset_object;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
@@ -58,29 +63,23 @@ where
                     let video_path = library.file_path(&asset_object_data.hash);
                     let artifacts_dir = library.relative_artifacts_path(&asset_object_data.hash);
                     let qdrant_client = library.qdrant_client();
-                    let video_handler = VideoHandler::new(
-                        &video_path,
-                        &asset_object_data.hash,
-                        &artifacts_dir,
-                        Some(qdrant_client),
-                    )
-                    .map_err(|e| {
+
+                    let video_decoder = VideoDecoder::new(&video_path).map_err(|e| {
                         rspc::Error::new(
                             rspc::ErrorCode::InternalServerError,
                             format!("failed to get video metadata: {}", e),
                         )
                     })?;
 
-                    // let _ = video_handler.get_hls().await;
                     let (has_video, has_audio) =
-                        video_handler.check_video_audio().await.map_err(|e| {
+                        video_decoder.check_video_audio().await.map_err(|e| {
                             rspc::Error::new(
                                 rspc::ErrorCode::InternalServerError,
                                 format!("failed to check video: {}", e),
                             )
                         })?;
 
-                    match video_handler.get_video_duration().await {
+                    match video_decoder.get_video_duration().await {
                         Ok(duration) => Ok(VideoPlayerInfoResponse {
                             hash: input.hash,
                             duration,
@@ -117,20 +116,14 @@ where
                 let video_path = library.file_path(&input.hash);
                 let artifacts_dir = library.relative_artifacts_path(&input.hash);
                 let qdrant_client = library.qdrant_client();
-                let video_handler = VideoHandler::new(
-                    &video_path,
-                    &input.hash,
-                    &artifacts_dir,
-                    Some(qdrant_client),
-                )
-                .map_err(|e| {
+                let video_decoder = VideoDecoder::new(video_path).map_err(|e| {
                     rspc::Error::new(
                         rspc::ErrorCode::InternalServerError,
                         format!("failed to get video metadata: {}", e),
                     )
                 })?;
 
-                let file = video_handler
+                let file = video_decoder
                     .generate_ts(input.index, ts_dir)
                     .await
                     .map_err(|e| {
@@ -166,22 +159,18 @@ where
 
             t(|ctx: TCtx, input: TranscriptRequestPayload| async move {
                 let library = ctx.library()?;
-                let file_handler = VideoHandler::new(
-                    &library.file_path(&input.hash),
-                    &input.hash,
-                    &library.relative_artifacts_path(&input.hash),
-                    None,
-                )
-                .map_err(|e| {
-                    rspc::Error::new(
-                        rspc::ErrorCode::InternalServerError,
-                        format!("failed to get video handler: {}", e),
-                    )
-                })?;
+                let content_base = ctx.content_base()?;
+                let file_info = FileInfo {
+                    file_identifier: input.hash.clone(),
+                    file_path: library.file_path(&input.hash),
+                };
 
                 let content = {
                     match input.request_type {
-                        TranscriptType::Original => match file_handler.get_transcript() {
+                        TranscriptType::Original => match VideoTranscriptTask
+                            .transcript_content(&file_info, content_base.ctx())
+                            .await
+                        {
                             Ok(transcript) => {
                                 let mut transcript_vec = vec![];
                                 for item in transcript.transcriptions {
@@ -198,11 +187,16 @@ where
                             }
                             Err(e) => Err(e),
                         },
-                        TranscriptType::Summarization => file_handler
-                            .get_transcript_chunk_summarization(
-                                input.start_timestamp as i64,
-                                input.end_timestamp as i64,
-                            ),
+                        TranscriptType::Summarization => {
+                            VideoTransChunkSumTask
+                                .sum_content(
+                                    &file_info,
+                                    content_base.ctx(),
+                                    input.start_timestamp as i64,
+                                    input.end_timestamp as i64,
+                                )
+                                .await
+                        }
                     }
                 };
 

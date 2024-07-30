@@ -5,10 +5,9 @@ edition = { workspace = true }
 
 [dependencies]
 prisma-lib = { path = "../../crates/prisma" }
-file-handler = { path = "../../crates/file-handler", features = [
-  "ffmpeg-binary",
-] }
 content-library = { path = "../../crates/content-library" }
+content-base = { path = "../../crates/content-base" }
+content-handler = { path = "../../crates/content-handler" }
 vector-db = { path = "../../crates/vector-db", features = ["qdrant"] }
 analytics-tracing = { path = "../../crates/analytics-tracing" }
 ai = { path = "../../crates/ai" }

@@ -1,5 +1,6 @@
-use crate::file_handler::{create_file_handler_task, get_file_handler};
 use crate::CtxWithLibrary;
+use content_base::task::CancelTaskPayload;
+use content_base::upsert::UpsertPayload;
 use prisma_client_rust::{operator, Direction};
 use prisma_lib::PrismaClient;
 use prisma_lib::{asset_object, file_handler_task, media_data};
@@ -178,24 +179,18 @@ impl VideoTaskHandler {
     ) -> anyhow::Result<()> {
         let asset_object_id = input.asset_object_id;
 
-        let tx = ctx.task_tx()?;
-        match input.task_types.as_ref() {
-            Some(task_types) => task_types.iter().for_each(|t| {
-                if let Err(e) = tx.send(crate::file_handler::TaskPayload::CancelByAssetAndType(
-                    asset_object_id,
-                    t.to_string(),
-                )) {
-                    tracing::warn!("cancel task({}-{}) error: {}", asset_object_id, t, e);
-                }
-            }),
-            _ => {
-                // cancel all tasks
-                tx.send(crate::file_handler::TaskPayload::CancelByAssetId(
-                    asset_object_id,
-                ))?;
-            }
-        }
+        let asset_object = self.prisma_client
+            .asset_object()
+            .find_first(vec![asset_object::id::equals(asset_object_id)])
+            .exec()
+            .await.map_err(|e| anyhow::anyhow!(e))?.ok_or(anyhow::anyhow!("asset not found"))?;
 
+        let content_base = ctx.content_base()?;
+        let payload = CancelTaskPayload::new(&asset_object.hash);
+        // TODO determine which tasks need to be canceled
+        content_base.cancel_task(payload).await;
+
+        // TODO update file_handler_task record
         let mut filter = vec![
             file_handler_task::asset_object_id::equals(asset_object_id),
             // 将所有未完成的任务设置为取消
@@ -228,21 +223,18 @@ impl VideoTaskHandler {
             .exec()
             .await?;
 
-        if let Some(asset_object_data) = asset_object_data {
-            let handler = get_file_handler(&asset_object_data, ctx)?;
-            for task_type in handler.get_supported_task_types() {
-                if let Err(e) = handler.delete_artifacts_by_task(task_type.0.as_str()).await {
-                    tracing::warn!(
-                        "delete_artifacts_by_task({}) error: {}",
-                        task_type.0,
-                        e
-                    );
-                }
-            }
+        let content_base = ctx.content_base()?;
+        let library = ctx.library()?;
 
-            create_file_handler_task(&asset_object_data, ctx, None, None)
-                .await
-                .map_err(|e| anyhow::anyhow!("failed to create video task: {e:?}"))?;
+        if let Some(asset_object_data) = asset_object_data {
+            // TODO if we need to delete existing artifacts?
+            let payload = UpsertPayload::new(
+                &asset_object_data.hash,
+                library.file_path(&asset_object_data.hash),
+            );
+            if let Err(e) = content_base.upsert(payload).await {
+                tracing::warn!("upsert({}) error: {}", asset_object_data.hash, e);
+            }
         }
         Ok(())
     }

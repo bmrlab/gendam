@@ -207,7 +207,8 @@ const AssetObjectDetail = ({ data }: { data: FilePath }) => {
         </div>
         {sortedTasks.map((task) => (
           <div key={task.id} className="mt-2 flex items-center justify-between">
-            <div className="text-ink/50">{(TaskItemType[task.taskType] ?? ['Unknown'])[0]}</div>
+            {/* <div className="text-ink/50">{(TaskItemType[task.taskType] ?? ['Unknown'])[0]}</div> */}
+            <div className="text-ink/50">{task.taskType}</div>
             <TaskItemStatus task={task} />
           </div>
         ))}

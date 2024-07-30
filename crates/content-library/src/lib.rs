@@ -19,8 +19,7 @@ pub struct Library {
     pub id: String,
     pub dir: PathBuf,
     files_dir: PathBuf, // for content files
-    artifacts_dir: PathBuf,
-    // db_url: String,
+    pub artifacts_dir: PathBuf,
     prisma_client: Arc<PrismaClient>,
     qdrant_server: Arc<QdrantServer>,
 }

@@ -1,15 +1,16 @@
 use super::search::{retrieve_assets_for_search, SearchResultPayload};
 use crate::ai::AIHandler;
 use ai::llm::{LLMInferenceParams, LLMMessage};
-use content_library::{Library, QdrantServerInfo};
-use file_handler::{
-    search::{handle_rag_retrieval, SearchResult},
-    video::VideoHandler,
+use content_base::{
+    audio::transcript::AudioTranscriptTrait,
+    query::{RAGPayload, SearchResult},
+    video::transcript::VideoTranscriptTask,
+    ContentBase, FileInfo,
 };
+use content_library::Library;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tokio::sync::mpsc::Sender;
-use tracing::warn;
 
 #[derive(Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -28,20 +29,13 @@ pub enum RAGResult {
 
 pub async fn rag_with_video(
     library: &Library,
-    qdrant_info: &QdrantServerInfo,
+    content_base: &ContentBase,
     ai_handler: &AIHandler,
     input: RAGRequestPayload,
     tx: Sender<RAGResult>,
 ) -> anyhow::Result<()> {
-    let qdrant_client = library.qdrant_client();
-
-    let references = handle_rag_retrieval(
-        &input.query,
-        qdrant_client,
-        &qdrant_info.language_collection.name,
-        &ai_handler.text_embedding,
-    )
-    .await?;
+    let payload = RAGPayload::new(&input.query);
+    let references = content_base.retrieval(payload).await?;
 
     let results = retrieve_assets_for_search(
         library,
@@ -61,47 +55,41 @@ pub async fn rag_with_video(
         tx.send(RAGResult::Reference(ref_item)).await?;
     }
 
-    // find original chunk data, and use LLM to answer the question
-    let reference_content = references
-        .iter()
-        .filter_map(|ref_item| {
-            match VideoHandler::new(
-                library.file_path(&ref_item.file_identifier),
-                &ref_item.file_identifier,
-                library.relative_artifacts_path(&ref_item.file_identifier),
-                None,
-            ) {
-                Ok(file_handler) => match file_handler.get_transcript() {
-                    Ok(transcript) => {
-                        let mut transcript_vec = vec![];
-                        for item in transcript.transcriptions {
-                            if (item.start_timestamp as i32) < ref_item.chunk_start_timestamp {
-                                continue;
-                            }
-                            if (item.end_timestamp as i32) > ref_item.chunk_end_timestamp {
-                                break;
-                            }
-                            transcript_vec.push(item.text);
-                        }
+    let mut references_content = vec![];
 
-                        Some(transcript_vec.join("\n"))
-                    }
-                    _ => {
-                        warn!("no transcript found for {}", ref_item.file_identifier);
-                        None
-                    }
+    // find original chunk data, and use LLM to answer the question
+    for ref_item in references.iter() {
+        match VideoTranscriptTask
+            .transcript_content(
+                &FileInfo {
+                    file_identifier: ref_item.file_identifier.clone(),
+                    file_path: library.file_path(&ref_item.file_identifier),
                 },
-                Err(e) => {
-                    warn!(
-                        "failed to build file handler for {}: {}",
-                        ref_item.file_identifier, e
-                    );
-                    None
+                content_base.ctx(),
+            )
+            .await
+        {
+            Ok(transcript) => {
+                let mut transcript_vec = vec![];
+                for item in transcript.transcriptions {
+                    if (item.start_timestamp as i32) < ref_item.chunk_start_timestamp {
+                        continue;
+                    }
+                    if (item.end_timestamp as i32) > ref_item.chunk_end_timestamp {
+                        break;
+                    }
+                    transcript_vec.push(item.text);
                 }
+
+                references_content.push(transcript_vec.join("\n"));
             }
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
+            _ => {
+                tracing::warn!("failed to get transcript for {}", ref_item.file_identifier);
+            }
+        }
+    }
+
+    let reference_content = references_content.join("\n");
 
     let system_prompt = r#"You are an assistant good at answer questions according to pieces of video transcript.
 You should try to answer user question according to the provided video transcripts.
@@ -121,6 +109,7 @@ QUESTION:
 
     let llm = ai_handler.llm.clone();
     let mut response = llm
+        .0
         .process_single((
             vec![
                 LLMMessage::System(system_prompt.into()),

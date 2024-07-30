@@ -276,6 +276,8 @@ dependencies = [
  "axum 0.7.5",
  "blake3",
  "chrono",
+ "content-base",
+ "content-handler",
  "content-library",
  "cron 0.1.1",
  "csv",
@@ -283,7 +285,6 @@ dependencies = [
  "docx-rs",
  "dotenvy",
  "downloader",
- "file-handler",
  "futures",
  "glob",
  "global-variable",
@@ -845,26 +846,6 @@ dependencies = [
  "rustc-hash",
  "shlex",
  "which",
-]
-
-[[package]]
-name = "bindgen"
-version = "0.64.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4243e6031260db77ede97ad86c27e501d646a27ab57b59a574f725d98ab1fb4"
-dependencies = [
- "bitflags 1.3.2",
- "cexpr",
- "clang-sys",
- "lazy_static",
- "lazycell",
- "peeking_take_while",
- "proc-macro2",
- "quote",
- "regex",
- "rustc-hash",
- "shlex",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -1549,9 +1530,12 @@ dependencies = [
  "serde_json",
  "storage",
  "storage-macro",
+ "strum",
+ "strum_macros",
  "test-log",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -2749,31 +2733,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ffmpeg-next"
-version = "6.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e72c72e8dcf638fb0fb03f033a954691662b5dabeaa3f85a6607d101569fccd"
-dependencies = [
- "bitflags 1.3.2",
- "ffmpeg-sys-next",
- "libc",
-]
-
-[[package]]
-name = "ffmpeg-sys-next"
-version = "6.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2529ad916d08c3562c754c21bc9b17a26c7882c0f5706cc2cd69472175f1620"
-dependencies = [
- "bindgen 0.64.0",
- "cc",
- "libc",
- "num_cpus",
- "pkg-config",
- "vcpkg",
-]
-
-[[package]]
 name = "fiat-crypto"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2797,37 +2756,6 @@ dependencies = [
  "reqwest 0.12.5",
  "tokio",
  "tracing",
-]
-
-[[package]]
-name = "file-handler"
-version = "0.1.0"
-dependencies = [
- "ai",
- "anyhow",
- "async-recursion",
- "async-trait",
- "content-library",
- "ffmpeg-next",
- "file-downloader",
- "futures",
- "global-variable",
- "image 0.24.9",
- "ndarray",
- "prisma-client-rust",
- "prisma-lib",
- "qdrant-client",
- "serde",
- "serde_json",
- "storage",
- "storage-macro",
- "strum",
- "strum_macros",
- "test-log",
- "tokio",
- "tracing",
- "uuid",
- "vector-db",
 ]
 
 [[package]]
@@ -3315,7 +3243,6 @@ dependencies = [
  "content-library",
  "dotenvy",
  "file-downloader",
- "file-handler",
  "global-variable",
  "p2p",
  "percent-encoding",
@@ -10380,7 +10307,7 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9bc58223383423483e4bc056c7e7b3f77bdee924a9d33834112c69ead06dc847"
 dependencies = [
- "bindgen 0.59.2",
+ "bindgen",
  "cc",
  "cfg-if",
  "fnv",
