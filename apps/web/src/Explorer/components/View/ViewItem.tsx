@@ -10,10 +10,11 @@ import ExplorerDraggable from '../Draggable/ExplorerDraggable'
 // see spacedrive's `interface/app/$libraryId/Explorer/View/ViewItem.tsx`
 
 interface ViewItemProps extends PropsWithChildren, HTMLAttributes<HTMLDivElement> {
+  isDraggable: boolean
   data: ExplorerItem
 }
 
-export default function ViewItem({ data, children, onClick, ...props }: ViewItemProps) {
+export default function ViewItem({ data, isDraggable, children, onClick, ...props }: ViewItemProps) {
   const explorerStore = useExplorerStore()
   const explorer = useExplorerContext()
   const explorerViewContext = useExplorerViewContext()
@@ -46,7 +47,7 @@ export default function ViewItem({ data, children, onClick, ...props }: ViewItem
       <ContextMenu.Root onOpenChange={handleContextMenuOpenChange}>
         <ContextMenu.Trigger>
           <ExplorerDroppable droppable={{ data: data }}>
-            <ExplorerDraggable draggable={{ data: data }}>
+            <ExplorerDraggable draggable={{ data: data, disabled: !isDraggable }}>
               {children}
             </ExplorerDraggable>
           </ExplorerDroppable>

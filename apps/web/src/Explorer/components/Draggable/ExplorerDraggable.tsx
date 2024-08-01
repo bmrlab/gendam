@@ -5,6 +5,7 @@ import { useDraggable, UseDraggableArguments } from '@dnd-kit/core'
 import { HTMLAttributes } from 'react'
 
 export interface UseExplorerDraggableProps extends Omit<UseDraggableArguments, 'id'> {
+  disabled: boolean
   data: ExplorerItem
 }
 
@@ -24,10 +25,11 @@ const ExplorerDraggable = ({
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: uniqueId(draggable.data),
     data: draggable.data,
-    disabled: !(
-      // 只有 FilePath 类型的才能拖动
-      draggable.data.type === 'FilePath'
-    )
+    disabled: draggable.disabled,
+    // !(
+    //   // 只有 FilePath 类型的才能拖动
+    //   draggable.data.type === 'FilePath'
+    // )
   })
 
   // attributes.role 默认是 button, 浏览器自带样式 cursor: pointer

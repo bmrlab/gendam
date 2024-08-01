@@ -82,7 +82,7 @@ const MediaItem: React.FC<
   )
 
   return (
-    <ViewItem data={data} onClick={(e) => onSelect(e, data)} onDoubleClick={handleDoubleClick}>
+    <ViewItem data={data} isDraggable={true} onClick={(e) => onSelect(e, data)} onDoubleClick={handleDoubleClick}>
       <DroppableInner data={data} {...props} />
     </ViewItem>
   )

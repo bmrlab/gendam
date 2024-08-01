@@ -64,7 +64,7 @@ const FolderItem: React.FC<{ data: ExtractExplorerItem<'FilePath'> }> = ({ data 
   )
 
   return (
-    <ViewItem data={data} onClick={(e) => onSelect(e, data)} onDoubleClick={handleDoubleClick}>
+    <ViewItem data={data} isDraggable={false} onClick={(e) => onSelect(e, data)} onDoubleClick={handleDoubleClick}>
       <DroppableInner data={data} />
     </ViewItem>
   )

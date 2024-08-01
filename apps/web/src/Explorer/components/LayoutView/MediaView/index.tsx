@@ -23,7 +23,7 @@ export default function MediaView({ items }: { items: ExtractExplorerItem<'FileP
   return (
     <>
       {/* 暂时隐藏 folders */}
-      {false && folders.length > 0 && (
+      {folders.length > 0 && (
         <>
           <Folders items={folders} />
           <div className="bg-app-line my-2 h-px"></div>
