@@ -85,7 +85,7 @@ export default function BatchExport() {
                   <source src={currentLibrary.getFileSrc(assetObjectHash)} />
                 </video> */}
                 <Image
-                  src={currentLibrary.getThumbnailSrc(assetObjectHash)}
+                  src={currentLibrary.getVideoPreviewSrc(assetObjectHash)}
                   alt={assetObjectHash}
                   fill={true}
                   className="object-cover"

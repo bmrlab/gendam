@@ -1,12 +1,15 @@
+use crate::content_metadata::ContentMetadataWithType;
 use crate::CtxWithLibrary;
 use content_base::task::CancelTaskPayload;
 use content_base::upsert::UpsertPayload;
+use content_base::ContentMetadata;
 use prisma_client_rust::{operator, Direction};
 use prisma_lib::PrismaClient;
-use prisma_lib::{asset_object, file_handler_task, media_data};
+use prisma_lib::{asset_object, file_handler_task};
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 #[derive(Deserialize, Serialize, Type, Debug)]
@@ -56,7 +59,7 @@ pub struct VideoWithTasksResult {
     pub materialized_path: String,
     pub asset_object: asset_object::Data,
     pub tasks: Vec<file_handler_task::Data>,
-    pub media_data: Option<media_data::Data>,
+    pub media_data: Option<ContentMetadataWithType>,
 }
 
 #[derive(Serialize, Type)]
@@ -127,7 +130,7 @@ impl VideoTaskHandler {
             .with(asset_object::tasks::fetch(vec![]))
             .with(asset_object::file_paths::fetch(vec![]))
             // bindings 中不会自动生成 media_data 类型
-            .with(asset_object::media_data::fetch())
+            // .with(asset_object::media_data::fetch())
             .order_by(asset_object::created_at::order(Direction::Desc))
             .skip((page_size * (page_index - 1)).into())
             .take(page_size.into())
@@ -155,7 +158,7 @@ impl VideoTaskHandler {
                 let media_data = asset_object_data
                     .media_data
                     .take()
-                    .map(|data| data.map(|d| *d));
+                    .map(|v| serde_json::from_str(&v).ok());
                 VideoWithTasksResult {
                     name,
                     materialized_path,
@@ -179,11 +182,14 @@ impl VideoTaskHandler {
     ) -> anyhow::Result<()> {
         let asset_object_id = input.asset_object_id;
 
-        let asset_object = self.prisma_client
+        let asset_object = self
+            .prisma_client
             .asset_object()
             .find_first(vec![asset_object::id::equals(asset_object_id)])
             .exec()
-            .await.map_err(|e| anyhow::anyhow!(e))?.ok_or(anyhow::anyhow!("asset not found"))?;
+            .await
+            .map_err(|e| anyhow::anyhow!(e))?
+            .ok_or(anyhow::anyhow!("asset not found"))?;
 
         let content_base = ctx.content_base()?;
         let payload = CancelTaskPayload::new(&asset_object.hash);

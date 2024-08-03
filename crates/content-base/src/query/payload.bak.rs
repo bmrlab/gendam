@@ -4,7 +4,7 @@ use serde_json::json;
 use strum_macros::EnumDiscriminants;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, EnumDiscriminants)]
+#[derive(Debug, Serialize, Deserialize, EnumDiscriminants)]
 #[strum_discriminants(derive(Serialize, Deserialize, strum_macros::Display))]
 #[strum_discriminants(name(SearchRecordType))]
 #[serde(tag = "record_type")]
@@ -16,13 +16,11 @@ pub enum SearchPayload {
     FrameCaption {
         file_identifier: String,
         timestamp: i64,
-        method: String,
     },
     Transcript {
         file_identifier: String,
         start_timestamp: i64,
         end_timestamp: i64,
-        method: String,
     },
     TranscriptChunk {
         file_identifier: String,
@@ -68,4 +66,23 @@ impl Into<Payload> for SearchPayload {
             .try_into()
             .expect("json should be valid payload")
     }
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct SearchResult {
+    pub file_identifier: String,
+    pub score: f32,
+    pub metadata: SearchPayload,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct SearchRequest {
+    pub text: String,
+}
+
+pub(crate) struct ClipRetrievalInfo {
+    pub file_identifier: String,
+    pub start_timestamp: i64,
+    pub end_timestamp: i64,
+    pub scores: Vec<f32>,
 }

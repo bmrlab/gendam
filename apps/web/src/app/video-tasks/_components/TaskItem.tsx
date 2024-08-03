@@ -62,7 +62,7 @@ export default function VideoTaskItem({ videoFile, isSelect, handleSelect, ...pr
           <source src={currentLibrary.getFileSrc(assetObject.hash)} />
         </video> */}
           <Image
-            src={currentLibrary.getThumbnailSrc(assetObject.hash)}
+            src={currentLibrary.getVideoPreviewSrc(assetObject.hash)}
             alt={assetObject.hash}
             fill={true}
             className="object-cover"
@@ -80,35 +80,37 @@ export default function VideoTaskItem({ videoFile, isSelect, handleSelect, ...pr
               <span className="truncate text-xs font-normal leading-4 opacity-60">Deleted</span>
             </div>
           )}
-          <div className="flex w-full items-center justify-between">
-            <div className="flex items-center text-xs font-normal leading-4 opacity-60">
-              <span>{formatDuration(mediaData?.duration ?? 0)}</span>
-              <div className="mx-2">·</div>
-              <span>{formatBytes(assetObject.size)}</span>
-              <div className="mx-2">·</div>
-              <span>{`${mediaData?.width ?? 0} x ${mediaData?.height ?? 0}`}</span>
-              {mediaData?.hasAudio ? null : (
-                <>
-                  <div className="mx-2">·</div>
-                  <NoAudio />
-                </>
-              )}
+          {mediaData?.contentType === 'video' && (
+            <div className="flex w-full items-center justify-between">
+              <div className="flex items-center text-xs font-normal leading-4 opacity-60">
+                <span>{formatDuration(mediaData.duration ?? 0)}</span>
+                <div className="mx-2">·</div>
+                <span>{formatBytes(assetObject.size)}</span>
+                <div className="mx-2">·</div>
+                <span>{`${mediaData.width ?? 0} x ${mediaData.height ?? 0}`}</span>
+                {!!mediaData.audio ? null : (
+                  <>
+                    <div className="mx-2">·</div>
+                    <NoAudio />
+                  </>
+                )}
+              </div>
+              <div className="flex flex-wrap items-end gap-1.5">
+                <VideoTaskStatus tasks={tasks}></VideoTaskStatus>
+                <TaskDropdownMenu triggerIcon={<Icon.MoreVertical className="size-3" />} options={moreActionOptions}>
+                  <div
+                    className={classNames(
+                      'inline-flex size-6 cursor-default items-center justify-center rounded border',
+                      !isSelect && 'data-[state=open]:bg-app-hover',
+                    )}
+                  >
+                    <span className="sr-only">Open menu</span>
+                    <Icon.MoreVertical className="size-3" />
+                  </div>
+                </TaskDropdownMenu>
+              </div>
             </div>
-            <div className="flex flex-wrap items-end gap-1.5">
-              <VideoTaskStatus tasks={tasks}></VideoTaskStatus>
-              <TaskDropdownMenu triggerIcon={<Icon.MoreVertical className="size-3" />} options={moreActionOptions}>
-                <div
-                  className={classNames(
-                    'inline-flex size-6 cursor-default items-center justify-center rounded border',
-                    !isSelect && 'data-[state=open]:bg-app-hover',
-                  )}
-                >
-                  <span className="sr-only">Open menu</span>
-                  <Icon.MoreVertical className="size-3" />
-                </div>
-              </TaskDropdownMenu>
-            </div>
-          </div>
+          )}
         </div>
       </div>
       <div className="bg-app-line mx-2 my-px h-px"></div>

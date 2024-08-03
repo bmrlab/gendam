@@ -17,9 +17,9 @@ const FRAME_FILE_EXTENSION: &'static str = "jpg";
  * 安全点就所有字段都是 option
  */
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct RawProbeStreamOutput {
+pub struct RawProbeStreamOutput {
     index: usize,
-    codec_type: String, // video, audio
+    pub codec_type: String, // video, audio
     width: Option<usize>,
     height: Option<usize>,
     avg_frame_rate: Option<String>,
@@ -30,8 +30,8 @@ struct RawProbeStreamOutput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct RawProbeOutput {
-    streams: Vec<RawProbeStreamOutput>,
+pub struct RawProbeOutput {
+    pub streams: Vec<RawProbeStreamOutput>,
 }
 
 impl From<&RawProbeStreamOutput> for VideoMetadata {
@@ -75,8 +75,6 @@ impl VideoDecoder {
             .expect("failed to get parent directory");
         let binary_file_path = current_dir.join("ffmpeg");
         let ffprobe_file_path = current_dir.join("ffprobe");
-
-        tracing::debug!("ffmpeg path {:?}", &binary_file_path);
 
         Ok(Self {
             video_file_path: filename.as_ref().to_path_buf(),

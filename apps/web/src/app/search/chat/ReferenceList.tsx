@@ -1,12 +1,12 @@
 'use client'
 
+import RetrievalResultItem from '@/components/FileContent/RAG'
+import { ExtractExplorerItem, uniqueId } from '@/Explorer/types'
 import { Button } from '@gendam/ui/v2/button'
 import { useState } from 'react'
-import { SearchResultPayload } from '../context'
-import { RAGReferenceContent, RAGReferencePreview } from './ReferenceResult'
 
 interface RAGReferenceListProps {
-  items: SearchResultPayload[]
+  items: ExtractExplorerItem<'RetrievalResult'>[]
   isLoading: boolean
 }
 
@@ -27,8 +27,8 @@ export function RAGReferenceList({ items, isLoading }: RAGReferenceListProps) {
         aria-expanded={expand}
       >
         {items.map((item) => {
-          const key = `${item.filePath.id}-${item.metadata.score}`
-          return expand ? <RAGReferenceContent key={key} item={item} /> : <RAGReferencePreview key={key} item={item} />
+          // return expand ? <RAGReferenceContent key={key} item={item} /> : <RAGReferencePreview key={key} item={item} />
+          return <RetrievalResultItem key={uniqueId(item)} {...item} />
         })}
       </div>
     </div>

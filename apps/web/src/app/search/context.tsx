@@ -20,7 +20,6 @@ export type SearchPayload =
   | {
       api: 'search.all'
       text: string
-      recordType: 'Frame' | 'Transcript'
     }
   | {
       api: 'search.recommend'
@@ -51,7 +50,6 @@ function useSearchPayloadInURL(): {
     if (payload?.api === 'search.all') {
       const search = new URLSearchParams()
       search.set('text', payload.text)
-      search.set('recordType', payload.recordType)
       window.history.replaceState({}, '', `${window.location.pathname}?${search}`)
     } else {
       window.history.replaceState({}, '', `${window.location.pathname}`)

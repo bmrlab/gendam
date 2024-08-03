@@ -4,7 +4,7 @@ mod search;
 
 use crate::{get_hash_from_url, get_library_settings, CtxWithLibrary};
 use glob::glob;
-use rag::{rag_with_video, RAGRequestPayload};
+use rag::{rag, RAGRequestPayload};
 use recommend::{recommend_frames, RecommendRequestPayload};
 use rspc::{Router, RouterBuilder};
 use search::{search_all, SearchRequestPayload};
@@ -146,7 +146,7 @@ where
                 Ok(results)
             })
         })
-        .subscription("video_rag", |t| {
+        .subscription("rag", |t| {
             t(|ctx, input: RAGRequestPayload| {
                 tracing::debug!("receive chat request");
 
@@ -158,7 +158,7 @@ where
                     let (tx, mut rx) = mpsc::channel(512);
 
                     tokio::spawn(async move {
-                        if let Err(e) = rag_with_video(&library, &content_base, &ai_handler, input, tx).await {
+                        if let Err(e) = rag(&library, &content_base, &ai_handler, input, tx).await {
                             tracing::error!("RAG error: {}", e);
                         }
                     });

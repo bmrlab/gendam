@@ -1,16 +1,16 @@
 'use client'
-import { useExplorerContext } from '@/Explorer/hooks'
-import { type ExplorerItem } from '@/Explorer/types'
-import { client, rspc } from '@/lib/rspc'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
+import { useExplorerContext } from '@/Explorer/hooks'
+import { ExtractExplorerItem, type ExplorerItem } from '@/Explorer/types'
+import { rspc } from '@/lib/rspc'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
-import { useSearchPageContext, type SearchResultPayload } from './context'
+import { useSearchPageContext } from './context'
 
 type SearchItemContextMenuProps = {
-  data: SearchResultPayload
+  data: ExtractExplorerItem<'SearchResult'>
 }
 
 const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemContextMenuProps>(
@@ -24,21 +24,19 @@ const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemC
     const selectedSearchResultItems = useMemo(() => {
       type T = Extract<ExplorerItem, { type: 'SearchResult' }>
       const filtered = Array.from(explorer.selectedItems).filter((item) => item.type === 'SearchResult') as T[]
-      return filtered.map(({ filePath, metadata }) => ({ filePath, metadata } as SearchResultPayload))
+      return filtered.map(
+        ({ filePaths, assetObject, metadata }) =>
+          ({ filePaths, assetObject, metadata }) as ExtractExplorerItem<'SearchResult'>,
+      )
     }, [explorer.selectedItems])
 
     const quickview = useCallback(() => {
-      quickViewStore.open({
-        name: data.filePath.name,
-        assetObject: data.filePath.assetObject!,
-        video: {
-          currentTime: data.metadata.startTime / 1e3,
-        },
-      })
+      quickViewStore.open(data)
     }, [data, quickViewStore])
 
     const reveal = useCallback(() => {
-      router.push(`/explorer?dir=${data.filePath.materializedPath}&id=${data.filePath.id}`)
+      // FIXME this need to be optimized
+      router.push(`/explorer?dir=${data.filePaths[0].materializedPath}&id=${data.filePaths[0].id}`)
     }, [data, router])
 
     const exportSegmentMut = rspc.useMutation(['assets.export_video_segment'])
@@ -54,66 +52,49 @@ const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemC
       if (!selectedDir) {
         return
       }
-      for (const { filePath, metadata } of selectedSearchResultItems) {
-        if (!filePath.assetObjectId) {
-          continue
-        }
+      for (const { filePaths, assetObject, metadata } of selectedSearchResultItems) {
         try {
           await exportSegmentMut.mutateAsync({
-            verboseFileName: filePath.name,
-            assetObjectId: filePath.assetObjectId,
+            verboseFileName: filePaths[0].name,
+            assetObjectId: assetObject.id,
             outputDir: selectedDir as string,
             millisecondsFrom: metadata.startTime,
             millisecondsTo: Math.max(metadata.endTime, metadata.startTime + 1000),
           })
           toast.success('Exported successfully', {
-            description: `Exported ${filePath.name} to ${selectedDir}`
+            description: `Exported ${filePaths[0].name} to ${selectedDir}`,
           })
-        } catch(err) {
+        } catch (err) {
           toast.error('Export failed', {
-            description: `Failed to export ${filePath.name} to ${selectedDir}`
+            description: `Failed to export ${filePaths[0].name} to ${selectedDir}`,
           })
         }
       }
     }, [exportSegmentMut, selectedSearchResultItems])
 
     const recommendFrames = useCallback(async () => {
-      if (!data.filePath.assetObject) {
-        return
-      }
       searchQuery.fetch({
         api: 'search.recommend',
-        filePath: data.filePath,
-        assetObjectHash: data.filePath.assetObject.hash,
+        filePath: data.filePaths[0],
+        assetObjectHash: data.assetObject.hash,
         timestamp: data.metadata.startTime,
       })
-    }, [data.filePath, data.metadata, searchQuery])
+    }, [data.filePaths, data.metadata, searchQuery])
 
     return (
       <ContextMenu.Content ref={forwardedRef as any} {...prpos} onClick={(e) => e.stopPropagation()}>
-        <ContextMenu.Item
-          onSelect={() => quickview()}
-          disabled={explorer.selectedItems.size > 1}
-        >
+        <ContextMenu.Item onSelect={() => quickview()} disabled={explorer.selectedItems.size > 1}>
           <div>Quick view</div>
         </ContextMenu.Item>
-        <ContextMenu.Item
-          onSelect={() => reveal()}
-          disabled={explorer.selectedItems.size > 1}
-        >
+        <ContextMenu.Item onSelect={() => reveal()} disabled={explorer.selectedItems.size > 1}>
           <div>Reveal in explorer</div>
         </ContextMenu.Item>
         <ContextMenu.Separator />
-        <ContextMenu.Item
-          onSelect={() => recommendFrames()}
-          disabled={explorer.selectedItems.size > 1}
-        >
+        <ContextMenu.Item onSelect={() => recommendFrames()} disabled={explorer.selectedItems.size > 1}>
           <div>Find similar items</div>
         </ContextMenu.Item>
         <ContextMenu.Separator />
-        <ContextMenu.Item
-          onSelect={() => exportSegment()}
-        >
+        <ContextMenu.Item onSelect={() => exportSegment()}>
           <div>Export</div>
         </ContextMenu.Item>
       </ContextMenu.Content>

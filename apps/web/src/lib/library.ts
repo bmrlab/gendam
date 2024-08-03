@@ -1,10 +1,15 @@
-import { LibrarySettings } from '@/lib/bindings'
+import { ContentMetadataWithType, ContentTaskTypeSpecta, LibrarySettings, SearchResultMetadata } from '@/lib/bindings'
 import { ContextType, createContext, useContext } from 'react'
 
 export type Library = {
   id: string
   dir: string
 }
+
+export type AssetObjectType =
+  | ContentMetadataWithType['contentType']
+  | SearchResultMetadata['type']
+  | ContentTaskTypeSpecta['contentType']
 
 type CurrentLibraryContext = {
   id: string
@@ -13,18 +18,12 @@ type CurrentLibraryContext = {
   updateLibrarySettings: (partialSettingssettings: Partial<LibrarySettings>) => Promise<void>
   switchCurrentLibraryById: (libraryId: string) => Promise<void>
   getFileSrc: (assetObjectHash: string) => string
-  getThumbnailSrc: (assetObjectHash: string, timestampInSecond?: number) => string
+  getThumbnailSrc: (assetObjectHash: string, assetObjectType: AssetObjectType) => string
+  getVideoPreviewSrc: (assetObjectHash: string, timestampInSecond?: number) => string
+  getAudioPreviewSrc: (assetObjectHash: string) => string | undefined
 }
 
-export const CurrentLibrary = createContext<CurrentLibraryContext | null>(
-  null,
-  // {
-  //   updateLibrarySettings: async () => {},
-  //   set: async () => {},
-  //   getFileSrc: (assetObjectHash) => `/images/empty.png?${assetObjectHash}`, // 无效的默认值
-  //   getThumbnailSrc: (assetObjectHash, timestampInSecond?) => `/images/empty.png?${assetObjectHash}&${timestampInSecond}`, // 无效的默认值
-  // }
-)
+export const CurrentLibrary = createContext<CurrentLibraryContext | null>(null)
 
 type NonNullableCurrentLibrary = NonNullable<ContextType<typeof CurrentLibrary>>
 

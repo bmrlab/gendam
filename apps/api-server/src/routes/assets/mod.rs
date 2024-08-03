@@ -2,7 +2,7 @@ mod create;
 mod delete;
 mod process;
 mod read;
-mod types;
+pub mod types;
 mod update;
 mod utils;
 
@@ -19,6 +19,7 @@ use serde::Deserialize;
 use specta::Type;
 use tracing::info;
 use types::FilePathRequestPayload;
+use types::FilePathWithAssetObjectData;
 use update::{move_file_path, rename_file_path};
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
@@ -66,31 +67,19 @@ where
                         )
                         .await?;
                     if !asset_object_existed {
-                        // match get_file_type(asset_object_data.mime_type) {
-                        //     utils::FileType::Video => {
-
-                        //     }
-                        //     utils::FileType::Image => {
-                        //         process_video_metadata(&library, &content_base, asset_object_data.id).await?;
-                        //         info!("process image metadata finished");
-                        //         process_video_asset(&library, &ctx, file_path_data.id, None)
-                        //             .await?;
-                        //         info!("process image asset finished");
-                        //     }
-                        //     utils::FileType::Other => todo!(),
-                        // }
                         process_asset_metadata(&library, &content_base, asset_object_data.id)
                             .await?;
                         info!("process metadata finished");
                         process_asset(&library, &ctx, file_path_data.id, None).await?;
                         info!("process asset finished");
                     }
-                    let file_path = get_file_path(
+                    let file_path: FilePathWithAssetObjectData = get_file_path(
                         &library,
                         &file_path_data.materialized_path,
                         &file_path_data.name,
                     )
-                    .await?;
+                    .await?
+                    .into();
                     Ok(file_path)
                 }
             })
@@ -158,6 +147,10 @@ where
                         input.include_sub_dirs,
                     )
                     .await?;
+
+                    let res: Vec<FilePathWithAssetObjectData> =
+                        res.into_iter().map(|v| v.into()).collect();
+
                     Ok(res)
                 }
             })
@@ -174,8 +167,10 @@ where
                 }
                 |ctx, input: FilePathGetPayload| async move {
                     let library = ctx.library()?;
-                    let item =
-                        get_file_path(&library, &input.materialized_path, &input.name).await?;
+                    let item: FilePathWithAssetObjectData =
+                        get_file_path(&library, &input.materialized_path, &input.name)
+                            .await?
+                            .into();
                     Ok(item)
                 }
             })

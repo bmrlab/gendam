@@ -7,12 +7,13 @@ import {
   type ExplorerValue,
 } from '@/Explorer/hooks'
 // import { useExplorerStore } from '@/Explorer/store'
-import { type ExplorerItem } from '@/Explorer/types'
+import { type ExtractExplorerItem } from '@/Explorer/types'
 import AudioDialog from '@/components/Audio/AudioDialog'
 import Inspector from '@/components/Inspector'
+import { useInspector } from '@/components/Inspector/store'
 import Viewport from '@/components/Viewport'
+import { FilePath } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
-import { type FilePath } from '@/lib/bindings'
 import { Drop_To_Folder } from '@gendam/assets/images'
 import { RSPCError } from '@rspc/client'
 import Image from 'next/image'
@@ -21,7 +22,6 @@ import { useEffect, useMemo, useState } from 'react'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
 import ItemContextMenu from './_components/ItemContextMenu'
-import { useInspector } from '@/components/Inspector/store'
 
 export default function ExplorerPage() {
   // const explorerStore = useExplorerStore()
@@ -49,7 +49,7 @@ export default function ExplorerPage() {
 
   const inspector = useInspector()
   const explorer = useExplorerValue({
-    items: items ? items.map((item) => ({ type: 'FilePath', filePath: item })) : null,
+    items: items ? items.map((item) => ({ type: 'FilePath', filePath: item, assetObject: item.assetObject! })) : null,
     materializedPath,
     settings: {
       layout,
@@ -76,10 +76,12 @@ export default function ExplorerPage() {
       setItems([...assetsQuery.data])
       // 重新获取数据要清空选中的项目，以免出现不在列表中但是还被选中的情况
       if (revealedFilePath) {
-        resetSelectedItems([{
-          type: 'FilePath',
-          filePath: revealedFilePath,
-        }])
+        resetSelectedItems([
+          {
+            type: 'FilePath',
+            filePath: revealedFilePath,
+          },
+        ])
         setShowInspector(true)
       } else {
         resetSelectedItems()
@@ -98,11 +100,11 @@ export default function ExplorerPage() {
     setLayout(explorer.settings.layout)
   }, [explorer.settings.layout])
 
-  const inspectorItem = useMemo<FilePath | null>(() => {
-    type T = Extract<ExplorerItem, { type: 'FilePath' }>
+  type T = ExtractExplorerItem<'FilePath'>
+  const inspectorItem = useMemo<T | null>(() => {
     const selectedItems = Array.from(explorer.selectedItems).filter((item) => item.type === 'FilePath') as T[]
     if (selectedItems.length === 1) {
-      return selectedItems[0].filePath
+      return selectedItems[0]
     }
     return null
   }, [explorer.selectedItems])
@@ -114,7 +116,7 @@ export default function ExplorerPage() {
   return (
     <ExplorerViewContextProvider
       value={{
-        contextMenu: (data) => (data.type === 'FilePath' ? <ItemContextMenu data={data.filePath} /> : null),
+        contextMenu: (data) => (data.type === 'FilePath' ? <ItemContextMenu data={data} /> : null),
       }}
     >
       <ExplorerContextProvider explorer={explorer}>

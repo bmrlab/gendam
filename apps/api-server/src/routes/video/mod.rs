@@ -61,8 +61,6 @@ where
                     let asset_object_data = asset_object_data.unwrap();
 
                     let video_path = library.file_path(&asset_object_data.hash);
-                    let artifacts_dir = library.relative_artifacts_path(&asset_object_data.hash);
-                    let qdrant_client = library.qdrant_client();
 
                     let video_decoder = VideoDecoder::new(&video_path).map_err(|e| {
                         rspc::Error::new(
@@ -114,8 +112,6 @@ where
                 let ts_dir = cache_dir;
 
                 let video_path = library.file_path(&input.hash);
-                let artifacts_dir = library.relative_artifacts_path(&input.hash);
-                let qdrant_client = library.qdrant_client();
                 let video_decoder = VideoDecoder::new(video_path).map_err(|e| {
                     rspc::Error::new(
                         rspc::ErrorCode::InternalServerError,

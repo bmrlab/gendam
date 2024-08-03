@@ -1613,6 +1613,7 @@ dependencies = [
  "ai",
  "anyhow",
  "async-trait",
+ "byteorder",
  "content-metadata",
  "global-variable",
  "infer 0.15.0",

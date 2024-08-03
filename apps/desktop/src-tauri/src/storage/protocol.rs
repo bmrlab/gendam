@@ -100,7 +100,9 @@ pub fn storage_protocol_handler(
         Ok::<(u64, String, Option<Vec<u8>>), anyhow::Error>((len, mime_type, read_bytes))
     })?;
 
-    resp = resp.header(CONTENT_TYPE, &mime_type);
+    resp = resp
+        .header(CONTENT_TYPE, &mime_type)
+        .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 
     // handle 206 (partial range) http requests
     let response = if let Some(range_header) = request

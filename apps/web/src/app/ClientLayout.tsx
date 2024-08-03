@@ -6,12 +6,13 @@ import SonnerToaster from '@/components/SonnerToaster'
 import Viewport from '@/components/Viewport'
 import { useP2PEvents } from '@/hooks/useP2PEvents'
 import { Auth, LibrarySettings } from '@/lib/bindings'
-import { CurrentLibrary, type Library } from '@/lib/library'
+import { AssetObjectType, CurrentLibrary, type Library } from '@/lib/library'
 import { client, queryClient, rspc } from '@/lib/rspc'
 import Icon from '@gendam/ui/icons'
 import { convertFileSrc } from '@tauri-apps/api/tauri'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { match } from 'ts-pattern'
 
 const WebsocketLayout = () => {
   useP2PEvents()
@@ -212,9 +213,42 @@ export default function ClientLayout({
     [library],
   )
 
+  const _getFullSrc = useCallback((src: string) => {
+    if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
+      return convertFileSrc(src, 'storage')
+    } else {
+      return `http://localhost:3001/file/localhost/${src}`
+    }
+  }, [])
+
   const getThumbnailSrc = useCallback(
+    (assetObjectHash: string, assetObjectType: AssetObjectType, timestampInSecond?: number) => {
+      if (!library) {
+        return '/images/empty.png'
+      }
+
+      const fileFullPath = match(assetObjectType)
+        .with('audio', () => {
+          return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
+        })
+        .with('video', () => {
+          if (typeof timestampInSecond === 'undefined' || timestampInSecond < 1) {
+            return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
+          }
+
+          return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/frames/${timestampInSecond}000.jpg`
+        })
+        .otherwise(() => {
+          return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
+        })
+
+      return _getFullSrc(fileFullPath)
+    },
+    [library],
+  )
+
+  const getVideoPreviewSrc = useCallback(
     (assetObjectHash: string, timestampInSecond?: number) => {
-      // TODO remove the _timestampInSecond
       if (!library) {
         return '/images/empty.png'
       }
@@ -227,11 +261,16 @@ export default function ClientLayout({
         return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/frames/${timestampInSecond}000.jpg`
       })()
 
-      if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-        return convertFileSrc(fileFullPath, 'storage')
-      } else {
-        return `http://localhost:3001/file/localhost/${fileFullPath}`
-      }
+      return _getFullSrc(fileFullPath)
+    },
+    [library],
+  )
+
+  const getAudioPreviewSrc = useCallback(
+    (assetObjectHash: string) => {
+      if (!library) return void 0
+
+      _getFullSrc(`${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/waveform.json`)
     },
     [library],
   )
@@ -262,6 +301,8 @@ export default function ClientLayout({
               switchCurrentLibraryById: switchCurrentLibraryById,
               getFileSrc,
               getThumbnailSrc,
+              getVideoPreviewSrc,
+              getAudioPreviewSrc,
             }}
           >
             <Viewport.Sidebar />

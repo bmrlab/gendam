@@ -2,13 +2,11 @@
 import Icon from '@gendam/ui/icons'
 import { CommandPrimitive } from '@gendam/ui/v2/command'
 import classNames from 'classnames'
-import { type SearchPayload } from './context'
 // import classNames from 'classnames'
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react'
 
 type FormData = {
   text: string
-  recordType: 'Frame' | 'Transcript'
 }
 
 export type SearchFormRef = {
@@ -31,7 +29,6 @@ const SearchFormWithRef = forwardRef<
     setValue: (value) => {
       if (value) {
         setText(value.text)
-        setRecordType(value.recordType)
       } else {
         setText('')
         setRecordType(null)
