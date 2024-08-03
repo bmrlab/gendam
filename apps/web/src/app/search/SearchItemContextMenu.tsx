@@ -2,12 +2,12 @@
 import { useExplorerContext } from '@/Explorer/hooks'
 import { type ExplorerItem } from '@/Explorer/types'
 import { client, rspc } from '@/lib/rspc'
-import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { useRouter } from 'next/navigation'
 import { forwardRef, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 import { useSearchPageContext, type SearchResultPayload } from './context'
+import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 
 type SearchItemContextMenuProps = {
   data: SearchResultPayload
@@ -31,9 +31,10 @@ const SearchItemContextMenu = forwardRef<typeof ContextMenu.Content, SearchItemC
       quickViewStore.open({
         name: data.filePath.name,
         assetObject: data.filePath.assetObject!,
-        video: {
+        params: {
+          contentType: 'Video',
           currentTime: data.metadata.startTime / 1e3,
-        },
+        }
       })
     }, [data, quickViewStore])
 

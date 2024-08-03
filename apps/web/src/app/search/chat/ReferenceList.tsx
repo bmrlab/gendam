@@ -27,7 +27,7 @@ export function RAGReferenceList({ items, isLoading }: RAGReferenceListProps) {
         aria-expanded={expand}
       >
         {items.map((item) => {
-          const key = `${item.filePath.id}-${item.metadata.score}`
+          const key = `${item.filePath.id}-${item.score}`
           return expand ? <RAGReferenceContent key={key} item={item} /> : <RAGReferencePreview key={key} item={item} />
         })}
       </div>

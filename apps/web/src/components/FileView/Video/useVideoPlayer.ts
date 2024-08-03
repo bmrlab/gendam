@@ -186,7 +186,7 @@ export const useVideoPlayer = (hash: string, videoRef: MutableRefObject<HTMLVide
       loop: false,
       muted: true,
       noSupportedMessage: 'This video cannot be played, please try again later',
-      poster: currentLibrary.getThumbnailSrc(hash),
+      poster: currentLibrary.getVideoPreviewSrc(hash),
       controlBar: {
         fullscreenToggle: false,
         pictureInPictureToggle: false,

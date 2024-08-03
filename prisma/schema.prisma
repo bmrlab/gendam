@@ -41,28 +41,29 @@ model AssetObject {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  mediaData MediaData?
+  mediaData String? // a JSON represent the metadata of asset, refer to ContentMetadata
 
   filePaths     FilePath[]
   tasks         FileHandlerTask[]
   dataLocations DataLocation[]
 }
 
-model MediaData {
-  id Int @id @default(autoincrement())
+// 因为有不同类型素材，这个表没有什么存在的意义了
+// model MediaData {
+//   id Int @id @default(autoincrement())
 
-  width    Int?
-  height   Int?
-  duration Int?
-  bitRate  Int?
-  hasAudio Boolean?
+//   width    Int?
+//   height   Int?
+//   duration Int?
+//   bitRate  Int?
+//   hasAudio Boolean?
 
-  assetObjectId Int          @unique
-  assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: Cascade)
+//   assetObjectId Int          @unique
+//   assetObject   AssetObject? @relation(fields: [assetObjectId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+// }
 
 model FileHandlerTask {
   id Int @id @default(autoincrement())

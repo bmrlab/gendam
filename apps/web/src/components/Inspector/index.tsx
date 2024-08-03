@@ -1,15 +1,17 @@
 'use client'
 import type { FileHandlerTask, FilePath } from '@/lib/bindings'
-import { useCurrentLibrary } from '@/lib/library'
-import { queryClient, rspc } from '@/lib/rspc'
-import { formatBytes, formatDateTime, formatDuration } from '@/lib/utils'
+import { formatDateTime } from '@/lib/utils'
 import { Folder_Light } from '@gendam/assets/images'
 import Icon from '@gendam/ui/icons'
 import { Button } from '@gendam/ui/v2/button'
 import Image from 'next/image'
-import { useCallback, useEffect, useMemo } from 'react'
-import { Video } from '../Video'
+import { useEffect } from 'react'
+import { match } from 'ts-pattern'
+import { matchContentTypePattern } from '../FileThumb'
+import AudioDetail from './Audio'
+import { useSortedTasks } from './hooks'
 import { useInspector } from './store'
+import VideoDetail from './Video'
 
 const FolderDetail = ({ data }: { data: FilePath }) => {
   return (
@@ -39,7 +41,7 @@ const FolderDetail = ({ data }: { data: FilePath }) => {
   )
 }
 
-function TaskItemStatus({ task }: { task: FileHandlerTask }) {
+export function TaskItemStatus({ task }: { task: FileHandlerTask }) {
   if (task.exitCode !== null && task.exitCode > 1) {
     return <Icon.Close className="h-3 w-3 text-red-500" /> // 出错
   } else if (task.exitCode === 1) {
@@ -52,171 +54,6 @@ function TaskItemStatus({ task }: { task: FileHandlerTask }) {
   } else {
     return <Icon.Clock className="h-3 w-3 text-neutral-900" />
   }
-}
-
-export const TaskItemType: Record<string, [string, number]> = {
-  'frame': ['Visual Processing', 1],
-  'frame-content-embedding': ['Visual Indexing', 2],
-  'frame-caption': ['Description Recognition', 3],
-  'frame-caption-embedding': ['Description Indexing', 4],
-  'audio': ['Audio Processing', 5],
-  'transcript': ['Speech Recognition', 6],
-  'transcript-embedding': ['Transcript Indexing', 7],
-}
-
-const AssetObjectDetail = ({ data }: { data: FilePath }) => {
-  const currentLibrary = useCurrentLibrary()
-
-  const tasksQueryParams = useMemo(() => {
-    const filter = { assetObjectId: data.assetObject?.id }
-    return { filter }
-  }, [data.assetObject?.id])
-  const tasksQuery = rspc.useQuery(['tasks.list', tasksQueryParams], {
-    enabled: !!data.assetObject?.id,
-  })
-  const cancelJobsMut = rspc.useMutation(['video.tasks.cancel'])
-  const handleJobsCancel = useCallback(async () => {
-    if (!data.assetObject?.id) {
-      return
-    }
-    try {
-      await cancelJobsMut.mutateAsync({
-        assetObjectId: data.assetObject.id,
-        taskTypes: null,
-      })
-      queryClient.invalidateQueries({
-        queryKey: ['tasks.list', tasksQueryParams],
-      })
-    } catch (error) {}
-  }, [data.assetObject?.id, cancelJobsMut, tasksQueryParams])
-
-  const sortedTasks = useMemo(() => {
-    if (!tasksQuery.data) {
-      return []
-    }
-    return tasksQuery.data.sort((a, b) => {
-      const [, indexA] = TaskItemType[a.taskType] ?? [, 0]
-      const [, indexB] = TaskItemType[b.taskType] ?? [, 0]
-      return indexA - indexB
-    })
-  }, [tasksQuery.data])
-
-  if (!data.assetObject || !data.assetObject.mediaData) {
-    return
-  }
-
-  const {
-    assetObject,
-    assetObject: { mediaData },
-  } = data
-
-  return (
-    <div className="p-3">
-      {assetObject.mimeType?.includes('video/') ? (
-        <div className="w-58 bg-app-overlay/50 relative h-48 overflow-hidden">
-          <Video hash={data.assetObject?.hash!} />
-        </div>
-      ) : (
-        <div className="w-58 relative h-48">
-          <Image
-            src={currentLibrary.getFileSrc(assetObject.hash)}
-            alt={assetObject.hash}
-            fill={true}
-            className="h-full w-full rounded-md object-contain object-center"
-            priority
-          />
-        </div>
-      )}
-      <div className="mt-3 overflow-hidden">
-        <div className="text-ink line-clamp-2 break-all text-sm font-medium">{data.name}</div>
-        <div className="text-ink/50 mt-1 line-clamp-2 text-xs">Location {data.materializedPath}</div>
-      </div>
-      <div className="bg-app-line mb-3 mt-3 h-px"></div>
-      <div className="text-xs">
-        <div className="text-md font-medium">Information</div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Size</div>
-          <div>{formatBytes(assetObject.size)}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Type</div>
-          <div>{assetObject.mimeType}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Duration</div>
-          <div>{formatDuration(mediaData?.duration ?? 0)}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Dimensions</div>
-          <div>{`${mediaData?.width ?? 0} x ${mediaData?.height ?? 0}`}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Audio</div>
-          <div>{mediaData.hasAudio ? 'Yes' : 'No'}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Created</div>
-          <div>{formatDateTime(data.createdAt)}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Modified</div>
-          <div>{formatDateTime(data.updatedAt)}</div>
-        </div>
-      </div>
-      <div className="bg-app-line mb-3 mt-3 h-px"></div>
-      <div className="text-xs">
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Content Hash</div>
-          <div>{assetObject.hash}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Asset Object ID</div>
-          <div>{assetObject.id}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Visual Search</div>
-          {sortedTasks.some((item) => item.taskType === 'frame-content-embedding' && item.exitCode === 0) ? (
-            <div className="rounded-full bg-green-100 px-2 text-xs text-green-600">Ready</div>
-          ) : (
-            <div className="rounded-full bg-orange-100 px-2 text-xs text-orange-600">Not ready</div>
-          )}
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Transcript Search</div>
-          {sortedTasks.some((item) => item.taskType === 'transcript-embedding' && item.exitCode === 0) ? (
-            <div className="rounded-full bg-green-100 px-2 text-xs text-green-600">Ready</div>
-          ) : (
-            <div className="rounded-full bg-orange-100 px-2 text-xs text-orange-600">Not ready</div>
-          )}
-        </div>
-      </div>
-      <div className="bg-app-line mb-3 mt-3 h-px"></div>
-      <div className="text-xs">
-        <div className="text-md mt-2 flex items-center justify-between">
-          <div className="font-medium">Jobs</div>
-          {sortedTasks.some((task) => task.exitCode === null) ? (
-            <div className="text-ink/60 group flex items-center gap-1">
-              <div className="px-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                Cancel pending jobs
-              </div>
-              <Button variant="ghost" size="xs" className="px-0" onClick={() => handleJobsCancel()}>
-                <Icon.Close className="h-3 w-3" />
-              </Button>
-            </div>
-          ) : null}
-        </div>
-        {sortedTasks.map((task) => (
-          <div key={task.id} className="mt-2 flex items-center justify-between">
-            {/* <div className="text-ink/50">{(TaskItemType[task.taskType] ?? ['Unknown'])[0]}</div> */}
-            <div className="text-ink/50">{task.taskType}</div>
-            <TaskItemStatus task={task} />
-          </div>
-        ))}
-      </div>
-      {/* blank area at the bottom */}
-      <div className="mt-6"></div>
-    </div>
-  )
 }
 
 export default function Inspector({ data }: { data: FilePath | null }) {
@@ -245,11 +82,42 @@ export default function Inspector({ data }: { data: FilePath | null }) {
         data.isDir ? (
           <FolderDetail data={data} />
         ) : data.assetObject ? (
-          <AssetObjectDetail data={data} />
+          match(data.assetObject)
+            .with(matchContentTypePattern('Video'), (item) => <VideoDetail data={item} filePath={data} />)
+            .with(matchContentTypePattern('Audio'), (item) => <AudioDetail data={item} filePath={data} />)
+            .otherwise(() => <></>)
         ) : null
       ) : null}
     </div>
   ) : (
     <></>
+  )
+}
+
+export function DetailTasks({ data }: { data: FilePath['assetObject'] }) {
+  const { sortedTasks, handleJobsCancel } = useSortedTasks(data)
+
+  return (
+    <div className="text-xs">
+      <div className="text-md mt-2 flex items-center justify-between">
+        <div className="font-medium">Jobs</div>
+        {sortedTasks.some((task) => task.exitCode === null) ? (
+          <div className="text-ink/60 group flex items-center gap-1">
+            <div className="px-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+              Cancel pending jobs
+            </div>
+            <Button variant="ghost" size="xs" className="px-0" onClick={() => handleJobsCancel()}>
+              <Icon.Close className="h-3 w-3" />
+            </Button>
+          </div>
+        ) : null}
+      </div>
+      {sortedTasks.map((task) => (
+        <div key={task.id} className="mt-2 flex items-center justify-between">
+          <div className="text-ink/50">{task.taskType}</div>
+          <TaskItemStatus task={task} />
+        </div>
+      ))}
+    </div>
   )
 }

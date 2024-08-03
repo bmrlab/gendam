@@ -1,12 +1,12 @@
 use crate::CtxWithLibrary;
 use content_base::{
-    upsert::UpsertPayload, video::thumbnail::VideoThumbnailTask, ContentBase, ContentMetadata,
-    ContentTask, FileInfo,
+    audio::thumbnail::AudioThumbnailTask, upsert::UpsertPayload,
+    video::thumbnail::VideoThumbnailTask, ContentBase, ContentMetadata, ContentTask, FileInfo,
 };
 use content_handler::{file_metadata, video::VideoDecoder};
 use content_library::Library;
 use prisma_client_rust::QueryError;
-use prisma_lib::{asset_object, file_handler_task, file_path, media_data};
+use prisma_lib::{asset_object, file_handler_task, file_path};
 use tracing::{error, info};
 
 fn sql_error(e: QueryError) -> rspc::Error {
@@ -28,7 +28,7 @@ pub async fn process_asset(
     file_path_id: i32,
     _with_existing_artifacts: Option<bool>,
 ) -> Result<(), rspc::Error> {
-    info!("process video asset for file_path_id: {file_path_id}");
+    info!("process asset for file_path_id: {file_path_id}");
     let file_path_data = library
         .prisma_client()
         .file_path()
@@ -154,7 +154,7 @@ pub async fn process_asset_metadata(
     content_base: &ContentBase,
     asset_object_id: i32,
 ) -> Result<(), rspc::Error> {
-    info!("process video metadata for asset_object_id: {asset_object_id}");
+    info!("process metadata for asset_object_id: {asset_object_id}");
     let asset_object_data = match library
         .prisma_client()
         .asset_object()
@@ -173,8 +173,8 @@ pub async fn process_asset_metadata(
         }
     };
 
-    let video_path = library.file_path(&asset_object_data.hash);
-    let metadata = file_metadata(&video_path).map_err(|e| {
+    let file_path = library.file_path(&asset_object_data.hash);
+    let metadata = file_metadata(&file_path).map_err(|e| {
         error!("failed to get video metadata: {e}");
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
@@ -182,44 +182,37 @@ pub async fn process_asset_metadata(
         )
     })?;
 
-    match metadata {
-        ContentMetadata::Video(metadata) => {
-            if let Err(e) = VideoThumbnailTask
-                .run(
-                    &FileInfo {
-                        file_identifier: asset_object_data.hash.clone(),
-                        file_path: video_path.clone(),
-                    },
-                    content_base.ctx(),
-                )
-                .await
-            {
-                error!("failed to run thumbnail task: {e}");
-            }
+    let metadata_json = match serde_json::to_string(&metadata) {
+        Ok(metadata) => Some(metadata),
+        _ => None,
+    };
 
-            let values: Vec<media_data::SetParam> = vec![
-                media_data::width::set(Some(metadata.width as i32)),
-                media_data::height::set(Some(metadata.height as i32)),
-                media_data::duration::set(Some(metadata.duration as i32)),
-                media_data::bit_rate::set(Some(metadata.bit_rate as i32)),
-                media_data::has_audio::set(Some(metadata.audio.is_some())),
-            ];
-            library
-                .prisma_client()
-                .media_data()
-                .upsert(
-                    media_data::asset_object_id::equals(asset_object_data.id),
-                    media_data::create(asset_object_data.id, values.clone()),
-                    values.clone(),
-                )
-                .exec()
-                .await
-                .map_err(sql_error)?;
-        }
-        ContentMetadata::Audio(_metadata) => {
-            todo!()
-        }
-        _ => {}
+    let prisma_client = library.prisma_client();
+    let prisma_handle = prisma_client
+        .asset_object()
+        .update(
+            asset_object::id::equals(asset_object_data.id),
+            vec![asset_object::media_data::set(metadata_json)],
+        )
+        .exec();
+
+    // generate thumbnail
+    tracing::debug!("generate thumbnail");
+    let file_info = FileInfo {
+        file_identifier: asset_object_data.hash.clone(),
+        file_path,
+    };
+    let thumbnail_handle = match metadata {
+        ContentMetadata::Video(_) => VideoThumbnailTask.run(&file_info, content_base.ctx()),
+        ContentMetadata::Audio(_) => AudioThumbnailTask.run(&file_info, content_base.ctx()),
+        _ => Box::pin(async { Ok(()) }),
+    };
+
+    let results = tokio::join!(prisma_handle, thumbnail_handle);
+
+    results.0.map_err(sql_error)?;
+    if let Err(e) = results.1 {
+        error!("Failed to create thumbnail: {}", e);
     }
 
     Ok(())

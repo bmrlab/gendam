@@ -1,4 +1,4 @@
-use prisma_lib::{asset_object, file_path, media_data, new_client_with_url, PrismaClient};
+use prisma_lib::{asset_object, file_path, new_client_with_url, PrismaClient};
 use std::path::PathBuf;
 
 async fn copy_data_from_legacy_db(
@@ -30,29 +30,32 @@ async fn copy_data_from_legacy_db(
                     .create(
                         data.hash,
                         data.size,
-                        vec![asset_object::mime_type::set(data.mime_type)],
-                    )
-                    .exec()
-                    .await?;
-            }
-            // media_data
-            let legacy_media_data = legacy_client.media_data().find_many(vec![]).exec().await?;
-            for data in legacy_media_data {
-                client
-                    .media_data()
-                    .create(
-                        data.asset_object_id,
                         vec![
-                            media_data::width::set(data.width),
-                            media_data::height::set(data.height),
-                            media_data::duration::set(data.duration),
-                            media_data::bit_rate::set(data.bit_rate),
-                            media_data::has_audio::set(data.has_audio),
+                            asset_object::mime_type::set(data.mime_type),
+                            asset_object::media_data::set(data.media_data),
                         ],
                     )
                     .exec()
                     .await?;
             }
+            // media_data
+            // let legacy_media_data = legacy_client.media_data().find_many(vec![]).exec().await?;
+            // for data in legacy_media_data {
+            //     client
+            //         .media_data()
+            //         .create(
+            //             data.asset_object_id,
+            //             vec![
+            //                 media_data::width::set(data.width),
+            //                 media_data::height::set(data.height),
+            //                 media_data::duration::set(data.duration),
+            //                 media_data::bit_rate::set(data.bit_rate),
+            //                 media_data::has_audio::set(data.has_audio),
+            //             ],
+            //         )
+            //         .exec()
+            //         .await?;
+            // }
             // file_path
             let legacy_file_paths = legacy_client.file_path().find_many(vec![]).exec().await?;
             for data in legacy_file_paths {

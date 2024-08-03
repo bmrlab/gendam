@@ -1,4 +1,4 @@
-import { SUPPORTED_IMAGE_CONTENT_TYPES, SUPPORTED_VIDEO_CONTENT_TYPES } from '@/constants'
+import { SUPPORTED_CONTENT_TYPES } from '@/constants'
 
 export const filterFiles = (files: string[]) => {
   const supportedFiles: string[] = []
@@ -7,7 +7,7 @@ export const filterFiles = (files: string[]) => {
   files.forEach((file) => {
     const extension = file.split('.').pop()?.toLowerCase()
     if (extension) {
-      if (SUPPORTED_VIDEO_CONTENT_TYPES.has(extension) || SUPPORTED_IMAGE_CONTENT_TYPES.has(extension)) {
+      if (SUPPORTED_CONTENT_TYPES.has(extension)) {
         supportedFiles.push(file)
       } else {
         unsupportedExtensionsSet.add(extension)

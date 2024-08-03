@@ -60,8 +60,7 @@ function SearchPage() {
     items: items
       ? items.map((item) => ({
           type: 'SearchResult',
-          filePath: item.filePath,
-          metadata: item.metadata,
+          ...item,
         }))
       : null,
     settings: {
@@ -79,14 +78,7 @@ function SearchPage() {
   }, [searchQuery.isSuccess, searchQuery.data, resetSelectedItems])
 
   const contextMenu = (data: ExplorerItem) => {
-    return data.type === 'SearchResult' ? (
-      <SearchItemContextMenu
-        data={{
-          filePath: data.filePath,
-          metadata: data.metadata,
-        }}
-      />
-    ) : null
+    return data.type === 'SearchResult' ? <SearchItemContextMenu data={data} /> : null
   }
 
   const ToolBar = () => {
@@ -114,7 +106,7 @@ function SearchPage() {
             <span>&quot;{requestPayload.filePath.name}&quot;</span>
             <span className="relative inline-block h-6 w-6">
               <Image
-                src={currentLibrary.getThumbnailSrc(
+                src={currentLibrary.getVideoPreviewSrc(
                   requestPayload.filePath.assetObject?.hash!,
                   Math.floor(requestPayload.timestamp / 1000),
                 )}

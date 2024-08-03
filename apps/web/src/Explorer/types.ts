@@ -1,15 +1,13 @@
-import type { FilePath, SearchResultMetadata } from '@/lib/bindings'
+import type { FilePath, SearchResultPayload } from '@/lib/bindings'
 
 export type ExplorerItem =
   | {
       type: 'FilePath'
       filePath: FilePath
     }
-  | {
+  | ({
       type: 'SearchResult'
-      filePath: FilePath
-      metadata: SearchResultMetadata
-    }
+    } & SearchResultPayload)
   | {
       // ensure there is no default case
       type: 'Unknown'

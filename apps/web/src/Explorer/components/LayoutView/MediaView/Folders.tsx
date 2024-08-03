@@ -1,6 +1,5 @@
 'use client'
 import { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
-import FileThumb from '@/Explorer/components/View/FileThumb'
 import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
@@ -10,6 +9,7 @@ import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 import { type WithFilePathExplorerItem } from './index'
+import ThumbItem from '../../View/ThumbItem'
 
 const DroppableInner: React.FC<{ data: WithFilePathExplorerItem }> = ({ data }) => {
   const explorer = useExplorerContext()
@@ -23,7 +23,7 @@ const DroppableInner: React.FC<{ data: WithFilePathExplorerItem }> = ({ data }) 
   return (
     <>
       <div className={classNames('mb-1 h-28 w-28 rounded-lg p-2', highlight ? 'bg-app-hover' : null)}>
-        <FileThumb data={data} className="h-full w-full" />
+        <ThumbItem data={data} className="h-full w-full" variant='media' />
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
         <div className="w-28">

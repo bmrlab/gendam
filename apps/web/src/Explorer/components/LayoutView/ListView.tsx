@@ -1,17 +1,17 @@
 'use client'
 import { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
-import FileThumb from '@/Explorer/components/View/FileThumb'
 import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { uniqueId, type ExplorerItem } from '@/Explorer/types'
 // import { useCurrentLibrary } from '@/lib/library'
-import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { formatBytes, formatDateTime } from '@/lib/utils'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { HTMLAttributes, useCallback, useMemo, useState } from 'react'
+import ThumbItem from '../View/ThumbItem'
+import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 
 type WithFilePathExplorerItem = Extract<ExplorerItem, { type: 'FilePath' | 'SearchResult' }>
 
@@ -49,7 +49,7 @@ const DroppableInner: React.FC<
       )}
     >
       <div className="h-8 w-8">
-        <FileThumb data={data} className="h-full w-full" />
+        <ThumbItem data={data} className="h-full w-full" variant='list' />
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
         <div className="max-w-96 flex-1">

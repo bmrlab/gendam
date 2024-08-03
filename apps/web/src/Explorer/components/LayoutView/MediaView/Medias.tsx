@@ -1,14 +1,14 @@
 'use client'
+import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
-import FileThumb from '@/Explorer/components/View/FileThumb'
 import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { uniqueId } from '@/Explorer/types'
-import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import classNames from 'classnames'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import ThumbItem from '../../View/ThumbItem'
 import { type WithFilePathExplorerItem } from './index'
 
 type ItemWithSize = {
@@ -41,7 +41,7 @@ const DroppableInner: React.FC<ItemWithSize> = ({ data, width, height }) => {
         className={classNames('mb-1', highlight ? 'bg-app-hover' : null)}
         style={{ width: `100%`, height: `${height}px` }}
       >
-        <FileThumb data={data} className="h-full w-full" />
+        <ThumbItem data={data} className="h-full w-full" variant="media" />
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
         <div>
@@ -130,8 +130,11 @@ export default function Medias({ items }: { items: WithFilePathExplorerItem[] })
     let itemsWithSize: ItemWithSize[] = []
     let queue: ItemWithSize[] = []
     for (let data of items) {
-      const mediaWidth = data.filePath.assetObject?.mediaData?.width || 100 // px
-      const mediaHeight = data.filePath.assetObject?.mediaData?.height || 100 // px
+      // TODO 先写死，后续支持多种不同文件类型
+      // const mediaWidth = data.filePath.assetObject?.mediaData?.width || 100 // px
+      // const mediaHeight = data.filePath.assetObject?.mediaData?.height || 100 // px
+      const mediaWidth = 100 // px
+      const mediaHeight = 100 // px
       /* 高度 100px, 宽度 100 ~ 300 px */
       const height = 150
       const width = Math.min(Math.min(450, containerWidth), Math.max(100, (height * mediaWidth) / mediaHeight))

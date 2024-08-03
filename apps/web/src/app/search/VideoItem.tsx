@@ -1,13 +1,13 @@
 'use client'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks'
-import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { useCurrentLibrary } from '@/lib/library'
 import { formatDuration } from '@/lib/utils'
 import classNames from 'classnames'
 import Image from 'next/image'
 import { useCallback, useMemo } from 'react'
 import { type ItemWithSize } from './SearchResults'
+import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 
 const VideoItem: React.FC<ItemWithSize> = ({ data, width, height, frames }) => {
   const explorer = useExplorerContext()
@@ -24,9 +24,10 @@ const VideoItem: React.FC<ItemWithSize> = ({ data, width, height, frames }) => {
     quickViewStore.open({
       name: filePath.name,
       assetObject: filePath.assetObject!,
-      video: {
+      params: {
+        contentType: 'Video',
         currentTime: metadata.startTime / 1e3,
-      },
+      }
     })
   }, [quickViewStore, filePath, metadata])
 
@@ -61,7 +62,7 @@ const VideoItem: React.FC<ItemWithSize> = ({ data, width, height, frames }) => {
           {frames.map((frame, index) => (
             <div key={index} className="visible relative flex-1 bg-neutral-100">
               <Image
-                src={currentLibrary.getThumbnailSrc(filePath.assetObject?.hash!, frame)}
+                src={currentLibrary.getVideoPreviewSrc(filePath.assetObject?.hash!, frame)}
                 alt={filePath.name}
                 fill={true}
                 className="object-cover"

@@ -12,7 +12,6 @@ import AudioDialog from '@/components/Audio/AudioDialog'
 import Inspector from '@/components/Inspector'
 import Viewport from '@/components/Viewport'
 import { rspc } from '@/lib/rspc'
-import { type FilePath } from '@/lib/bindings'
 import { Drop_To_Folder } from '@gendam/assets/images'
 import { RSPCError } from '@rspc/client'
 import Image from 'next/image'
@@ -22,6 +21,7 @@ import Footer from './_components/Footer'
 import Header from './_components/Header'
 import ItemContextMenu from './_components/ItemContextMenu'
 import { useInspector } from '@/components/Inspector/store'
+import { FilePath } from '@/lib/bindings'
 
 export default function ExplorerPage() {
   // const explorerStore = useExplorerStore()

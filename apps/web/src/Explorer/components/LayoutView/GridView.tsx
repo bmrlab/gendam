@@ -1,16 +1,16 @@
 'use client'
 import { useExplorerDroppableContext } from '@/Explorer/components/Draggable/ExplorerDroppable'
-import FileThumb from '@/Explorer/components/View/FileThumb'
 import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { uniqueId, type ExplorerItem } from '@/Explorer/types'
-import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 // import { useCurrentLibrary } from '@/lib/library'
+import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { HTMLAttributes, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import ThumbItem from '../View/ThumbItem'
 // import styles from './GridView.module.css'
 
 type WithFilePathExplorerItem = Extract<ExplorerItem, { type: 'FilePath' | 'SearchResult' }>
@@ -41,7 +41,7 @@ const DroppableInner: React.FC<
   return (
     <div {...props}>
       <div className={classNames('mb-1 h-28 w-full rounded-lg p-2', highlight ? 'bg-app-hover' : null)}>
-        <FileThumb data={data} className="h-full w-full" />
+        <ThumbItem data={data} className="h-full w-full" variant="grid" />
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
         <div>

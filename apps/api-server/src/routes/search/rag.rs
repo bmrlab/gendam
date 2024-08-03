@@ -2,10 +2,8 @@ use super::search::{retrieve_assets_for_search, SearchResultPayload};
 use crate::ai::AIHandler;
 use ai::llm::{LLMInferenceParams, LLMMessage};
 use content_base::{
-    audio::transcript::AudioTranscriptTrait,
-    query::{RAGPayload, SearchResult},
-    video::transcript::VideoTranscriptTask,
-    ContentBase, FileInfo,
+    audio::transcript::AudioTranscriptTrait, query::VideoRAGPayload,
+    video::transcript::VideoTranscriptTask, ContentBase, FileInfo,
 };
 use content_library::Library;
 use serde::{Deserialize, Serialize};
@@ -34,22 +32,11 @@ pub async fn rag_with_video(
     input: RAGRequestPayload,
     tx: Sender<RAGResult>,
 ) -> anyhow::Result<()> {
-    let payload = RAGPayload::new(&input.query);
-    let references = content_base.retrieval(payload).await?;
+    let payload = VideoRAGPayload::new(&input.query);
+    let references = content_base.retrieval_video(payload).await?;
 
-    let results = retrieve_assets_for_search(
-        library,
-        references
-            .iter()
-            .map(|v| SearchResult {
-                file_identifier: v.file_identifier.clone(),
-                start_timestamp: v.chunk_start_timestamp.clone(),
-                end_timestamp: v.chunk_end_timestamp.clone(),
-                score: v.score.clone(),
-            })
-            .collect(),
-    )
-    .await?;
+    let results =
+        retrieve_assets_for_search(library, references.iter().map(|v| v.into()).collect()).await?;
 
     for ref_item in results.into_iter() {
         tx.send(RAGResult::Reference(ref_item)).await?;

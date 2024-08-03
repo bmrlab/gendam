@@ -1,7 +1,12 @@
-use crate::ai::AIHandler;
 use crate::error::sql_error;
-use content_base::{query::{payload::SearchRecordType, QueryPayload, SearchResult}, ContentBase};
-use content_library::{Library, QdrantServerInfo};
+use content_base::{
+    query::{
+        payload::{SearchRecordType, SearchResult},
+        QueryPayload,
+    },
+    ContentBase,
+};
+use content_library::Library;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -14,11 +19,47 @@ pub struct SearchRequestPayload {
 
 #[derive(Serialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct SearchResultMetadata {
-    // #[serde(rename = "startTime")]
+pub struct VideoSearchResultMetadata {
     pub start_time: i32,
     pub end_time: i32,
-    pub score: f32,
+}
+
+#[derive(Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioSearchResultMetadata {
+    pub start_time: i32,
+    pub end_time: i32,
+}
+
+#[derive(Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageSearchResultMetadata;
+
+#[derive(Serialize, Type)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum SearchResultMetadata {
+    Video(VideoSearchResultMetadata),
+    Audio(AudioSearchResultMetadata),
+    Image(ImageSearchResultMetadata),
+}
+
+impl From<&content_base::query::payload::SearchResultMetadata> for SearchResultMetadata {
+    fn from(metadata: &content_base::query::payload::SearchResultMetadata) -> Self {
+        match metadata {
+            content_base::query::payload::SearchResultMetadata::Audio(metadata) => {
+                Self::Audio(AudioSearchResultMetadata {
+                    start_time: metadata.start_timestamp as i32,
+                    end_time: metadata.end_timestamp as i32,
+                })
+            }
+            content_base::query::payload::SearchResultMetadata::Video(metadata) => {
+                Self::Video(VideoSearchResultMetadata {
+                    start_time: metadata.start_timestamp as i32,
+                    end_time: metadata.end_timestamp as i32,
+                })
+            }
+        }
+    }
 }
 
 #[derive(Serialize, Type)]
@@ -26,6 +67,7 @@ pub struct SearchResultMetadata {
 pub struct SearchResultPayload {
     pub file_path: prisma_lib::file_path::Data,
     pub metadata: SearchResultMetadata,
+    pub score: f32,
 }
 
 pub async fn search_all(
@@ -48,7 +90,8 @@ pub async fn search_all(
         }
     };
 
-    let payload = QueryPayload::new(&text);
+    let mut payload = QueryPayload::new(&text);
+    payload.with_record_type(&record_types);
     let res = content_base.query(payload).await;
     tracing::debug!("search result: {:?}", res);
 
@@ -85,7 +128,6 @@ pub async fn retrieve_assets_for_search(
             acc
         });
 
-    // println!("file_identifiers: {:?}", file_identifiers);
     let asset_objects = library
         .prisma_client()
         .asset_object()
@@ -99,12 +141,10 @@ pub async fn retrieve_assets_for_search(
                 ))
                 .take(1),
         )
-        .with(prisma_lib::asset_object::media_data::fetch())
         .exec()
         .await
         .map_err(sql_error)?;
 
-    // println!("tasks: {:?}", tasks);
     let mut tasks_hash_map =
         std::collections::HashMap::<String, &prisma_lib::asset_object::Data>::new();
     asset_objects.iter().for_each(|asset_object_data| {
@@ -117,16 +157,11 @@ pub async fn retrieve_assets_for_search(
         .filter_map(|search_result| {
             let SearchResult {
                 file_identifier,
-                start_timestamp,
-                end_timestamp,
+                metadata,
                 score,
                 ..
             } = search_result;
-            let metadata = SearchResultMetadata {
-                start_time: (*start_timestamp).clone(),
-                end_time: (*end_timestamp).clone(),
-                score: *score,
-            };
+
             let mut asset_object_data = match tasks_hash_map.get(file_identifier) {
                 Some(asset_object_data) => (**asset_object_data).clone(),
                 None => {
@@ -154,7 +189,8 @@ pub async fn retrieve_assets_for_search(
             };
             let result = SearchResultPayload {
                 file_path,
-                metadata,
+                metadata: metadata.into(),
+                score: *score,
             };
             Some(result)
         })

@@ -13,12 +13,11 @@
     "dev:api-server": "pnpm api-server dev",
     "dev:prep": "bash scripts/download-sidecar.sh && cargo prisma generate && pnpm tauri build --debug"
   },
-  "dependencies": {},
   "devDependencies": {
     "prettier": "^3.2.2",
     "prettier-plugin-organize-imports": "^3.2.3",
     "prettier-plugin-tailwindcss": "^0.5.11",
-    "typescript": "^5"
+    "typescript": "^5.5.4"
   },
   "engines": {
     "pnpm": ">=8.0.0",

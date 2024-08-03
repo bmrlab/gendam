@@ -1,6 +1,7 @@
 use crate::ContentBase;
 use content_base_pool::{TaskNotification, TaskPool, TaskPriority};
 use content_base_task::{
+    audio::{thumbnail::AudioThumbnailTask, waveform::AudioWaveformTask},
     video::{frame::VideoFrameTask, trans_chunk_sum_embed::VideoTransChunkSumEmbedTask},
     ContentTaskType, FileInfo, TaskRecord,
 };
@@ -59,13 +60,13 @@ impl ContentBase {
         }
 
         tokio::spawn(async move {
+            let file_info = FileInfo {
+                file_identifier: payload.file_identifier.clone(),
+                file_path: payload.file_path.clone(),
+            };
+
             match metadata {
                 ContentMetadata::Video(metadata) => {
-                    let file_info = FileInfo {
-                        file_identifier: payload.file_identifier,
-                        file_path: payload.file_path,
-                    };
-
                     if let Err(e) = run_task(
                         &task_pool,
                         &file_info,
@@ -93,12 +94,22 @@ impl ContentBase {
                     }
                 }
                 ContentMetadata::Audio(_metadata) => {
-                    todo!()
+                    if let Err(e) = run_task(
+                        &task_pool,
+                        &file_info,
+                        AudioWaveformTask,
+                        Some(TaskPriority::Normal),
+                        Some(notification_tx.clone()),
+                    )
+                    .await
+                    {
+                        warn!("failed to add task: {e:?}");
+                    }
                 }
                 ContentMetadata::Unknown => {
                     warn!(
                         "unknown metadata for {}, do not trigger any tasks",
-                        payload.file_identifier
+                        &payload.file_identifier
                     );
                 }
             }

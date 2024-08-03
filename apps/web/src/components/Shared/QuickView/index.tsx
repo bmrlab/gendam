@@ -1,29 +1,21 @@
-import { Video } from '@/components/Video'
-import { useCurrentLibrary } from '@/lib/library'
+import { AssetObjectType } from '@/lib/library'
 import Icon from '@gendam/ui/icons'
-import Image from 'next/image'
-import { useQuickViewStore, type QuickViewItem } from './store'
+import { match, P } from 'ts-pattern'
+import AudioQuickView from './Audio'
+import { useQuickViewStore } from './store'
+import VideoQuickView from './Video'
 
-const Player = ({ data }: { data: QuickViewItem }) => {
-  const currentLibrary = useCurrentLibrary()
-
-  return (
-    <div className="flex h-full w-full items-center justify-center">
-      {data.assetObject.mimeType?.includes('video/') ? (
-        <Video hash={data.assetObject.hash} />
-      ) : (
-        <div className="relative h-full w-full">
-          <Image
-            src={currentLibrary.getFileSrc(data.assetObject.hash)}
-            alt={data.assetObject.hash}
-            fill={true}
-            className="h-full w-full rounded-md object-contain object-center"
-            priority
-          />
-        </div>
-      )}
-    </div>
-  )
+function matchContentTypePattern<ContentType extends AssetObjectType>(contentType: ContentType) {
+  return {
+    assetObject: {
+      mediaData: {
+        contentType,
+      },
+    },
+    params: P.optional({
+      contentType,
+    }),
+  }
 }
 
 export default function QuickView() {
@@ -39,7 +31,17 @@ export default function QuickView() {
         <div className="absolute left-0 top-6 w-full overflow-hidden px-12 text-center font-medium text-white/90">
           <div className="truncate">{quickViewStore.data.name}</div>
         </div>
-        <Player data={quickViewStore.data} />
+
+        {match(quickViewStore.data)
+          .with(matchContentTypePattern('Video'), (data) => {
+            return <VideoQuickView data={data} />
+          })
+          .with(matchContentTypePattern('Audio'), (data) => {
+            return <AudioQuickView data={data} />
+          })
+          .otherwise(() => (
+            <>TODO</>
+          ))}
         <div
           className="absolute right-0 top-0 flex h-12 w-12 items-center justify-center p-2 hover:opacity-70"
           onClick={() => quickViewStore.close()}

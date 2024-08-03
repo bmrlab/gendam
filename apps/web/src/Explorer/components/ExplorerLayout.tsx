@@ -10,10 +10,14 @@ import { queryClient, rspc } from '@/lib/rspc'
 import { DragCancelEvent, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { HTMLAttributes, useCallback } from 'react'
 import Selecto from 'react-selecto'
+import { match, P } from 'ts-pattern'
 import { uniqueId, type ExplorerItem } from '../types'
 
-export default function ExplorerLayout({ renderLayout, ...props }: {
-  renderLayout?: () => JSX.Element,
+export default function ExplorerLayout({
+  renderLayout,
+  ...props
+}: {
+  renderLayout?: () => JSX.Element
 } & HTMLAttributes<HTMLDivElement>) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
@@ -107,25 +111,24 @@ export default function ExplorerLayout({ renderLayout, ...props }: {
   )
 
   function renderLayoutFromSettings() {
-    if (!explorer.items) {
-      return null
-    }
     function filtered<K extends ExplorerItem['type'], T extends Extract<ExplorerItem, K>>(
       items: ExplorerItem[],
       types: ExplorerItem['type'][],
     ): T[] {
       return items.filter((item) => types.includes(item.type)) as T[]
     }
-    switch (explorer.settings.layout) {
-      case 'grid':
-        return <GridView items={filtered(explorer.items, ['FilePath', 'SearchResult'])} />
-      case 'list':
-        return <ListView items={filtered(explorer.items, ['FilePath', 'SearchResult'])} />
-      case 'media':
-        return <MediaView items={filtered(explorer.items, ['FilePath', 'SearchResult'])} />
-      default:
-        return null
-    }
+
+    return match([explorer.settings.layout, explorer.items])
+      .with(['grid', P.nonNullable], ([_, items]) => {
+        return <GridView items={filtered(items, ['FilePath', 'SearchResult'])} />
+      })
+      .with(['list', P.nonNullable], ([_, items]) => {
+        return <ListView items={filtered(items, ['FilePath', 'SearchResult'])} />
+      })
+      .with(['media', P.nonNullable], ([_, items]) => {
+        return <MediaView items={filtered(items, ['FilePath', 'SearchResult'])} />
+      })
+      .otherwise(() => null)
   }
 
   if (!explorer.items || explorer.items.length === 0) {
@@ -137,11 +140,7 @@ export default function ExplorerLayout({ renderLayout, ...props }: {
   }
 
   return (
-    <div
-      data-selecto-container
-      onClick={() => explorer.resetSelectedItems()}
-      { ...props }
-    >
+    <div data-selecto-container onClick={() => explorer.resetSelectedItems()} {...props}>
       <DndContext onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
         {renderLayout ? renderLayout() : renderLayoutFromSettings()}
         <DragOverlay />
