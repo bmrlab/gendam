@@ -9,7 +9,7 @@ export default function AudioDetail({
   data,
   filePath,
 }: {
-  data: PickAssetObject<'Audio'>
+  data: PickAssetObject<'audio'>
   filePath: Omit<FilePath, 'assetObject'>
 }) {
   const { sortedTasks } = useSortedTasks(data)

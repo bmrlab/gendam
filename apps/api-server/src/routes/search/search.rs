@@ -1,7 +1,7 @@
-use crate::error::sql_error;
+use crate::{error::sql_error, routes::assets::types::FilePathWithAssetObjectData};
 use content_base::{
     query::{
-        payload::{SearchRecordType, SearchResult},
+        payload::{SearchResult, SearchResultData},
         QueryPayload,
     },
     ContentBase,
@@ -14,7 +14,6 @@ use specta::Type;
 #[serde(rename_all = "camelCase")]
 pub struct SearchRequestPayload {
     pub text: String,
-    pub record_type: String,
 }
 
 #[derive(Serialize, Type)]
@@ -40,22 +39,21 @@ pub struct ImageSearchResultMetadata;
 pub enum SearchResultMetadata {
     Video(VideoSearchResultMetadata),
     Audio(AudioSearchResultMetadata),
-    Image(ImageSearchResultMetadata),
 }
 
-impl From<&content_base::query::payload::SearchResultMetadata> for SearchResultMetadata {
-    fn from(metadata: &content_base::query::payload::SearchResultMetadata) -> Self {
+impl From<&content_base::query::payload::SearchMetadata> for SearchResultMetadata {
+    fn from(metadata: &content_base::query::payload::SearchMetadata) -> Self {
         match metadata {
-            content_base::query::payload::SearchResultMetadata::Audio(metadata) => {
-                Self::Audio(AudioSearchResultMetadata {
-                    start_time: metadata.start_timestamp as i32,
-                    end_time: metadata.end_timestamp as i32,
+            content_base::query::payload::SearchMetadata::Video(item) => {
+                SearchResultMetadata::Video(VideoSearchResultMetadata {
+                    start_time: item.start_timestamp as i32,
+                    end_time: item.end_timestamp as i32,
                 })
             }
-            content_base::query::payload::SearchResultMetadata::Video(metadata) => {
-                Self::Video(VideoSearchResultMetadata {
-                    start_time: metadata.start_timestamp as i32,
-                    end_time: metadata.end_timestamp as i32,
+            content_base::query::payload::SearchMetadata::Audio(item) => {
+                SearchResultMetadata::Audio(AudioSearchResultMetadata {
+                    start_time: item.start_timestamp as i32,
+                    end_time: item.end_timestamp as i32,
                 })
             }
         }
@@ -65,7 +63,7 @@ impl From<&content_base::query::payload::SearchResultMetadata> for SearchResultM
 #[derive(Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResultPayload {
-    pub file_path: prisma_lib::file_path::Data,
+    pub file_path: FilePathWithAssetObjectData,
     pub metadata: SearchResultMetadata,
     pub score: f32,
 }
@@ -76,22 +74,8 @@ pub async fn search_all(
     input: SearchRequestPayload,
 ) -> Result<Vec<SearchResultPayload>, rspc::Error> {
     let text = input.text.clone();
-    let record_types = match input.record_type {
-        s if s == "Transcript" => vec![SearchRecordType::Transcript],
-        s if s == "FrameCaption" => {
-            vec![SearchRecordType::Frame, SearchRecordType::FrameCaption]
-        }
-        s if s == "Frame" => vec![SearchRecordType::Frame, SearchRecordType::FrameCaption],
-        _ => {
-            return Err(rspc::Error::new(
-                rspc::ErrorCode::BadRequest,
-                "invalid record_type".to_string(),
-            ))
-        }
-    };
 
-    let mut payload = QueryPayload::new(&text);
-    payload.with_record_type(&record_types);
+    let payload = QueryPayload::new(&text);
     let res = content_base.query(payload).await;
     tracing::debug!("search result: {:?}", res);
 
@@ -106,21 +90,29 @@ pub async fn search_all(
         }
     };
 
-    let result = retrieve_assets_for_search(library, search_results).await?;
+    let result = retrieve_assets_for_search(library, &search_results, |item, file_path| {
+        SearchResultPayload {
+            file_path: file_path.clone().into(),
+            metadata: SearchResultMetadata::from(&item.metadata),
+            score: item.score,
+        }
+    })
+    .await?;
     Ok(result)
 }
 
-pub async fn retrieve_assets_for_search(
+pub async fn retrieve_assets_for_search<TOriginal, TTarget, TFnConvert>(
     library: &Library,
-    search_results: Vec<SearchResult>,
-) -> Result<Vec<SearchResultPayload>, rspc::Error> {
+    search_results: &[TOriginal],
+    convert: TFnConvert,
+) -> Result<Vec<TTarget>, rspc::Error>
+where
+    TOriginal: SearchResult,
+    TFnConvert: Fn(&TOriginal, &prisma_lib::file_path::Data) -> TTarget,
+{
     let file_identifiers = search_results
         .iter()
-        .map(
-            |SearchResult {
-                 file_identifier, ..
-             }| { file_identifier.clone() },
-        )
+        .map(|v| v.file_identifier().to_string())
         .fold(Vec::new(), |mut acc, x| {
             if !acc.contains(&x) {
                 acc.push(x);
@@ -155,19 +147,12 @@ pub async fn retrieve_assets_for_search(
     let results_with_asset = search_results
         .iter()
         .filter_map(|search_result| {
-            let SearchResult {
-                file_identifier,
-                metadata,
-                score,
-                ..
-            } = search_result;
-
-            let mut asset_object_data = match tasks_hash_map.get(file_identifier) {
+            let mut asset_object_data = match tasks_hash_map.get(search_result.file_identifier()) {
                 Some(asset_object_data) => (**asset_object_data).clone(),
                 None => {
                     tracing::error!(
                         "failed to find asset object data for file_identifier: {}",
-                        file_identifier
+                        search_result.file_identifier()
                     );
                     return None;
                 }
@@ -187,14 +172,16 @@ pub async fn retrieve_assets_for_search(
                     return None;
                 }
             };
-            let result = SearchResultPayload {
-                file_path,
-                metadata: metadata.into(),
-                score: *score,
-            };
+
+            // let result = SearchResultPayload {
+            //     file_path: file_path.into(),
+            //     metadata: search_result.metadata().into(),
+            //     score: search_result.score(),
+            // };
+            let result = convert(search_result, &file_path);
             Some(result)
         })
         .collect::<Vec<_>>();
 
-    return Ok(results_with_asset);
+    Ok(results_with_asset)
 }

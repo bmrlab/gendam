@@ -83,8 +83,8 @@ export default function Inspector({ data }: { data: FilePath | null }) {
           <FolderDetail data={data} />
         ) : data.assetObject ? (
           match(data.assetObject)
-            .with(matchContentTypePattern('Video'), (item) => <VideoDetail data={item} filePath={data} />)
-            .with(matchContentTypePattern('Audio'), (item) => <AudioDetail data={item} filePath={data} />)
+            .with(matchContentTypePattern('video'), (item) => <VideoDetail data={item} filePath={data} />)
+            .with(matchContentTypePattern('audio'), (item) => <AudioDetail data={item} filePath={data} />)
             .otherwise(() => <></>)
         ) : null
       ) : null}

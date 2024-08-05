@@ -1,12 +1,12 @@
+import { RetrievalResultPayload } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { formatDuration } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gendam/ui/v1/tabs'
 import Image from 'next/image'
-import { SearchResultPayload } from '../context'
 
 interface RAGReferenceItemProps {
-  item: SearchResultPayload
+  item: RetrievalResultPayload
 }
 
 export function RAGReferencePreview({ item }: RAGReferenceItemProps) {

@@ -9,7 +9,7 @@ export default function VideoDetail({
   data,
   filePath,
 }: {
-  data: PickAssetObject<'Video'>
+  data: PickAssetObject<'video'>
   filePath: Omit<FilePath, 'assetObject'>
 }) {
   const { sortedTasks } = useSortedTasks(data)

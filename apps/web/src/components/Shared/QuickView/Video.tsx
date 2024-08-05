@@ -1,7 +1,7 @@
 import { Video } from '@/components/FileView/Video'
 import { PickQuickViewItem } from './store'
 
-export default function VideoQuickView({ data }: { data: PickQuickViewItem<'Video'> }) {
+export default function VideoQuickView({ data }: { data: PickQuickViewItem<'video'> }) {
   return (
     <div className="flex h-full w-full items-center justify-center">
       <Video hash={data.assetObject.hash} />

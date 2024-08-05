@@ -1,3 +1,5 @@
+pub mod types;
+
 use crate::CtxWithLibrary;
 use prisma_client_rust::QueryError;
 use rspc::{Router, RouterBuilder};

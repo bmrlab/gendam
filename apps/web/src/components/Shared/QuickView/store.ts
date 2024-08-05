@@ -1,14 +1,15 @@
 import { PickAssetObject } from '@/components/FileThumb'
 import { ContentMetadataWithType, FilePath } from '@/lib/bindings'
+import { AssetObjectType } from '@/lib/library'
 import { create } from 'zustand'
 
 export type PreviewParams =
   | {
-      contentType: 'Video'
+      contentType: Extract<AssetObjectType, 'video'>
       currentTime: number // 初始时间，单位秒
     }
   | {
-      contentType: 'Audio'
+      contentType: Extract<AssetObjectType, 'audio'>
       currentTime: number // 初始时间，单位秒
     }
 

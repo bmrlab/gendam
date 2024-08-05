@@ -30,7 +30,7 @@ export default function FileThumb({
   variant: ThumbnailVariant
 }) {
   return match(data)
-    .with(matchContentTypePattern('Video'), (item) => <VideoThumb data={item} />)
-    .with(matchContentTypePattern('Audio'), (item) => <AudioThumb data={item} />)
+    .with(matchContentTypePattern('video'), (item) => <VideoThumb data={item} />)
+    .with(matchContentTypePattern('audio'), (item) => <AudioThumb data={item} />)
     .otherwise(() => <Image src={Document_Light} alt="document" fill={true} priority></Image>)
 }

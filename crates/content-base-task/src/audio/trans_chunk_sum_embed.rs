@@ -9,11 +9,9 @@ use crate::{
 };
 use async_trait::async_trait;
 use content_base_context::ContentBaseCtx;
-use qdrant_client::qdrant::{PointStruct, UpsertPointsBuilder};
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use storage_macro::Storage;
-use uuid::Uuid;
 
 #[async_trait]
 pub trait AudioTransChunkSumEmbedTrait: Into<ContentTaskType> + Storage + Clone {
@@ -26,10 +24,7 @@ pub trait AudioTransChunkSumEmbedTrait: Into<ContentTaskType> + Storage + Clone 
         ctx: &ContentBaseCtx,
         task_run_record: &mut crate::record::TaskRunRecord,
     ) -> anyhow::Result<()> {
-        let qdrant = ctx.qdrant();
         let chunks = self.chunk_task().chunk_content(file_info, ctx).await?;
-        let collection_name = ctx.language_collection_name();
-
         for chunk in chunks.iter() {
             let summarization = self
                 .sum_task()
@@ -44,27 +39,8 @@ pub trait AudioTransChunkSumEmbedTrait: Into<ContentTaskType> + Storage + Clone 
                 chunk.start_timestamp, chunk.end_timestamp, "json"
             ));
 
-            let embedding = ctx
-                .save_text_embedding(&summarization, &output_path)
+            ctx.save_text_embedding(&summarization, &output_path)
                 .await?;
-
-            // FIXME use correct payload and uuid
-            // let payload = ContentPayload::TranscriptChunkSummarization {
-            //     file_identifier: file_info.file_identifier.to_string(),
-            //     start_timestamp: chunk.start_timestamp,
-            //     end_timestamp: chunk.end_timestamp,
-            // };
-            let point = PointStruct::new(
-                Uuid::new_v4().to_string(),
-                embedding,
-                serde_json::Map::new(),
-            );
-            if let Err(e) = qdrant
-                .upsert_points(UpsertPointsBuilder::new(collection_name, vec![point]).wait(true))
-                .await
-            {
-                tracing::debug!("qdrant upsert error: {:?}", e);
-            }
         }
 
         Ok(())
@@ -83,6 +59,24 @@ pub trait AudioTransChunkSumEmbedTrait: Into<ContentTaskType> + Storage + Clone 
         json!({
             "model": ctx.text_embedding().expect("text embedding is set").1
         })
+    }
+
+    async fn embed_content(
+        &self,
+        file_info: &crate::FileInfo,
+        ctx: &ContentBaseCtx,
+        start_timestamp: i64,
+        end_timestamp: i64,
+    ) -> anyhow::Result<Vec<f32>> {
+        let task_type: ContentTaskType = self.clone().into();
+        let output_path = task_type
+            .task_output_path(file_info, ctx)
+            .await?
+            .join(format!("{}-{}.json", start_timestamp, end_timestamp,));
+        let content_str = self.read_to_string(output_path)?;
+        let embedding: Vec<f32> = serde_json::from_str(&content_str)?;
+
+        Ok(embedding)
     }
 }
 

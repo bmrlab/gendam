@@ -1,18 +1,16 @@
 'use client'
+
+import SearchResultItem from '@/components/SearchResult'
+import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks'
-import { useCurrentLibrary } from '@/lib/library'
-import { formatDuration } from '@/lib/utils'
 import classNames from 'classnames'
-import Image from 'next/image'
 import { useCallback, useMemo } from 'react'
 import { type ItemWithSize } from './SearchResults'
-import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 
-const VideoItem: React.FC<ItemWithSize> = ({ data, width, height, frames }) => {
+const SearchItem: React.FC<ItemWithSize> = ({ data, width, height }) => {
   const explorer = useExplorerContext()
   const quickViewStore = useQuickViewStore()
-  const currentLibrary = useCurrentLibrary()
 
   const { filePath, metadata } = data
 
@@ -25,9 +23,9 @@ const VideoItem: React.FC<ItemWithSize> = ({ data, width, height, frames }) => {
       name: filePath.name,
       assetObject: filePath.assetObject!,
       params: {
-        contentType: 'Video',
+        contentType: metadata.type,
         currentTime: metadata.startTime / 1e3,
-      }
+      },
     })
   }, [quickViewStore, filePath, metadata])
 
@@ -58,38 +56,10 @@ const VideoItem: React.FC<ItemWithSize> = ({ data, width, height, frames }) => {
         )}
         style={{ width: `${width}px`, height: `${height}px` }}
       >
-        <div className="flex h-full items-stretch justify-between">
-          {frames.map((frame, index) => (
-            <div key={index} className="visible relative flex-1 bg-neutral-100">
-              <Image
-                src={currentLibrary.getVideoPreviewSrc(filePath.assetObject?.hash!, frame)}
-                alt={filePath.name}
-                fill={true}
-                className="object-cover"
-                priority
-              ></Image>
-            </div>
-          ))}
-        </div>
-        <div
-          className={classNames(
-            'absolute left-0 top-0 flex h-full w-full flex-col justify-between bg-black/60 px-4 py-2 text-neutral-300',
-            'invisible group-hover:visible',
-          )}
-        >
-          <div className="truncate text-xs">
-            {filePath.materializedPath}
-            {filePath.name}
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <div>{formatDuration(metadata.startTime / 1000)}</div>
-            <div>→</div>
-            <div>{formatDuration(metadata.endTime / 1000 + 1)}</div>
-          </div>
-        </div>
+        <SearchResultItem data={data} />
       </div>
     </ViewItem>
   )
 }
 
-export default VideoItem
+export default SearchItem

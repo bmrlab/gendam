@@ -156,4 +156,33 @@ impl AudioDecoder {
 
         Ok(())
     }
+
+    pub fn save_whisper_format(&self, dest_path: impl AsRef<Path>) -> anyhow::Result<()> {
+        let output_path = self.get_actual_path(dest_path.as_ref().to_path_buf())?;
+
+        match std::process::Command::new(&self.ffmpeg_file_path)
+            .args([
+                "-i",
+                self.file_path.to_str().expect("invalid audio file path"),
+                "-vn",
+                "-ar",
+                // the rate must be 16KHz to fit whisper.cpp
+                "16000",
+                "-ac",
+                "1",
+                output_path.to_str().expect("invalid output path"),
+            ])
+            .output()
+        {
+            Ok(output) => {
+                if !output.status.success() {
+                    bail!("Failed to save whisper format");
+                }
+                Ok(())
+            }
+            Err(e) => {
+                bail!("Failed to save whisper format: {e}");
+            }
+        }
+    }
 }

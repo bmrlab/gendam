@@ -228,10 +228,10 @@ export default function ClientLayout({
       }
 
       const fileFullPath = match(assetObjectType)
-        .with('Audio', () => {
+        .with('audio', () => {
           return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
         })
-        .with('Video', () => {
+        .with('video', () => {
           if (typeof timestampInSecond === 'undefined' || timestampInSecond < 1) {
             return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
           }
@@ -239,7 +239,7 @@ export default function ClientLayout({
           return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/frames/${timestampInSecond}000.jpg`
         })
         .otherwise(() => {
-          return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.png`
+          return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
         })
 
       return _getFullSrc(fileFullPath)
@@ -270,7 +270,7 @@ export default function ClientLayout({
     (assetObjectHash: string) => {
       if (!library) return void 0
 
-      return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/waveform.json`
+      _getFullSrc(`${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/waveform.json`)
     },
     [library],
   )

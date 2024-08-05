@@ -1,5 +1,5 @@
 use content_library::Library;
-use prisma_lib::{asset_object, file_path};
+use prisma_lib::file_path;
 
 // #[tracing::instrument(level = "info")]
 pub async fn list_file_path(

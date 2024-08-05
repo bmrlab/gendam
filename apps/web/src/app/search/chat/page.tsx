@@ -6,8 +6,8 @@ import Icon from '@gendam/ui/icons'
 import { Button } from '@gendam/ui/v2/button'
 import { useEffect, useMemo, useState } from 'react'
 import Markdown from 'react-markdown'
-import { SearchResultPayload } from '../context'
 import { RAGReferenceList } from './ReferenceList'
+import { RetrievalResultPayload } from '@/lib/bindings'
 
 enum ResponseState {
   INIT,
@@ -21,7 +21,7 @@ enum ResponseState {
 export default function TestChatPage() {
   const [text, setText] = useState('')
   const [response, setResponse] = useState('')
-  const [referenceList, setReferenceList] = useState<SearchResultPayload[]>([])
+  const [referenceList, setReferenceList] = useState<RetrievalResultPayload[]>([])
   const [errorMessage, setErrorMessage] = useState<string | undefined>(void 0)
   const [responseState, setResponseState] = useState<ResponseState>(ResponseState.INIT)
 
@@ -38,7 +38,7 @@ export default function TestChatPage() {
     }
   }, [responseState])
 
-  rspc.useSubscription(['search.video_rag', { query: text }], {
+  rspc.useSubscription(['search.rag', { query: text }], {
     enabled: isChatting,
     onStarted: () => {
       setResponseState(ResponseState.FETCHING_REFERENCE)

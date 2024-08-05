@@ -8,7 +8,7 @@ use specta::Type;
 use video::VideoMetadata;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type)]
-#[serde(tag = "contentType")]
+#[serde(tag = "contentType", rename_all = "camelCase")]
 pub enum ContentMetadataWithType {
     Audio(AudioMetadata),
     Video(VideoMetadata),

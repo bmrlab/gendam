@@ -6,13 +6,18 @@ use crate::{
 use ai::AudioTranscriptOutput;
 use async_trait::async_trait;
 use content_base_context::ContentBaseCtx;
+use content_handler::audio::AudioDecoder;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use storage_macro::Storage;
 
 #[async_trait]
 pub trait AudioTranscriptTrait: Into<ContentTaskType> + Clone + Storage {
-    async fn audio_path(&self, file_info: &FileInfo, ctx: &ContentBaseCtx) -> anyhow::Result<PathBuf>;
+    async fn audio_path(
+        &self,
+        file_info: &FileInfo,
+        ctx: &ContentBaseCtx,
+    ) -> anyhow::Result<PathBuf>;
 
     async fn transcript_output(
         &self,
@@ -74,9 +79,11 @@ impl AudioTranscriptTrait for AudioTranscriptTask {
     async fn audio_path(
         &self,
         file_info: &FileInfo,
-        _ctx: &ContentBaseCtx,
+        ctx: &ContentBaseCtx,
     ) -> anyhow::Result<PathBuf> {
-        Ok(file_info.file_path.clone())
+        let artifacts_dir = ctx.artifacts_dir(&file_info.file_identifier);
+        let tmp_audio_path = artifacts_dir.join("tmp.wav");
+        Ok(tmp_audio_path)
     }
 }
 
@@ -92,8 +99,17 @@ impl ContentTask for AudioTranscriptTask {
         ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
+        let tmp_audio_path = self.audio_path(file_info, ctx).await?;
+        let audio_decoder = AudioDecoder::new(&file_info.file_path)?;
+        audio_decoder.save_whisper_format(&tmp_audio_path)?;
         self.run_audio_transcript(file_info, ctx, task_run_record)
-            .await
+            .await?;
+
+        if let Err(e) = self.remove_file(tmp_audio_path) {
+            tracing::warn!("failed to remove tmp audio file: {e}");
+        }
+
+        Ok(())
     }
 
     fn task_parameters(&self, ctx: &ContentBaseCtx) -> Value {

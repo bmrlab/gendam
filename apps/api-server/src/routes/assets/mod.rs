@@ -2,7 +2,7 @@ mod create;
 mod delete;
 mod process;
 mod read;
-mod types;
+pub mod types;
 mod update;
 mod utils;
 

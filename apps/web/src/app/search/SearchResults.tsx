@@ -1,20 +1,20 @@
 'use client'
+
 import { useExplorerContext } from '@/Explorer/hooks'
 import { uniqueId, type ExplorerItem } from '@/Explorer/types'
 import type { SearchResultPayload } from '@/lib/bindings'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import VideoItem from './VideoItem'
+import SearchItem from './SearchItem'
 
 type SearchResultExplorerItem = Extract<ExplorerItem, { type: 'SearchResult' }>
 
 export type ItemWithSize = {
-  data: SearchResultExplorerItem,
+  data: SearchResultExplorerItem
   width: number // width in px
   height: number // height in px
-  frames: number[] // frame timestamps
 }
 
-export default function SearchResults({ groupFrames }: { groupFrames: boolean }) {
+export default function SearchResults() {
   const ref = useRef<HTMLDivElement>(null)
   const gap = 10
   const padding = 0 // container 左右 padding
@@ -46,27 +46,21 @@ export default function SearchResults({ groupFrames }: { groupFrames: boolean })
     }
   }, [])
 
-  const framesWidth = useCallback(
-    (metadata: SearchResultPayload['metadata'], singleWidth: number) => {
-      const startTime = Math.floor(metadata.startTime / 1e3)
-      const endTime = Math.floor(metadata.endTime / 1e3)
-      const duration = endTime - startTime
-      let repeat = 1
-      let frames = [startTime]
-      if (!groupFrames || duration < 1) {
-        //
-      } else if (duration >= 1 && duration < 6) {
-        repeat = 2
-        frames = [startTime, endTime]
-      } else if (duration >= 6) {
-        repeat = 3
-        frames = [startTime, Math.floor((startTime + endTime) / 2), endTime]
-      }
-      const width = repeat * singleWidth
-      return { frames, width }
-    },
-    [groupFrames],
-  )
+  const framesWidth = useCallback((metadata: SearchResultPayload['metadata'], singleWidth: number) => {
+    const startTime = Math.floor(metadata.startTime / 1e3)
+    const endTime = Math.floor(metadata.endTime / 1e3)
+    const duration = endTime - startTime
+    let repeat = 1
+    if (duration < 1) {
+      //
+    } else if (duration >= 1 && duration < 6) {
+      repeat = 2
+    } else if (duration >= 6) {
+      repeat = 3
+    }
+    const width = repeat * singleWidth
+    return { width }
+  }, [])
 
   const itemsWithSize = useMemo<ItemWithSize[]>(() => {
     if (!containerWidth) {
@@ -77,7 +71,7 @@ export default function SearchResults({ groupFrames }: { groupFrames: boolean })
     let queue: ItemWithSize[] = []
     for (let data of items) {
       /* 单个 frame: 高度 100px, 宽度 150px */
-      const { frames, width } = framesWidth(data.metadata, 240)
+      const { width } = framesWidth(data.metadata, 240)
       const height = 160
       const maxTotalWidth = containerWidth - gap * (queue.length - 1)
       if (itemsTotalWidth + width > maxTotalWidth) {
@@ -91,7 +85,7 @@ export default function SearchResults({ groupFrames }: { groupFrames: boolean })
         queue.length = 0
       }
       itemsTotalWidth += width
-      queue.push({ data, width, height, frames })
+      queue.push({ data, width, height })
     }
     itemsWithSize = [...itemsWithSize, ...queue]
     return itemsWithSize
@@ -104,7 +98,7 @@ export default function SearchResults({ groupFrames }: { groupFrames: boolean })
       style={{ columnGap: `${gap}px`, rowGap: '30px' }}
     >
       {itemsWithSize.map((item: ItemWithSize, index: number) => (
-        <VideoItem key={uniqueId(item.data)} {...item}></VideoItem>
+        <SearchItem key={uniqueId(item.data)} {...item}></SearchItem>
       ))}
     </div>
   )

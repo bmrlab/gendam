@@ -2,11 +2,12 @@
 
 import { Button } from '@gendam/ui/v2/button'
 import { useState } from 'react'
-import { SearchResultPayload } from '../context'
 import { RAGReferenceContent, RAGReferencePreview } from './ReferenceResult'
+import { RetrievalResultPayload } from '@/lib/bindings'
+import RetrievalResultItem from '@/components/RAGResult'
 
 interface RAGReferenceListProps {
-  items: SearchResultPayload[]
+  items: RetrievalResultPayload[]
   isLoading: boolean
 }
 
@@ -28,7 +29,8 @@ export function RAGReferenceList({ items, isLoading }: RAGReferenceListProps) {
       >
         {items.map((item) => {
           const key = `${item.filePath.id}-${item.score}`
-          return expand ? <RAGReferenceContent key={key} item={item} /> : <RAGReferencePreview key={key} item={item} />
+          // return expand ? <RAGReferenceContent key={key} item={item} /> : <RAGReferencePreview key={key} item={item} />
+          return <RetrievalResultItem key={key} data={item} />
         })}
       </div>
     </div>

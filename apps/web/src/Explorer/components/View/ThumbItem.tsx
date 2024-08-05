@@ -5,7 +5,7 @@ import { Document_Light, Folder_Light } from '@gendam/assets/images'
 import classNames from 'classnames'
 import Image from 'next/image'
 
-type T = Extract<ExplorerItem, { filePath: FilePath }>
+type T = Extract<ExplorerItem, { type: 'FilePath' }>
 
 export default function ThumbItem({
   data,

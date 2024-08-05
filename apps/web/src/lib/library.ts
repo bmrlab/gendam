@@ -1,4 +1,4 @@
-import { ContentMetadataWithType, LibrarySettings } from '@/lib/bindings'
+import { ContentMetadataWithType, ContentTaskTypeSpecta, LibrarySettings, SearchResultMetadata } from '@/lib/bindings'
 import { ContextType, createContext, useContext } from 'react'
 
 export type Library = {
@@ -6,7 +6,10 @@ export type Library = {
   dir: string
 }
 
-export type AssetObjectType = ContentMetadataWithType['contentType']
+export type AssetObjectType =
+  | ContentMetadataWithType['contentType']
+  | SearchResultMetadata['type']
+  | ContentTaskTypeSpecta['contentType']
 
 type CurrentLibraryContext = {
   id: string

@@ -21,6 +21,8 @@ function matchContentTypePattern<ContentType extends AssetObjectType>(contentTyp
 export default function QuickView() {
   const quickViewStore = useQuickViewStore()
 
+  console.log(quickViewStore.data)
+
   // quickViewStore.show === true 的时候 quickViewStore.data 不会为空，这里只是为了下面 tsc 检查通过
   return quickViewStore.show && quickViewStore.data ? (
     <div className="fixed left-0 top-0 h-full w-full bg-black/50 px-20 py-10" onClick={() => quickViewStore.close()}>
@@ -33,10 +35,10 @@ export default function QuickView() {
         </div>
 
         {match(quickViewStore.data)
-          .with(matchContentTypePattern('Video'), (data) => {
+          .with(matchContentTypePattern('video'), (data) => {
             return <VideoQuickView data={data} />
           })
-          .with(matchContentTypePattern('Audio'), (data) => {
+          .with(matchContentTypePattern('audio'), (data) => {
             return <AudioQuickView data={data} />
           })
           .otherwise(() => (

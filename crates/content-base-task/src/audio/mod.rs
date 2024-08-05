@@ -18,7 +18,6 @@ use crate::task::ContentTaskType;
 
 #[derive(Clone, Debug, EnumIter, EnumString, strum_macros::Display, ContentTask, Storage)]
 #[strum(serialize_all = "kebab-case")]
-
 pub enum AudioTaskType {
     Thumbnail(AudioThumbnailTask),
     Waveform(AudioWaveformTask),
