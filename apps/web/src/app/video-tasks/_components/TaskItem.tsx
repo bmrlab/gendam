@@ -80,7 +80,7 @@ export default function VideoTaskItem({ videoFile, isSelect, handleSelect, ...pr
               <span className="truncate text-xs font-normal leading-4 opacity-60">Deleted</span>
             </div>
           )}
-          {mediaData?.contentType === 'Video' && (
+          {mediaData?.contentType === 'video' && (
             <div className="flex w-full items-center justify-between">
               <div className="flex items-center text-xs font-normal leading-4 opacity-60">
                 <span>{formatDuration(mediaData.duration ?? 0)}</span>

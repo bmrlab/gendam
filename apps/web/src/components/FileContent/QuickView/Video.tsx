@@ -1,10 +1,12 @@
 import { Video } from '@/components/FileView/Video'
-import { PickQuickViewItem } from './store'
+import { ExtractExplorerItem, ExtractExplorerItemWithType } from '@/Explorer/types'
 
-export default function VideoQuickView({ data }: { data: PickQuickViewItem<'video'> }) {
+export default function VideoQuickView({
+  assetObject,
+}: {assetObject: ExtractExplorerItemWithType<'video'>['assetObject']}) {
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Video hash={data.assetObject.hash} />
+      <Video hash={assetObject.hash} />
       {/* ) : (
         <div className="relative h-full w-full">
           <Image

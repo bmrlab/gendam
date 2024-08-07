@@ -56,7 +56,9 @@ function SearchPage() {
     items: items
       ? items.map((item) => ({
           type: 'SearchResult',
-          ...item,
+          filePaths: [item.filePath],
+          assetObject: item.filePath.assetObject!,
+          metadata: item.metadata,
         }))
       : null,
     settings: {

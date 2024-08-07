@@ -1,3 +1,5 @@
+import { matchRetrievalResult } from '@/Explorer/pattern'
+import { ExtractExplorerItem } from '@/Explorer/types'
 import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { formatDuration } from '@/lib/utils'
@@ -5,21 +7,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gendam/ui/v1/tabs'
 import classNames from 'classnames'
 import Image from 'next/image'
 import { match } from 'ts-pattern'
-import { matchRetrievalResultWithTaskPattern, PickRetrievalResult, PickRetrievalResultWithTask } from '.'
 
-export default function VideoRetrievalItem({ data }: { data: PickRetrievalResult<'video'> }) {
+export default function VideoRetrievalItem(props: ExtractExplorerItem<'RetrievalResult', 'video'>) {
   const currentLibrary = useCurrentLibrary()
+  const { assetObject, metadata } = props
 
-  return match(data)
-    .with(matchRetrievalResultWithTaskPattern('video', 'transChunkSumEmbed'), (item) => (
-      <VideoTranscriptItem data={item} />
-    ))
+  return match(props)
+    .with(matchRetrievalResult('video', 'transChunkSumEmbed'), (props) => <VideoTranscriptItem {...props} />)
     .otherwise(() => (
       <div className="relative h-full w-full">
         <div className="flex h-full items-stretch justify-between">
           <Image
-            src={currentLibrary.getThumbnailSrc(data.filePath.assetObject.hash, 'audio')}
-            alt={data.filePath.name}
+            src={currentLibrary.getThumbnailSrc(assetObject.hash, 'audio')}
+            alt={assetObject.hash}
             fill={true}
             className="object-cover"
             priority
@@ -32,28 +32,32 @@ export default function VideoRetrievalItem({ data }: { data: PickRetrievalResult
           )}
         >
           <div className="truncate text-xs">
-            {data.filePath.materializedPath}
-            {data.filePath.name}
+            {/* {filePath.materializedPath}
+            {filePath.name} */}
+            {assetObject.hash}
           </div>
           <div className="flex items-center justify-between text-xs">
-            <div>{formatDuration(data.metadata.startTime / 1000)}</div>
+            <div>{formatDuration(metadata.startTime / 1000)}</div>
             <div>→</div>
-            <div>{formatDuration(data.metadata.endTime / 1000 + 1)}</div>
+            <div>{formatDuration(metadata.endTime / 1000 + 1)}</div>
           </div>
         </div>
       </div>
     ))
 }
 
-function VideoTranscriptItem({ data }: { data: PickRetrievalResultWithTask<'video', 'transChunkSumEmbed'> }) {
+function VideoTranscriptItem({
+  assetObject,
+  metadata,
+}: ExtractExplorerItem<'RetrievalResult', 'video', 'transChunkSumEmbed'>) {
   const currentLibrary = useCurrentLibrary()
 
   const { data: summarization } = rspc.useQuery([
     'video.rag.transcript',
     {
-      hash: data.filePath.assetObject.hash,
-      startTimestamp: data.metadata.startTime,
-      endTimestamp: data.metadata.endTime,
+      hash: assetObject.hash,
+      startTimestamp: metadata.startTime,
+      endTimestamp: metadata.endTime,
       requestType: 'Summarization',
     },
   ])
@@ -62,9 +66,9 @@ function VideoTranscriptItem({ data }: { data: PickRetrievalResultWithTask<'vide
     [
       'video.rag.transcript',
       {
-        hash: data.filePath.assetObject?.hash!,
-        startTimestamp: data.metadata.startTime,
-        endTimestamp: data.metadata.endTime,
+        hash: assetObject.hash,
+        startTimestamp: metadata.startTime,
+        endTimestamp: metadata.endTime,
         requestType: 'Original',
       },
     ],
@@ -78,23 +82,20 @@ function VideoTranscriptItem({ data }: { data: PickRetrievalResultWithTask<'vide
       <div className="flex flex-col space-y-2">
         <div className="relative h-[200px] w-[280px]">
           <Image
-            src={currentLibrary.getVideoPreviewSrc(
-              data.filePath.assetObject?.hash!,
-              Math.floor(data.metadata.startTime / 1e3),
-            )}
+            src={currentLibrary.getVideoPreviewSrc(assetObject.hash, Math.floor(metadata.startTime / 1e3))}
             className="object-cover"
             fill
             priority
-            alt={data.filePath.name}
+            alt={assetObject.hash}
           />
         </div>
 
         <div className="flex flex-col items-start space-y-1 text-xs text-gray-600">
-          <span>{data.filePath.name}</span>
+          <span>{assetObject.hash}</span>
           <div className="flex items-center justify-start space-x-1">
-            <span>{formatDuration(data.metadata.startTime / 1e3)}</span>
+            <span>{formatDuration(metadata.startTime / 1e3)}</span>
             <span>→</span>
-            <span>{formatDuration(data.metadata.endTime / 1e3)}</span>
+            <span>{formatDuration(metadata.endTime / 1e3)}</span>
           </div>
         </div>
       </div>

@@ -1,29 +1,28 @@
+import { ExtractExplorerItem } from '@/Explorer/types'
 import { useCurrentLibrary } from '@/lib/library'
 import { formatDuration } from '@/lib/utils'
 import classNames from 'classnames'
 import Image from 'next/image'
 import { useMemo } from 'react'
-import { PickSearchResult } from '.'
 
-export default function VideoSearchItem({ data }: { data: PickSearchResult<'video'> }) {
+export default function VideoSearchItem({
+  assetObject,
+  metadata,
+}: ExtractExplorerItem<'SearchResult', 'video'>) {
   const currentLibrary = useCurrentLibrary()
 
   const frames = useMemo(() => {
-    const startTime = Math.floor(data.metadata.startTime / 1e3)
-    const endTime = Math.floor(data.metadata.endTime / 1e3)
+    const startTime = Math.floor(metadata.startTime / 1e3)
+    const endTime = Math.floor(metadata.endTime / 1e3)
     const duration = endTime - startTime
     if (duration >= 1 && duration < 6) {
       return [startTime, endTime]
     } else if (duration >= 6) {
-      return [
-        startTime,
-        Math.floor((startTime + endTime) / 2),
-        endTime,
-      ]
+      return [startTime, Math.floor((startTime + endTime) / 2), endTime]
     } else {
       return [startTime]
     }
-  }, [data])
+  }, [metadata])
 
   return (
     <div className="relative h-full w-full">
@@ -31,8 +30,8 @@ export default function VideoSearchItem({ data }: { data: PickSearchResult<'vide
         {frames.map((frame, index) => (
           <div key={index} className="visible relative flex-1 bg-neutral-100">
             <Image
-              src={currentLibrary.getVideoPreviewSrc(data.filePath.assetObject.hash, frame)}
-              alt={data.filePath.name}
+              src={currentLibrary.getVideoPreviewSrc(assetObject.hash, frame)}
+              alt={assetObject.hash}
               fill={true}
               className="object-cover"
               priority
@@ -47,13 +46,13 @@ export default function VideoSearchItem({ data }: { data: PickSearchResult<'vide
         )}
       >
         <div className="truncate text-xs">
-          {data.filePath.materializedPath}
-          {data.filePath.name}
+          {/* {filePath.materializedPath} */}
+          {assetObject.hash}
         </div>
         <div className="flex items-center justify-between text-xs">
-          <div>{formatDuration(data.metadata.startTime / 1000)}</div>
+          <div>{formatDuration(metadata.startTime / 1000)}</div>
           <div>→</div>
-          <div>{formatDuration(data.metadata.endTime / 1000 + 1)}</div>
+          <div>{formatDuration(metadata.endTime / 1000 + 1)}</div>
         </div>
       </div>
     </div>

@@ -1,12 +1,11 @@
 import { useExplorerContext } from '@/Explorer/hooks'
 import { useExplorerStore } from '@/Explorer/store'
-import { type ExplorerItem } from '@/Explorer/types'
+import { ExtractExplorerItem, type ExplorerItem } from '@/Explorer/types'
 import { useAudioDialog } from '@/components/Audio/AudioDialog'
 import { useInspector } from '@/components/Inspector/store'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { useMoveTargetSelected } from '@/hooks/useMoveTargetSelected'
 import { useOpenFileSelection } from '@/hooks/useOpenFileSelection'
-import { type FilePath } from '@/lib/bindings'
 import { queryClient, rspc } from '@/lib/rspc'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { useRouter } from 'next/navigation'
@@ -14,7 +13,7 @@ import { forwardRef, useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
 
 type ItemContextMenuProps = {
-  data: FilePath
+  data: ExplorerItem
 }
 
 const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuProps>(function ItemContextMenuComponent(
@@ -27,10 +26,9 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
 
-  const selectedFilePathItems = useMemo(() => {
-    type T = Extract<ExplorerItem, { type: 'FilePath' }>
-    const filtered = Array.from(explorer.selectedItems).filter((item) => item.type === 'FilePath') as T[]
-    return filtered.map((item) => item.filePath)
+  type T = ExtractExplorerItem<'FilePath'>
+  const selectedFilePathItems: T[] = useMemo(() => {
+    return Array.from(explorer.selectedItems).filter((item) => item.type === 'FilePath') as T[]
   }, [explorer.selectedItems])
 
   // Page Specific State and Context
@@ -60,12 +58,11 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       // e.stopPropagation()
       explorer.resetSelectedItems()
       explorerStore.reset()
-      if (data.isDir) {
-        let newPath = data.materializedPath + data.name + '/'
+      if (data.type === 'FilePath' && data.filePath.isDir) {
+        let newPath = data.filePath.materializedPath + data.filePath.name + '/'
         router.push('/explorer?dir=' + newPath)
-      } else if (data.assetObject) {
-        const { name, assetObject } = data
-        quickViewStore.open({ name, assetObject })
+      } else if (data.type !== 'Unknown' && data.assetObject) {
+        quickViewStore.open(data)
       }
     },
     [data, explorer, router, explorerStore, quickViewStore],
@@ -83,12 +80,12 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
       for (let item of selectedFilePathItems) {
         try {
           await deleteMut.mutateAsync({
-            materializedPath: item.materializedPath,
-            name: item.name,
+            materializedPath: item.filePath.materializedPath,
+            name: item.filePath.name,
           })
         } catch (error) {}
         queryClient.invalidateQueries({
-          queryKey: ['assets.list', { materializedPath: item.materializedPath }],
+          queryKey: ['assets.list', { materializedPath: item.filePath.materializedPath }],
         })
       }
       explorer.resetSelectedItems()
@@ -113,7 +110,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
           await metadataMut.mutateAsync(item.assetObject.id)
         } catch (error) {}
         queryClient.invalidateQueries({
-          queryKey: ['assets.list', { materializedPath: item.materializedPath }],
+          queryKey: ['assets.list', { materializedPath: item.filePath.materializedPath }],
         })
       }
     },
@@ -141,7 +138,7 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
   const handleShare = useCallback(
     (peerId: string) => {
       let idList = selectedFilePathItems.map((item) => {
-        return item.id
+        return item.filePath.id
       })
       p2pMut.mutate({ fileIdList: idList, peerId: peerId })
     },
@@ -150,7 +147,9 @@ const ItemContextMenu = forwardRef<typeof ContextMenu.Content, ItemContextMenuPr
 
   const handleUpload = useCallback(async () => {
     let hashes = selectedFilePathItems.map((s) => s.assetObject?.hash).filter((s) => !!s) as string[]
-    let materializedPaths = selectedFilePathItems.filter((s) => s.isDir).map((s) => `${s.materializedPath}${s.name}/`)
+    let materializedPaths = selectedFilePathItems
+      .filter((s) => s.filePath.isDir)
+      .map((s) => `${s.filePath.materializedPath}${s.filePath.name}/`)
     let payload = {
       hashes,
       materializedPaths,

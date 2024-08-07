@@ -1,18 +1,18 @@
+import { ExtractExplorerItem } from '@/Explorer/types'
 import { useCurrentLibrary } from '@/lib/library'
 import { formatDuration } from '@/lib/utils'
 import classNames from 'classnames'
 import Image from 'next/image'
-import { PickSearchResult } from '.'
 
-export default function AudioSearchItem({ data }: { data: PickSearchResult<'audio'> }) {
+export default function AudioSearchItem({ assetObject, metadata }: ExtractExplorerItem<'SearchResult','audio'>) {
   const currentLibrary = useCurrentLibrary()
 
   return (
     <div className="relative h-full w-full">
       <div className="flex h-full items-stretch justify-between">
         <Image
-          src={currentLibrary.getThumbnailSrc(data.filePath.assetObject.hash, 'audio')}
-          alt={data.filePath.name}
+          src={currentLibrary.getThumbnailSrc(assetObject.hash, 'audio')}
+          alt={assetObject.hash}
           fill={true}
           className="object-cover"
           priority
@@ -25,13 +25,14 @@ export default function AudioSearchItem({ data }: { data: PickSearchResult<'audi
         )}
       >
         <div className="truncate text-xs">
-          {data.filePath.materializedPath}
-          {data.filePath.name}
+          {/* {filePath.materializedPath}
+          {filePath.name} */}
+          {assetObject.hash}
         </div>
         <div className="flex items-center justify-between text-xs">
-          <div>{formatDuration(data.metadata.startTime / 1000)}</div>
+          <div>{formatDuration(metadata.startTime / 1000)}</div>
           <div>→</div>
-          <div>{formatDuration(data.metadata.endTime / 1000 + 1)}</div>
+          <div>{formatDuration(metadata.endTime / 1000 + 1)}</div>
         </div>
       </div>
     </div>

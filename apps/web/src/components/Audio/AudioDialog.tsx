@@ -1,5 +1,5 @@
 'use client'
-import { type FilePath } from '@/lib/bindings'
+import { ExtractExplorerItem } from '@/Explorer/types'
 import { Dialog } from '@gendam/ui/v2/dialog'
 import { useCallback } from 'react'
 import BatchExport from './AudioBatchExport'
@@ -31,10 +31,7 @@ export const useAudioDialog = () => {
   const setAudioDialogOpen = useAudioBoundStore.use.setIsOpenAudioDialog()
 
   const singleExport = useCallback(
-    (item: FilePath) => {
-      if (!item.assetObject) {
-        return
-      }
+    (item: ExtractExplorerItem<'FilePath'>) => {
       setAudioDialogProps({
         type: AudioDialogEnum.single,
         title: 'Export Transcript',
@@ -48,19 +45,19 @@ export const useAudioDialog = () => {
   )
 
   const batchExport = useCallback(
-    (items: FilePath[]) => {
+    (items: ExtractExplorerItem<'FilePath'>[]) => {
       items = items.filter(
-        (item) => item.assetObject?.mediaData?.contentType === 'Video' && !!item.assetObject.mediaData.audio,
+        (item) => item.assetObject.mediaData?.contentType === 'video' && !!item.assetObject.mediaData.audio,
       )
       // items.sort((a, b) => a.assetObject.id - b.assetObject.id)
       setAudioDialogProps({
         type: AudioDialogEnum.batch,
         title: 'Bulk Transcript Export',
         params: items.map((item) => ({
-          id: item.assetObject!.hash, // TODO: 这里回头要改成 assetObjectId, 但是对 audio export 功能改动较大
-          label: item.name,
-          assetObjectId: item.assetObject!.id,
-          assetObjectHash: item.assetObject!.hash,
+          id: item.assetObject.hash, // TODO: 这里回头要改成 assetObjectId, 但是对 audio export 功能改动较大
+          label: item.filePath.name,
+          assetObjectId: item.assetObject.id,
+          assetObjectHash: item.assetObject.hash,
         })),
       })
       setAudioDialogOpen(true)

@@ -5,14 +5,13 @@ import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
-import { uniqueId } from '@/Explorer/types'
+import { ExtractExplorerItem, uniqueId } from '@/Explorer/types'
 import classNames from 'classnames'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ThumbItem from '../../View/ThumbItem'
-import { type WithFilePathExplorerItem } from './index'
 
 type ItemWithSize = {
-  data: WithFilePathExplorerItem
+  data: ExtractExplorerItem<'FilePath'>
   width: number
   height: number
 }
@@ -64,7 +63,7 @@ const DroppableInner: React.FC<ItemWithSize> = ({ data, width, height }) => {
 
 const MediaItem: React.FC<
   ItemWithSize & {
-    onSelect: (e: React.MouseEvent, data: WithFilePathExplorerItem) => void
+    onSelect: (e: React.MouseEvent, data: ExtractExplorerItem<'FilePath'>) => void
   }
 > = ({ data, onSelect, ...props }) => {
   const explorer = useExplorerContext()
@@ -75,9 +74,8 @@ const MediaItem: React.FC<
     (e: React.FormEvent<HTMLDivElement>) => {
       explorer.resetSelectedItems()
       explorerStore.reset()
-      if (data.filePath.assetObject) {
-        const { name, assetObject } = data.filePath
-        quickViewStore.open({ name, assetObject })
+      if (data.assetObject) {
+        quickViewStore.open(data)
       }
     },
     [data, explorer, explorerStore, quickViewStore],
@@ -90,7 +88,7 @@ const MediaItem: React.FC<
   )
 }
 
-export default function Medias({ items }: { items: WithFilePathExplorerItem[] }) {
+export default function Medias({ items }: { items: ExtractExplorerItem<'FilePath'>[] }) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
@@ -157,7 +155,7 @@ export default function Medias({ items }: { items: WithFilePathExplorerItem[] })
   }, [containerWidth, items])
 
   const onSelect = useCallback(
-    (e: React.MouseEvent, data: WithFilePathExplorerItem) => {
+    (e: React.MouseEvent, data: ExtractExplorerItem<'FilePath'>) => {
       // 只处理 medias 的选择
       const selectIndex = items.indexOf(data)
       if (e.metaKey) {

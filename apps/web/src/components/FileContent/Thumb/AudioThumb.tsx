@@ -1,12 +1,14 @@
-'use client'
-
+import { ExtractExplorerItemWithType } from '@/Explorer/types'
 import { useCurrentLibrary } from '@/lib/library'
 import Image from 'next/image'
-import { PickAssetObject } from '.'
 
-type T = PickAssetObject<'audio'>
-
-export default function AudioThumb({ data, className }: { data: T; className?: string }) {
+export default function AudioThumb({
+  data,
+  className,
+}: {
+  data: ExtractExplorerItemWithType<'audio'>['assetObject']
+  className?: string
+}) {
   const currentLibrary = useCurrentLibrary()
   return (
     <Image

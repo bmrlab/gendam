@@ -1,6 +1,6 @@
 'use client'
 
-import SearchResultItem from '@/components/SearchResult'
+import SearchResultItem from '@/components/FileContent/Search'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks'
@@ -12,22 +12,13 @@ const SearchItem: React.FC<ItemWithSize> = ({ data, width, height }) => {
   const explorer = useExplorerContext()
   const quickViewStore = useQuickViewStore()
 
-  const { filePath, metadata } = data
-
   const highlight = useMemo(() => {
     return explorer.isItemSelected(data)
   }, [data, explorer])
 
   const quickview = useCallback(() => {
-    quickViewStore.open({
-      name: filePath.name,
-      assetObject: filePath.assetObject!,
-      params: {
-        contentType: metadata.type,
-        currentTime: metadata.startTime / 1e3,
-      },
-    })
-  }, [quickViewStore, filePath, metadata])
+    quickViewStore.open(data)
+  }, [quickViewStore, data])
 
   const onSelect = useCallback(
     (e: React.MouseEvent) => {

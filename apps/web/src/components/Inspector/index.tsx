@@ -1,4 +1,6 @@
 'use client'
+import { matchExplorerItemWithType } from '@/Explorer/pattern'
+import { ExtractExplorerItem, RawFilePath } from '@/Explorer/types'
 import type { FileHandlerTask, FilePath } from '@/lib/bindings'
 import { formatDateTime } from '@/lib/utils'
 import { Folder_Light } from '@gendam/assets/images'
@@ -7,13 +9,12 @@ import { Button } from '@gendam/ui/v2/button'
 import Image from 'next/image'
 import { useEffect } from 'react'
 import { match } from 'ts-pattern'
-import { matchContentTypePattern } from '../FileThumb'
-import AudioDetail from './Audio'
+import AudioDetail from '../FileContent/Inspector/Audio'
+import VideoDetail from '../FileContent/Inspector/Video'
 import { useSortedTasks } from './hooks'
 import { useInspector } from './store'
-import VideoDetail from './Video'
 
-const FolderDetail = ({ data }: { data: FilePath }) => {
+const FolderDetail = ({ data }: { data: RawFilePath }) => {
   return (
     <div className="p-4">
       <div className="flex items-start justify-start">
@@ -56,9 +57,8 @@ export function TaskItemStatus({ task }: { task: FileHandlerTask }) {
   }
 }
 
-export default function Inspector({ data }: { data: FilePath | null }) {
+export default function Inspector({ data }: { data: ExtractExplorerItem<'FilePath'> | null }) {
   const inspector = useInspector()
-
   /**
    * listen to meta + I to toggle inspector
    * @todo 这个快捷键目前只是临时实现，之后应该统一的管理快捷键并且提供用户自定义的功能
@@ -77,14 +77,13 @@ export default function Inspector({ data }: { data: FilePath | null }) {
 
   return inspector.show ? (
     <div className="border-app-line h-full w-64 overflow-auto border-l">
-      {/* <div onClick={() => inspector.setShow(false)}>close</div> */}
       {data ? (
-        data.isDir ? (
-          <FolderDetail data={data} />
+        data.filePath.isDir ? (
+          <FolderDetail data={data.filePath} />
         ) : data.assetObject ? (
-          match(data.assetObject)
-            .with(matchContentTypePattern('video'), (item) => <VideoDetail data={item} filePath={data} />)
-            .with(matchContentTypePattern('audio'), (item) => <AudioDetail data={item} filePath={data} />)
+          match(data)
+            .with(matchExplorerItemWithType('video'), (props) => <VideoDetail {...props} />)
+            .with(matchExplorerItemWithType('audio'), (props) => <AudioDetail {...props} />)
             .otherwise(() => <></>)
         ) : null
       ) : null}

@@ -1,13 +1,13 @@
 'use client'
 
 import Viewport from '@/components/Viewport'
+import { ExtractExplorerItem } from '@/Explorer/types'
 import { rspc } from '@/lib/rspc'
 import Icon from '@gendam/ui/icons'
 import { Button } from '@gendam/ui/v2/button'
 import { useEffect, useMemo, useState } from 'react'
 import Markdown from 'react-markdown'
 import { RAGReferenceList } from './ReferenceList'
-import { RetrievalResultPayload } from '@/lib/bindings'
 
 enum ResponseState {
   INIT,
@@ -21,7 +21,7 @@ enum ResponseState {
 export default function TestChatPage() {
   const [text, setText] = useState('')
   const [response, setResponse] = useState('')
-  const [referenceList, setReferenceList] = useState<RetrievalResultPayload[]>([])
+  const [referenceList, setReferenceList] = useState<ExtractExplorerItem<'RetrievalResult'>[]>([])
   const [errorMessage, setErrorMessage] = useState<string | undefined>(void 0)
   const [responseState, setResponseState] = useState<ResponseState>(ResponseState.INIT)
 
@@ -45,7 +45,16 @@ export default function TestChatPage() {
     },
     onData: (result) => {
       if (result.result_type === 'Reference') {
-        setReferenceList((v) => [...v, result.data])
+        setReferenceList((v) => [
+          ...v,
+          {
+            type: 'RetrievalResult',
+            taskType: result.data.taskType,
+            assetObject: result.data.filePath.assetObject!,
+            score: result.data.score,
+            metadata: result.data.metadata,
+          },
+        ])
       } else if (result.result_type === 'Done') {
         setResponseState(ResponseState.DONE)
       } else if (result.result_type === 'Response') {
@@ -59,7 +68,7 @@ export default function TestChatPage() {
       }
     },
     onError: (err) => {
-      console.log(`chat on error: ${err}`)
+      console.error(`chat on error: ${err}`)
     },
   })
 

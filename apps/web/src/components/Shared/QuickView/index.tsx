@@ -1,27 +1,12 @@
-import { AssetObjectType } from '@/lib/library'
+import { matchExplorerItemWithType } from '@/Explorer/pattern'
 import Icon from '@gendam/ui/icons'
-import { match, P } from 'ts-pattern'
-import AudioQuickView from './Audio'
+import { match } from 'ts-pattern'
+import AudioQuickView from '../../FileContent/QuickView/Audio'
+import VideoQuickView from '../../FileContent/QuickView/Video'
 import { useQuickViewStore } from './store'
-import VideoQuickView from './Video'
-
-function matchContentTypePattern<ContentType extends AssetObjectType>(contentType: ContentType) {
-  return {
-    assetObject: {
-      mediaData: {
-        contentType,
-      },
-    },
-    params: P.optional({
-      contentType,
-    }),
-  }
-}
 
 export default function QuickView() {
   const quickViewStore = useQuickViewStore()
-
-  console.log(quickViewStore.data)
 
   // quickViewStore.show === true 的时候 quickViewStore.data 不会为空，这里只是为了下面 tsc 检查通过
   return quickViewStore.show && quickViewStore.data ? (
@@ -31,16 +16,12 @@ export default function QuickView() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute left-0 top-6 w-full overflow-hidden px-12 text-center font-medium text-white/90">
-          <div className="truncate">{quickViewStore.data.name}</div>
+          <div className="truncate">{quickViewStore.data.type === 'FilePath' && quickViewStore.data.filePath.name}</div>
         </div>
 
         {match(quickViewStore.data)
-          .with(matchContentTypePattern('video'), (data) => {
-            return <VideoQuickView data={data} />
-          })
-          .with(matchContentTypePattern('audio'), (data) => {
-            return <AudioQuickView data={data} />
-          })
+          .with(matchExplorerItemWithType('video'), (props) => <VideoQuickView {...props} />)
+          .with(matchExplorerItemWithType('audio'), (props) => <AudioQuickView {...props} />)
           .otherwise(() => (
             <>TODO</>
           ))}

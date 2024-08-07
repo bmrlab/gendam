@@ -35,14 +35,12 @@ where
             t(|ctx, hash: String| async move {
                 let library = ctx.library()?;
                 let content_base = ctx.content_base()?;
-                let video_path = library.file_path(&hash);
-                let artifacts_dir = library.relative_artifacts_path(&hash);
-                let qdrant_client = library.qdrant_client();
+                let file_path = library.file_path(&hash);
                 let path = VideoTranscriptTask
                     .task_output_path(
                         &FileInfo {
                             file_identifier: hash.clone(),
-                            file_path: video_path.clone(),
+                            file_path: file_path.clone(),
                         },
                         content_base.ctx(),
                     )

@@ -1,10 +1,14 @@
+import { ExtractExplorerItemWithType } from '@/Explorer/types'
 import { useCurrentLibrary } from '@/lib/library'
 import Image from 'next/image'
-import { PickAssetObject } from '.'
 
-type T = PickAssetObject<'video'>
-
-export default function VideoThumb({ data, className }: { data: T; className?: string }) {
+export default function VideoThumb({
+  data,
+  className,
+}: {
+  data: ExtractExplorerItemWithType<'video'>['assetObject']
+  className?: string
+}) {
   const currentLibrary = useCurrentLibrary()
   return (
     <Image

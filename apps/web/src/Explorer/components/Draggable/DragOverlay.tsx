@@ -1,11 +1,10 @@
 import { useExplorerStore } from '@/Explorer/store'
-import { type FilePath } from '@/lib/bindings'
-import { uniqueId, type ExplorerItem } from '@/Explorer/types'
+import { uniqueId } from '@/Explorer/types'
 import { DragOverlay as DragOverlayPrimitive, Modifier, type ClientRect } from '@dnd-kit/core'
 import { getEventCoordinates } from '@dnd-kit/utilities'
 import { Document_Light, Folder_Light } from '@gendam/assets/images'
 import Image from 'next/image'
-import { PropsWithChildren, useEffect, useMemo, useRef } from 'react'
+import { PropsWithChildren, useEffect, useRef } from 'react'
 
 const useSnapToCursorModifier = () => {
   const explorerStore = useExplorerStore()
@@ -52,7 +51,8 @@ export default function DragOverlay({ children }: PropsWithChildren) {
       {explorerStore.drag.items.map((data) => (
         <div key={uniqueId(data)} className="mb-2 flex w-60 items-center justify-start">
           <div className="h-6 w-6">
-            {(data.type === 'FilePath' || data.type === 'SearchResult') && data.filePath.isDir ? (
+            {(data.type === 'FilePath' && data.filePath.isDir) ||
+            (data.type === 'SearchResult' && data.filePaths.at(0)?.isDir) ? (
               <Image src={Folder_Light} alt="folder" priority></Image>
             ) : (
               <Image src={Document_Light} alt="document" priority></Image>
@@ -60,7 +60,11 @@ export default function DragOverlay({ children }: PropsWithChildren) {
           </div>
           <div className="ml-2 flex flex-1 justify-start overflow-hidden">
             <div className="truncate rounded-lg bg-blue-500 px-2 py-1 text-xs text-white">
-              {(data.type === 'FilePath' || data.type === 'SearchResult') ? data.filePath.name : uniqueId(data)}
+              {data.type === 'FilePath'
+                ? data.filePath.name
+                : data.type === 'SearchResult'
+                  ? data.filePaths.at(0)?.name
+                  : uniqueId(data)}
             </div>
           </div>
         </div>

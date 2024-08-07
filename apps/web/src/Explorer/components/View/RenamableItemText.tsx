@@ -2,16 +2,14 @@
 // import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { type FilePath } from '@/lib/bindings'
-import { type ExplorerItem } from '@/Explorer/types'
+import { ExtractExplorerItem, type ExplorerItem } from '@/Explorer/types'
 import { rspc, queryClient } from '@/lib/rspc'
 import { HTMLAttributes, useCallback, useEffect, useRef } from 'react'
 import classNames from 'classnames'
 
-type T = Extract<ExplorerItem, { filePath: FilePath }>
-
 export default function RenamableItemText({
   data, className
-}: HTMLAttributes<HTMLDivElement> & { data: T }) {
+}: HTMLAttributes<HTMLDivElement> & { data: ExtractExplorerItem<'FilePath'> }) {
   const explorerStore = useExplorerStore()
   // const explorer = useExplorerContext()
   const renameMut = rspc.useMutation(['assets.rename_file_path'])
