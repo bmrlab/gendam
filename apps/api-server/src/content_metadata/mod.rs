@@ -25,6 +25,9 @@ impl From<&ContentMetadata> for ContentMetadataWithType {
             ContentMetadata::Video(metadata) => ContentMetadataWithType::Video(metadata.into()),
             ContentMetadata::Image(metadata) => ContentMetadataWithType::Image(metadata.into()),
             ContentMetadata::Unknown => ContentMetadataWithType::Unknown,
+            _ => {
+                todo!()
+            }
         }
     }
 }

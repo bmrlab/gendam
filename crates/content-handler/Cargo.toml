@@ -19,3 +19,4 @@ ai = { path = "../ai" }
 infer = "0.15.0"
 byteorder = { version = "1.5.0" }
 image = { workspace = true }
+phf = { version = "0.11.2" }
