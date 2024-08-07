@@ -1,4 +1,6 @@
-use content_base::{audio::AudioTaskType, video::VideoTaskType, ContentTaskType};
+use content_base::{
+    audio::AudioTaskType, image::ImageTaskType, video::VideoTaskType, ContentTaskType,
+};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -25,11 +27,20 @@ pub enum AudioTaskTypeSpecta {
     TransChunkSumEmbed,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ImageTaskTypeSpecta {
+    Thumbnail,
+    Description,
+    DescEmbed,
+}
+
 #[derive(Clone, Debug, Type, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "contentType", content = "taskType")]
 pub enum ContentTaskTypeSpecta {
     Video(VideoTaskTypeSpecta),
     Audio(AudioTaskTypeSpecta),
+    Image(ImageTaskTypeSpecta),
 }
 
 impl From<ContentTaskType> for ContentTaskTypeSpecta {
@@ -72,6 +83,17 @@ impl From<ContentTaskType> for ContentTaskTypeSpecta {
                 }
                 AudioTaskType::TransChunkSumEmbed(_) => {
                     ContentTaskTypeSpecta::Audio(AudioTaskTypeSpecta::TransChunkSumEmbed)
+                }
+            },
+            ContentTaskType::Image(t) => match t {
+                ImageTaskType::Thumbnail(_) => {
+                    ContentTaskTypeSpecta::Image(ImageTaskTypeSpecta::Thumbnail)
+                }
+                ImageTaskType::Description(_) => {
+                    ContentTaskTypeSpecta::Image(ImageTaskTypeSpecta::Description)
+                }
+                ImageTaskType::DescEmbed(_) => {
+                    ContentTaskTypeSpecta::Image(ImageTaskTypeSpecta::DescEmbed)
                 }
             },
         }

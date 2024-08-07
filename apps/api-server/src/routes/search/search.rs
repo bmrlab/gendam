@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::{error::sql_error, routes::assets::types::FilePathWithAssetObjectData};
 use content_base::{
     query::{
@@ -32,13 +34,16 @@ pub struct AudioSearchResultMetadata {
 
 #[derive(Serialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct ImageSearchResultMetadata;
+pub struct ImageSearchResultMetadata {
+    data: i32,
+}
 
 #[derive(Serialize, Type)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SearchResultMetadata {
     Video(VideoSearchResultMetadata),
     Audio(AudioSearchResultMetadata),
+    Image(ImageSearchResultMetadata),
 }
 
 impl From<&content_base::query::payload::SearchMetadata> for SearchResultMetadata {
@@ -55,6 +60,9 @@ impl From<&content_base::query::payload::SearchMetadata> for SearchResultMetadat
                     start_time: item.start_timestamp as i32,
                     end_time: item.end_timestamp as i32,
                 })
+            }
+            content_base::query::payload::SearchMetadata::Image(_) => {
+                SearchResultMetadata::Image(ImageSearchResultMetadata { data: 0 })
             }
         }
     }

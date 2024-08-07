@@ -1,6 +1,7 @@
 use crate::{
     query::payload::{
-        audio::AudioSearchMetadata, video::VideoSearchMetadata, SearchMetadata, SearchPayload,
+        audio::AudioSearchMetadata, image::ImageSearchMetadata, video::VideoSearchMetadata,
+        SearchMetadata, SearchPayload,
     },
     ContentBase,
 };
@@ -13,6 +14,7 @@ use content_base_task::{
         waveform::AudioWaveformTask,
         AudioTaskType,
     },
+    image::{desc_embed::ImageDescEmbedTask, ImageTaskType},
     video::{
         frame::VideoFrameTask, trans_chunk::VideoTransChunkTask,
         trans_chunk_sum_embed::VideoTransChunkSumEmbedTask, VideoTaskType,
@@ -21,9 +23,15 @@ use content_base_task::{
 };
 use content_handler::file_metadata;
 use content_metadata::ContentMetadata;
-use qdrant_client::qdrant::{PointStruct, UpsertPointsBuilder};
+use qdrant_client::{
+    qdrant::{PointStruct, UpsertPointsBuilder},
+    Qdrant,
+};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use tokio::sync::mpsc::{self, Receiver};
 use tracing::warn;
 
@@ -122,6 +130,16 @@ impl ContentBase {
                     )
                     .await;
                 }
+                ContentMetadata::Image(_) => {
+                    run_task(
+                        &task_pool,
+                        &file_info,
+                        ImageDescEmbedTask,
+                        Some(TaskPriority::Normal),
+                        Some(inner_tx.clone()),
+                    )
+                    .await;
+                }
                 ContentMetadata::Unknown => {
                     warn!(
                         "unknown metadata for {}, do not trigger any tasks",
@@ -133,13 +151,24 @@ impl ContentBase {
 
         // 对 task notification 做进一步处理
         let ctx = self.ctx.clone();
+        let qdrant = self.qdrant.clone();
+        let language_collection_name = self.language_collection_name.clone();
+        let vision_collection_name = self.vision_collection_name.clone();
         tokio::spawn(async move {
             while let Some(notification) = inner_rx.recv().await {
                 let task_type = notification.task_type.clone();
                 let _ = notification_tx.send(notification).await;
 
                 // 对完成的任务进行后处理
-                task_post_process(&ctx, &file_info_clone, &task_type).await;
+                task_post_process(
+                    &ctx,
+                    &file_info_clone,
+                    &task_type,
+                    qdrant.clone(),
+                    language_collection_name.as_str(),
+                    vision_collection_name.as_str(),
+                )
+                .await;
             }
         });
 
@@ -176,11 +205,16 @@ async fn task_post_process(
     ctx: &ContentBaseCtx,
     file_info: &FileInfo,
     task_type: &ContentTaskType,
+    qdrant: Arc<Qdrant>,
+    language_collection_name: &str,
+    _vision_collection_name: &str,
 ) {
     match task_type {
         ContentTaskType::Video(VideoTaskType::TransChunkSumEmbed(_)) => {
             let _ = transcript_sum_embed_post_process(
                 ctx,
+                qdrant,
+                language_collection_name,
                 file_info,
                 VideoTransChunkTask,
                 VideoTransChunkSumEmbedTask,
@@ -191,12 +225,34 @@ async fn task_post_process(
         ContentTaskType::Audio(AudioTaskType::TransChunkSumEmbed(_)) => {
             let _ = transcript_sum_embed_post_process(
                 ctx,
+                qdrant,
+                language_collection_name,
                 file_info,
                 AudioTransChunkTask,
                 AudioTransChunkSumEmbedTask,
                 |start, end| AudioSearchMetadata::new(start, end),
             )
             .await;
+        }
+        ContentTaskType::Image(ImageTaskType::DescEmbed(task_type)) => {
+            if let Ok(embedding) = task_type.embed_content(file_info, ctx).await {
+                let payload = SearchPayload {
+                    file_identifier: file_info.file_identifier.clone(),
+                    task_type: task_type.clone().into(),
+                    metadata: SearchMetadata::Image(ImageSearchMetadata {}),
+                };
+
+                let point = PointStruct::new(payload.uuid().to_string(), embedding, payload);
+
+                if let Err(e) = qdrant
+                    .upsert_points(
+                        UpsertPointsBuilder::new(language_collection_name, vec![point]).wait(true),
+                    )
+                    .await
+                {
+                    warn!("failed to upsert points: {e:?}");
+                }
+            }
         }
         _ => {}
     }
@@ -205,6 +261,8 @@ async fn task_post_process(
 #[tracing::instrument(skip_all)]
 async fn transcript_sum_embed_post_process<T, TFn>(
     ctx: &ContentBaseCtx,
+    qdrant: Arc<Qdrant>,
+    collection_name: &str,
     file_info: &FileInfo,
     chunk_task: impl AudioTranscriptChunkTrait,
     embed_task: impl AudioTransChunkSumEmbedTrait + ContentTask,
@@ -214,9 +272,6 @@ where
     T: Into<SearchMetadata>,
     TFn: Fn(i64, i64) -> T,
 {
-    let qdrant = ctx.qdrant();
-    let collection_name = ctx.language_collection_name();
-
     let chunks = chunk_task.chunk_content(file_info, ctx).await?;
 
     for chunk in chunks.iter() {

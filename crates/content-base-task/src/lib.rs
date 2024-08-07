@@ -2,6 +2,7 @@ mod task;
 mod record;
 pub mod video;
 pub mod audio;
+pub mod image;
 mod traits;
 
 pub use task::*;

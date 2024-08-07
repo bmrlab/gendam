@@ -1,7 +1,9 @@
 pub mod audio;
+pub mod image;
 pub mod video;
 
 use audio::AudioMetadata;
+use image::ImageMetadata;
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumDiscriminants;
 use video::VideoMetadata;
@@ -13,6 +15,7 @@ use video::VideoMetadata;
 pub enum ContentMetadata {
     Audio(AudioMetadata),
     Video(VideoMetadata),
+    Image(ImageMetadata),
     Unknown,
 }
 

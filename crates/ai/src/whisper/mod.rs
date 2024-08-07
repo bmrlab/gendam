@@ -7,11 +7,9 @@ use std::convert::AsRef;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use storage_macro::Storage;
 use tracing::warn;
 mod language;
 
-#[derive(Storage)]
 pub struct Whisper {
     binary_path: PathBuf,
     model_path: PathBuf,
@@ -149,8 +147,8 @@ impl Whisper {
     ) -> anyhow::Result<WhisperResult> {
         let params = params.unwrap_or_default();
         let output_file_path = audio_file_path.as_ref().with_file_name("transcript");
-        let actual_audio_path = self.get_actual_path(audio_file_path.as_ref().to_path_buf())?;
-        let actual_output_path = self.get_actual_path(output_file_path.as_path().to_path_buf())?;
+        let actual_audio_path = audio_file_path.as_ref().to_path_buf();
+        let actual_output_path = output_file_path.as_path().to_path_buf();
 
         // let download = file_downloader::FileDownload::new(file_downloader::FileDownloadConfig {
         //     resources_dir: self.resources_dir.clone(),

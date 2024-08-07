@@ -24,3 +24,4 @@ content-base-context = { path = "../content-base-context" }
 global-variable = { path = "../global-variable" }
 content-metadata = { path = "../content-metadata" }
 async-recursion = { workspace = true }
+image = { workspace = true }
