@@ -1,7 +1,8 @@
 use crate::CtxWithLibrary;
 use content_base::{
-    audio::thumbnail::AudioThumbnailTask, upsert::UpsertPayload,
-    video::thumbnail::VideoThumbnailTask, ContentBase, ContentMetadata, ContentTask, FileInfo,
+    audio::thumbnail::AudioThumbnailTask, image::thumbnail::ImageThumbnailTask,
+    upsert::UpsertPayload, video::thumbnail::VideoThumbnailTask, ContentBase, ContentMetadata,
+    ContentTask, FileInfo,
 };
 use content_handler::{file_metadata, video::VideoDecoder};
 use content_library::Library;
@@ -175,10 +176,10 @@ pub async fn process_asset_metadata(
 
     let file_path = library.file_path(&asset_object_data.hash);
     let metadata = file_metadata(&file_path).map_err(|e| {
-        error!("failed to get video metadata: {e}");
+        error!("failed to get file metadata: {e}");
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
-            format!("failed to get video metadata: {}", e),
+            format!("failed to get file metadata: {}", e),
         )
     })?;
 
@@ -205,6 +206,7 @@ pub async fn process_asset_metadata(
     let thumbnail_handle = match metadata {
         ContentMetadata::Video(_) => VideoThumbnailTask.run(&file_info, content_base.ctx()),
         ContentMetadata::Audio(_) => AudioThumbnailTask.run(&file_info, content_base.ctx()),
+        ContentMetadata::Image(_) => ImageThumbnailTask.run(&file_info, content_base.ctx()),
         _ => Box::pin(async { Ok(()) }),
     };
 

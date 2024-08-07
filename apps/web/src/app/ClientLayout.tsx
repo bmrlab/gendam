@@ -222,25 +222,27 @@ export default function ClientLayout({
   }, [])
 
   const getThumbnailSrc = useCallback(
-    (assetObjectHash: string, assetObjectType: AssetObjectType, timestampInSecond?: number) => {
+    (assetObjectHash: string, assetObjectType: AssetObjectType) => {
       if (!library) {
         return '/images/empty.png'
       }
 
       const fileFullPath = match(assetObjectType)
-        .with('audio', () => {
-          return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
-        })
-        .with('video', () => {
-          if (typeof timestampInSecond === 'undefined' || timestampInSecond < 1) {
-            return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
-          }
-
-          return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/frames/${timestampInSecond}000.jpg`
-        })
-        .otherwise(() => {
-          return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
-        })
+        .with(
+          'audio',
+          () => `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`,
+        )
+        .with(
+          'video',
+          () => `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`,
+        )
+        .with(
+          'image',
+          () => `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.webp`,
+        )
+        .otherwise(
+          () => `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`,
+        )
 
       return _getFullSrc(fileFullPath)
     },

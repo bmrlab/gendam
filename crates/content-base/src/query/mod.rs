@@ -42,8 +42,8 @@ impl ContentBase {
     pub async fn query(&self, payload: QueryPayload) -> anyhow::Result<Vec<SearchResultData>> {
         let text_embedding = self.ctx.text_embedding()?.0;
         let multi_modal_embedding: TextEmbeddingModel = self.ctx.multi_modal_embedding()?.0.into();
-        let vision_collection_name = self.ctx.vision_collection_name();
-        let language_collection_name = self.ctx.language_collection_name();
+        let vision_collection_name = self.vision_collection_name.as_str();
+        let language_collection_name = self.language_collection_name.as_str();
 
         let clip_text_embedding = multi_modal_embedding
             .process_single(payload.query.clone())
@@ -60,7 +60,7 @@ impl ContentBase {
             )
             .with_payload(true);
 
-            self.ctx.qdrant().search_points(payload).await
+            self.qdrant.search_points(payload).await
         };
 
         let vision_search = async {
@@ -72,7 +72,7 @@ impl ContentBase {
             .with_payload(true)
             .score_threshold(0.2);
 
-            self.ctx.qdrant().search_points(payload).await
+            self.qdrant.search_points(payload).await
         };
 
         let (text_result, vision_result) = tokio::join!(text_search, vision_search);
@@ -97,7 +97,7 @@ impl ContentBase {
     /// 实现基于文本特征的基础召回
     pub async fn retrieve(&self, payload: QueryPayload) -> anyhow::Result<Vec<RetrievalResultData>> {
         let text_embedding = self.ctx.text_embedding()?.0;
-        let language_collection_name = self.ctx.language_collection_name();
+        let language_collection_name = self.language_collection_name.as_str();
         let text_model_embedding = text_embedding.process_single(payload.query.clone()).await?;
 
         let payload = SearchPointsBuilder::new(
@@ -107,7 +107,7 @@ impl ContentBase {
         )
         .with_payload(true);
 
-        let response = self.ctx.qdrant().search_points(payload).await?;
+        let response = self.qdrant.search_points(payload).await?;
 
         Ok(response
             .result

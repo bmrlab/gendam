@@ -1,3 +1,4 @@
+use crate::image::ImageTaskType;
 use crate::{audio::AudioTaskType, video::VideoTaskType};
 use content_base_derive::ContentTask;
 use serde::{Deserialize, Serialize};
@@ -16,6 +17,7 @@ pub struct FileInfo {
 pub enum ContentTaskType {
     Video(VideoTaskType),
     Audio(AudioTaskType),
+    Image(ImageTaskType),
 }
 
 impl fmt::Display for ContentTaskType {
@@ -23,6 +25,7 @@ impl fmt::Display for ContentTaskType {
         match self {
             ContentTaskType::Video(t) => write!(f, "video-{}", t),
             ContentTaskType::Audio(t) => write!(f, "audio-{}", t),
+            ContentTaskType::Image(t) => write!(f, "image-{}", t),
         }
     }
 }
@@ -46,6 +49,11 @@ impl TryFrom<&str> for ContentTaskType {
             value if value.starts_with("audio-") => {
                 AudioTaskType::try_from(&value["audio-".len()..])
                     .map(|v| ContentTaskType::Audio(v))
+                    .map_err(|e| anyhow::anyhow!(e))
+            }
+            value if value.starts_with("image-") => {
+                ImageTaskType::try_from(&value["image-".len()..])
+                    .map(|v| ContentTaskType::Image(v))
                     .map_err(|e| anyhow::anyhow!(e))
             }
             _ => Err(anyhow::anyhow!("invalid task type: {}", value)),

@@ -1,8 +1,10 @@
 pub mod audio;
 pub mod video;
+pub mod image;
 
 use audio::AudioSearchMetadata;
 use content_base_task::ContentTaskType;
+use image::ImageSearchMetadata;
 use qdrant_client::Payload;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -14,6 +16,7 @@ use video::VideoSearchMetadata;
 pub enum SearchMetadata {
     Video(VideoSearchMetadata),
     Audio(AudioSearchMetadata),
+    Image(ImageSearchMetadata)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

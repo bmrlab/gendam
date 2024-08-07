@@ -4,6 +4,7 @@ import { match } from 'ts-pattern'
 import AudioQuickView from '../../FileContent/QuickView/Audio'
 import VideoQuickView from '../../FileContent/QuickView/Video'
 import { useQuickViewStore } from './store'
+import ImageQuickView from '@/components/FileContent/QuickView/Image'
 
 export default function QuickView() {
   const quickViewStore = useQuickViewStore()
@@ -22,6 +23,7 @@ export default function QuickView() {
         {match(quickViewStore.data)
           .with(matchExplorerItemWithType('video'), (props) => <VideoQuickView {...props} />)
           .with(matchExplorerItemWithType('audio'), (props) => <AudioQuickView {...props} />)
+          .with(matchExplorerItemWithType('image'), (props) => <ImageQuickView {...props} />)
           .otherwise(() => (
             <>TODO</>
           ))}

@@ -4,11 +4,14 @@ pub mod query;
 pub mod task;
 pub mod upsert;
 
+use std::sync::Arc;
+
 pub use content_base_context::ContentBaseCtx;
 use content_base_pool::TaskPool;
 pub use content_base_pool::{TaskNotification, TaskStatus};
 pub use content_base_task::*;
 pub use content_metadata::ContentMetadata;
+use qdrant_client::Qdrant;
 
 pub mod metadata {
     pub use content_metadata::*;
@@ -18,6 +21,9 @@ pub mod metadata {
 pub struct ContentBase {
     ctx: ContentBaseCtx,
     task_pool: TaskPool,
+    pub qdrant: Arc<Qdrant>,
+    pub language_collection_name: String,
+    pub vision_collection_name: String,
 }
 
 #[cfg(test)]
@@ -58,12 +64,7 @@ mod test {
             .expect("qdrant build");
 
         // the artifacts_dir is relative to the storage root
-        let content_base = ContentBaseCtx::new(
-            Arc::new(qdrant),
-            "content-base-vision",
-            "content-base-language",
-            "gendam-test-artifacts",
-        );
+        let content_base = ContentBaseCtx::new("gendam-test-artifacts", "");
 
         // initialize AI models
         let whisper =
@@ -146,12 +147,7 @@ mod test {
             .expect("qdrant build");
 
         // the artifacts_dir is relative to the storage root
-        let ctx = ContentBaseCtx::new(
-            Arc::new(qdrant),
-            "content-base-vision",
-            "content-base-language",
-            "gendam-test-artifacts",
-        );
+        let ctx = ContentBaseCtx::new("gendam-test-artifacts", "");
 
         // initialize AI models
         let whisper =
@@ -188,7 +184,8 @@ mod test {
         let file_path = PathBuf::from_str("/Users/zhuo/Desktop/测试视频/4月1日.mp4")
             .expect("str should be valid path");
 
-        let content_base = ContentBase::new(&ctx).expect("content base created");
+        let content_base =
+            ContentBase::new(&ctx, Arc::new(qdrant), "", "").expect("content base created");
 
         let upsert_result = content_base
             .upsert(UpsertPayload::new(file_identifier.into(), file_path))

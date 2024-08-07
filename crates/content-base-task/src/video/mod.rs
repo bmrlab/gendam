@@ -72,12 +72,7 @@ mod test {
             .expect("qdrant build");
 
         // the artifacts_dir is relative to the storage root
-        let content_base = ContentBaseCtx::new(
-            Arc::new(qdrant),
-            "content-base-vision",
-            "content-base-language",
-            "gendam-test-artifacts",
-        );
+        let content_base = ContentBaseCtx::new("gendam-test-artifacts", "");
 
         // initialize AI models
         let whisper =
@@ -123,7 +118,10 @@ mod test {
         let metadata = ContentMetadata::Video(metadata);
 
         let mut task_record = TaskRecord::from_content_base(file_identifier, &content_base).await;
-        task_record.set_metadata(&content_base, &metadata).await.expect("set metadata");
+        task_record
+            .set_metadata(&content_base, &metadata)
+            .await
+            .expect("set metadata");
 
         tracing::info!("metadata: {:?}", metadata);
 

@@ -46,7 +46,7 @@ syn = { version = "2" }
 quote = "1"
 
 # image 0.25 got issue see https://github.com/bmrlab/gendam/issues/65
-image = "=0.24.9"
+image = "=0.25.2"
 ndarray = { version = "0.15.6" }
 
 # tracing

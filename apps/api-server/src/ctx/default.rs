@@ -480,31 +480,36 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
         /* init content base */
         let content_base = {
-            let cb_ctx = ContentBaseCtx::new(
-                library.qdrant_client(),
-                &qdrant_info.vision_collection.name,
-                &qdrant_info.language_collection.name,
-                &library.relative_artifacts_dir(),
-            )
-            .with_audio_transcript(
-                Arc::new(ai_handler.audio_transcript.0.clone()),
-                &ai_handler.audio_transcript.1,
-            )
-            .with_llm(
-                Arc::new(ai_handler.llm.0.clone()),
-                ai_handler.llm.1.clone(),
-                &ai_handler.llm.2,
-            )
-            .with_multi_modal_embedding(
-                Arc::new(ai_handler.multi_modal_embedding.0.clone()),
-                &ai_handler.multi_modal_embedding.1,
-            )
-            .with_text_embedding(
-                Arc::new(ai_handler.text_embedding.0.clone()),
-                &ai_handler.text_embedding.1,
-            );
+            let cb_ctx = ContentBaseCtx::new(&library.relative_artifacts_dir(), &self.temp_dir)
+                .with_audio_transcript(
+                    Arc::new(ai_handler.audio_transcript.0.clone()),
+                    &ai_handler.audio_transcript.1,
+                )
+                .with_llm(
+                    Arc::new(ai_handler.llm.0.clone()),
+                    ai_handler.llm.1.clone(),
+                    &ai_handler.llm.2,
+                )
+                .with_multi_modal_embedding(
+                    Arc::new(ai_handler.multi_modal_embedding.0.clone()),
+                    &ai_handler.multi_modal_embedding.1,
+                )
+                .with_text_embedding(
+                    Arc::new(ai_handler.text_embedding.0.clone()),
+                    &ai_handler.text_embedding.1,
+                )
+                .with_image_caption(
+                    Arc::new(ai_handler.image_caption.0.clone()),
+                    &ai_handler.image_caption.1,
+                );
             let mut current_cb = self.content_base.lock().map_err(unexpected_err)?;
-            let cb = ContentBase::new(&cb_ctx).map_err(|e| {
+            let cb = ContentBase::new(
+                &cb_ctx,
+                library.qdrant_client(),
+                &qdrant_info.language_collection.name,
+                &qdrant_info.vision_collection.name,
+            )
+            .map_err(|e| {
                 tracing::error!(task = "init content base", "Failed: {}", e);
                 rspc::Error::new(
                     rspc::ErrorCode::InternalServerError,

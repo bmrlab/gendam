@@ -78,6 +78,15 @@ pub fn reorder_final_results(
                     })
                 });
             }
+            SearchMetadata::Image(_) => {
+                results.iter().for_each(|v| {
+                    reordered_results.push(SearchResultData {
+                        file_identifier: file_id.clone(),
+                        score: v.1,
+                        metadata: v.0.metadata.clone(),
+                    })
+                });
+            }
         }
     });
 

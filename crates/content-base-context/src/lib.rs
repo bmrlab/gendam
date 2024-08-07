@@ -1,11 +1,10 @@
 pub mod artifacts;
 
 use ai::{
-    tokenizers::Tokenizer, AudioTranscriptModel, LLMModel, MultiModalEmbeddingModel,
-    TextEmbeddingModel, TextEmbeddingOutput,
+    tokenizers::Tokenizer, AudioTranscriptModel, ImageCaptionModel, LLMModel,
+    MultiModalEmbeddingModel, TextEmbeddingModel, TextEmbeddingOutput,
 };
 use anyhow::bail;
-use qdrant_client::Qdrant;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -14,39 +13,33 @@ use storage_macro::Storage;
 
 #[derive(Clone, Storage)]
 pub struct ContentBaseCtx {
-    qdrant: Arc<Qdrant>,
-    vision_collection_name: String,
-    language_collection_name: String,
     artifacts_dir: PathBuf,
+    tmp_dir: PathBuf,
     multi_modal_embedding: Option<(Arc<MultiModalEmbeddingModel>, String)>,
     text_embedding: Option<(Arc<TextEmbeddingModel>, String)>,
     audio_transcript: Option<(Arc<AudioTranscriptModel>, String)>,
+    image_caption: Option<(Arc<ImageCaptionModel>, String)>,
     llm: Option<(Arc<LLMModel>, String)>,
     llm_tokenizer: Option<Tokenizer>,
 }
 
 impl ContentBaseCtx {
-    pub fn new(
-        qdrant: Arc<Qdrant>,
-        vision_collection_name: &str,
-        language_collection_name: &str,
-        artifacts_dir: impl AsRef<Path>,
-    ) -> Self {
+    pub fn new(artifacts_dir: impl AsRef<Path>, tmp_dir: impl AsRef<Path>) -> Self {
         Self {
-            qdrant,
-            vision_collection_name: vision_collection_name.to_string(),
-            language_collection_name: language_collection_name.to_string(),
             artifacts_dir: artifacts_dir.as_ref().to_path_buf(),
+            tmp_dir: tmp_dir.as_ref().to_path_buf(),
             multi_modal_embedding: None,
             text_embedding: None,
             audio_transcript: None,
+            image_caption: None,
             llm: None,
             llm_tokenizer: None,
         }
     }
 
-    pub fn qdrant(&self) -> &Qdrant {
-        self.qdrant.as_ref()
+    /// A absolute path where all tmp artifacts will be stored.
+    pub fn tmp_dir(&self) -> &PathBuf {
+        &self.tmp_dir
     }
 
     pub fn with_multi_modal_embedding(
@@ -64,6 +57,15 @@ impl ContentBaseCtx {
         model_name: &str,
     ) -> Self {
         self.text_embedding = Some((text_embedding, model_name.to_string()));
+        self
+    }
+
+    pub fn with_image_caption(
+        mut self,
+        image_caption: Arc<ImageCaptionModel>,
+        model_name: &str,
+    ) -> Self {
+        self.image_caption = Some((image_caption, model_name.to_string()));
         self
     }
 
@@ -100,6 +102,15 @@ impl ContentBaseCtx {
         }
     }
 
+    pub fn image_caption(&self) -> anyhow::Result<(&ImageCaptionModel, &str)> {
+        match self.image_caption.as_ref() {
+            Some(v) => Ok((&v.0, &v.1)),
+            _ => {
+                bail!("image_caption is not enabled")
+            }
+        }
+    }
+
     pub fn audio_transcript(&self) -> anyhow::Result<(&AudioTranscriptModel, &str)> {
         match self.audio_transcript.as_ref() {
             Some(v) => Ok((&v.0, &v.1)),
@@ -125,14 +136,6 @@ impl ContentBaseCtx {
                 bail!("llm_tokenizer is not enabled")
             }
         }
-    }
-
-    pub fn language_collection_name(&self) -> &str {
-        &self.language_collection_name
-    }
-
-    pub fn vision_collection_name(&self) -> &str {
-        &self.vision_collection_name
     }
 
     pub async fn save_text_embedding(

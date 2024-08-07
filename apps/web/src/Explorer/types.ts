@@ -59,7 +59,6 @@ export type ExtractRetrievalResultItem<
     taskType: { contentType: T; taskType: V }
   }
 
-
 export type ExtractExplorerItem<
   T extends ExplorerItemType = 'FilePath' | 'SearchResult' | 'RetrievalResult',
   V extends AssetObjectType = AssetObjectType,
@@ -75,7 +74,10 @@ export type ExtractExplorerItem<
             taskType: { contentType: V; taskType: U }
           }
 
-export type ExtractExplorerItemWithType<T extends AssetObjectType = AssetObjectType> = ExtractExplorerItem<"FilePath" | "SearchResult" | "RetrievalResult", T>
+export type ExtractExplorerItemWithType<T extends AssetObjectType = AssetObjectType> = ExtractExplorerItem<
+  'FilePath' | 'SearchResult' | 'RetrievalResult',
+  T
+>
 
 export function uniqueId(item: ExplorerItem): string {
   switch (item.type) {
@@ -94,5 +96,6 @@ function uniqueIdForSearchMetadata(item: SearchResultMetadata): string {
   return match(item)
     .with({ type: 'video' }, (item) => item.startTime.toString())
     .with({ type: 'audio' }, (item) => item.startTime.toString())
+    .with({ type: 'image' }, (item) => item.type)
     .exhaustive()
 }

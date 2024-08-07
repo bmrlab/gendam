@@ -10,6 +10,7 @@ import Image from 'next/image'
 import { useEffect } from 'react'
 import { match } from 'ts-pattern'
 import AudioDetail from '../FileContent/Inspector/Audio'
+import ImageDetail from '../FileContent/Inspector/Image'
 import VideoDetail from '../FileContent/Inspector/Video'
 import { useSortedTasks } from './hooks'
 import { useInspector } from './store'
@@ -84,6 +85,7 @@ export default function Inspector({ data }: { data: ExtractExplorerItem<'FilePat
           match(data)
             .with(matchExplorerItemWithType('video'), (props) => <VideoDetail {...props} />)
             .with(matchExplorerItemWithType('audio'), (props) => <AudioDetail {...props} />)
+            .with(matchExplorerItemWithType('image'), (props) => <ImageDetail {...props} />)
             .otherwise(() => <></>)
         ) : null
       ) : null}
