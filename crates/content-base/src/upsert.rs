@@ -21,7 +21,6 @@ use content_base_task::{
     },
     ContentTask, ContentTaskType, FileInfo, TaskRecord,
 };
-use content_handler::file_metadata;
 use content_metadata::ContentMetadata;
 use qdrant_client::{
     qdrant::{PointStruct, UpsertPointsBuilder},
@@ -39,20 +38,22 @@ use tracing::warn;
 pub struct UpsertPayload {
     file_identifier: String,
     file_path: PathBuf,
-    metadata: Option<ContentMetadata>,
+    file_extension: Option<String>,
+    metadata: ContentMetadata,
 }
 
 impl UpsertPayload {
-    pub fn new(file_identifier: &str, file_path: impl AsRef<Path>) -> Self {
+    pub fn new(file_identifier: &str, file_path: impl AsRef<Path>, metadata: &ContentMetadata) -> Self {
         Self {
             file_identifier: file_identifier.to_string(),
             file_path: file_path.as_ref().to_path_buf(),
-            metadata: None,
+            file_extension: None,
+            metadata: metadata.clone(),
         }
     }
 
-    pub fn with_metadata(mut self, metadata: ContentMetadata) -> Self {
-        self.metadata = Some(metadata);
+    pub fn with_extension(mut self, file_extension: &str) -> Self {
+        self.file_extension = Some(file_extension.to_string());
         self
     }
 }
@@ -66,20 +67,11 @@ impl ContentBase {
         let file_identifier = &payload.file_identifier.clone();
 
         let mut task_record = TaskRecord::from_content_base(file_identifier, &self.ctx).await;
-        let metadata = match payload.metadata.clone() {
-            Some(metadata) => metadata,
-            _ => match task_record.metadata() {
-                ContentMetadata::Unknown => {
-                    file_metadata(&payload.file_path).expect("got file metadata")
-                }
-                _ => task_record.metadata().clone(),
-            },
-        };
 
         let (notification_tx, notification_rx) = mpsc::channel(512);
         let (inner_tx, mut inner_rx) = mpsc::channel(512);
 
-        if let Err(e) = task_record.set_metadata(&self.ctx, &metadata).await {
+        if let Err(e) = task_record.set_metadata(&self.ctx, &payload.metadata).await {
             warn!("failed to set metadata: {e:?}");
         }
 
@@ -90,7 +82,7 @@ impl ContentBase {
         let file_info_clone = file_info.clone();
 
         tokio::spawn(async move {
-            match metadata {
+            match payload.metadata {
                 ContentMetadata::Video(metadata) => {
                     run_task(
                         &task_pool,
@@ -145,6 +137,9 @@ impl ContentBase {
                         "unknown metadata for {}, do not trigger any tasks",
                         &payload.file_identifier
                     );
+                }
+                _ => {
+                    warn!("unsupported metadata, do not trigger any tasks");
                 }
             }
         });

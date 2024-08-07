@@ -67,8 +67,13 @@ where
                         )
                         .await?;
                     if !asset_object_existed {
-                        process_asset_metadata(&library, &content_base, asset_object_data.id)
-                            .await?;
+                        process_asset_metadata(
+                            &library,
+                            &content_base,
+                            asset_object_data.id,
+                            &input.local_full_path,
+                        )
+                        .await?;
                         info!("process metadata finished");
                         process_asset(&library, &ctx, file_path_data.id, None).await?;
                         info!("process asset finished");
@@ -114,8 +119,17 @@ where
                     if asset_object_existed {
                         // TODO add artifacts merging logic
                     } else {
-                        process_asset_metadata(&library, &content_base, asset_object_data.id)
-                            .await?;
+                        process_asset_metadata(
+                            &library,
+                            &content_base,
+                            asset_object_data.id,
+                            &library
+                                .file_path(&input.hash)
+                                .to_string_lossy()
+                                .to_string()
+                                .as_str(),
+                        )
+                        .await?;
                         info!("process video metadata finished");
                         process_asset(&library, &ctx, file_path_data.id, Some(true)).await?;
                     }
@@ -237,19 +251,27 @@ where
         })
         .mutation("process_video_asset", |t| {
             t(|ctx, input: i32| async move {
-                let library = ctx.library()?;
-                let file_path_id = input;
-                process_asset(&library, &ctx, file_path_id, None).await?;
-                Ok(())
+                // let library = ctx.library()?;
+                // let file_path_id = input;
+                // process_asset(&library, &ctx, file_path_id, None).await?;
+                // Ok(())
+                todo!()
             })
         })
         .mutation("process_video_metadata", |t| {
             t(|ctx, input: i32| async move {
-                let library = ctx.library()?;
-                let content_base = ctx.content_base()?;
-                let asset_object_id = input;
-                process_asset_metadata(&library, &content_base, asset_object_id).await?;
-                Ok(())
+                // let library = ctx.library()?;
+                // let content_base = ctx.content_base()?;
+                // let asset_object_id = input;
+                // process_asset_metadata(
+                //     &library,
+                //     &content_base,
+                //     asset_object_id,
+                //     &library.file_path(&input.hash),
+                // )
+                // .await?;
+                // Ok(())
+                todo!()
             })
         })
         .mutation("export_video_segment", |t| {

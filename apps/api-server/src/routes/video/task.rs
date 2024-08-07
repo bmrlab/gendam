@@ -233,10 +233,21 @@ impl VideoTaskHandler {
         let library = ctx.library()?;
 
         if let Some(asset_object_data) = asset_object_data {
+            let content_metadata: ContentMetadata = {
+                if let Some(v) = asset_object_data.media_data {
+                    if let Ok(metadata) = serde_json::from_str(&v) {
+                        metadata
+                    }
+                }
+
+                ContentMetadata::Unknown
+            };
+
             // TODO if we need to delete existing artifacts?
             let payload = UpsertPayload::new(
                 &asset_object_data.hash,
                 library.file_path(&asset_object_data.hash),
+                &content_metadata,
             );
             if let Err(e) = content_base.upsert(payload).await {
                 tracing::warn!("upsert({}) error: {}", asset_object_data.hash, e);

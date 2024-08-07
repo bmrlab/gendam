@@ -8,6 +8,7 @@ use content_handler::{file_metadata, video::VideoDecoder};
 use content_library::Library;
 use prisma_client_rust::QueryError;
 use prisma_lib::{asset_object, file_handler_task, file_path};
+use std::path::Path;
 use tracing::{error, info};
 
 fn sql_error(e: QueryError) -> rspc::Error {
@@ -75,10 +76,25 @@ pub async fn process_asset(
             )
         })?;
 
+    tracing::debug!("asset media data: {:?}", &asset_object_data.media_data);
+
+    let content_metadata = {
+        if let Some(v) = asset_object_data.media_data {
+            if let Ok(metadata) = serde_json::from_str::<ContentMetadata>(&v) {
+                metadata
+            } else {
+                ContentMetadata::Unknown
+            }
+        } else {
+            ContentMetadata::Unknown
+        }
+    };
+
     let cb = ctx.content_base()?;
     let payload = UpsertPayload::new(
         &asset_object_data.hash,
         library.file_path(&asset_object_data.hash),
+        &content_metadata,
     );
     match cb.upsert(payload).await {
         Ok(mut rx) => {
@@ -149,11 +165,12 @@ pub async fn process_asset(
     }
 }
 
-#[tracing::instrument(skip(library, content_base))]
+#[tracing::instrument(skip(library, content_base, local_full_path))]
 pub async fn process_asset_metadata(
     library: &Library,
     content_base: &ContentBase,
     asset_object_id: i32,
+    local_full_path: impl AsRef<Path>,
 ) -> Result<(), rspc::Error> {
     info!("process metadata for asset_object_id: {asset_object_id}");
     let asset_object_data = match library
@@ -174,14 +191,12 @@ pub async fn process_asset_metadata(
         }
     };
 
-    let file_path = library.file_path(&asset_object_data.hash);
-    let metadata = file_metadata(&file_path).map_err(|e| {
-        error!("failed to get file metadata: {e}");
-        rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("failed to get file metadata: {}", e),
-        )
-    })?;
+    let file_extension = local_full_path
+        .as_ref()
+        .to_path_buf()
+        .extension()
+        .map(|v| v.to_string_lossy().to_string());
+    let (metadata, mime) = file_metadata(local_full_path, file_extension.as_deref());
 
     let metadata_json = match serde_json::to_string(&metadata) {
         Ok(metadata) => Some(metadata),
@@ -193,7 +208,10 @@ pub async fn process_asset_metadata(
         .asset_object()
         .update(
             asset_object::id::equals(asset_object_data.id),
-            vec![asset_object::media_data::set(metadata_json)],
+            vec![
+                asset_object::media_data::set(metadata_json),
+                asset_object::mime_type::set(Some(mime)),
+            ],
         )
         .exec();
 
@@ -201,7 +219,7 @@ pub async fn process_asset_metadata(
     tracing::debug!("generate thumbnail");
     let file_info = FileInfo {
         file_identifier: asset_object_data.hash.clone(),
-        file_path,
+        file_path: library.file_path(&asset_object_data.hash),
     };
     let thumbnail_handle = match metadata {
         ContentMetadata::Video(_) => VideoThumbnailTask.run(&file_info, content_base.ctx()),

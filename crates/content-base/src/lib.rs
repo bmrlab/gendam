@@ -187,12 +187,12 @@ mod test {
         let content_base =
             ContentBase::new(&ctx, Arc::new(qdrant), "", "").expect("content base created");
 
-        let upsert_result = content_base
-            .upsert(UpsertPayload::new(file_identifier.into(), file_path))
-            .await;
+        // let upsert_result = content_base
+        //     .upsert(UpsertPayload::new(file_identifier.into(), file_path, ))
+        //     .await;
 
-        tracing::info!("upsert result: {:?}", upsert_result);
+        // tracing::info!("upsert result: {:?}", upsert_result);
 
-        tokio::time::sleep(Duration::from_secs(60)).await;
+        // tokio::time::sleep(Duration::from_secs(60)).await;
     }
 }

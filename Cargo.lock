@@ -1617,6 +1617,7 @@ dependencies = [
  "global-variable",
  "image 0.25.2",
  "infer 0.15.0",
+ "phf 0.11.2",
  "serde",
  "serde_json",
  "storage",
