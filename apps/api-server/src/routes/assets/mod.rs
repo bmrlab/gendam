@@ -5,6 +5,7 @@ mod read;
 pub mod types;
 mod update;
 mod utils;
+mod web_page;
 
 use crate::validators;
 use crate::CtxWithLibrary;
@@ -17,10 +18,12 @@ use read::{get_file_path, list_file_path};
 use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
 use specta::Type;
+use tracing::debug;
 use tracing::info;
 use types::FilePathRequestPayload;
 use types::FilePathWithAssetObjectData;
 use update::{move_file_path, rename_file_path};
+use web_page::process_web_page;
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -296,6 +299,37 @@ where
                 )
                 .await?;
                 Ok(())
+            })
+        })
+        .mutation("create_web_page_object", |t| {
+            #[derive(Deserialize, Type, Debug)]
+            #[serde(rename_all = "camelCase")]
+            struct WebPageCreatePayload {
+                #[serde(deserialize_with = "validators::materialized_path_string")]
+                materialized_path: String,
+                url: String,
+            }
+            t({
+                |ctx: TCtx, payload: WebPageCreatePayload| async move {
+                    debug!("create_web_page_object: {:?}", payload);
+                    let library = ctx.library()?;
+
+                    let (file_path_data, _asset_object_data, asset_object_existed) =
+                        process_web_page(&library, &payload.materialized_path, &payload.url)
+                            .await?;
+                    if !asset_object_existed {
+                        process_asset(&library, &ctx, file_path_data.id, None).await?;
+                        info!("process asset finished");
+                    }
+                    let file_path: FilePathWithAssetObjectData = get_file_path(
+                        &library,
+                        &file_path_data.materialized_path,
+                        &file_path_data.name,
+                    )
+                    .await?
+                    .into();
+                    Ok(file_path)
+                }
             })
         })
 }

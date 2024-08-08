@@ -24,7 +24,10 @@ async fn main() {
 
     let app = tauri::Builder::default()
         .register_uri_scheme_protocol("storage", move |app, request: &Request| {
-            let state = app.state::<Arc<tokio::sync::Mutex<StorageState>>>().inner().clone();
+            let state = app
+                .state::<Arc<tokio::sync::Mutex<StorageState>>>()
+                .inner()
+                .clone();
             storage_protocol_handler(state, request)
         })
         .setup(|_app| {
@@ -120,7 +123,14 @@ async fn main() {
 
     let store = Arc::new(Mutex::new(Store::new(tauri_store)));
     let router = api_server::get_routes::<Ctx<Store>>();
-    let ctx = Ctx::<Store>::new(local_data_root, resources_dir, temp_dir, cache_dir, store, p2p);
+    let ctx = Ctx::<Store>::new(
+        local_data_root,
+        resources_dir,
+        temp_dir,
+        cache_dir,
+        store,
+        p2p,
+    );
 
     app.manage(Arc::new(tokio::sync::Mutex::new(StorageState::new(
         ctx.clone(),

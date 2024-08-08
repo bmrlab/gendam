@@ -1,5 +1,6 @@
 use super::payload::{
-    audio::AudioSearchMetadata, video::merge_results_with_time_duration, SearchPayload,
+    audio::AudioSearchMetadata, raw_text::RawTextSearchMetadata,
+    video::merge_results_with_time_duration, web_page::WebPageSearchMetadata, SearchPayload,
     SearchResultData,
 };
 use crate::query::payload::{video::VideoSearchMetadata, SearchMetadata};
@@ -42,9 +43,27 @@ pub fn reorder_final_results(
                     })
                     .collect();
 
-                let results = merge_results_with_time_duration(&mut results, |_, start, end| {
-                    VideoSearchMetadata::new(start, end)
-                });
+                let results = merge_results_with_time_duration(
+                    &mut results,
+                    |items| {
+                        let start_timestamp = items
+                            .iter()
+                            .map(|v| v.start_timestamp)
+                            .min()
+                            .expect("should have min");
+                        let end_timestamp = items
+                            .iter()
+                            .map(|v| v.end_timestamp)
+                            .max()
+                            .expect("should have max");
+
+                        VideoSearchMetadata {
+                            start_timestamp,
+                            end_timestamp,
+                        }
+                    },
+                    |current, last| current.start_timestamp - last.end_timestamp > 1000,
+                );
 
                 results.into_iter().for_each(|v| {
                     reordered_results.push(SearchResultData {
@@ -66,9 +85,27 @@ pub fn reorder_final_results(
                     })
                     .collect();
 
-                let results = merge_results_with_time_duration(&mut results, |_, start, end| {
-                    AudioSearchMetadata::new(start, end)
-                });
+                let results = merge_results_with_time_duration(
+                    &mut results,
+                    |items| {
+                        let start_timestamp = items
+                            .iter()
+                            .map(|v| v.start_timestamp)
+                            .min()
+                            .expect("should have min");
+                        let end_timestamp = items
+                            .iter()
+                            .map(|v| v.end_timestamp)
+                            .max()
+                            .expect("should have max");
+
+                        AudioSearchMetadata {
+                            start_timestamp,
+                            end_timestamp,
+                        }
+                    },
+                    |current, last| current.start_timestamp - last.end_timestamp > 1000,
+                );
 
                 results.into_iter().for_each(|v| {
                     reordered_results.push(SearchResultData {
@@ -84,6 +121,74 @@ pub fn reorder_final_results(
                         file_identifier: file_id.clone(),
                         score: v.1,
                         metadata: v.0.metadata.clone(),
+                    })
+                });
+            }
+            SearchMetadata::RawText(_) => {
+                let mut results: Vec<(RawTextSearchMetadata, f32)> = results
+                    .iter()
+                    .filter_map(|v| {
+                        let (payload, score) = v;
+                        match payload.metadata.clone().try_into() {
+                            Ok(metadata) => Some((metadata, *score)),
+                            _ => None,
+                        }
+                    })
+                    .collect();
+
+                let results = merge_results_with_time_duration(
+                    &mut results,
+                    |items| {
+                        let index = items
+                            .iter()
+                            .map(|v| v.index)
+                            .min()
+                            .expect("should have min");
+
+                        RawTextSearchMetadata { index }
+                    },
+                    |current, last| current.index - last.index > 1,
+                );
+
+                results.into_iter().for_each(|v| {
+                    reordered_results.push(SearchResultData {
+                        file_identifier: file_id.clone(),
+                        score: v.1,
+                        metadata: v.0.into(),
+                    })
+                });
+            }
+            SearchMetadata::WebPage(_) => {
+                let mut results: Vec<(WebPageSearchMetadata, f32)> = results
+                    .iter()
+                    .filter_map(|v| {
+                        let (payload, score) = v;
+                        match payload.metadata.clone().try_into() {
+                            Ok(metadata) => Some((metadata, *score)),
+                            _ => None,
+                        }
+                    })
+                    .collect();
+
+                let results = merge_results_with_time_duration(
+                    &mut results,
+                    |items| {
+                        let index = items
+                            .iter()
+                            .map(|v| v.index)
+                            .min()
+                            .expect("should have min");
+
+                        WebPageSearchMetadata { index }
+                    },
+                    |current, last| current.index - last.index > 1,
+                );
+
+                results.into_iter().for_each(|v| {
+                    reordered_results.push(SearchResultData {
+                        file_identifier: file_id.clone(),
+                        score: v.1,
+                        metadata: v.0.into(),
                     })
                 });
             }

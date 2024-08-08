@@ -1,22 +1,28 @@
 pub mod audio;
-pub mod video;
 pub mod image;
+pub mod raw_text;
+pub mod video;
+pub mod web_page;
 
 use audio::AudioSearchMetadata;
 use content_base_task::ContentTaskType;
 use image::ImageSearchMetadata;
 use qdrant_client::Payload;
+use raw_text::RawTextSearchMetadata;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
 use video::VideoSearchMetadata;
+use web_page::WebPageSearchMetadata;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "content_type")]
 pub enum SearchMetadata {
     Video(VideoSearchMetadata),
     Audio(AudioSearchMetadata),
-    Image(ImageSearchMetadata)
+    Image(ImageSearchMetadata),
+    RawText(RawTextSearchMetadata),
+    WebPage(WebPageSearchMetadata),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

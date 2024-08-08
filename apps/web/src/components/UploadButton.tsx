@@ -20,10 +20,11 @@ const TauriUploadButton: React.FC<PropsWithChildren<Props> & HTMLAttributes<HTML
       directory: false,
       multiple: true,
       filters: [
-        {
-          name: 'Supported Content',
-          extensions: Array.from(SUPPORTED_CONTENT_TYPES),
-        },
+        // 暂时不限制格式，理论上所有格式都应该支持
+        // {
+        //   name: 'Supported Content',
+        //   extensions: Array.from(SUPPORTED_CONTENT_TYPES),
+        // },
       ],
     })
     console.log('tauri selected file:', results)

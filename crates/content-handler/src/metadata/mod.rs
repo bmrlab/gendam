@@ -1,12 +1,14 @@
 mod audio;
 mod constants;
 mod image;
+mod raw_text;
 mod video;
 
 use audio::get_audio_metadata;
 use constants::{get_kind_from_extension, get_kind_from_mime, get_mime_from_extension};
 use content_metadata::{ContentMetadata, ContentType};
 use image::get_image_metadata;
+use raw_text::get_raw_text_metadata;
 use std::path::Path;
 use video::get_video_metadata;
 
@@ -52,9 +54,7 @@ fn get_file_metadata(
         ContentType::Image => get_image_metadata(file_path),
         ContentType::Video => get_video_metadata(file_path),
         ContentType::Audio => get_audio_metadata(file_path),
-        ContentType::RawText => {
-            todo!()
-        }
+        ContentType::RawText => get_raw_text_metadata(file_path),
         _ => Ok(ContentMetadata::Unknown),
     }
 }

@@ -1,5 +1,6 @@
 use content_base::{
-    audio::AudioTaskType, image::ImageTaskType, video::VideoTaskType, ContentTaskType,
+    audio::AudioTaskType, image::ImageTaskType, raw_text::RawTextTaskType, video::VideoTaskType,
+    web_page::WebPageTaskType, ContentTaskType,
 };
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -35,12 +36,31 @@ pub enum ImageTaskTypeSpecta {
     DescEmbed,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum RawTextTaskTypeSpecta {
+    Chunk,
+    ChunkSum,
+    ChunkSumEmbed,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum WebPageTaskTypeSpecta {
+    Transform,
+    Chunk,
+    ChunkSum,
+    ChunkSumEmbed,
+}
+
 #[derive(Clone, Debug, Type, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "contentType", content = "taskType")]
 pub enum ContentTaskTypeSpecta {
     Video(VideoTaskTypeSpecta),
     Audio(AudioTaskTypeSpecta),
     Image(ImageTaskTypeSpecta),
+    RawText(RawTextTaskTypeSpecta),
+    WebPage(WebPageTaskTypeSpecta),
 }
 
 impl From<ContentTaskType> for ContentTaskTypeSpecta {
@@ -94,6 +114,31 @@ impl From<ContentTaskType> for ContentTaskTypeSpecta {
                 }
                 ImageTaskType::DescEmbed(_) => {
                     ContentTaskTypeSpecta::Image(ImageTaskTypeSpecta::DescEmbed)
+                }
+            },
+            ContentTaskType::RawText(t) => match t {
+                RawTextTaskType::Chunk(_) => {
+                    ContentTaskTypeSpecta::RawText(RawTextTaskTypeSpecta::Chunk)
+                }
+                RawTextTaskType::ChunkSum(_) => {
+                    ContentTaskTypeSpecta::RawText(RawTextTaskTypeSpecta::ChunkSum)
+                }
+                RawTextTaskType::ChunkSumEmbed(_) => {
+                    ContentTaskTypeSpecta::RawText(RawTextTaskTypeSpecta::ChunkSumEmbed)
+                }
+            },
+            ContentTaskType::WebPage(t) => match t {
+                WebPageTaskType::Transform(_) => {
+                    ContentTaskTypeSpecta::WebPage(WebPageTaskTypeSpecta::Transform)
+                }
+                WebPageTaskType::Chunk(_) => {
+                    ContentTaskTypeSpecta::WebPage(WebPageTaskTypeSpecta::Chunk)
+                }
+                WebPageTaskType::ChunkSum(_) => {
+                    ContentTaskTypeSpecta::WebPage(WebPageTaskTypeSpecta::ChunkSum)
+                }
+                WebPageTaskType::ChunkSumEmbed(_) => {
+                    ContentTaskTypeSpecta::WebPage(WebPageTaskTypeSpecta::ChunkSumEmbed)
                 }
             },
         }

@@ -6,7 +6,6 @@ import Viewport from '@/components/Viewport'
 // import { rspc } from '@/lib/rspc'
 import { useInspector } from '@/components/Inspector/store'
 import { useUploadQueueStore } from '@/components/UploadQueue/store'
-import { filterFiles } from '@/components/UploadQueue/utils'
 import { useClipboardPaste } from '@/hooks/useClipboardPaste'
 import { useFileDrop } from '@/hooks/useFileDrop'
 import Icon from '@gendam/ui/icons'
@@ -14,12 +13,13 @@ import { Button } from '@gendam/ui/v2/button'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef } from 'react'
-import { toast } from 'sonner'
 import SearchForm, { type SearchFormRef } from '../../search/SearchForm' // TODO: 这样不大好，应该是一个公共组件
 import TitleDialog, { useTitleDialog } from './TitleDialog'
+import UrlImportDialog, { useUrlImportDialog } from './UrlImportDialog'
 
 export default function Header() {
   const titleDialog = useTitleDialog()
+  const urlImportDialog = useUrlImportDialog()
   const router = useRouter()
   const explorer = useExplorerContext()
 
@@ -42,10 +42,12 @@ export default function Header() {
 
   const handleSelectFiles = useCallback(
     (fileFullPaths: string[]) => {
-      const { supportedFiles, unsupportedExtensionsSet } = filterFiles(fileFullPaths)
-      if (Array.from(unsupportedExtensionsSet).length > 0) {
-        toast.error(`Unsupported file types: ${Array.from(unsupportedExtensionsSet).join(',')}`)
-      }
+      // TODO 暂时隐藏
+      // const { supportedFiles, unsupportedExtensionsSet } = filterFiles(fileFullPaths)
+      // if (Array.from(unsupportedExtensionsSet).length > 0) {
+      //   toast.error(`Unsupported file types: ${Array.from(unsupportedExtensionsSet).join(',')}`)
+      // }
+      const supportedFiles = fileFullPaths
       if (explorer.materializedPath && supportedFiles.length > 0) {
         for (const fileFullPath of fileFullPaths) {
           const name = fileFullPath.split('/').slice(-1).join('')
@@ -97,6 +99,14 @@ export default function Header() {
               <Icon.Upload className="size-4" />
             </UploadButton>
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-1 transition-none"
+            onClick={() => urlImportDialog.setOpen(true)}
+          >
+            <Icon.FolderAdd className="size-4" />
+          </Button>
 
           <div className="bg-toolbar-line mx-1 h-4 w-px"></div>
 
@@ -147,6 +157,7 @@ export default function Header() {
         </div>
       </Viewport.Toolbar>
       <TitleDialog />
+      <UrlImportDialog />
     </>
   )
 }

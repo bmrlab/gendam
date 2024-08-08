@@ -1,16 +1,16 @@
 pub mod audio;
-pub mod html;
 pub mod image;
 pub mod raw_text;
 pub mod video;
+pub mod web_page;
 
 use audio::AudioMetadata;
-use html::HTMLMetadata;
 use image::ImageMetadata;
 use raw_text::RawTextMetadata;
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumDiscriminants;
 use video::VideoMetadata;
+use web_page::WebPageMetadata;
 
 #[derive(Clone, Debug, Serialize, Deserialize, EnumDiscriminants)]
 #[strum_discriminants(derive(Serialize, Deserialize, strum_macros::Display))]
@@ -22,7 +22,7 @@ pub enum ContentMetadata {
     Video(VideoMetadata),
     Image(ImageMetadata),
     RawText(RawTextMetadata),
-    Html(HTMLMetadata),
+    WebPage(WebPageMetadata),
     // Document(),
     // Presentation(),
     // Sheet(),

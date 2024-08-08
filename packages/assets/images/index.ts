@@ -3,18 +3,11 @@
  * To regenerate this file, run: pnpm assets gen
  */
 
-import GenDAM_Logo from "./GenDAM_Logo.png";
-import Document_Light from "./Document_Light.png";
-import Folder_Light from "./Folder_Light.png";
-import Drop_To_Folder from "./Drop_To_Folder.png";
-import Video_Files from "./Video_Files.png";
-import Video_File from "./Video_File.png";
+import Document_Light from './Document_Light.png'
+import Drop_To_Folder from './Drop_To_Folder.png'
+import Folder_Light from './Folder_Light.png'
+import GenDAM_Logo from './GenDAM_Logo.png'
+import Video_File from './Video_File.png'
+import Video_Files from './Video_Files.png'
 
-export {
-  GenDAM_Logo,
-  Document_Light,
-  Folder_Light,
-  Drop_To_Folder,
-  Video_Files,
-  Video_File,
-};
+export { Document_Light, Drop_To_Folder, Folder_Light, GenDAM_Logo, Video_File, Video_Files }
