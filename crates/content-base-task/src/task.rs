@@ -1,4 +1,6 @@
 use crate::image::ImageTaskType;
+use crate::raw_text::RawTextTaskType;
+use crate::web_page::WebPageTaskType;
 use crate::{audio::AudioTaskType, video::VideoTaskType};
 use content_base_derive::ContentTask;
 use serde::{Deserialize, Serialize};
@@ -18,6 +20,8 @@ pub enum ContentTaskType {
     Video(VideoTaskType),
     Audio(AudioTaskType),
     Image(ImageTaskType),
+    RawText(RawTextTaskType),
+    WebPage(WebPageTaskType),
 }
 
 impl fmt::Display for ContentTaskType {
@@ -26,6 +30,8 @@ impl fmt::Display for ContentTaskType {
             ContentTaskType::Video(t) => write!(f, "video-{}", t),
             ContentTaskType::Audio(t) => write!(f, "audio-{}", t),
             ContentTaskType::Image(t) => write!(f, "image-{}", t),
+            ContentTaskType::RawText(t) => write!(f, "raw-text-{}", t),
+            ContentTaskType::WebPage(t) => write!(f, "web-page-{}", t),
         }
     }
 }
@@ -54,6 +60,16 @@ impl TryFrom<&str> for ContentTaskType {
             value if value.starts_with("image-") => {
                 ImageTaskType::try_from(&value["image-".len()..])
                     .map(|v| ContentTaskType::Image(v))
+                    .map_err(|e| anyhow::anyhow!(e))
+            }
+            value if value.starts_with("raw-text-") => {
+                RawTextTaskType::try_from(&value["raw-text-".len()..])
+                    .map(|v| ContentTaskType::RawText(v))
+                    .map_err(|e| anyhow::anyhow!(e))
+            }
+            value if value.starts_with("web-page-") => {
+                WebPageTaskType::try_from(&value["web-page-".len()..])
+                    .map(|v| ContentTaskType::WebPage(v))
                     .map_err(|e| anyhow::anyhow!(e))
             }
             _ => Err(anyhow::anyhow!("invalid task type: {}", value)),

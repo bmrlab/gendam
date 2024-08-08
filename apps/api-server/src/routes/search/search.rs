@@ -1,11 +1,6 @@
-use std::marker::PhantomData;
-
 use crate::{error::sql_error, routes::assets::types::FilePathWithAssetObjectData};
 use content_base::{
-    query::{
-        payload::{SearchResult, SearchResultData},
-        QueryPayload,
-    },
+    query::{payload::SearchResult, QueryPayload},
     ContentBase,
 };
 use content_library::Library;
@@ -39,11 +34,25 @@ pub struct ImageSearchResultMetadata {
 }
 
 #[derive(Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RawTextSearchResultMetadata {
+    index: u32,
+}
+
+#[derive(Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct WebPageSearchResultMetadata {
+    index: u32,
+}
+
+#[derive(Serialize, Type)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SearchResultMetadata {
     Video(VideoSearchResultMetadata),
     Audio(AudioSearchResultMetadata),
     Image(ImageSearchResultMetadata),
+    RawText(RawTextSearchResultMetadata),
+    WebPage(WebPageSearchResultMetadata),
 }
 
 impl From<&content_base::query::payload::SearchMetadata> for SearchResultMetadata {
@@ -63,6 +72,16 @@ impl From<&content_base::query::payload::SearchMetadata> for SearchResultMetadat
             }
             content_base::query::payload::SearchMetadata::Image(_) => {
                 SearchResultMetadata::Image(ImageSearchResultMetadata { data: 0 })
+            }
+            content_base::query::payload::SearchMetadata::RawText(item) => {
+                SearchResultMetadata::RawText(RawTextSearchResultMetadata {
+                    index: item.index as u32,
+                })
+            }
+            content_base::query::payload::SearchMetadata::WebPage(item) => {
+                SearchResultMetadata::WebPage(WebPageSearchResultMetadata {
+                    index: item.index as u32,
+                })
             }
         }
     }

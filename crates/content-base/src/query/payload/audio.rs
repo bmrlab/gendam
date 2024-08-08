@@ -1,4 +1,4 @@
-use super::{video::SearchMetadataWithTimeDuration, SearchMetadata};
+use super::SearchMetadata;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -13,16 +13,6 @@ impl AudioSearchMetadata {
             start_timestamp,
             end_timestamp,
         }
-    }
-}
-
-impl SearchMetadataWithTimeDuration for AudioSearchMetadata {
-    fn start_timestamp(&self) -> i64 {
-        self.start_timestamp
-    }
-
-    fn end_timestamp(&self) -> i64 {
-        self.end_timestamp
     }
 }
 

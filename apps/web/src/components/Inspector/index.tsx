@@ -14,6 +14,8 @@ import ImageDetail from '../FileContent/Inspector/Image'
 import VideoDetail from '../FileContent/Inspector/Video'
 import { useSortedTasks } from './hooks'
 import { useInspector } from './store'
+import RawTextDetail from '../FileContent/Inspector/RawText'
+import WebPageDetail from '../FileContent/Inspector/WebPage'
 
 const FolderDetail = ({ data }: { data: RawFilePath }) => {
   return (
@@ -86,6 +88,8 @@ export default function Inspector({ data }: { data: ExtractExplorerItem<'FilePat
             .with(matchExplorerItemWithType('video'), (props) => <VideoDetail {...props} />)
             .with(matchExplorerItemWithType('audio'), (props) => <AudioDetail {...props} />)
             .with(matchExplorerItemWithType('image'), (props) => <ImageDetail {...props} />)
+            .with(matchExplorerItemWithType('rawText'), (props) => <RawTextDetail {...props} />)
+            .with(matchExplorerItemWithType('webPage'), (props) => <WebPageDetail {...props} />)
             .otherwise(() => <></>)
         ) : null
       ) : null}

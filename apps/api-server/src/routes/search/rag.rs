@@ -1,5 +1,8 @@
 use super::search::{retrieve_assets_for_search, SearchResultMetadata};
-use crate::{ai::AIHandler, routes::{assets::types::FilePathWithAssetObjectData, tasks::types::ContentTaskTypeSpecta}};
+use crate::{
+    ai::AIHandler,
+    routes::{assets::types::FilePathWithAssetObjectData, tasks::types::ContentTaskTypeSpecta},
+};
 use ai::llm::{LLMInferenceParams, LLMMessage};
 use content_base::{
     audio::{
@@ -7,6 +10,10 @@ use content_base::{
         AudioTaskType,
     },
     query::{payload::SearchMetadata, QueryPayload},
+    raw_text::{
+        chunk::{DocumentChunkTrait, RawTextChunkTask},
+        RawTextTaskType,
+    },
     video::{transcript::VideoTranscriptTask, VideoTaskType},
     ContentBase, ContentTaskType, FileInfo,
 };
@@ -134,6 +141,30 @@ pub async fn rag(
                     }
                 }
             }
+            (
+                SearchMetadata::RawText(metadata),
+                ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(_)),
+            ) => {
+                match RawTextChunkTask
+                    .chunk_content(
+                        &FileInfo {
+                            file_identifier: ref_item.file_identifier.clone(),
+                            file_path: library.file_path(&ref_item.file_identifier),
+                        },
+                        content_base.ctx(),
+                    )
+                    .await
+                {
+                    Ok(chunks) => {
+                        if let Some(chunk) = chunks.get(metadata.index) {
+                            references_content.push(chunk.clone());
+                        }
+                    }
+                    _ => {
+                        tracing::warn!("failed to get content for {}", ref_item.file_identifier);
+                    }
+                }
+            }
             _ => {
                 // other combinations are considered invalid
             }
@@ -142,19 +173,24 @@ pub async fn rag(
 
     let reference_content = references_content.join("\n");
 
-    let system_prompt = r#"You are an assistant good at answer questions according to pieces of video transcript.
-    You should try to answer user question according to the provided video transcripts.
-    Keep your answer ground in the facts of the DOCUMENT.
-    Try to response in markdown, with proper title, subtitles and bullet points.
-    If the DOCUMENT doesn't contain the facts to answer the QUESTION return {I don't know} in the question's language.
-    "#;
-    let user_prompt = format!(
-        r#"TRANSCRIPTS:
-    {}
+    let system_prompt = r#"You are an assistant good at answer questions according to some pieces from different document.
+You should try to answer user question according to the provided document pieces.
+Keep your answer ground in the facts of the DOCUMENT.
+Try to response in markdown, with proper title, subtitles and bullet points.
 
-    QUESTION:
-    {}
-    "#,
+If the DOCUMENT doesn't contain the facts to answer the QUESTION, you have 2 options:
+- If you know the answer, just response without these information.
+- Else, return {I don't know} in the question's language.
+
+You should answer in the language of the QUESTION.
+"#;
+    let user_prompt = format!(
+        r#"DOCUMENTS:
+{}
+
+QUESTION:
+{}
+"#,
         reference_content, &input.query
     );
 

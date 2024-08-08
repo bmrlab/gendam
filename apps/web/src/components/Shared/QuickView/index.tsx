@@ -1,10 +1,12 @@
+import ImageQuickView from '@/components/FileContent/QuickView/Image'
+import RawTextQuickView from '@/components/FileContent/QuickView/RawText'
+import WebPageQuickView from '@/components/FileContent/QuickView/WebPage'
 import { matchExplorerItemWithType } from '@/Explorer/pattern'
 import Icon from '@gendam/ui/icons'
 import { match } from 'ts-pattern'
 import AudioQuickView from '../../FileContent/QuickView/Audio'
 import VideoQuickView from '../../FileContent/QuickView/Video'
 import { useQuickViewStore } from './store'
-import ImageQuickView from '@/components/FileContent/QuickView/Image'
 
 export default function QuickView() {
   const quickViewStore = useQuickViewStore()
@@ -24,6 +26,8 @@ export default function QuickView() {
           .with(matchExplorerItemWithType('video'), (props) => <VideoQuickView {...props} />)
           .with(matchExplorerItemWithType('audio'), (props) => <AudioQuickView {...props} />)
           .with(matchExplorerItemWithType('image'), (props) => <ImageQuickView {...props} />)
+          .with(matchExplorerItemWithType('rawText'), (props) => <RawTextQuickView {...props} />)
+          .with(matchExplorerItemWithType('webPage'), (props) => <WebPageQuickView {...props} />)
           .otherwise(() => (
             <>TODO</>
           ))}

@@ -240,6 +240,10 @@ export default function ClientLayout({
           'image',
           () => `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.webp`,
         )
+        .with(
+          'webPage',
+          () => `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.png`,
+        )
         .otherwise(
           () => `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`,
         )

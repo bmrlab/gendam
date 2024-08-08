@@ -1,7 +1,7 @@
 use crate::{
     query::payload::{
-        audio::AudioSearchMetadata, image::ImageSearchMetadata, video::VideoSearchMetadata,
-        SearchMetadata, SearchPayload,
+        audio::AudioSearchMetadata, image::ImageSearchMetadata, raw_text::RawTextSearchMetadata,
+        video::VideoSearchMetadata, web_page::WebPageSearchMetadata, SearchMetadata, SearchPayload,
     },
     ContentBase,
 };
@@ -15,9 +15,17 @@ use content_base_task::{
         AudioTaskType,
     },
     image::{desc_embed::ImageDescEmbedTask, ImageTaskType},
+    raw_text::{
+        chunk::{DocumentChunkTrait, RawTextChunkTask},
+        chunk_sum_embed::{DocumentChunkSumEmbedTrait, RawTextChunkSumEmbedTask},
+        RawTextTaskType,
+    },
     video::{
         frame::VideoFrameTask, trans_chunk::VideoTransChunkTask,
         trans_chunk_sum_embed::VideoTransChunkSumEmbedTask, VideoTaskType,
+    },
+    web_page::{
+        chunk::WebPageChunkTask, chunk_sum_embed::WebPageChunkSumEmbedTask, WebPageTaskType,
     },
     ContentTask, ContentTaskType, FileInfo, TaskRecord,
 };
@@ -43,7 +51,11 @@ pub struct UpsertPayload {
 }
 
 impl UpsertPayload {
-    pub fn new(file_identifier: &str, file_path: impl AsRef<Path>, metadata: &ContentMetadata) -> Self {
+    pub fn new(
+        file_identifier: &str,
+        file_path: impl AsRef<Path>,
+        metadata: &ContentMetadata,
+    ) -> Self {
         Self {
             file_identifier: file_identifier.to_string(),
             file_path: file_path.as_ref().to_path_buf(),
@@ -131,6 +143,26 @@ impl ContentBase {
                         Some(inner_tx.clone()),
                     )
                     .await;
+                }
+                ContentMetadata::RawText(_) => {
+                    run_task(
+                        &task_pool,
+                        &file_info,
+                        RawTextChunkSumEmbedTask,
+                        Some(TaskPriority::Normal),
+                        Some(inner_tx.clone()),
+                    )
+                    .await
+                }
+                ContentMetadata::WebPage(_) => {
+                    run_task(
+                        &task_pool,
+                        &file_info,
+                        WebPageChunkSumEmbedTask,
+                        Some(TaskPriority::Normal),
+                        Some(inner_tx.clone()),
+                    )
+                    .await
                 }
                 ContentMetadata::Unknown => {
                     warn!(
@@ -246,6 +278,56 @@ async fn task_post_process(
                     .await
                 {
                     warn!("failed to upsert points: {e:?}");
+                }
+            }
+        }
+        ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(task_type)) => {
+            if let Ok(chunks) = RawTextChunkTask.chunk_content(file_info, ctx).await {
+                for i in 0..chunks.len() {
+                    if let Ok(embedding) = task_type.embed_content(file_info, ctx, i).await {
+                        let payload = SearchPayload {
+                            file_identifier: file_info.file_identifier.clone(),
+                            task_type: task_type.clone().into(),
+                            metadata: RawTextSearchMetadata { index: i }.into(),
+                        };
+                        let point =
+                            PointStruct::new(payload.uuid().to_string(), embedding, payload);
+
+                        if let Err(e) = qdrant
+                            .upsert_points(
+                                UpsertPointsBuilder::new(language_collection_name, vec![point])
+                                    .wait(true),
+                            )
+                            .await
+                        {
+                            warn!("failed to upsert points: {e:?}");
+                        }
+                    }
+                }
+            }
+        }
+        ContentTaskType::WebPage(WebPageTaskType::ChunkSumEmbed(task_type)) => {
+            if let Ok(chunks) = WebPageChunkTask.chunk_content(file_info, ctx).await {
+                for i in 0..chunks.len() {
+                    if let Ok(embedding) = task_type.embed_content(file_info, ctx, i).await {
+                        let payload = SearchPayload {
+                            file_identifier: file_info.file_identifier.clone(),
+                            task_type: task_type.clone().into(),
+                            metadata: WebPageSearchMetadata { index: i }.into(),
+                        };
+                        let point =
+                            PointStruct::new(payload.uuid().to_string(), embedding, payload);
+
+                        if let Err(e) = qdrant
+                            .upsert_points(
+                                UpsertPointsBuilder::new(language_collection_name, vec![point])
+                                    .wait(true),
+                            )
+                            .await
+                        {
+                            warn!("failed to upsert points: {e:?}");
+                        }
+                    }
                 }
             }
         }
