@@ -52,6 +52,7 @@ pub struct LibrarySettings {
     pub title: String,
     pub appearance_theme: LibrarySettingsThemeEnum,
     pub explorer_layout: LibrarySettingsLayoutEnum,
+    pub inspector_size: u32,
     pub models: LibraryModels,
     pub always_delete_local_file_after_upload: bool,
     pub s3_config: Option<S3Config>,
@@ -82,6 +83,7 @@ impl<'de> Deserialize<'de> for LibrarySettings {
                 .unwrap_or_default()
                 .parse()
                 .unwrap_or(LibrarySettingsLayoutEnum::Grid),
+            inspector_size: value["inspectorSize"].as_u64().unwrap_or(20) as u32,
             models: serde_json::from_value::<LibraryModels>(value["models"].to_owned())
                 .unwrap_or_default(),
             always_delete_local_file_after_upload: value["alwaysDeleteLocalFileAfterUpload"]
@@ -100,6 +102,7 @@ impl Default for LibrarySettings {
             title: "Untitled".to_string(),
             appearance_theme: LibrarySettingsThemeEnum::Light,
             explorer_layout: LibrarySettingsLayoutEnum::List,
+            inspector_size: 20,
             models: Default::default(),
             always_delete_local_file_after_upload: false,
             s3_config: None,

@@ -134,7 +134,7 @@ export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string 
 
 export type WebPageTaskTypeSpecta = "transform" | "chunk" | "chunkSum" | "chunkSumEmbed"
 
-export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum; models: LibraryModels; alwaysDeleteLocalFileAfterUpload: boolean; s3Config: S3Config | null }
+export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum; inspectorSize: number; models: LibraryModels; alwaysDeleteLocalFileAfterUpload: boolean; s3Config: S3Config | null }
 
 export type FilePathWithAssetObjectData = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; assetObject?: AssetObjectWithMediaData | null; createdAt: string; updatedAt: string }
 

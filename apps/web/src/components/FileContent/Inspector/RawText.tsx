@@ -1,49 +1,42 @@
-import { ExtractExplorerItem } from '@/Explorer/types'
-import { formatBytes, formatDateTime } from '@/lib/utils'
-import { Video } from '../../FileView/Video'
-import { DetailTasks } from '../../Inspector'
-import { useSortedTasks } from '../../Inspector/hooks'
 import RawTextViewer from '@/components/FileView/RawText'
+import { ExtractExplorerItem } from '@/Explorer/types'
+import {
+  InspectorItemContainer,
+  InspectorItemDivider,
+  InspectorItemFilePath,
+  InspectorItemMetadata,
+  InspectorItemMetadataItem,
+  InspectorItemTasks,
+  InspectorItemViewer,
+} from '.'
+import { useSortedTasks } from './hooks'
 
 export default function RawTextDetail({ filePath, assetObject }: ExtractExplorerItem<'FilePath', 'rawText'>) {
-  const { sortedTasks } = useSortedTasks(assetObject)
+  const { sortedTasks, handleJobsCancel } = useSortedTasks(assetObject)
 
   return (
-    <div className="p-3">
-      <div className="w-58 bg-app-overlay/50 relative h-48 overflow-hidden">
-        <RawTextViewer hash={assetObject.hash} variant='sm' />
-      </div>
+    <InspectorItemContainer>
+      <InspectorItemViewer>
+        <RawTextViewer hash={assetObject.hash} variant="sm" />
+      </InspectorItemViewer>
 
-      <div className="mt-3 overflow-hidden">
-        <div className="text-ink line-clamp-2 break-all text-sm font-medium">{filePath.name}</div>
-        <div className="text-ink/50 mt-1 line-clamp-2 text-xs">Location {filePath.materializedPath}</div>
-      </div>
+      <InspectorItemFilePath filePath={filePath} />
 
-      <div className="bg-app-line mb-3 mt-3 h-px"></div>
-      <div className="text-xs">
-        <div className="text-md font-medium">Information</div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Size</div>
-          <div>{formatBytes(assetObject.size)}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Type</div>
-          <div>{assetObject.mimeType}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Text Count</div>
-          <div>{assetObject.mediaData?.text_count ?? '-'}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Created</div>
-          <div>{formatDateTime(assetObject.createdAt)}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Modified</div>
-          <div>{formatDateTime(assetObject.updatedAt)}</div>
-        </div>
-      </div>
-      <div className="bg-app-line mb-3 mt-3 h-px"></div>
+      <InspectorItemDivider />
+
+      <InspectorItemMetadata data={assetObject}>
+        {(assetObject) => (
+          <>
+            <InspectorItemMetadataItem name="Text Count">
+              {assetObject.mediaData?.text_count ?? 0}
+            </InspectorItemMetadataItem>
+          </>
+        )}
+      </InspectorItemMetadata>
+
+      <InspectorItemDivider />
+
+      {/* DEBUG INFO */}
       <div className="text-xs">
         <div className="mt-2 flex justify-between">
           <div className="text-ink/50">Content Hash</div>
@@ -62,10 +55,10 @@ export default function RawTextDetail({ filePath, assetObject }: ExtractExplorer
           )}
         </div>
       </div>
-      <div className="bg-app-line mb-3 mt-3 h-px"></div>
-      <DetailTasks data={assetObject} />
-      {/* blank area at the bottom */}
-      <div className="mt-6"></div>
-    </div>
+
+      <InspectorItemDivider />
+
+      <InspectorItemTasks sortedTasks={sortedTasks} handleJobsCancel={handleJobsCancel} />
+    </InspectorItemContainer>
   )
 }

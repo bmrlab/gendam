@@ -13,18 +13,21 @@ import Inspector from '@/components/Inspector'
 import { useInspector } from '@/components/Inspector/store'
 import Viewport from '@/components/Viewport'
 import { FilePath } from '@/lib/bindings'
+import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { Drop_To_Folder } from '@gendam/assets/images'
 import { RSPCError } from '@rspc/client'
+import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
 import ItemContextMenu from './_components/ItemContextMenu'
 
 export default function ExplorerPage() {
   // const explorerStore = useExplorerStore()
+  const currentLibrary = useCurrentLibrary()
   const searchParams = useSearchParams()
   let dirInSearchParams = searchParams.get('dir') || '/'
   if (!/^\/([^/\\:*?"<>|]+\/)+$/.test(dirInSearchParams)) {
@@ -109,6 +112,60 @@ export default function ExplorerPage() {
     return null
   }, [explorer.selectedItems])
 
+  /**
+   * listen to meta + I to toggle inspector
+   * @todo 这个快捷键目前只是临时实现，之后应该统一的管理快捷键并且提供用户自定义的功能
+   */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey && e.key === 'i') {
+        inspector.setShow(!inspector.show)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [inspector])
+
+  const [isResizing, setIsResizing] = useState(false)
+  const startXRef = useRef(0)
+  const [width, setWidth] = useState(256)
+  const startWidthRef = useRef(width)
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false)
+  }, [])
+
+  const resize = useCallback(
+    (e: MouseEvent) => {
+      if (isResizing) {
+        const deltaX = e.clientX - startXRef.current
+        const newWidth = startWidthRef.current - deltaX
+        // if (newWidth >= minWidth && newWidth <= maxWidth) {
+        //   setWidth(newWidth);
+        // }
+        setWidth(newWidth)
+      }
+    },
+    [isResizing],
+  )
+
+  useEffect(() => {
+    const handleMouseUp = () => stopResizing()
+    const handleMouseMove = (e: MouseEvent) => resize(e)
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing, resize, stopResizing])
+
   if (assetsQuery.isError) {
     return <Viewport.Page className="text-ink/50 flex items-center justify-center">Failed to load assets</Viewport.Page>
   }
@@ -128,9 +185,64 @@ export default function ExplorerPage() {
               <div className="my-4 text-sm">Drag or paste videos here</div>
             </Viewport.Content>
           ) : (
-            <Viewport.Content className="flex h-full flex-row overflow-hidden">
-              <ExplorerLayout className="h-full w-auto flex-1 overflow-scroll" />
-              <Inspector data={inspectorItem} />
+            <Viewport.Content className="flex h-full w-full overflow-hidden">
+              <LayoutGroup>
+                <motion.div
+                  className="h-full"
+                  animate={{
+                    width: inspector.show ? `calc(100% - ${width}px)` : '100%',
+                  }}
+                  transition={
+                    isResizing
+                      ? {
+                          type: 'spring',
+                          duration: 0,
+                        }
+                      : {
+                          type: 'spring',
+                          stiffness: 500,
+                          damping: 50,
+                        }
+                  }
+                >
+                  <ExplorerLayout className="h-full w-full overflow-scroll" />
+                </motion.div>
+                <AnimatePresence mode="popLayout">
+                  {inspector.show && (
+                    <motion.div
+                      layout
+                      initial={{
+                        x: '100%',
+                      }}
+                      animate={{
+                        x: 0,
+                      }}
+                      exit={{
+                        x: '100%',
+                      }}
+                      transition={{
+                        x: {
+                          type: 'spring',
+                          stiffness: 500,
+                          damping: 50,
+                        },
+                      }}
+                      style={{ width }}
+                      className="flex-none flex h-full"
+                    >
+                      <div
+                        className="h-full w-1 cursor-col-resize"
+                        onMouseDown={(e) => {
+                          setIsResizing(true)
+                          startXRef.current = e.clientX
+                          startWidthRef.current = width
+                        }}
+                      />
+                      <Inspector data={inspectorItem} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </LayoutGroup>
             </Viewport.Content>
           )}
           <Footer /* Viewport.StatusBar */ />

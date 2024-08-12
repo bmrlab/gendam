@@ -1,56 +1,47 @@
-import { formatBytes, formatDateTime, formatDuration } from '@/lib/utils'
-import { Video } from '../../FileView/Video'
-import { DetailTasks } from '../../Inspector'
-import { useSortedTasks } from '../../Inspector/hooks'
 import { ExtractExplorerItem } from '@/Explorer/types'
+import { formatDuration } from '@/lib/utils'
+import {
+  InspectorItemContainer,
+  InspectorItemDivider,
+  InspectorItemFilePath,
+  InspectorItemMetadata,
+  InspectorItemMetadataItem,
+  InspectorItemTasks,
+  InspectorItemViewer,
+} from '.'
+import { Video } from '../../FileView/Video'
+import { useSortedTasks } from './hooks'
 
-export default function VideoDetail({ filePath, assetObject }: ExtractExplorerItem<"FilePath", "video">) {
-  const { sortedTasks } = useSortedTasks(assetObject)
+export default function VideoDetail({ filePath, assetObject }: ExtractExplorerItem<'FilePath', 'video'>) {
+  const { sortedTasks, handleJobsCancel } = useSortedTasks(assetObject)
 
   return (
-    <div className="p-3">
-      <div className="w-58 bg-app-overlay/50 relative h-48 overflow-hidden">
+    <InspectorItemContainer>
+      <InspectorItemViewer>
         <Video hash={assetObject.hash} />
-      </div>
+      </InspectorItemViewer>
 
-      <div className="mt-3 overflow-hidden">
-        <div className="text-ink line-clamp-2 break-all text-sm font-medium">{filePath.name}</div>
-        <div className="text-ink/50 mt-1 line-clamp-2 text-xs">Location {filePath.materializedPath}</div>
-      </div>
+      <InspectorItemFilePath filePath={filePath} />
 
-      <div className="bg-app-line mb-3 mt-3 h-px"></div>
-      <div className="text-xs">
-        <div className="text-md font-medium">Information</div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Size</div>
-          <div>{formatBytes(assetObject.size)}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Type</div>
-          <div>{assetObject.mimeType}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Duration</div>
-          <div>{formatDuration(assetObject.mediaData?.duration ?? 0)}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Dimensions</div>
-          <div>{`${assetObject.mediaData?.width ?? 0} x ${assetObject.mediaData?.height ?? 0}`}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Audio</div>
-          <div>{!!assetObject.mediaData?.audio ? 'Yes' : 'No'}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Created</div>
-          <div>{formatDateTime(assetObject.createdAt)}</div>
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Modified</div>
-          <div>{formatDateTime(assetObject.updatedAt)}</div>
-        </div>
-      </div>
-      <div className="bg-app-line mb-3 mt-3 h-px"></div>
+      <InspectorItemDivider />
+
+      <InspectorItemMetadata data={assetObject}>
+        {(assetObject) => (
+          <>
+            <InspectorItemMetadataItem name="Duration">
+              {formatDuration(assetObject.mediaData?.duration ?? 0)}
+            </InspectorItemMetadataItem>
+            <InspectorItemMetadataItem name="Dimensions">{`${assetObject.mediaData?.width ?? 0} x ${assetObject.mediaData?.height ?? 0}`}</InspectorItemMetadataItem>
+            <InspectorItemMetadataItem name="Audio">
+              {!!assetObject.mediaData?.audio ? 'Yes' : 'No'}
+            </InspectorItemMetadataItem>
+          </>
+        )}
+      </InspectorItemMetadata>
+
+      <InspectorItemDivider />
+
+      {/* DEBUG INFO */}
       <div className="text-xs">
         <div className="mt-2 flex justify-between">
           <div className="text-ink/50">Content Hash</div>
@@ -61,26 +52,18 @@ export default function VideoDetail({ filePath, assetObject }: ExtractExplorerIt
           <div>{assetObject.id}</div>
         </div>
         <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Visual Search</div>
-          {sortedTasks.some((item) => item.taskType === 'frame-content-embedding' && item.exitCode === 0) ? (
-            <div className="rounded-full bg-green-100 px-2 text-xs text-green-600">Ready</div>
-          ) : (
-            <div className="rounded-full bg-orange-100 px-2 text-xs text-orange-600">Not ready</div>
-          )}
-        </div>
-        <div className="mt-2 flex justify-between">
-          <div className="text-ink/50">Transcript Search</div>
-          {sortedTasks.some((item) => item.taskType === 'transcript-embedding' && item.exitCode === 0) ? (
+          <div className="text-ink/50">Search</div>
+          {sortedTasks.some((item) => item.taskType === 'video-trans-chunk-sum-embed' && item.exitCode === 0) ? (
             <div className="rounded-full bg-green-100 px-2 text-xs text-green-600">Ready</div>
           ) : (
             <div className="rounded-full bg-orange-100 px-2 text-xs text-orange-600">Not ready</div>
           )}
         </div>
       </div>
-      <div className="bg-app-line mb-3 mt-3 h-px"></div>
-      <DetailTasks data={assetObject} />
-      {/* blank area at the bottom */}
-      <div className="mt-6"></div>
-    </div>
+
+      <InspectorItemDivider />
+
+      <InspectorItemTasks sortedTasks={sortedTasks} handleJobsCancel={handleJobsCancel} />
+    </InspectorItemContainer>
   )
 }
