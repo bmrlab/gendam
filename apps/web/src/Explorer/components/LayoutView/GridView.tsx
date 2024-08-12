@@ -7,6 +7,7 @@ import { useExplorerStore } from '@/Explorer/store'
 import { ExtractExplorerItem, uniqueId } from '@/Explorer/types'
 // import { useCurrentLibrary } from '@/lib/library'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
+import { useCurrentLibrary } from '@/lib/library'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { HTMLAttributes, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -74,7 +75,7 @@ const GridItem: React.FC<
   } & Omit<HTMLAttributes<HTMLDivElement>, 'onSelect'>
 > = ({ data, onSelect, ...props }) => {
   const router = useRouter()
-  // const currentLibrary = useCurrentLibrary()
+  const currentLibrary = useCurrentLibrary()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const quickViewStore = useQuickViewStore()

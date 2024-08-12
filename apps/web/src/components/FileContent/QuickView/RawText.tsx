@@ -7,8 +7,8 @@ export default function RawTextQuickView({
   assetObject: ExtractExplorerItemWithType<'rawText'>['assetObject']
 }) {
   return (
-    <div className="flex h-full w-full items-center justify-center">
-      <RawTextViewer hash={assetObject.hash} />
+    <div className="flex h-full w-full items-center justify-center text-white bg-gray-900 rounded-md">
+      <RawTextViewer hash={assetObject.hash} variant='default' />
     </div>
   )
 }

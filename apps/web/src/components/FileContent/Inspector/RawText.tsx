@@ -11,7 +11,7 @@ export default function RawTextDetail({ filePath, assetObject }: ExtractExplorer
   return (
     <div className="p-3">
       <div className="w-58 bg-app-overlay/50 relative h-48 overflow-hidden">
-        <RawTextViewer hash={assetObject.hash} />
+        <RawTextViewer hash={assetObject.hash} variant='sm' />
       </div>
 
       <div className="mt-3 overflow-hidden">

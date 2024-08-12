@@ -29,6 +29,7 @@
     "react-dom": "^18",
     "react-markdown": "^9.0.1",
     "react-selecto": "^1.26.3",
+    "react-zoom-pan-pinch": "^3.6.1",
     "sharp": "^0.33.3",
     "sonner": "^1.4.41",
     "tauri-plugin-clipboard-api": "^1.0.1",

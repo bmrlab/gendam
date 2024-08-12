@@ -7,8 +7,8 @@ export default function ImageQuickView({
   assetObject: ExtractExplorerItemWithType<'image'>['assetObject']
 }) {
   return (
-    <div className="flex h-full w-full items-center justify-center">
-      <ImageViewer hash={assetObject.hash} />
+    <div className="h-full w-full overflow-hidden">
+      <ImageViewer hash={assetObject.hash} mimeType={assetObject.mimeType} />
     </div>
   )
 }

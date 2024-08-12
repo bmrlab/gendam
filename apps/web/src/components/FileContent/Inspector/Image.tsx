@@ -9,8 +9,8 @@ export default function ImageDetail({ filePath, assetObject }: ExtractExplorerIt
 
   return (
     <div className="p-3">
-      <div className="w-58 bg-app-overlay/50 relative h-48 overflow-hidden p-4">
-        <ImageViewer hash={assetObject.hash} />
+      <div className="w-58 relative h-48 overflow-hidden">
+        <ImageViewer hash={assetObject.hash} mimeType={assetObject.mimeType} />
       </div>
 
       <div className="mt-3 overflow-hidden">

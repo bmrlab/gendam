@@ -106,8 +106,9 @@ function SearchPage() {
               <span>&quot;{requestPayload.filePath.name}&quot;</span>
               <span className="relative inline-block h-6 w-6">
                 <Image
-                  src={currentLibrary.getVideoPreviewSrc(
+                  src={currentLibrary.getPreviewSrc(
                     requestPayload.filePath.assetObject?.hash!,
+                    'video',
                     Math.floor(requestPayload.timestamp / 1000),
                   )}
                   alt={requestPayload.filePath.name}

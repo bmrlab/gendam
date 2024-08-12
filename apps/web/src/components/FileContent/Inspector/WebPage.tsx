@@ -10,7 +10,7 @@ export default function WebPageDetail({ filePath, assetObject }: ExtractExplorer
 
   return (
     <div className="p-3">
-      <div className="w-58 bg-app-overlay/50 relative h-48 overflow-hidden p-4">
+      <div className="w-58 relative h-48 overflow-hidden">
         <WebPageViewer hash={assetObject.hash} />
       </div>
 

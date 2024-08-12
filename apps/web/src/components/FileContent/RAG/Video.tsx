@@ -82,7 +82,7 @@ function VideoTranscriptItem({
       <div className="flex flex-col space-y-2">
         <div className="relative h-[200px] w-[280px]">
           <Image
-            src={currentLibrary.getVideoPreviewSrc(assetObject.hash, Math.floor(metadata.startTime / 1e3))}
+            src={currentLibrary.getPreviewSrc(assetObject.hash, 'video', Math.floor(metadata.startTime / 1e3))}
             className="object-cover"
             fill
             priority

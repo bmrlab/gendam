@@ -91,6 +91,9 @@ importers:
       react-selecto:
         specifier: ^1.26.3
         version: 1.26.3
+      react-zoom-pan-pinch:
+        specifier: ^3.6.1
+        version: 3.6.1(react-dom@18.2.0)(react@18.2.0)
       sharp:
         specifier: ^0.33.3
         version: 0.33.3
@@ -5674,6 +5677,17 @@ packages:
     transitivePeerDependencies:
       - '@types/react'
       - react
+    dev: false
+
+  /react-zoom-pan-pinch@3.6.1(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-SdPqdk7QDSV7u/WulkFOi+cnza8rEZ0XX4ZpeH7vx3UZEg7DoyuAy3MCmm+BWv/idPQL2Oe73VoC0EhfCN+sZQ==}
+    engines: {node: '>=8', npm: '>=5'}
+    peerDependencies:
+      react: '*'
+      react-dom: '*'
+    dependencies:
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
     dev: false
 
   /react@18.2.0:

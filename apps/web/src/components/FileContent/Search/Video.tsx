@@ -5,10 +5,7 @@ import classNames from 'classnames'
 import Image from 'next/image'
 import { useMemo } from 'react'
 
-export default function VideoSearchItem({
-  assetObject,
-  metadata,
-}: ExtractExplorerItem<'SearchResult', 'video'>) {
+export default function VideoSearchItem({ assetObject, metadata }: ExtractExplorerItem<'SearchResult', 'video'>) {
   const currentLibrary = useCurrentLibrary()
 
   const frames = useMemo(() => {
@@ -30,7 +27,7 @@ export default function VideoSearchItem({
         {frames.map((frame, index) => (
           <div key={index} className="visible relative flex-1 bg-neutral-100">
             <Image
-              src={currentLibrary.getVideoPreviewSrc(assetObject.hash, frame)}
+              src={currentLibrary.getPreviewSrc(assetObject.hash, 'video', frame)}
               alt={assetObject.hash}
               fill={true}
               className="object-cover"

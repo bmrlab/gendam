@@ -47,19 +47,21 @@ export default function SearchResults() {
   }, [])
 
   const framesWidth = useCallback((metadata: SearchResultPayload['metadata'], singleWidth: number) => {
-    const startTime = Math.floor(metadata.startTime / 1e3)
-    const endTime = Math.floor(metadata.endTime / 1e3)
-    const duration = endTime - startTime
-    let repeat = 1
-    if (duration < 1) {
-      //
-    } else if (duration >= 1 && duration < 6) {
-      repeat = 2
-    } else if (duration >= 6) {
-      repeat = 3
-    }
-    const width = repeat * singleWidth
-    return { width }
+    // const startTime = Math.floor(metadata.startTime / 1e3)
+    // const endTime = Math.floor(metadata.endTime / 1e3)
+    // const duration = endTime - startTime
+    // let repeat = 1
+    // if (duration < 1) {
+    //   //
+    // } else if (duration >= 1 && duration < 6) {
+    //   repeat = 2
+    // } else if (duration >= 6) {
+    //   repeat = 3
+    // }
+    // const width = repeat * singleWidth
+    // return { width }
+    // TODO 重新看下宽度如何计算
+    return { width: singleWidth }
   }, [])
 
   const itemsWithSize = useMemo<ItemWithSize[]>(() => {

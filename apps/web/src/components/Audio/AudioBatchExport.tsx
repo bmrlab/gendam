@@ -1,18 +1,18 @@
-import { DropdownMenu } from '@gendam/ui/v2/dropdown-menu'
-import Icon from '@gendam/ui/icons'
-import MuseMultiSelect from './ui/MultiSelect'
-import { toast } from 'sonner'
 import { AudioType, ExportInput } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
+import Icon from '@gendam/ui/icons'
 import { Button } from '@gendam/ui/v2/button'
-import Image from 'next/image'
+import { DropdownMenu } from '@gendam/ui/v2/dropdown-menu'
 import { produce } from 'immer'
-import { useCallback, useMemo, useState } from 'react'
-import { useBoundStore } from './store'
-import { WithDownloadDialogButton } from './withDownloadDialog'
+import Image from 'next/image'
+import { useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { FileTypeEnum } from './AudioExport'
+import { useBoundStore } from './store'
+import MuseMultiSelect from './ui/MultiSelect'
+import { WithDownloadDialogButton } from './withDownloadDialog'
 
 export type BatchExportProps = {
   id: string
@@ -63,19 +63,19 @@ export default function BatchExport() {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="grid grid-cols-10 border-b border-app-line px-6 py-2 text-xs font-normal leading-4">
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="border-app-line grid grid-cols-10 border-b px-6 py-2 text-xs font-normal leading-4">
         <p className="col-span-5">File</p>
         <p className="col-span-3">Formats</p>
         <p className="col-span-1">Quantity</p>
         <div className="col-span-1"></div>
       </div>
-      <div className="flex-1 pb-16 overflow-auto">
+      <div className="flex-1 overflow-auto pb-16">
         {data.map(({ id, label, assetObjectHash }, index) => (
           <div
             key={id}
             className={cn(
-              'grid grid-cols-10 items-center px-6 py-3 border-app-line',
+              'border-app-line grid grid-cols-10 items-center px-6 py-3',
               data.length === index + 1 ? 'border-b-0' : 'border-b',
             )}
           >
@@ -85,7 +85,7 @@ export default function BatchExport() {
                   <source src={currentLibrary.getFileSrc(assetObjectHash)} />
                 </video> */}
                 <Image
-                  src={currentLibrary.getVideoPreviewSrc(assetObjectHash)}
+                  src={currentLibrary.getThumbnailSrc(assetObjectHash, 'video')}
                   alt={assetObjectHash}
                   fill={true}
                   className="object-cover"
@@ -112,16 +112,18 @@ export default function BatchExport() {
             <div className="col-span-1 cursor-pointer">
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
-                  <div className="inline-flex items-center justify-center size-6 rounded border border-app-line cursor-default data-[state=open]:bg-app-hover">
+                  <div className="border-app-line data-[state=open]:bg-app-hover inline-flex size-6 cursor-default items-center justify-center rounded border">
                     <span className="sr-only">Open menu</span>
                     <Icon.MoreVertical />
                   </div>
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Content align="end">
-                  <DropdownMenu.Item onSelect={() => {
-                    const types = multiValues.find((v) => v.id === id)?.types || []
-                    data.filter((d) => d.id !== id).forEach((d) => updateItemTypes(d.id, types))
-                  }}>
+                  <DropdownMenu.Item
+                    onSelect={() => {
+                      const types = multiValues.find((v) => v.id === id)?.types || []
+                      data.filter((d) => d.id !== id).forEach((d) => updateItemTypes(d.id, types))
+                    }}
+                  >
                     <div className="flex items-center gap-1.5">
                       <Icon.Cycle />
                       <span>Apply export formats to all</span>
@@ -139,7 +141,7 @@ export default function BatchExport() {
           </div>
         ))}
       </div>
-      <div className="flex justify-end gap-2 border-t border-app-line px-6 py-2.5">
+      <div className="border-app-line flex justify-end gap-2 border-t px-6 py-2.5">
         <Button variant="outline" size="md" onClick={() => setIsOpenAudioDialog(false)}>
           Cancel
         </Button>

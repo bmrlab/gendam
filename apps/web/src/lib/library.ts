@@ -11,7 +11,12 @@ export type AssetObjectType =
   | SearchResultMetadata['type']
   | ContentTaskTypeSpecta['contentType']
 
-type CurrentLibraryContext = {
+export type AssetPreviewMetadata = {
+  (assetObjectHash: string, type: 'audio'): string
+  (assetObjectHash: string, type: 'video', timestampInSecond?: number): string
+}
+
+export type CurrentLibraryContext = {
   id: string
   dir: string
   librarySettings: LibrarySettings
@@ -19,8 +24,7 @@ type CurrentLibraryContext = {
   switchCurrentLibraryById: (libraryId: string) => Promise<void>
   getFileSrc: (assetObjectHash: string) => string
   getThumbnailSrc: (assetObjectHash: string, assetObjectType: AssetObjectType) => string
-  getVideoPreviewSrc: (assetObjectHash: string, timestampInSecond?: number) => string
-  getAudioPreviewSrc: (assetObjectHash: string) => string | undefined
+  getPreviewSrc: AssetPreviewMetadata
 }
 
 export const CurrentLibrary = createContext<CurrentLibraryContext | null>(null)

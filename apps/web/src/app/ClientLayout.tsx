@@ -6,7 +6,7 @@ import SonnerToaster from '@/components/SonnerToaster'
 import Viewport from '@/components/Viewport'
 import { useP2PEvents } from '@/hooks/useP2PEvents'
 import { Auth, LibrarySettings } from '@/lib/bindings'
-import { AssetObjectType, CurrentLibrary, type Library } from '@/lib/library'
+import { AssetObjectType, AssetPreviewMetadata, CurrentLibrary, type Library } from '@/lib/library'
 import { client, queryClient, rspc } from '@/lib/rspc'
 import Icon from '@gendam/ui/icons'
 import { convertFileSrc } from '@tauri-apps/api/tauri'
@@ -253,30 +253,26 @@ export default function ClientLayout({
     [library],
   )
 
-  const getVideoPreviewSrc = useCallback(
-    (assetObjectHash: string, timestampInSecond?: number) => {
-      if (!library) {
-        return '/images/empty.png'
-      }
+  const getPreviewSrc: AssetPreviewMetadata = useCallback(
+    (assetObjectHash, type, args1?: number) => {
+      if (!library) return '/images/empty.png'
 
-      const fileFullPath = (() => {
-        if (typeof timestampInSecond === 'undefined' || timestampInSecond < 1) {
-          return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
-        }
+      return match(type)
+        .with('audio', () =>
+          _getFullSrc(`${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/waveform.json`),
+        )
+        .with('video', () => {
+          const fileFullPath = (() => {
+            if (typeof args1 === 'undefined' || args1 < 1) {
+              return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
+            }
 
-        return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/frames/${timestampInSecond}000.jpg`
-      })()
+            return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/frames/${args1}000.jpg`
+          })()
 
-      return _getFullSrc(fileFullPath)
-    },
-    [library],
-  )
-
-  const getAudioPreviewSrc = useCallback(
-    (assetObjectHash: string) => {
-      if (!library) return void 0
-
-      _getFullSrc(`${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/waveform.json`)
+          return _getFullSrc(fileFullPath)
+        })
+        .exhaustive()
     },
     [library],
   )
@@ -307,8 +303,7 @@ export default function ClientLayout({
               switchCurrentLibraryById: switchCurrentLibraryById,
               getFileSrc,
               getThumbnailSrc,
-              getVideoPreviewSrc,
-              getAudioPreviewSrc,
+              getPreviewSrc,
             }}
           >
             <Viewport.Sidebar />

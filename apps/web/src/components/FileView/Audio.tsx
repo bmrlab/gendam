@@ -19,12 +19,11 @@ export default function Audio({ hash, duration, className }: { hash: string; dur
     cursorWidth: 0,
     barGap: 0,
     height: containerRef.current?.clientHeight ?? 0,
-    url: currentLibrary.getFileSrc(hash),
   })
 
   useEffect(() => {
     const audioUrl = currentLibrary.getFileSrc(hash)
-    const waveformUrl = currentLibrary.getAudioPreviewSrc(hash)
+    const waveformUrl = currentLibrary.getPreviewSrc(hash, 'audio')
 
     ;(async () => {
       try {
@@ -42,7 +41,7 @@ export default function Audio({ hash, duration, className }: { hash: string; dur
         wavesurfer?.load(audioUrl)
       }
     })()
-  }, [])
+  }, [wavesurfer])
 
   useEffect(() => {
     wavesurfer?.on('click', () => {

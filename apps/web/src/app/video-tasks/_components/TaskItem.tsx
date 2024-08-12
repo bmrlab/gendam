@@ -62,7 +62,7 @@ export default function VideoTaskItem({ videoFile, isSelect, handleSelect, ...pr
           <source src={currentLibrary.getFileSrc(assetObject.hash)} />
         </video> */}
           <Image
-            src={currentLibrary.getVideoPreviewSrc(assetObject.hash)}
+            src={currentLibrary.getThumbnailSrc(assetObject.hash, 'video')}
             alt={assetObject.hash}
             fill={true}
             className="object-cover"
