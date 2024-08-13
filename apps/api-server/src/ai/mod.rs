@@ -65,37 +65,61 @@ impl AIHandler {
 
         let model = get_model_info_by_id(ctx, &settings.models.image_caption)?;
         let model_name = model.id.clone();
-        let handler = AIModel::new(
-            move || {
-                let resources_dir_clone = resources_dir.clone();
-                let model_clone = model.clone();
-                async move {
-                    match model_clone.model_type {
-                        ConcreteModelType::BLIP => {
-                            let params = model_clone.params;
-                            let model_path = resources_dir_clone
-                                .join(get_str_from_params(&params, "model_path")?);
-                            let tokenizer_path = resources_dir_clone
-                                .join(get_str_from_params(&params, "tokenizer_path")?);
-                            let model_type = get_str_from_params(&params, "model_type")?;
-                            let model_type = match model_type {
-                                "Large" => ai::blip::BLIPModel::Large,
-                                _ => ai::blip::BLIPModel::Base,
-                            };
-                            BLIP::new(model_path, tokenizer_path, model_type).await
-                        }
-                        _ => {
-                            bail!(
-                                "unsupported model {} for image caption",
-                                model_clone.model_type.as_ref()
-                            )
+
+        let handler = if model.model_type == ConcreteModelType::OpenAI {
+            let handler = AIModel::new(
+                move || {
+                    let model_clone = model.clone();
+
+                    async move {
+                        let params = model_clone.params;
+                        let base_url = get_str_from_params(&params, "base_url")?;
+                        let api_key = get_str_from_params(&params, "api_key")?;
+                        let model = get_str_from_params(&params, "model")?;
+
+                        OpenAI::new(base_url, api_key, model).map(|v| LLM::OpenAI(v))
+                    }
+                },
+                Some(Duration::from_secs(30)),
+            )
+            .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
+
+            handler.create_image_caption_ref("Please describe the image.")
+        } else {
+            let handler = AIModel::new(
+                move || {
+                    let resources_dir_clone = resources_dir.clone();
+                    let model_clone = model.clone();
+                    async move {
+                        match model_clone.model_type {
+                            ConcreteModelType::BLIP => {
+                                let params = model_clone.params;
+                                let model_path = resources_dir_clone
+                                    .join(get_str_from_params(&params, "model_path")?);
+                                let tokenizer_path = resources_dir_clone
+                                    .join(get_str_from_params(&params, "tokenizer_path")?);
+                                let model_type = get_str_from_params(&params, "model_type")?;
+                                let model_type = match model_type {
+                                    "Large" => ai::blip::BLIPModel::Large,
+                                    _ => ai::blip::BLIPModel::Base,
+                                };
+                                BLIP::new(model_path, tokenizer_path, model_type).await
+                            }
+                            _ => {
+                                bail!(
+                                    "unsupported model {} for image caption",
+                                    model_clone.model_type.as_ref()
+                                )
+                            }
                         }
                     }
-                }
-            },
-            Some(Duration::from_secs(30)),
-        )
-        .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
+                },
+                Some(Duration::from_secs(30)),
+            )
+            .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
+
+            handler
+        };
 
         Ok((handler, model_name))
     }
@@ -141,7 +165,7 @@ impl AIHandler {
                     }
                 }
             },
-            Some(Duration::from_secs(30)),
+            Some(Duration::from_secs(600)),
         )
         .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
 
@@ -234,7 +258,7 @@ impl AIHandler {
                     }
                 }
             },
-            Some(Duration::from_secs(30)),
+            Some(Duration::from_secs(600)),
         )
         .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
 

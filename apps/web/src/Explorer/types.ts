@@ -97,6 +97,7 @@ function uniqueIdForSearchMetadata(item: SearchResultMetadata): string {
     .with({ type: 'video' }, (item) => item.startTime.toString())
     .with({ type: 'audio' }, (item) => item.startTime.toString())
     .with({ type: 'image' }, (item) => item.type)
-    .with({ type: 'rawText' }, (item) => item.index.toString())
+    .with({ type: 'rawText' }, (item) => item.startIndex.toString())
+    .with({ type: 'webPage' }, (item) => item.startIndex.toString())
     .exhaustive()
 }

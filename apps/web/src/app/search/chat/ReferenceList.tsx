@@ -1,6 +1,6 @@
 'use client'
 
-import RetrievalResultItem from '@/components/FileContent/RAG'
+import RetrievalResultItem, { RetrievalResultItemPreview } from '@/components/FileContent/RAG'
 import { ExtractExplorerItem, uniqueId } from '@/Explorer/types'
 import { Button } from '@gendam/ui/v2/button'
 import { useState } from 'react'
@@ -27,8 +27,16 @@ export function RAGReferenceList({ items, isLoading }: RAGReferenceListProps) {
         aria-expanded={expand}
       >
         {items.map((item) => {
-          // return expand ? <RAGReferenceContent key={key} item={item} /> : <RAGReferencePreview key={key} item={item} />
-          return <RetrievalResultItem key={uniqueId(item)} {...item} />
+          return expand ? (
+            <RetrievalResultItem key={uniqueId(item)} {...item} />
+          ) : (
+            <div
+              className="border-app-line group h-[160px] w-[240px] shrink-0 overflow-hidden rounded-lg border-2"
+              key={uniqueId(item)}
+            >
+              <RetrievalResultItemPreview {...item} />
+            </div>
+          )
         })}
       </div>
     </div>

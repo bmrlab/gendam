@@ -1,12 +1,17 @@
 import { ExtractExplorerItem } from '@/Explorer/types'
 import { useCurrentLibrary } from '@/lib/library'
+import { rspc } from '@/lib/rspc'
+import classNames from 'classnames'
 import Image from 'next/image'
 
-export default function ImageSearchItem({ assetObject }: ExtractExplorerItem<'SearchResult', 'image'>) {
+export default function ImageSearchItem({
+  assetObject,
+}: ExtractExplorerItem<'SearchResult' | 'RetrievalResult', 'image'>) {
   const currentLibrary = useCurrentLibrary()
+  const { data } = rspc.useQuery(['assets.artifacts.image.description', { hash: assetObject.hash }])
 
   return (
-    <div className="h-full w-full">
+    <div className="relative h-full w-full">
       <Image
         src={currentLibrary.getThumbnailSrc(assetObject.hash, 'image')}
         alt={assetObject.hash}
@@ -14,6 +19,18 @@ export default function ImageSearchItem({ assetObject }: ExtractExplorerItem<'Se
         className="object-cover"
         priority
       />
+
+      {data && (
+        <div
+          className={classNames(
+            'absolute left-0 top-0 flex h-full w-full flex-col justify-end bg-black/60 px-4 py-2 text-neutral-300',
+            'invisible group-hover:visible',
+            'overflow-scroll',
+          )}
+        >
+          <div className="text-xs line-clamp-3">{data}</div>
+        </div>
+      )}
     </div>
   )
 }

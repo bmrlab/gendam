@@ -288,7 +288,11 @@ async fn task_post_process(
                         let payload = SearchPayload {
                             file_identifier: file_info.file_identifier.clone(),
                             task_type: task_type.clone().into(),
-                            metadata: RawTextSearchMetadata { index: i }.into(),
+                            metadata: RawTextSearchMetadata {
+                                start_index: i,
+                                end_index: i,
+                            }
+                            .into(),
                         };
                         let point =
                             PointStruct::new(payload.uuid().to_string(), embedding, payload);
@@ -313,7 +317,11 @@ async fn task_post_process(
                         let payload = SearchPayload {
                             file_identifier: file_info.file_identifier.clone(),
                             task_type: task_type.clone().into(),
-                            metadata: WebPageSearchMetadata { index: i }.into(),
+                            metadata: WebPageSearchMetadata {
+                                start_index: i,
+                                end_index: i,
+                            }
+                            .into(),
                         };
                         let point =
                             PointStruct::new(payload.uuid().to_string(), embedding, payload);

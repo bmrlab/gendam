@@ -151,7 +151,7 @@
     }
   },
   {
-    "id": "ollama",
+    "id": "ollama-qwen2-7b-instruct",
     "categories": [
       "LLM"
     ],
@@ -170,6 +170,22 @@
       "api_key": "ollama",
       "model": "qwen2:7b-instruct-q4_0",
       "tokenizer_path": "./qwen2/tokenizer.json"
+    }
+  },
+  {
+    "id": "ollama-llava-phi3-mini",
+    "categories": [
+      "LLM"
+    ],
+    "title": "Ollama",
+    "description": "",
+    "artifacts_dir": "./llava-phi3",
+    "artifacts": [],
+    "model_type": "OpenAI",
+    "params": {
+      "base_url": "http://localhost:11434/v1",
+      "api_key": "ollama",
+      "model": "llava-phi3:3.8b-mini-q4_0"
     }
   }
 ]

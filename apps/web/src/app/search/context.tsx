@@ -1,7 +1,7 @@
 import type {
   // RecommendRequestPayload,
   // SearchRequestPayload,
-  SearchResultPayload as SearchResultPayload,
+  SearchResultPayload,
 } from '@/lib/bindings'
 import { client } from '@/lib/rspc'
 import { useSearchParams } from 'next/navigation'
@@ -38,10 +38,11 @@ function useSearchPayloadInURL(): {
   const searchPayloadInURL = useMemo<Extract<SearchPayload, { api: 'search.all' }> | null>(() => {
     try {
       const text = searchParams.get('text')
-      const recordType = searchParams.get('recordType')
-      if (text && (recordType === 'Frame' || recordType === 'Transcript')) {
-        return { api: 'search.all', text, recordType }
-      }
+      // const recordType = searchParams.get('recordType')
+      // if (text && (recordType === 'Frame' || recordType === 'Transcript')) {
+      //   return { api: 'search.all', text, recordType }
+      // }
+      if (text) return { api: 'search.all', text }
     } catch (e) {}
     return null
   }, [searchParams])

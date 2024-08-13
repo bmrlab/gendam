@@ -53,11 +53,39 @@ export function matchRetrievalResult<
 }
 
 export function matchExplorerItemWithType<T extends AssetObjectType>(contentType: T) {
-  return {
-    assetObject: {
-      mediaData: {
+  return P.union(
+    {
+      type: 'FilePath',
+      assetObject: {
+        mediaData: {
+          contentType,
+        },
+      },
+    },
+    {
+      type: 'SearchResult',
+      assetObject: {
+        mediaData: {
+          contentType,
+        },
+      },
+      metadata: {
+        type: contentType,
+      },
+    },
+    {
+      type: 'RetrievalResult',
+      assetObject: {
+        mediaData: {
+          contentType,
+        },
+      },
+      metadata: {
+        type: contentType,
+      },
+      taskType: {
         contentType,
       },
     },
-  }
+  )
 }

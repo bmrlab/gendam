@@ -152,9 +152,10 @@ function SearchPage() {
         {!requestPayload ? (
           <div className="flex flex-1 flex-col items-center justify-center">
             <Image src={Video_Files} alt="video files" priority className="h-60 w-60"></Image>
-            <div className="my-4 text-sm">Search for visual objects or processed transcripts</div>
-            <div className="mb-2 text-sm">Try searching for:</div>
-            <SearchSuggestions onSelectText={(text) => handleSearch(text)} />
+            <div className="my-4 text-sm">Search for visual objects or transcripts</div>
+            {/* TODO re-add search suggestions */}
+            {/* <div className="mb-2 text-sm">Try searching for:</div>
+            <SearchSuggestions onSelectText={(text) => handleSearch(text)} /> */}
           </div>
         ) : searchQuery.isLoading ? (
           <div className="text-ink/50 flex flex-1 items-center justify-center px-2 py-8 text-sm">Searching...</div>

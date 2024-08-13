@@ -1,7 +1,8 @@
-use std::str::FromStr;
-
 use super::LLMModel;
-use crate::{llm::LLMMessage, LLMOutput};
+use crate::{
+    llm::{LLMMessage, LLMUserMessage},
+    LLMOutput,
+};
 use futures::StreamExt;
 use reqwest::{
     self,
@@ -11,6 +12,7 @@ use reqwest::{
 use reqwest_eventsource::{Event, EventSource};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Deserializer, Value};
+use std::str::FromStr;
 use tokio::sync::mpsc;
 
 #[allow(dead_code)]
@@ -64,14 +66,37 @@ impl LLMModel for OpenAI {
             .iter()
             .map(|v| {
                 let (role, message) = match v {
-                    LLMMessage::System(v) => ("system", v),
-                    LLMMessage::User(v) => ("user", v),
-                    LLMMessage::Assistant(v) => ("assistant", v),
+                    LLMMessage::System(v) => ("system", serde_json::to_value(v)),
+                    LLMMessage::User(v) => (
+                        "user",
+                        if v.len() == 1 && matches!(v[0], LLMUserMessage::Text(_)) {
+                            let text = match &v[0] {
+                                LLMUserMessage::Text(text) => text,
+                                _ => unreachable!(),
+                            };
+
+                            serde_json::to_value(text)
+                        } else {
+                            serde_json::to_value(
+                                v.iter()
+                                    .map(|t| match t {
+                                        LLMUserMessage::ImageUrl(image_url) => {
+                                            json!({"type": "image_url", "image_url": image_url})
+                                        }
+                                        LLMUserMessage::Text(text) => {
+                                            json!({"type": "text", "text": text})
+                                        }
+                                    })
+                                    .collect::<Vec<_>>(),
+                            )
+                        },
+                    ),
+                    LLMMessage::Assistant(v) => ("assistant", serde_json::to_value(v)),
                 };
 
                 json!({
                     "role": role,
-                    "content": message
+                    "content": message.expect("message should be valid json")
                 })
             })
             .collect::<Vec<Value>>();

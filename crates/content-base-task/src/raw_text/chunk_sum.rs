@@ -53,7 +53,7 @@ pub trait DocumentChunkSumTrait: Into<ContentTaskType> + Clone + Storage {
             let mut response = llm
                 .process_single((
                     vec![
-                        LLMMessage::System(format!(r#"You are an assistant skilled in document summarization.
+                        LLMMessage::new_system(format!(r#"You are an assistant skilled in document summarization.
 You should try to summarize user input's document into a very short sentence.
 
 Guidelines:
@@ -78,8 +78,8 @@ Additional Rules:
 - Content: just response with the short sentence only, do not start with hint or prompt, do not contain anything else, e.g., "AI is changing the world."
 - Focus: do not summarize the content in the previous text, focus on current piece of text
 - Word count: aim for a summarization with no more than 30 words.
-- Language: summarization should be in the same language with input"#)),
-                        LLMMessage::User(user_prompt),
+- Language: summarization should be in the same language with input"#).as_str()),
+                        LLMMessage::new_user(&user_prompt),
                     ],
                     LLMInferenceParams::default(),
                 ))

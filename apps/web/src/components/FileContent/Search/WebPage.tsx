@@ -2,7 +2,9 @@ import { ExtractExplorerItem } from '@/Explorer/types'
 import { useCurrentLibrary } from '@/lib/library'
 import Image from 'next/image'
 
-export default function WebPageSearchItem({ assetObject }: ExtractExplorerItem<'SearchResult', 'webPage'>) {
+export default function WebPageSearchItem({
+  assetObject,
+}: ExtractExplorerItem<'SearchResult' | 'RetrievalResult', 'webPage'>) {
   const currentLibrary = useCurrentLibrary()
 
   return (

@@ -5,7 +5,10 @@ import classNames from 'classnames'
 import Image from 'next/image'
 import { useMemo } from 'react'
 
-export default function VideoSearchItem({ assetObject, metadata }: ExtractExplorerItem<'SearchResult', 'video'>) {
+export default function VideoSearchItem({
+  assetObject,
+  metadata,
+}: ExtractExplorerItem<'SearchResult' | 'RetrievalResult', 'video'>) {
   const currentLibrary = useCurrentLibrary()
 
   const frames = useMemo(() => {
@@ -38,14 +41,10 @@ export default function VideoSearchItem({ assetObject, metadata }: ExtractExplor
       </div>
       <div
         className={classNames(
-          'absolute left-0 top-0 flex h-full w-full flex-col justify-between bg-black/60 px-4 py-2 text-neutral-300',
+          'absolute left-0 top-0 flex h-full w-full flex-col justify-end bg-black/60 px-4 py-2 text-neutral-300',
           'invisible group-hover:visible',
         )}
       >
-        <div className="truncate text-xs">
-          {/* {filePath.materializedPath} */}
-          {assetObject.hash}
-        </div>
         <div className="flex items-center justify-between text-xs">
           <div>{formatDuration(metadata.startTime / 1000)}</div>
           <div>→</div>

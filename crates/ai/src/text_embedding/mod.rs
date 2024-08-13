@@ -42,7 +42,7 @@ impl OrtTextEmbedding {
         Ok(Self {
             model,
             tokenizer,
-            dim: 1792,
+            dim: 1024,
             max_len: 512,
         })
     }

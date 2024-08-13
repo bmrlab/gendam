@@ -36,13 +36,15 @@ pub struct ImageSearchResultMetadata {
 #[derive(Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RawTextSearchResultMetadata {
-    index: u32,
+    start_index: u32,
+    end_index: u32,
 }
 
 #[derive(Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WebPageSearchResultMetadata {
-    index: u32,
+    start_index: u32,
+    end_index: u32,
 }
 
 #[derive(Serialize, Type)]
@@ -75,12 +77,14 @@ impl From<&content_base::query::payload::SearchMetadata> for SearchResultMetadat
             }
             content_base::query::payload::SearchMetadata::RawText(item) => {
                 SearchResultMetadata::RawText(RawTextSearchResultMetadata {
-                    index: item.index as u32,
+                    start_index: item.start_index as u32,
+                    end_index: item.end_index as u32,
                 })
             }
             content_base::query::payload::SearchMetadata::WebPage(item) => {
                 SearchResultMetadata::WebPage(WebPageSearchResultMetadata {
-                    index: item.index as u32,
+                    start_index: item.start_index as u32,
+                    end_index: item.end_index as u32,
                 })
             }
         }

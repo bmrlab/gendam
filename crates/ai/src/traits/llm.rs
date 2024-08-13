@@ -1,9 +1,11 @@
+use super::ImageCaptionModel;
 use crate::{
     llm::{LLMInferenceParams, LLMMessage},
     AIModel,
 };
+use base64::Engine;
 use futures::{Stream, StreamExt};
-use std::pin::Pin;
+use std::{io::Cursor, path::PathBuf, pin::Pin};
 
 pub type LLMInput = (Vec<LLMMessage>, LLMInferenceParams);
 type LLMOutputInner = Pin<Box<dyn Stream<Item = anyhow::Result<Option<String>>> + Send + Sync>>;
@@ -42,5 +44,84 @@ impl LLMOutput {
             }
         }
         Ok(output)
+    }
+}
+
+impl LLMModel {
+    pub fn create_image_caption_ref(self, prompt: &str) -> ImageCaptionModel {
+        let prompt = prompt.to_string();
+
+        self.create_reference(
+            move |v: PathBuf| {
+                let prompt = prompt.clone();
+
+                async move {
+                    let result: Result<_, _> = {
+                        let image = image::ImageReader::open(v)?
+                            .with_guessed_format()?
+                            .decode()?;
+                        let mut buf = Vec::new();
+                        {
+                            let mut cursor = Cursor::new(&mut buf);
+                            let _ = image.write_to(&mut cursor, image::ImageFormat::Png);
+                        }
+                        let base64 = base64::engine::general_purpose::STANDARD.encode(&buf);
+
+                        Ok((
+                            vec![LLMMessage::new_user_with_image(
+                                prompt.clone().as_str(),
+                                format!("data:image/png;base64,{}", base64).as_str(),
+                            )],
+                            LLMInferenceParams::default(),
+                        ))
+                    };
+
+                    result
+                }
+            },
+            |mut v| async move { v.to_string().await },
+        )
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::{path::PathBuf, time::Duration};
+
+    use crate::{
+        llm::{openai::OpenAI, LLMInferenceParams, LLMMessage, LLM},
+        AIModel,
+    };
+
+    #[test_log::test(tokio::test)]
+    async fn test_llm_to_image_caption() {
+        let llm = AIModel::new(
+            move || async move {
+                Ok(LLM::OpenAI(
+                    OpenAI::new("http://localhost:11434/v1", "", "llava-phi3:3.8b-mini-q4_0")
+                        .expect(""),
+                ))
+            },
+            Some(Duration::from_secs(120)),
+        )
+        .expect("");
+
+        let mut output = llm
+            .process_single((
+                vec![LLMMessage::new_user("who are you")],
+                LLMInferenceParams::default(),
+            ))
+            .await
+            .expect("");
+        let output = output.to_string().await;
+        tracing::info!("output: {:?}", output);
+
+        let image_caption = llm.create_image_caption_ref("Please describe the image.");
+
+        let result = image_caption
+            .process_single(PathBuf::from("/Users/zhuo/Pictures/avatar.JPG"))
+            .await;
+
+        tracing::info!("result: {:?}", result);
     }
 }

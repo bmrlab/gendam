@@ -1,14 +1,15 @@
-use std::path::PathBuf;
-use async_trait::async_trait;
-use content_base_context::ContentBaseCtx;
-use serde_json::{json, Value};
-use storage_macro::Storage;
-use crate::{ContentTask, ContentTaskType, TaskRunOutput, TaskRunRecord};
 use super::{
     chunk::{DocumentChunkTrait, RawTextChunkTask},
     chunk_sum::{DocumentChunkSumTrait, RawTextChunkSumTask},
     RawTextTaskType,
 };
+use crate::{ContentTask, ContentTaskType, TaskRunOutput, TaskRunRecord};
+use ai::llm::{LLMInferenceParams, LLMMessage};
+use async_trait::async_trait;
+use content_base_context::ContentBaseCtx;
+use serde_json::{json, Value};
+use std::path::PathBuf;
+use storage_macro::Storage;
 
 #[derive(Clone, Debug, Default, Storage)]
 pub struct RawTextChunkSumEmbedTask;
@@ -25,15 +26,28 @@ pub trait DocumentChunkSumEmbedTrait: Into<ContentTaskType> + Clone + Storage {
         task_run_record: &mut crate::record::TaskRunRecord,
     ) -> anyhow::Result<()> {
         let chunks = self.chunk_task().chunk_content(file_info, ctx).await?;
+        let llm = ctx.llm()?.0;
         for idx in 0..chunks.len() {
             let summarization = self.sum_task().sum_content(file_info, ctx, idx).await?;
+
+            let user_prompt = format!(
+                "Please translate following content into English, and response with translation only, without anything else.\n{}",
+                summarization
+            );
+            let mut output = llm
+                .process_single((
+                    vec![LLMMessage::new_user(&user_prompt)],
+                    LLMInferenceParams::default(),
+                ))
+                .await?;
+            let summarization_en = output.to_string().await?;
 
             let output_dir = task_run_record
                 .output_path(&file_info.file_identifier, ctx)
                 .await?;
             let output_path = output_dir.join(format!("{}.{}", idx, "json"));
 
-            ctx.save_text_embedding(&summarization, &output_path)
+            ctx.save_text_embedding(&summarization_en, &output_path)
                 .await?;
         }
 

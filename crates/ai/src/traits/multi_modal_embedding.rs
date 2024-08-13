@@ -14,12 +14,18 @@ pub type MultiModalEmbeddingModel = AIModel<MultiModalEmbeddingInput, MultiModal
 
 impl Into<TextEmbeddingModel> for &MultiModalEmbeddingModel {
     fn into(self) -> TextEmbeddingModel {
-        self.create_reference(|v| MultiModalEmbeddingInput::Text(v), |v| v)
+        self.create_reference(
+            |v| async { Ok(MultiModalEmbeddingInput::Text(v)) },
+            |v| async { Ok(v) },
+        )
     }
 }
 
 impl Into<ImageEmbeddingModel> for &MultiModalEmbeddingModel {
     fn into(self) -> ImageEmbeddingModel {
-        self.create_reference(|v| MultiModalEmbeddingInput::Image(v), |v| v)
+        self.create_reference(
+            |v| async { Ok(MultiModalEmbeddingInput::Image(v)) },
+            |v| async { Ok(v) },
+        )
     }
 }

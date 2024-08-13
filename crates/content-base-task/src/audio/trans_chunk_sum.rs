@@ -30,10 +30,7 @@ pub trait AudioTransChunkSumTrait: Into<ContentTaskType> + Clone + Storage {
             .transcript_task()
             .transcript_content(file_info, ctx)
             .await?;
-        let chunks = self
-            .chunk_task()
-            .chunk_content(file_info, ctx)
-            .await?;
+        let chunks = self.chunk_task().chunk_content(file_info, ctx).await?;
 
         let llm = ctx.llm()?.0;
 
@@ -55,7 +52,7 @@ pub trait AudioTransChunkSumTrait: Into<ContentTaskType> + Clone + Storage {
             let mut response = llm
                 .process_single((
                     vec![
-                        LLMMessage::System(format!(r#"You are an assistant skilled in video transcript summarization.
+                        LLMMessage::new_system(format!(r#"You are an assistant skilled in video transcript summarization.
 You should try to summarize user input's transcript into a very short sentence.
 
 Guidelines:
@@ -80,8 +77,8 @@ Additional Rules:
 - Content: just response with the short sentence only, do not start with hint or prompt, do not contain anything else, e.g., "The speaker is talking about his childhood."
 - Focus: do not summarize the content in the previous video, focus on current piece of video transcript
 - Word count: aim for a summarization with no more than 30 words.
-- Language: summarization should be in the same language with input, which is {language}"#, language = transcript.language.as_ref())),
-                        LLMMessage::User(user_prompt),
+- Language: summarization should be in the same language with input, which is {language}"#, language = transcript.language.as_ref()).as_str()),
+                        LLMMessage::new_user(&user_prompt),
                     ],
                     LLMInferenceParams::default(),
                 ))
@@ -178,8 +175,7 @@ impl ContentTask for AudioTransChunkSumTask {
         ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
-        self.run_sum(file_info, ctx, task_run_record)
-            .await
+        self.run_sum(file_info, ctx, task_run_record).await
     }
 
     fn task_parameters(&self, ctx: &ContentBaseCtx) -> Value {

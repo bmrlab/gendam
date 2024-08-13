@@ -1,11 +1,6 @@
 pub mod task;
 
 use crate::CtxWithLibrary;
-use content_base::{
-    audio::{trans_chunk_sum::AudioTransChunkSumTrait, transcript::AudioTranscriptTrait},
-    video::{trans_chunk_sum::VideoTransChunkSumTask, transcript::VideoTranscriptTask},
-    FileInfo,
-};
 use content_handler::video::VideoDecoder;
 use prisma_lib::asset_object;
 use rspc::{Router, RouterBuilder};
@@ -130,80 +125,6 @@ where
                     })?;
 
                 Ok(VideoPlayerTsResponse { data: file })
-            })
-        })
-        .query("rag.transcript", |t| {
-            #[derive(Deserialize, Type, Debug)]
-            enum TranscriptType {
-                Original,
-                Summarization,
-            }
-            #[derive(Deserialize, Type, Debug)]
-            #[serde(rename_all = "camelCase")]
-            struct TranscriptRequestPayload {
-                hash: String,
-                start_timestamp: i32,
-                end_timestamp: i32,
-                request_type: TranscriptType,
-            }
-
-            #[derive(Serialize, Type, Debug)]
-            #[serde(rename_all = "camelCase")]
-            struct TranscriptResponse {
-                content: String,
-            }
-
-            t(|ctx: TCtx, input: TranscriptRequestPayload| async move {
-                let library = ctx.library()?;
-                let content_base = ctx.content_base()?;
-                let file_info = FileInfo {
-                    file_identifier: input.hash.clone(),
-                    file_path: library.file_path(&input.hash),
-                };
-
-                let content = {
-                    match input.request_type {
-                        TranscriptType::Original => match VideoTranscriptTask
-                            .transcript_content(&file_info, content_base.ctx())
-                            .await
-                        {
-                            Ok(transcript) => {
-                                let mut transcript_vec = vec![];
-                                for item in transcript.transcriptions {
-                                    if item.start_timestamp < input.start_timestamp as i64 {
-                                        continue;
-                                    }
-                                    if item.end_timestamp > input.end_timestamp as i64 {
-                                        break;
-                                    }
-                                    transcript_vec.push(item.text);
-                                }
-
-                                Ok(transcript_vec.join("\n"))
-                            }
-                            Err(e) => Err(e),
-                        },
-                        TranscriptType::Summarization => {
-                            VideoTransChunkSumTask
-                                .sum_content(
-                                    &file_info,
-                                    content_base.ctx(),
-                                    input.start_timestamp as i64,
-                                    input.end_timestamp as i64,
-                                )
-                                .await
-                        }
-                    }
-                };
-
-                let content = content.map_err(|e| {
-                    rspc::Error::new(
-                        rspc::ErrorCode::InternalServerError,
-                        format!("failed to get transcript: {}", e),
-                    )
-                })?;
-
-                Ok(TranscriptResponse { content })
             })
         })
 }

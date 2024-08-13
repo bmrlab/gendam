@@ -10,9 +10,11 @@ import {
   InspectorItemViewer,
 } from '.'
 import { useSortedTasks } from './hooks'
+import { rspc } from '@/lib/rspc'
 
 export default function ImageDetail({ filePath, assetObject }: ExtractExplorerItem<'FilePath', 'image'>) {
   const { sortedTasks, handleJobsCancel } = useSortedTasks(assetObject)
+  const { data } = rspc.useQuery(['assets.artifacts.image.description', { hash: assetObject.hash }])
 
   return (
     <InspectorItemContainer>
@@ -33,6 +35,13 @@ export default function ImageDetail({ filePath, assetObject }: ExtractExplorerIt
           </>
         )}
       </InspectorItemMetadata>
+
+      <InspectorItemDivider />
+
+      <div className="flex flex-col">
+        <div className="text-xs font-semibold mb-2">Description</div>
+        <div className="h-48 overflow-y-scroll text-xs select-text cursor-text whitespace-pre-line">{data}</div>
+      </div>
 
       <InspectorItemDivider />
 

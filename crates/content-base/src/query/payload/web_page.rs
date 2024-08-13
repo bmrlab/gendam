@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WebPageSearchMetadata {
-    pub index: usize,
+    pub start_index: usize,
+    pub end_index: usize,
 }
 
 impl TryFrom<SearchMetadata> for WebPageSearchMetadata {
@@ -25,7 +26,7 @@ impl From<WebPageSearchMetadata> for SearchMetadata {
 
 impl PartialEq for WebPageSearchMetadata {
     fn eq(&self, other: &Self) -> bool {
-        self.index == other.index
+        self.start_index == other.start_index && self.end_index == other.end_index
     }
 }
 
@@ -33,7 +34,10 @@ impl Eq for WebPageSearchMetadata {}
 
 impl PartialOrd for WebPageSearchMetadata {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.index.cmp(&other.index))
+        match self.start_index.partial_cmp(&other.start_index) {
+            Some(std::cmp::Ordering::Equal) => self.end_index.partial_cmp(&other.end_index),
+            other => other,
+        }
     }
 }
 

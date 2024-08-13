@@ -540,8 +540,8 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 enabled: true,
                 id: uuid::Uuid::new_v4(),
                 job_id: None,
-                // cron: "0 0 */1 * * ?".to_string(), // 每小时
-                cron: "0/10 * * * * ?".to_string(), // 测试 每10秒
+                cron: "0 0 */1 * * ?".to_string(), // 每小时
+                // cron: "0/10 * * * * ?".to_string(), // 测试 每10秒
                 // job_fn: None
                 job_fn: cron::create_job_fn(move || {
                     let library_arc = Arc::new(library_clone.clone());

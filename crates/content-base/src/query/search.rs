@@ -139,15 +139,23 @@ pub fn reorder_final_results(
                 let results = merge_results_with_time_duration(
                     &mut results,
                     |items| {
-                        let index = items
+                        let start_index = items
                             .iter()
-                            .map(|v| v.index)
+                            .map(|v| v.start_index)
                             .min()
                             .expect("should have min");
+                        let end_index = items
+                            .iter()
+                            .map(|v| v.end_index)
+                            .max()
+                            .expect("should have max");
 
-                        RawTextSearchMetadata { index }
+                        RawTextSearchMetadata {
+                            start_index,
+                            end_index,
+                        }
                     },
-                    |current, last| current.index - last.index > 1,
+                    |current, last| current.start_index - last.end_index > 1,
                 );
 
                 results.into_iter().for_each(|v| {
@@ -173,15 +181,23 @@ pub fn reorder_final_results(
                 let results = merge_results_with_time_duration(
                     &mut results,
                     |items| {
-                        let index = items
+                        let start_index = items
                             .iter()
-                            .map(|v| v.index)
+                            .map(|v| v.start_index)
                             .min()
                             .expect("should have min");
+                        let end_index = items
+                            .iter()
+                            .map(|v| v.end_index)
+                            .max()
+                            .expect("should have max");
 
-                        WebPageSearchMetadata { index }
+                        WebPageSearchMetadata {
+                            start_index,
+                            end_index,
+                        }
                     },
-                    |current, last| current.index - last.index > 1,
+                    |current, last| current.start_index - last.end_index > 1,
                 );
 
                 results.into_iter().for_each(|v| {

@@ -7,6 +7,7 @@ use crate::{
     record::{TaskRunOutput, TaskRunRecord},
     ContentTask, ContentTaskType,
 };
+use ai::llm::{LLMInferenceParams, LLMMessage};
 use async_trait::async_trait;
 use content_base_context::ContentBaseCtx;
 use serde_json::{json, Value};
@@ -25,11 +26,24 @@ pub trait AudioTransChunkSumEmbedTrait: Into<ContentTaskType> + Storage + Clone 
         task_run_record: &mut crate::record::TaskRunRecord,
     ) -> anyhow::Result<()> {
         let chunks = self.chunk_task().chunk_content(file_info, ctx).await?;
+        let llm = ctx.llm()?.0;
         for chunk in chunks.iter() {
             let summarization = self
                 .sum_task()
                 .sum_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
                 .await?;
+
+            let user_prompt = format!(
+                    "Please translate following content into English, and response with translation only, without anything else.\n{}",
+                    summarization
+                );
+            let mut output = llm
+                .process_single((
+                    vec![LLMMessage::new_user(&user_prompt)],
+                    LLMInferenceParams::default(),
+                ))
+                .await?;
+            let summarization_en = output.to_string().await?;
 
             let output_dir = task_run_record
                 .output_path(&file_info.file_identifier, ctx)
@@ -39,7 +53,7 @@ pub trait AudioTransChunkSumEmbedTrait: Into<ContentTaskType> + Storage + Clone 
                 chunk.start_timestamp, chunk.end_timestamp, "json"
             ));
 
-            ctx.save_text_embedding(&summarization, &output_path)
+            ctx.save_text_embedding(&summarization_en, &output_path)
                 .await?;
         }
 

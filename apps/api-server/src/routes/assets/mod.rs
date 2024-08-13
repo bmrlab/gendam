@@ -1,3 +1,4 @@
+mod artifacts;
 mod create;
 mod delete;
 mod process;
@@ -332,4 +333,5 @@ where
                 }
             })
         })
+        .merge("artifacts.", artifacts::get_routes::<TCtx>())
 }

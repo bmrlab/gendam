@@ -6,10 +6,37 @@ pub mod openai;
 pub mod qwen2;
 
 #[derive(Debug, Clone)]
+pub enum LLMUserMessage {
+    Text(String),
+    ImageUrl(String),
+}
+
+#[derive(Debug, Clone)]
 pub enum LLMMessage {
     System(String),
-    User(String),
+    User(Vec<LLMUserMessage>),
     Assistant(String),
+}
+
+impl LLMMessage {
+    pub fn new_system(text: &str) -> Self {
+        LLMMessage::System(text.to_string())
+    }
+
+    pub fn new_assistant(text: &str) -> Self {
+        LLMMessage::Assistant(text.to_string())
+    }
+
+    pub fn new_user(text: &str) -> Self {
+        LLMMessage::User(vec![LLMUserMessage::Text(text.to_string())])
+    }
+
+    pub fn new_user_with_image(text: &str, image_url: &str) -> Self {
+        LLMMessage::User(vec![
+            LLMUserMessage::Text(text.to_string()),
+            LLMUserMessage::ImageUrl(image_url.to_string()),
+        ])
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -80,6 +107,8 @@ impl Model for LLM {
 mod test {
     use crate::llm::{openai::OpenAI, qwen2, LLMInferenceParams, LLMMessage, LLMModel};
 
+    use super::LLMUserMessage;
+
     #[test_log::test(tokio::test)]
     async fn test_openai() {
         let client = OpenAI::new("http://localhost:11434/v1", "", "qwen2:7b-instruct-q4_0")
@@ -87,7 +116,9 @@ mod test {
 
         let mut result = client
             .get_completion(
-                &[LLMMessage::User("Who are you?".into())],
+                &[LLMMessage::User(vec![LLMUserMessage::Text(
+                    "Who are you?".into(),
+                )])],
                 super::LLMInferenceParams::default(),
             )
             .await
@@ -107,7 +138,9 @@ mod test {
 
         let mut result = model
             .get_completion(
-                &[LLMMessage::User("who are you?".into())],
+                &[LLMMessage::User(vec![LLMUserMessage::Text(
+                    "Who are you?".into(),
+                )])],
                 LLMInferenceParams::default(),
             )
             .await

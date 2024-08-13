@@ -13,7 +13,7 @@ pub use image_caption::*;
 pub use image_embedding::*;
 pub use llm::*;
 pub use multi_modal_embedding::*;
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashMap, pin::Pin, sync::Arc, time::Duration};
 pub use text_embedding::*;
 use tokio::sync::{mpsc, oneshot, Mutex};
 use tracing::{debug, error, warn};
@@ -38,7 +38,9 @@ pub struct AIModel<TItem, TOutput> {
 
 impl<TItem, TOutput> Clone for AIModel<TItem, TOutput> {
     fn clone(&self) -> Self {
-        Self { tx: self.tx.clone() }
+        Self {
+            tx: self.tx.clone(),
+        }
     }
 }
 
@@ -164,7 +166,7 @@ where
         Ok(result)
     }
 
-    pub fn create_reference<TNewItem, TNewOutput, TFnItem, TFnOutput>(
+    pub fn create_reference<TNewItem, TNewOutput, TItemFut, TNewOutputFut, TFnItem, TFnOutput>(
         &self,
         convert_item: TFnItem,
         convert_output: TFnOutput,
@@ -172,8 +174,10 @@ where
     where
         TNewItem: Send + Sync + Clone + 'static,
         TNewOutput: Send + Sync + Clone + 'static,
-        TFnItem: Fn(TNewItem) -> TItem + Send + 'static,
-        TFnOutput: Fn(TOutput) -> TNewOutput + Send + 'static,
+        TItemFut: Future<Output = Result<TItem, anyhow::Error>> + Send,
+        TFnItem: Send + 'static + Fn(TNewItem) -> TItemFut,
+        TNewOutputFut: Future<Output = Result<TNewOutput, anyhow::Error>> + Send,
+        TFnOutput: Send + 'static + Fn(TOutput) -> TNewOutputFut,
     {
         let (tx, mut rx) = mpsc::channel::<HandlerPayload<TNewItem, TNewOutput>>(512);
 
@@ -185,15 +189,58 @@ where
             loop {
                 match rx.recv().await {
                     Some(data) => {
-                        let results = self_clone
-                            .process(data.0.into_iter().map(|v| convert_item(v)).collect())
-                            .await;
+                        let mut input_data = vec![];
+                        for v in data.0.into_iter() {
+                            input_data.push(convert_item(v).await);
+                        }
 
-                        let results = results.map(|v| {
-                            v.into_iter()
-                                .map(|t| t.map(|k| convert_output(k)))
-                                .collect()
-                        });
+                        let total_len = input_data.len();
+
+                        let mut raw_idx_to_error = HashMap::new();
+                        let mut valid_input_data = vec![];
+                        let mut raw_idx_to_result_idx = HashMap::new();
+
+                        input_data
+                            .into_iter()
+                            .enumerate()
+                            .for_each(|(idx, v)| match v {
+                                Ok(v) => {
+                                    raw_idx_to_result_idx.insert(idx, valid_input_data.len());
+                                    valid_input_data.push(v);
+                                }
+                                Err(e) => {
+                                    raw_idx_to_error.insert(idx, e);
+                                }
+                            });
+
+                        let valid_results = self_clone.process(valid_input_data).await;
+
+                        let results = match valid_results {
+                            Ok(mut valid_results) => {
+                                let mut results = vec![];
+
+                                for i in 0..total_len {
+                                    if let Some(e) = raw_idx_to_error.remove(&i) {
+                                        results.push(Err(e));
+                                    } else if let Some(idx) = raw_idx_to_result_idx.remove(&i) {
+                                        let item_result = valid_results.remove(idx);
+                                        match item_result {
+                                            Ok(v) => {
+                                                results.push(convert_output(v).await);
+                                            }
+                                            Err(e) => {
+                                                results.push(Err(e));
+                                            }
+                                        }
+                                    } else {
+                                        unreachable!()
+                                    }
+                                }
+
+                                Ok(results)
+                            }
+                            Err(e) => Err(e),
+                        };
 
                         let _ = data.1.send(results);
                     }
@@ -220,7 +267,8 @@ async fn test_create_reference() {
     let text_embedding_reference: TextEmbeddingModel = (&original_clip).into();
     let image_embedding_reference: ImageEmbeddingModel = (&original_clip).into();
 
-    let text_embedding_reference_new = text_embedding_reference.create_reference(|v| v, |v| v);
+    let text_embedding_reference_new =
+        text_embedding_reference.create_reference(|v| async { Ok(v) }, |v| async { Ok(v) });
 
     tracing::info!("[TEST] original_clip: {:?}", original_clip);
     tracing::info!(

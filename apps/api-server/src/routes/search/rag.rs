@@ -156,9 +156,15 @@ pub async fn rag(
                     .await
                 {
                     Ok(chunks) => {
-                        if let Some(chunk) = chunks.get(metadata.index) {
-                            references_content.push(chunk.clone());
+                        let mut raw_text_vec = vec![];
+
+                        for i in metadata.start_index..=metadata.end_index {
+                            if let Some(chunk) = chunks.get(i) {
+                                raw_text_vec.push(chunk.clone());
+                            }
                         }
+
+                        references_content.push(raw_text_vec.join("\n"));
                     }
                     _ => {
                         tracing::warn!("failed to get content for {}", ref_item.file_identifier);
@@ -171,7 +177,10 @@ pub async fn rag(
         }
     }
 
-    let reference_content = references_content.join("\n");
+    let mut reference_content = String::new();
+    references_content.iter().enumerate().for_each(|(idx, v)| {
+        reference_content.push_str(&format!("Document {}:\n{}\n\n", idx + 1, v));
+    });
 
     let system_prompt = r#"You are an assistant good at answer questions according to some pieces from different document.
 You should try to answer user question according to the provided document pieces.
@@ -180,7 +189,7 @@ Try to response in markdown, with proper title, subtitles and bullet points.
 
 If the DOCUMENT doesn't contain the facts to answer the QUESTION, you have 2 options:
 - If you know the answer, just response without these information.
-- Else, return {I don't know} in the question's language.
+- Else, return "I don't know" in the question's language.
 
 You should answer in the language of the QUESTION.
 "#;
@@ -199,8 +208,8 @@ QUESTION:
         .0
         .process_single((
             vec![
-                LLMMessage::System(system_prompt.into()),
-                LLMMessage::User(user_prompt.into()),
+                LLMMessage::new_system(system_prompt),
+                LLMMessage::new_user(user_prompt.as_str()),
             ],
             LLMInferenceParams::default(),
         ))

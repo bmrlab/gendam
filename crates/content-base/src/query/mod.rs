@@ -58,7 +58,8 @@ impl ContentBase {
                 text_model_embedding.clone(),
                 RETRIEVAL_COUNT,
             )
-            .with_payload(true);
+            .with_payload(true)
+            .score_threshold(0.5);
 
             self.qdrant.search_points(payload).await
         };
@@ -95,7 +96,10 @@ impl ContentBase {
     }
 
     /// 实现基于文本特征的基础召回
-    pub async fn retrieve(&self, payload: QueryPayload) -> anyhow::Result<Vec<RetrievalResultData>> {
+    pub async fn retrieve(
+        &self,
+        payload: QueryPayload,
+    ) -> anyhow::Result<Vec<RetrievalResultData>> {
         let text_embedding = self.ctx.text_embedding()?.0;
         let language_collection_name = self.language_collection_name.as_str();
         let text_model_embedding = text_embedding.process_single(payload.query.clone()).await?;
@@ -103,7 +107,7 @@ impl ContentBase {
         let payload = SearchPointsBuilder::new(
             language_collection_name,
             text_model_embedding.clone(),
-            RETRIEVAL_COUNT,
+            5,
         )
         .with_payload(true);
 

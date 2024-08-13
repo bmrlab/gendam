@@ -4,7 +4,10 @@ import { formatDuration } from '@/lib/utils'
 import classNames from 'classnames'
 import Image from 'next/image'
 
-export default function AudioSearchItem({ assetObject, metadata }: ExtractExplorerItem<'SearchResult','audio'>) {
+export default function AudioSearchItem({
+  assetObject,
+  metadata,
+}: ExtractExplorerItem<'SearchResult' | 'RetrievalResult', 'audio'>) {
   const currentLibrary = useCurrentLibrary()
 
   return (

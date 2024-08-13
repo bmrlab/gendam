@@ -104,7 +104,8 @@ where
 
         // 用匹配到的数量作为 bonus
         // 数量为1 时不加分，增加数量则按照 log 函数增加，超过5个的也不加分
-        score += ((idx - last_idx).min(5) as f32).log(5.0) * 0.15;
+        // TODO 临时去掉加分规则
+        // score += ((idx - last_idx).min(5) as f32).log(5.0) * 0.15;
 
         // let new_metadata = fn_metadata(&items[last_idx].0, start_timestamp, end_timestamp);
         results.push((new_metadata, score));

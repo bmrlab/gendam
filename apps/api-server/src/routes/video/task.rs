@@ -9,7 +9,6 @@ use prisma_lib::{asset_object, file_handler_task};
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 #[derive(Deserialize, Serialize, Type, Debug)]

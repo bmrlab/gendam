@@ -33,7 +33,7 @@ export default function Header() {
       const value = searchFormRef.current.getValue()
       if (value) {
         search.set('text', value.text)
-        router.push(`/search?${search}`)
+        router.push(`/search?${search.toString()}`)
       }
     }
   }, [router])

@@ -31,17 +31,17 @@ pub struct LibraryModels {
     pub text_embedding: String,
     pub image_caption: String,
     pub audio_transcript: String,
-    pub llm: String
+    pub llm: String,
 }
 
 impl Default for LibraryModels {
     fn default() -> Self {
         LibraryModels {
             multi_modal_embedding: "clip-multilingual-v1".to_string(),
-            text_embedding: "stella-base-zh-v3-1792d".to_string(),
-            image_caption: "blip-base".to_string(),
+            text_embedding: "puff-base-v1".to_string(),
+            image_caption: "ollama-llava-phi3-mini".to_string(),
             audio_transcript: "whisper-small".to_string(),
-            llm: "ollama".to_string()
+            llm: "ollama-qwen2-7b-instruct".to_string(),
         }
     }
 }
@@ -83,7 +83,7 @@ impl<'de> Deserialize<'de> for LibrarySettings {
                 .unwrap_or_default()
                 .parse()
                 .unwrap_or(LibrarySettingsLayoutEnum::Grid),
-            inspector_size: value["inspectorSize"].as_u64().unwrap_or(20) as u32,
+            inspector_size: value["inspectorSize"].as_u64().unwrap_or(256) as u32,
             models: serde_json::from_value::<LibraryModels>(value["models"].to_owned())
                 .unwrap_or_default(),
             always_delete_local_file_after_upload: value["alwaysDeleteLocalFileAfterUpload"]
@@ -102,7 +102,7 @@ impl Default for LibrarySettings {
             title: "Untitled".to_string(),
             appearance_theme: LibrarySettingsThemeEnum::Light,
             explorer_layout: LibrarySettingsLayoutEnum::List,
-            inspector_size: 20,
+            inspector_size: 256,
             models: Default::default(),
             always_delete_local_file_after_upload: false,
             s3_config: None,
