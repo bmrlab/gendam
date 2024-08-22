@@ -20,7 +20,7 @@ export function useSortedTasks(data: FilePath['assetObject']) {
   const tasksQuery = rspc.useQuery(['tasks.list', tasksQueryParams], {
     enabled: !!data?.id,
   })
-  const cancelJobsMut = rspc.useMutation(['video.tasks.cancel'])
+  const cancelJobsMut = rspc.useMutation(['tasks.cancel'])
   const handleJobsCancel = useCallback(async () => {
     if (!data?.id) {
       return

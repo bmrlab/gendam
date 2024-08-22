@@ -1,9 +1,13 @@
+pub mod downloader;
+pub mod reader;
+
 use crate::routes::audio::{downloader::DownloadHelper, reader::AudioReader};
 use crate::CtxWithLibrary;
 use content_base::audio::transcript::AudioTranscriptTask;
 use content_base::video::transcript::VideoTranscriptTask;
-use content_base::{ContentBase, ContentMetadata, ContentTask, FileInfo, TaskRecord};
+use content_base::{ContentBase, ContentMetadata, ContentTask, FileInfo};
 use content_library::Library;
+use prisma_lib::asset_object;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -11,9 +15,6 @@ use std::{fmt, path::PathBuf};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 use tracing::{error, warn};
-
-pub mod downloader;
-pub mod reader;
 
 #[derive(Debug, Deserialize, Serialize, Clone, Type)]
 struct ExportInput {
@@ -129,9 +130,20 @@ async fn audio_transcript_path(
     content_base: &ContentBase,
     hash: &str,
 ) -> anyhow::Result<PathBuf> {
-    let task_record = TaskRecord::from_content_base(&hash, content_base.ctx()).await;
-    let file_metadata = task_record.metadata();
-    let file_path = library.file_path(&hash);
+    let asset_object_data = library
+        .prisma_client()
+        .asset_object()
+        .find_unique(asset_object::hash::equals(hash.to_string()))
+        .exec()
+        .await?
+        .ok_or(anyhow::anyhow!("Asset not found"))?;
+
+    let file_metadata = asset_object_data
+        .media_data
+        .map(|v| serde_json::from_str::<ContentMetadata>(&v).unwrap_or_default())
+        .unwrap_or_default();
+
+    let file_path = library.file_path(hash);
     match file_metadata {
         ContentMetadata::Video(_) => {
             VideoTranscriptTask

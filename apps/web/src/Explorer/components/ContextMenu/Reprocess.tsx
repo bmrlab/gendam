@@ -8,7 +8,7 @@ function withReprocessExplorerItem(BaseComponent: BaseContextMenuItem) {
   return () => {
     const explorer = useExplorerContext()
 
-    const processJobsMut = rspc.useMutation(['video.tasks.regenerate'])
+    const processJobsMut = rspc.useMutation(['tasks.regenerate'])
 
     const validAssetObjects = useMemo(() => {
       return Array.from(explorer.selectedItems)

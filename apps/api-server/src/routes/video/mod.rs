@@ -1,5 +1,3 @@
-pub mod task;
-
 use crate::CtxWithLibrary;
 use content_handler::video::VideoDecoder;
 use prisma_lib::asset_object;
@@ -12,7 +10,7 @@ where
     TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
     Router::new()
-        .merge("tasks.", task::get_routes::<TCtx>())
+        // .merge("tasks.", task::get_routes::<TCtx>())
         .query("player.video_info", |t| {
             #[derive(Deserialize, Type, Debug)]
             #[serde(rename_all = "camelCase")]

@@ -6,6 +6,7 @@ pub enum TaskStatus {
     Started,
     Finished,
     Error,
+    Cancelled,
 }
 
 #[derive(Debug, Clone)]

@@ -1,7 +1,7 @@
 mod artifacts;
 mod create;
 mod delete;
-mod process;
+pub(crate) mod process;
 mod read;
 pub mod types;
 mod update;
@@ -80,7 +80,7 @@ where
                         )
                         .await?;
                         info!("process metadata finished");
-                        process_asset(&library, &ctx, file_path_data.id, None).await?;
+                        process_asset(&library, &ctx, asset_object_data.id, None).await?;
                         info!("process asset finished");
                     }
                     let file_path: FilePathWithAssetObjectData = get_file_path(

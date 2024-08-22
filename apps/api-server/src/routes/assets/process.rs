@@ -7,7 +7,7 @@ use content_base::{
 use content_handler::{file_metadata, video::VideoDecoder};
 use content_library::Library;
 use prisma_client_rust::QueryError;
-use prisma_lib::{asset_object, file_handler_task, file_path};
+use prisma_lib::{asset_object, file_handler_task};
 use std::path::Path;
 use tracing::{error, info};
 
@@ -27,35 +27,10 @@ fn error_404(msg: &str) -> rspc::Error {
 pub async fn process_asset(
     library: &Library,
     ctx: &impl CtxWithLibrary,
-    file_path_id: i32,
+    asset_object_id: i32,
     _with_existing_artifacts: Option<bool>,
 ) -> Result<(), rspc::Error> {
-    info!("process asset for file_path_id: {file_path_id}");
-    let file_path_data = library
-        .prisma_client()
-        .file_path()
-        .find_unique(file_path::id::equals(file_path_id))
-        .exec()
-        .await
-        .map_err(|e| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("failed to find file_path: {}", e),
-            )
-        })?
-        .ok_or_else(|| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("failed to find file_path"),
-            )
-        })?;
-
-    let asset_object_id = file_path_data.asset_object_id.ok_or_else(|| {
-        rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            String::from("file_path.asset_object_id is None"),
-        )
-    })?;
+    info!("process asset for asset_object_id: {asset_object_id}");
 
     let asset_object_data = library
         .prisma_client()
@@ -80,13 +55,9 @@ pub async fn process_asset(
 
     let content_metadata = {
         if let Some(v) = asset_object_data.media_data {
-            if let Ok(metadata) = serde_json::from_str::<ContentMetadata>(&v) {
-                metadata
-            } else {
-                ContentMetadata::Unknown
-            }
+            serde_json::from_str::<ContentMetadata>(&v).unwrap_or_default()
         } else {
-            ContentMetadata::Unknown
+            ContentMetadata::default()
         }
     };
 
@@ -127,6 +98,13 @@ pub async fn process_asset(
                                 file_handler_task::ends_at::set(Some(chrono::Utc::now().into())),
                             ]
                         }
+                        content_base::TaskStatus::Cancelled => {
+                            vec![
+                                file_handler_task::exit_code::set(Some(1)),
+                                file_handler_task::exit_message::set(Some("cancelled".into())),
+                                file_handler_task::ends_at::set(Some(chrono::Utc::now().into())),
+                            ]
+                        }
                         _ => {
                             vec![]
                         }
@@ -163,6 +141,30 @@ pub async fn process_asset(
             String::from("failed to create video task"),
         )),
     }
+}
+
+pub async fn generate_thumbnail(
+    library: &Library,
+    content_base: &ContentBase,
+    file_identifier: &str,
+    file_metadata: &ContentMetadata,
+) -> Result<(), rspc::Error> {
+    let file_info = FileInfo {
+        file_identifier: file_identifier.to_string(),
+        file_path: library.file_path(file_identifier),
+    };
+    let thumbnail_handle = match file_metadata {
+        ContentMetadata::Video(_) => VideoThumbnailTask.run(&file_info, content_base.ctx()),
+        ContentMetadata::Audio(_) => AudioThumbnailTask.run(&file_info, content_base.ctx()),
+        ContentMetadata::Image(_) => ImageThumbnailTask.run(&file_info, content_base.ctx()),
+        _ => Box::pin(async { Ok(()) }),
+    };
+
+    if let Err(e) = thumbnail_handle.await {
+        tracing::error!("Failed to create thumbnail: {}", e);
+    }
+
+    Ok(())
 }
 
 #[tracing::instrument(skip(library, content_base, local_full_path))]
@@ -220,16 +222,8 @@ pub async fn process_asset_metadata(
 
     // generate thumbnail
     tracing::debug!("generate thumbnail");
-    let file_info = FileInfo {
-        file_identifier: asset_object_data.hash.clone(),
-        file_path: library.file_path(&asset_object_data.hash),
-    };
-    let thumbnail_handle = match metadata {
-        ContentMetadata::Video(_) => VideoThumbnailTask.run(&file_info, content_base.ctx()),
-        ContentMetadata::Audio(_) => AudioThumbnailTask.run(&file_info, content_base.ctx()),
-        ContentMetadata::Image(_) => ImageThumbnailTask.run(&file_info, content_base.ctx()),
-        _ => Box::pin(async { Ok(()) }),
-    };
+    let thumbnail_handle =
+        generate_thumbnail(library, content_base, &asset_object_data.hash, &metadata);
 
     let results = tokio::join!(prisma_handle, thumbnail_handle);
 

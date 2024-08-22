@@ -1,6 +1,6 @@
 use content_base::{delete::DeletePayload, ContentBase};
 use content_library::Library;
-use prisma_lib::asset_object;
+use prisma_lib::{asset_object, file_handler_task};
 use std::sync::Arc;
 use tracing::error;
 
@@ -47,6 +47,19 @@ pub async fn delete_unlinked_assets(
                 rspc::Error::new(
                     rspc::ErrorCode::InternalServerError,
                     format!("failed to find asset: {}", e),
+                )
+            })?;
+
+        library
+            .prisma_client()
+            .file_handler_task()
+            .delete_many(vec![file_handler_task::asset_object_id::equals(asset.id)])
+            .exec()
+            .await
+            .map_err(|e| {
+                rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    format!("failed to delete asset related tasks: {}", e),
                 )
             })?;
 

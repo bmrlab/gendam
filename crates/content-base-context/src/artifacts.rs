@@ -1,3 +1,5 @@
+use storage::Storage;
+
 use crate::ContentBaseCtx;
 use std::path::PathBuf;
 
@@ -10,5 +12,13 @@ impl ContentBaseCtx {
         self.artifacts_dir
             .join(get_shard_hex(file_identifier))
             .join(file_identifier)
+    }
+
+    pub async fn delete_artifacts(&self, file_identifier: &str) -> anyhow::Result<()> {
+        self.remove_dir_all(self.artifacts_dir(file_identifier))
+            .await
+            .map_err(|e| {
+                anyhow::anyhow!("Failed to delete artifacts for {}: {}", file_identifier, e)
+            })
     }
 }

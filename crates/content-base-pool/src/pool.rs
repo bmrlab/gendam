@@ -32,6 +32,31 @@ struct TaskInQueue {
     notifier: Option<mpsc::Sender<TaskNotification>>,
 }
 
+impl TaskInQueue {
+    async fn cancel(&self) {
+        self.cancel_token.cancel();
+
+        if let Some(tx) = &self.notifier {
+            if let Err(e) = tx
+                .send(TaskNotification {
+                    task_type: self.task.task_type.clone(),
+                    status: TaskStatus::Cancelled,
+                    message: None,
+                })
+                .await
+            {
+                tracing::error!("Failed to send task cancelled notification: {}", e);
+            }
+        }
+
+        tracing::info!(
+            "Task cancelled {} {}",
+            &self.task.file_identifier,
+            &self.task.task_type
+        );
+    }
+}
+
 #[derive(Clone)]
 struct TaskPoolContext {
     #[allow(dead_code)]
@@ -41,7 +66,6 @@ struct TaskPoolContext {
     task_priority: Arc<RwLock<HashMap<TaskId, OrderedTaskPriority>>>,
     semaphore: Arc<Semaphore>,
     notifier: Arc<Notify>,
-    cancel_token: Arc<CancellationToken>,
     tx: Sender<TaskPayload>,
     // after the tasks in vec finished, the task itself continue to run
     task_subscription: Arc<RwLock<HashMap<TaskId, Vec<TaskId>>>>,
@@ -62,7 +86,6 @@ impl TaskPool {
     pub fn new(content_base: &ContentBaseCtx, concurrency: Option<usize>) -> anyhow::Result<Self> {
         let (tx, mut rx) = mpsc::channel(512);
 
-        let cancel_all_token = Arc::new(CancellationToken::new());
         let task_subscription = Arc::new(RwLock::new(HashMap::new()));
         let task_dispatch = Arc::new(RwLock::new(HashMap::new()));
 
@@ -73,7 +96,6 @@ impl TaskPool {
             task_priority: Arc::new(RwLock::new(HashMap::new())),
             semaphore: Arc::new(Semaphore::new(concurrency.unwrap_or(1))),
             notifier: Arc::new(Notify::new()),
-            cancel_token: cancel_all_token.clone(),
             task_subscription: task_subscription.clone(),
             task_dispatch: task_dispatch.clone(),
             tx: tx.clone(),
@@ -86,7 +108,6 @@ impl TaskPool {
             task_priority: Arc::new(RwLock::new(HashMap::new())),
             semaphore: Arc::new(Semaphore::new(concurrency.unwrap_or(1) * 2)),
             notifier: Arc::new(Notify::new()),
-            cancel_token: cancel_all_token.clone(),
             task_subscription: task_subscription.clone(),
             task_dispatch: task_dispatch.clone(),
             tx: tx.clone(),
@@ -206,7 +227,7 @@ impl TaskPool {
                                         task_mapping.get_mut(&task_id.file_identifier)
                                     {
                                         if let Some(task) = item.get(&task_id.task_type) {
-                                            task.cancel_token.cancel();
+                                            task.cancel().await;
 
                                             // 需要把任务重新添加回去
                                             let mut task_queue = task_ctx.task_queue.write().await;
@@ -225,9 +246,8 @@ impl TaskPool {
                             let task_mapping = task_mapping.read().await;
                             if let Some(item) = task_mapping.get(&file_identifier) {
                                 if let Some(task) = item.get(&task_type) {
-                                    task.cancel_token.cancel();
+                                    task.cancel().await;
                                 }
-                                tracing::info!("Task cancelled {} {}", file_identifier, task_type);
                             }
                         }
                     }
@@ -235,19 +255,21 @@ impl TaskPool {
                         for task_mapping in task_mappings {
                             let task_mapping = task_mapping.read().await;
                             if let Some(item) = task_mapping.get(&file_identifier) {
-                                item.iter().for_each(|(task_type, task)| {
-                                    task.cancel_token.cancel();
-                                    tracing::info!(
-                                        "Task cancelled {} {}",
-                                        file_identifier,
-                                        task_type
-                                    );
-                                });
+                                for (_, task) in item.iter() {
+                                    task.cancel().await;
+                                }
                             }
                         }
                     }
                     TaskPayload::CancelAll => {
-                        cancel_all_token.cancel();
+                        for task_mapping in task_mappings {
+                            let task_mapping = task_mapping.read().await;
+                            for (_, item) in task_mapping.iter() {
+                                for (_, task) in item.iter() {
+                                    task.cancel().await;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -322,11 +344,7 @@ async fn get_task_bound(_task_type: &ContentTaskType) -> TaskBound {
 impl TaskPoolContext {
     async fn run(&self, content_base: &ContentBaseCtx) {
         loop {
-            let permit = self
-                .semaphore
-                .acquire()
-                .await
-                .expect("failed to acquire semaphore");
+            let permit = self.semaphore.acquire().await.expect("semaphore acquired");
             let task = self.task_queue.write().await.pop();
 
             if let Some((task, priority)) = task {
@@ -367,7 +385,6 @@ impl TaskPoolContext {
                     // 避免 deadlock
                     let mut task_subscription = self.task_subscription.write().await;
                     let mut task_dispatch = self.task_dispatch.write().await;
-                    let mut task_mapping = self.task_mapping.write().await;
                     let mut task_priority = self.task_priority.write().await;
 
                     let subscription = task_subscription.get(&task_id);
@@ -404,8 +421,7 @@ impl TaskPoolContext {
                                     }
                                 }
 
-                                // add task to queue
-                                // 依赖任务不需要 notifier
+                                // add task back to queue
                                 let mut payload = NewTaskPayload::new(
                                     &dep.file_identifier,
                                     &current_task.task.file_path.clone(),
@@ -422,17 +438,17 @@ impl TaskPoolContext {
                             // 不执行任务了
                             drop(permit);
 
-                            // 移除任务记录
-                            // FIXME duplicate code
-                            match task_mapping.get_mut(&task.file_identifier) {
-                                Some(item) => {
-                                    item.remove(&task.task_type);
-                                    if item.is_empty() {
-                                        task_mapping.remove(&task.file_identifier);
-                                    }
-                                }
-                                None => {} // 前面已经读取到过了, 这里不可能 None, 真的遇到了忽略也没有问题
-                            }
+                            // // 移除任务记录
+                            // // FIXME duplicate code
+                            // match task_mapping.get_mut(&task.file_identifier) {
+                            //     Some(item) => {
+                            //         item.remove(&task.task_type);
+                            //         if item.is_empty() {
+                            //             task_mapping.remove(&task.file_identifier);
+                            //         }
+                            //     }
+                            //     None => {} // 前面已经读取到过了, 这里不可能 None, 真的遇到了忽略也没有问题
+                            // }
 
                             task_priority.remove(&task_id);
 
@@ -446,7 +462,6 @@ impl TaskPoolContext {
                 permit.forget();
 
                 let content_base = content_base.clone();
-                let cancel_all_token = self.cancel_token.clone();
                 let task_mapping = self.task_mapping.clone();
                 let task_priority = self.task_priority.clone();
                 let task_dispatch = self.task_dispatch.clone();
@@ -505,10 +520,7 @@ impl TaskPoolContext {
                             }
                         }
                         _ = current_task.cancel_token.cancelled() => {
-                            tracing::info!("Task canceled: {} {}", &task.file_identifier, &task.task_type);
-                        }
-                        _ = cancel_all_token.cancelled() => {
-                            tracing::info!("Task canceled by CancelAll: {}", &task.file_identifier);
+                            tracing::info!("Spawned task has been cancelled: {} {}", &task.file_identifier, &task.task_type);
                         }
                     }
 
