@@ -23,7 +23,7 @@ export type SearchPayload =
     }
   | {
       api: 'search.recommend'
-      filePath: SearchResultPayload['filePath'] // FilePath
+      filePath?: SearchResultPayload['filePath'] // FilePath
       assetObjectHash: string
       timestamp: number
     }

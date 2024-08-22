@@ -74,10 +74,11 @@ export type ExtractExplorerItem<
             taskType: { contentType: V; taskType: U }
           }
 
-export type ExtractExplorerItemWithType<T extends AssetObjectType = AssetObjectType> = ExtractExplorerItem<
-  'FilePath' | 'SearchResult' | 'RetrievalResult',
-  T
->
+export type ExtractExplorerItemWithType<T extends AssetObjectType = AssetObjectType> =
+  | ExtractFilePathItem<T>
+  | ExtractSearchResultItem<T>
+  | ExtractRetrievalResultItem<T>
+
 
 export function uniqueId(item: ExplorerItem): string {
   switch (item.type) {

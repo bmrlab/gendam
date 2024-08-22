@@ -47,7 +47,3 @@ where
 
     Ok(chunks)
 }
-
-pub fn split_long_text<'a>(text: &'a str) -> Vec<&'a str> {
-    todo!()
-}

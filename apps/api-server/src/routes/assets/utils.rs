@@ -57,37 +57,3 @@ pub async fn generate_file_hash(path: impl AsRef<Path>, size: u64) -> Result<Str
 
 	Ok(hasher.finalize().to_hex()[..16].to_string())
 }
-
-// pub(crate) fn contains_invalid_chars(name: &str) -> bool {
-//     name.chars().any(|c| match c {
-//         '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => true,
-//         _ => false,
-//     })
-// }
-
-// pub(crate) fn normalized_materialized_path(path: &str) -> String {
-//     if path.ends_with("/") {
-//         path.to_string()
-//     } else {
-//         format!("{}/", path)
-//     }
-// }
-
-pub enum FileType {
-    Video,
-    Image,
-    Other,
-}
-
-pub fn get_file_type(mime_type: Option<String>) -> FileType {
-    if let Some(mime_type) = mime_type {
-        if mime_type.starts_with("video/") {
-            return FileType::Video;
-        } else if mime_type.starts_with("image/") {
-            return FileType::Image;
-        } else {
-            return FileType::Other;
-        }
-    }
-    FileType::Other
-}

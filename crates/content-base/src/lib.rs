@@ -48,7 +48,7 @@ mod test {
         },
         ContentTaskType, TaskRecord,
     };
-    use content_handler::video::VideoDecoder;
+    use content_handler::{file_metadata, video::VideoDecoder};
     use content_metadata::ContentMetadata;
     use global_variable::{init_global_variables, set_current};
     use qdrant_client::Qdrant;
@@ -58,10 +58,6 @@ mod test {
         init_global_variables!();
         // set storage root path
         set_current!("abcdefg".into(), "/Users/zhuo/Desktop".into());
-
-        let qdrant = Qdrant::from_url("http://localhost:6334")
-            .build()
-            .expect("qdrant build");
 
         // the artifacts_dir is relative to the storage root
         let content_base = ContentBaseCtx::new("gendam-test-artifacts", "");
@@ -184,15 +180,26 @@ mod test {
         let file_path = PathBuf::from_str("/Users/zhuo/Desktop/测试视频/4月1日.mp4")
             .expect("str should be valid path");
 
-        let content_base =
-            ContentBase::new(&ctx, Arc::new(qdrant), "", "").expect("content base created");
+        let content_base = ContentBase::new(
+            &ctx,
+            Arc::new(qdrant),
+            "content-base-language",
+            "content-base-vision",
+        )
+        .expect("content base created");
 
-        // let upsert_result = content_base
-        //     .upsert(UpsertPayload::new(file_identifier.into(), file_path, ))
-        //     .await;
+        let (metadata, _) = file_metadata(&file_path, Some("mp4"));
 
-        // tracing::info!("upsert result: {:?}", upsert_result);
+        let upsert_result = content_base
+            .upsert(UpsertPayload::new(
+                file_identifier.into(),
+                file_path,
+                &metadata,
+            ))
+            .await;
 
-        // tokio::time::sleep(Duration::from_secs(60)).await;
+        tracing::info!("upsert result: {:?}", upsert_result);
+
+        tokio::time::sleep(Duration::from_secs(60)).await;
     }
 }

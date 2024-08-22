@@ -2,7 +2,7 @@ use super::AudioTaskType;
 use crate::{ContentTask, ContentTaskType, FileInfo, TaskRunOutput, TaskRunRecord};
 use async_trait::async_trait;
 use content_base_context::ContentBaseCtx;
-use content_handler::audio::{self, AudioDecoder};
+use content_handler::audio::AudioDecoder;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use storage_macro::Storage;
@@ -22,9 +22,9 @@ pub trait AudioThumbnailTrait: Into<ContentTaskType> + Clone + Storage {
         &self,
         _task_run_record: &TaskRunRecord,
     ) -> anyhow::Result<TaskRunOutput> {
-        Ok(TaskRunOutput::File(PathBuf::from(format!(
-            "thumbnail.jpg",
-        ))))
+        Ok(TaskRunOutput::File(PathBuf::from(
+            format!("thumbnail.jpg",),
+        )))
     }
 
     async fn run_audio_thumbnail(
@@ -34,7 +34,9 @@ pub trait AudioThumbnailTrait: Into<ContentTaskType> + Clone + Storage {
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
         let audio_decoder = AudioDecoder::new(&file_info.file_path)?;
-        let output_path = task_run_record.output_path(&file_info.file_identifier, ctx).await?;
+        let output_path = task_run_record
+            .output_path(&file_info.file_identifier, ctx)
+            .await?;
 
         // 封面图提取失败不算失败，因为音频可能没有封面图
         if let Err(e) = audio_decoder.save_audio_cover(output_path) {

@@ -39,7 +39,7 @@ impl From<&RawVideoMetadata> for VideoMetadata {
             duration: metadata.duration,
             bit_rate: metadata.bit_rate.to_string(),
             avg_frame_rate: VideoAvgFrameRate::from(&metadata.avg_frame_rate),
-            audio: None,
+            audio: metadata.audio.as_ref().map(|v| AudioMetadata::from(v)),
         }
     }
 }

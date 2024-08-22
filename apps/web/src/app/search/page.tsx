@@ -11,7 +11,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import SearchForm, { type SearchFormRef } from './SearchForm'
 import SearchItemContextMenu from './SearchItemContextMenu'
 import SearchResults from './SearchResults'
-import SearchSuggestions from './SearchSuggestions'
 import { SearchPageContextProvider, useSearchPageContext, type SearchResultPayload } from './context'
 
 function SearchPage() {
@@ -103,15 +102,15 @@ function SearchPage() {
           requestPayload?.api === 'search.recommend' ? (
             <div className="text-ink/50 my-1 flex flex-1 items-center gap-1 truncate text-xs">
               <span>Frames similar to</span>
-              <span>&quot;{requestPayload.filePath.name}&quot;</span>
+              <span>&quot;{requestPayload.filePath?.name ?? requestPayload.assetObjectHash}&quot;</span>
               <span className="relative inline-block h-6 w-6">
                 <Image
                   src={currentLibrary.getPreviewSrc(
-                    requestPayload.filePath.assetObject?.hash!,
+                    requestPayload.assetObjectHash,
                     'video',
                     Math.floor(requestPayload.timestamp / 1000),
                   )}
-                  alt={requestPayload.filePath.name}
+                  alt={requestPayload.filePath?.name ?? requestPayload.assetObjectHash}
                   fill={true}
                   className="h-full w-full rounded-sm object-cover"
                 ></Image>

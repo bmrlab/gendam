@@ -31,7 +31,7 @@ export const useAudioDialog = () => {
   const setAudioDialogOpen = useAudioBoundStore.use.setIsOpenAudioDialog()
 
   const singleExport = useCallback(
-    (item: ExtractExplorerItem<'FilePath'>) => {
+    (item: ExtractExplorerItem<'FilePath', 'audio' | 'video'>) => {
       setAudioDialogProps({
         type: AudioDialogEnum.single,
         title: 'Export Transcript',
@@ -45,10 +45,7 @@ export const useAudioDialog = () => {
   )
 
   const batchExport = useCallback(
-    (items: ExtractExplorerItem<'FilePath'>[]) => {
-      items = items.filter(
-        (item) => item.assetObject.mediaData?.contentType === 'video' && !!item.assetObject.mediaData.audio,
-      )
+    (items: ExtractExplorerItem<'FilePath', 'audio' | 'video'>[]) => {
       // items.sort((a, b) => a.assetObject.id - b.assetObject.id)
       setAudioDialogProps({
         type: AudioDialogEnum.batch,

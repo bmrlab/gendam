@@ -13,6 +13,13 @@ use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+#[derive(Deserialize, Type, Debug)]
+#[serde(rename_all = "camelCase")]
+struct RawTextRequestPayload {
+    hash: String,
+    index: u32,
+}
+
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
     TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
@@ -93,12 +100,6 @@ where
             })
         })
         .query("raw_text.chunk.content", |t| {
-            #[derive(Deserialize, Type, Debug)]
-            #[serde(rename_all = "camelCase")]
-            struct RawTextRequestPayload {
-                hash: String,
-                index: u32,
-            }
             t(|ctx, input: RawTextRequestPayload| async move {
                 let library = ctx.library()?;
                 let content_base = ctx.content_base()?;
@@ -129,12 +130,6 @@ where
             })
         })
         .query("raw_text.chunk.summarization", |t| {
-            #[derive(Deserialize, Type, Debug)]
-            #[serde(rename_all = "camelCase")]
-            struct RawTextRequestPayload {
-                hash: String,
-                index: u32,
-            }
             t(|ctx, input: RawTextRequestPayload| async move {
                 let library = ctx.library()?;
                 let content_base = ctx.content_base()?;

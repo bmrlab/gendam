@@ -1,7 +1,8 @@
 use crate::routes::audio::{downloader::DownloadHelper, reader::AudioReader};
 use crate::CtxWithLibrary;
+use content_base::audio::transcript::AudioTranscriptTask;
 use content_base::video::transcript::VideoTranscriptTask;
-use content_base::{ContentBase, ContentTask, FileInfo};
+use content_base::{ContentBase, ContentMetadata, ContentTask, FileInfo, TaskRecord};
 use content_library::Library;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
@@ -35,15 +36,7 @@ where
             t(|ctx, hash: String| async move {
                 let library = ctx.library()?;
                 let content_base = ctx.content_base()?;
-                let file_path = library.file_path(&hash);
-                let path = VideoTranscriptTask
-                    .task_output_path(
-                        &FileInfo {
-                            file_identifier: hash.clone(),
-                            file_path: file_path.clone(),
-                        },
-                        content_base.ctx(),
-                    )
+                let path = audio_transcript_path(&library, &content_base, &hash)
                     .await
                     .map_err(|err| {
                         rspc::Error::new(rspc::ErrorCode::InternalServerError, format!("{}", err))
@@ -56,10 +49,12 @@ where
             t(|ctx, input: ExportInput| async move {
                 let library = ctx.library()?;
                 let content_base = ctx.content_base()?;
-                let export_result = audio_export(&library, &content_base, input).await.unwrap_or_else(|err| {
-                    error!("Failed to export audio: {err}",);
-                    vec![]
-                });
+                let export_result = audio_export(&library, &content_base, input)
+                    .await
+                    .unwrap_or_else(|err| {
+                        error!("Failed to export audio: {err}",);
+                        vec![]
+                    });
                 Ok(export_result)
             })
         })
@@ -69,10 +64,12 @@ where
                 let content_base = ctx.content_base()?;
                 let mut error_list = vec![];
                 for item in input {
-                    let res = audio_export(&library, &content_base, item).await.unwrap_or_else(|err| {
-                        error!("Failed to export audio: {err}",);
-                        vec![]
-                    });
+                    let res = audio_export(&library, &content_base, item)
+                        .await
+                        .unwrap_or_else(|err| {
+                            error!("Failed to export audio: {err}",);
+                            vec![]
+                        });
                     error_list.extend(res);
                 }
                 Ok(error_list)
@@ -127,6 +124,41 @@ fn get_all_audio_format(path: PathBuf) -> Vec<AudioResp> {
         .collect()
 }
 
+async fn audio_transcript_path(
+    library: &Library,
+    content_base: &ContentBase,
+    hash: &str,
+) -> anyhow::Result<PathBuf> {
+    let task_record = TaskRecord::from_content_base(&hash, content_base.ctx()).await;
+    let file_metadata = task_record.metadata();
+    let file_path = library.file_path(&hash);
+    match file_metadata {
+        ContentMetadata::Video(_) => {
+            VideoTranscriptTask
+                .task_output_path(
+                    &FileInfo {
+                        file_identifier: hash.to_string(),
+                        file_path: file_path.clone(),
+                    },
+                    content_base.ctx(),
+                )
+                .await
+        }
+        ContentMetadata::Audio(_) => {
+            AudioTranscriptTask
+                .task_output_path(
+                    &FileInfo {
+                        file_identifier: hash.to_string(),
+                        file_path: file_path.clone(),
+                    },
+                    content_base.ctx(),
+                )
+                .await
+        }
+        _ => Err(anyhow::anyhow!("Unsupported content type")),
+    }
+}
+
 async fn audio_export(
     library: &Library,
     content_base: &ContentBase,
@@ -134,17 +166,8 @@ async fn audio_export(
 ) -> anyhow::Result<Vec<AudioType>> {
     let save_dir = PathBuf::from(input.path);
     let types = input.type_group.clone();
-    let video_path = library.file_path(&input.hash);
 
-    let transcript_path = VideoTranscriptTask
-        .task_output_path(
-            &FileInfo {
-                file_identifier: input.hash.clone(),
-                file_path: video_path.clone(),
-            },
-            content_base.ctx(),
-        )
-        .await?;
+    let transcript_path = audio_transcript_path(library, content_base, &input.hash).await?;
 
     let reader = AudioReader::new(transcript_path);
     let downloader = DownloadHelper::new(reader, save_dir.clone());

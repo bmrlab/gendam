@@ -170,7 +170,7 @@ pub async fn process_asset_metadata(
     library: &Library,
     content_base: &ContentBase,
     asset_object_id: i32,
-    local_full_path: impl AsRef<Path>,
+    local_full_path: Option<impl AsRef<Path>>,
 ) -> Result<(), rspc::Error> {
     info!("process metadata for asset_object_id: {asset_object_id}");
     let asset_object_data = match library
@@ -191,11 +191,14 @@ pub async fn process_asset_metadata(
         }
     };
 
+    let local_full_path = local_full_path
+        .map(|v| v.as_ref().to_path_buf())
+        .unwrap_or(library.file_path(&asset_object_data.hash));
+
     let file_extension = local_full_path
-        .as_ref()
-        .to_path_buf()
         .extension()
         .map(|v| v.to_string_lossy().to_string());
+
     let (metadata, mime) = file_metadata(local_full_path, file_extension.as_deref());
 
     let metadata_json = match serde_json::to_string(&metadata) {

@@ -9,7 +9,7 @@ use content_library::{Library, QdrantServerInfo};
 use p2p::Node;
 use std::{
     path::PathBuf,
-    sync::{mpsc::Sender, Arc, Mutex},
+    sync::{Arc, Mutex},
 };
 
 #[derive(Debug)]

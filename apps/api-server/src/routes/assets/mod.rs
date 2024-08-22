@@ -19,6 +19,7 @@ use read::{get_file_path, list_file_path};
 use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
 use specta::Type;
+use std::path::PathBuf;
 use tracing::debug;
 use tracing::info;
 use types::FilePathRequestPayload;
@@ -75,7 +76,7 @@ where
                             &library,
                             &content_base,
                             asset_object_data.id,
-                            &input.local_full_path,
+                            Some(&input.local_full_path),
                         )
                         .await?;
                         info!("process metadata finished");
@@ -127,14 +128,16 @@ where
                             &library,
                             &content_base,
                             asset_object_data.id,
-                            &library
-                                .file_path(&input.hash)
-                                .to_string_lossy()
-                                .to_string()
-                                .as_str(),
+                            Some(
+                                &library
+                                    .file_path(&input.hash)
+                                    .to_string_lossy()
+                                    .to_string()
+                                    .as_str(),
+                            ),
                         )
                         .await?;
-                        info!("process video metadata finished");
+                        info!("process asset metadata finished");
                         process_asset(&library, &ctx, file_path_data.id, Some(true)).await?;
                     }
 
@@ -253,29 +256,27 @@ where
                 }
             })
         })
-        .mutation("process_video_asset", |t| {
+        .mutation("process_asset", |t| {
             t(|ctx, input: i32| async move {
-                // let library = ctx.library()?;
-                // let file_path_id = input;
-                // process_asset(&library, &ctx, file_path_id, None).await?;
-                // Ok(())
-                todo!()
+                let library = ctx.library()?;
+                let file_path_id = input;
+                process_asset(&library, &ctx, file_path_id, None).await?;
+                Ok(())
             })
         })
-        .mutation("process_video_metadata", |t| {
+        .mutation("process_asset_metadata", |t| {
             t(|ctx, input: i32| async move {
-                // let library = ctx.library()?;
-                // let content_base = ctx.content_base()?;
-                // let asset_object_id = input;
-                // process_asset_metadata(
-                //     &library,
-                //     &content_base,
-                //     asset_object_id,
-                //     &library.file_path(&input.hash),
-                // )
-                // .await?;
-                // Ok(())
-                todo!()
+                let library = ctx.library()?;
+                let content_base = ctx.content_base()?;
+                let asset_object_id = input;
+                process_asset_metadata(
+                    &library,
+                    &content_base,
+                    asset_object_id,
+                    Option::<PathBuf>::None,
+                )
+                .await?;
+                Ok(())
             })
         })
         .mutation("export_video_segment", |t| {

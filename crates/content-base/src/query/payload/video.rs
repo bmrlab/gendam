@@ -80,12 +80,15 @@ where
             .map(|v| &v.0)
             .collect::<Vec<_>>();
         let new_metadata = fn_metadata(&raw_items);
-        let mut score = items[last_idx..idx]
+        let score = items[last_idx..idx]
             .iter()
             .map(|v| v.1)
             .max_by(|x, y| x.total_cmp(y))
             .expect("should have max");
 
+        // 用匹配到的数量作为 bonus
+        // 数量为1 时不加分，增加数量则按照 log 函数增加，超过5个的也不加分
+        // TODO 效果有待验证，先去掉加分规则
         // let start_timestamp = items[last_idx..idx]
         //     .iter()
         //     .map(|v| v.0.start_timestamp())
@@ -102,9 +105,6 @@ where
         //     .max_by(|x, y| x.total_cmp(y))
         //     .expect("should have max");
 
-        // 用匹配到的数量作为 bonus
-        // 数量为1 时不加分，增加数量则按照 log 函数增加，超过5个的也不加分
-        // TODO 临时去掉加分规则
         // score += ((idx - last_idx).min(5) as f32).log(5.0) * 0.15;
 
         // let new_metadata = fn_metadata(&items[last_idx].0, start_timestamp, end_timestamp);

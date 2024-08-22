@@ -12,10 +12,10 @@ pub struct RecommendRequestPayload {
 }
 
 pub async fn recommend_frames(
-    library: &Library,
-    content_base: &ContentBase,
-    asset_object_hash: &str,
-    timestamp: i32,
+    _library: &Library,
+    _content_base: &ContentBase,
+    _asset_object_hash: &str,
+    _timestamp: i32,
 ) -> Result<Vec<SearchResultPayload>, rspc::Error> {
     // let payload = RecommendVideoFramePayload::new(asset_object_hash, timestamp as i64);
     // let search_results = content_base

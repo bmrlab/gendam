@@ -8,7 +8,7 @@ import {
 } from '@/Explorer/hooks'
 // import { useExplorerStore } from '@/Explorer/store'
 import { type ExtractExplorerItem } from '@/Explorer/types'
-import AudioDialog from '@/components/Audio/AudioDialog'
+import AudioDialog from '@/components/TranscriptExport/AudioDialog'
 import Inspector from '@/components/Inspector'
 import { useInspector } from '@/components/Inspector/store'
 import Viewport from '@/components/Viewport'
@@ -23,7 +23,7 @@ import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
-import ItemContextMenu from './_components/ItemContextMenu'
+import ItemContextMenuV2 from './_components/ItemContextMenu'
 
 export default function ExplorerPage() {
   // const explorerStore = useExplorerStore()
@@ -173,7 +173,7 @@ export default function ExplorerPage() {
   return (
     <ExplorerViewContextProvider
       value={{
-        contextMenu: (data) => (data.type === 'FilePath' ? <ItemContextMenu data={data} /> : null),
+        contextMenu: (data) => (data.type === 'FilePath' ? <ItemContextMenuV2 /> : null),
       }}
     >
       <ExplorerContextProvider explorer={explorer}>
@@ -228,7 +228,7 @@ export default function ExplorerPage() {
                         },
                       }}
                       style={{ width }}
-                      className="flex-none flex h-full"
+                      className="flex h-full flex-none"
                     >
                       <div
                         className="h-full w-1 cursor-col-resize"

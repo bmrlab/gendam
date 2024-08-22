@@ -1,6 +1,5 @@
-use content_base_task::ContentTaskType;
-
 use crate::ContentBase;
+use content_base_task::ContentTaskType;
 
 pub struct CancelTaskPayload {
     file_identifier: String,

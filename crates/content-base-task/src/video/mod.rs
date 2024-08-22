@@ -58,7 +58,6 @@ mod test {
     use content_handler::video::VideoDecoder;
     use content_metadata::ContentMetadata;
     use global_variable::{init_global_variables, set_current};
-    use qdrant_client::Qdrant;
     use std::{path::PathBuf, str::FromStr, sync::Arc};
 
     #[test_log::test(tokio::test)]
@@ -66,10 +65,6 @@ mod test {
         init_global_variables!();
         // set storage root path
         set_current!("abcdefg".into(), "/Users/zhuo/Desktop".into());
-
-        let qdrant = Qdrant::from_url("http://localhost:6334")
-            .build()
-            .expect("qdrant build");
 
         // the artifacts_dir is relative to the storage root
         let content_base = ContentBaseCtx::new("gendam-test-artifacts", "");

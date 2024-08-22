@@ -13,7 +13,7 @@ pub use image_caption::*;
 pub use image_embedding::*;
 pub use llm::*;
 pub use multi_modal_embedding::*;
-use std::{collections::HashMap, pin::Pin, sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 pub use text_embedding::*;
 use tokio::sync::{mpsc, oneshot, Mutex};
 use tracing::{debug, error, warn};
