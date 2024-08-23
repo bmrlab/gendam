@@ -59,8 +59,6 @@ export type Procedures = {
 
 export type SetModelPayload = { category: AIModelCategory; modelId: string }
 
-export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: string[] | null }
-
 export type WebPageSearchResultMetadata = { startIndex: number; endIndex: number }
 
 export type ModelArtifact = { url: string; checksum: string }
@@ -78,6 +76,8 @@ export type TranscriptResponse = { content: string }
 export type ContentMetadataWithType = ({ contentType: "audio" } & AudioMetadata) | ({ contentType: "video" } & VideoMetadata) | ({ contentType: "image" } & ImageMetadata) | ({ contentType: "rawText" } & RawTextMetadata) | ({ contentType: "webPage" } & WebPageMetadata) | { contentType: "unknown" }
 
 export type AudioMetadata = { bit_rate: string; duration: number }
+
+export type TaskListRequestFilter = { assetObjectId?: number | null; assetObjectIds?: number[] | null }
 
 export type LibrarySettingsThemeEnum = "light" | "dark"
 
@@ -97,8 +97,6 @@ export type AssetObjectWithMediaData = { id: number; hash: string; size: number;
 
 export type VideoPlayerTsResponse = { data: number[] }
 
-export type TaskListRequestFilter = { assetObjectId?: number | null; assetObjectIds?: number[] | null }
-
 export type ImageMetadata = { width: number; height: number; color: string }
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
@@ -116,8 +114,6 @@ export type S3Config = { bucket: string; endpoint: string; accessKeyId: string; 
 export type RAGRequestPayload = { query: string }
 
 export type SearchResultPayload = { filePath: FilePathWithAssetObjectData; metadata: SearchResultMetadata; score: number }
-
-export type TaskListRequestPayload = { filter: TaskListRequestFilter }
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
@@ -149,6 +145,8 @@ export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean |
 
 export type AssetObjectReceivePayload = { hash: string; materializedPath: string }
 
+export type TaskRedoRequestPayload = { assetObjectId: number }
+
 export type SearchResultMetadata = ({ type: "video" } & VideoSearchResultMetadata) | ({ type: "audio" } & AudioSearchResultMetadata) | ({ type: "image" } & ImageSearchResultMetadata) | ({ type: "rawText" } & RawTextSearchResultMetadata) | ({ type: "webPage" } & WebPageSearchResultMetadata)
 
 export type AIModelResult = { info: AIModel; status: AIModelStatus }
@@ -171,6 +169,8 @@ export type TranscriptType = "Original" | "Summarization"
 
 export type VideoAvgFrameRate = { numerator: string; denominator: string }
 
+export type TaskListRequestPayload = { filter: TaskListRequestFilter }
+
 export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type VideoPlayerInfoRequestPayload = { hash: string }
@@ -185,6 +185,8 @@ export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
 
 export type Result = { category: AIModelCategory; models: AIModelResult[] }
 
+export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: string[] | null }
+
 export type ContentTaskTypeSpecta = { contentType: "video"; taskType: VideoTaskTypeSpecta } | { contentType: "audio"; taskType: AudioTaskTypeSpecta } | { contentType: "image"; taskType: ImageTaskTypeSpecta } | { contentType: "rawText"; taskType: RawTextTaskTypeSpecta } | { contentType: "webPage"; taskType: WebPageTaskTypeSpecta }
 
 export type AcceptShareOutput = { fileList: string[] }
@@ -192,8 +194,6 @@ export type AcceptShareOutput = { fileList: string[] }
 export type UploadPayload = { materializedPaths: string[]; hashes: string[] }
 
 export type VideoMetadata = { width: string; height: string; duration: number; bit_rate: string; avg_frame_rate: VideoAvgFrameRate; audio: AudioMetadata | null }
-
-export type TaskRedoRequestPayload = { assetObjectId: number }
 
 export type VideoSegmentExportPayload = { verboseFileName: string; outputDir: string; assetObjectId: number; millisecondsFrom: number; millisecondsTo: number }
 

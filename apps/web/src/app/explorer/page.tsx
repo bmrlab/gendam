@@ -8,26 +8,26 @@ import {
 } from '@/Explorer/hooks'
 // import { useExplorerStore } from '@/Explorer/store'
 import { type ExtractExplorerItem } from '@/Explorer/types'
-import AudioDialog from '@/components/TranscriptExport/AudioDialog'
 import Inspector from '@/components/Inspector'
 import { useInspector } from '@/components/Inspector/store'
+import AudioDialog from '@/components/TranscriptExport/AudioDialog'
 import Viewport from '@/components/Viewport'
 import { FilePath } from '@/lib/bindings'
-import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { Drop_To_Folder } from '@gendam/assets/images'
 import { RSPCError } from '@rspc/client'
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
 import ItemContextMenuV2 from './_components/ItemContextMenu'
+import { useResizableInspector } from './_hooks/inspector'
 
 export default function ExplorerPage() {
   // const explorerStore = useExplorerStore()
-  const currentLibrary = useCurrentLibrary()
+  // const currentLibrary = useCurrentLibrary()
   const searchParams = useSearchParams()
   let dirInSearchParams = searchParams.get('dir') || '/'
   if (!/^\/([^/\\:*?"<>|]+\/)+$/.test(dirInSearchParams)) {
@@ -128,43 +128,11 @@ export default function ExplorerPage() {
     }
   }, [inspector])
 
-  const [isResizing, setIsResizing] = useState(false)
-  const startXRef = useRef(0)
-  const [width, setWidth] = useState(256)
-  const startWidthRef = useRef(width)
-
-  const stopResizing = useCallback(() => {
-    setIsResizing(false)
-  }, [])
-
-  const resize = useCallback(
-    (e: MouseEvent) => {
-      if (isResizing) {
-        const deltaX = e.clientX - startXRef.current
-        const newWidth = startWidthRef.current - deltaX
-        // if (newWidth >= minWidth && newWidth <= maxWidth) {
-        //   setWidth(newWidth);
-        // }
-        setWidth(newWidth)
-      }
-    },
-    [isResizing],
-  )
-
-  useEffect(() => {
-    const handleMouseUp = () => stopResizing()
-    const handleMouseMove = (e: MouseEvent) => resize(e)
-
-    if (isResizing) {
-      window.addEventListener('mousemove', handleMouseMove)
-      window.addEventListener('mouseup', handleMouseUp)
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [isResizing, resize, stopResizing])
+  /**
+   * TODO Inspector 拖拽的时候会有一些性能问题，看起来有点卡
+   * 如果拖拽的时候不显示 ExplorerLayout 会好很多
+   */
+  const { handleRef, width, isResizing } = useResizableInspector()
 
   if (assetsQuery.isError) {
     return <Viewport.Page className="text-ink/50 flex items-center justify-center">Failed to load assets</Viewport.Page>
@@ -230,15 +198,7 @@ export default function ExplorerPage() {
                       style={{ width }}
                       className="flex h-full flex-none"
                     >
-                      <div
-                        className="h-full w-1 cursor-col-resize"
-                        onMouseDown={(e) => {
-                          setIsResizing(true)
-                          startXRef.current = e.clientX
-                          startWidthRef.current = width
-                        }}
-                      />
-                      <Inspector data={inspectorItem} />
+                      <Inspector data={inspectorItem} ref={handleRef} />
                     </motion.div>
                   )}
                 </AnimatePresence>

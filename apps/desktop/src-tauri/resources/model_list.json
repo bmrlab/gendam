@@ -175,7 +175,8 @@
   {
     "id": "ollama-llava-phi3-mini",
     "categories": [
-      "LLM"
+      "LLM",
+      "ImageCaption"
     ],
     "title": "Ollama",
     "description": "",

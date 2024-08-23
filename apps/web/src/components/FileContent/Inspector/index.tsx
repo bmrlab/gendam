@@ -28,7 +28,7 @@ export default function InspectorItem({ data }: { data: ExplorerItem | null }) {
   }, [containerRef, containerRef.current?.clientWidth])
 
   return (
-    <div className="h-full overflow-x-hidden overflow-y-scroll" ref={containerRef}>
+    <div className="h-full w-full overflow-x-hidden overflow-y-scroll" ref={containerRef}>
       {data ? (
         'filePath' in data ? (
           data.filePath.isDir ? (
