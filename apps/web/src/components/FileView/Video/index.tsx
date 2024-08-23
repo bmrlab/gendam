@@ -12,7 +12,7 @@ export const Video = memo(({ hash, currentTime }: { hash: string; currentTime?: 
     }
   }, [videoRef.current, currentTime])
 
-  return <video ref={videoRef} className="video-js h-full max-h-full w-full max-w-full rounded-md" />
+  return <video id={hash} ref={videoRef} className="video-js h-full max-h-full w-full max-w-full rounded-md" />
 })
 
 Video.displayName = 'Video'

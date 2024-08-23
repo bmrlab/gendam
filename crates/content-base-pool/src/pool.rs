@@ -1,5 +1,6 @@
 use crate::{
-    payload::{NewTaskPayload, Task, TaskPayload},
+    mapping::TaskStore,
+    payload::{NewTaskPayload, Task, TaskId, TaskPayload},
     priority::OrderedTaskPriority,
     TaskNotification, TaskPriority, TaskStatus,
 };
@@ -18,15 +19,9 @@ pub struct TaskPool {
     tx: mpsc::Sender<TaskPayload>,
 }
 
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
-struct TaskId {
-    file_identifier: String,
-    task_type: ContentTaskType,
-}
-
 #[derive(Clone)]
 struct TaskInQueue {
-    task: Task,
+    task: Arc<Task>,
     priority: OrderedTaskPriority,
     cancel_token: CancellationToken,
     notifier: Option<mpsc::Sender<TaskNotification>>,
@@ -61,15 +56,15 @@ impl TaskInQueue {
 struct TaskPoolContext {
     #[allow(dead_code)]
     task_bound: TaskBound,
-    task_queue: Arc<RwLock<PriorityQueue<Task, OrderedTaskPriority>>>,
-    task_mapping: Arc<RwLock<HashMap<String, HashMap<ContentTaskType, TaskInQueue>>>>,
+    task_queue: Arc<RwLock<PriorityQueue<TaskId, OrderedTaskPriority>>>,
+    task_mapping: Arc<RwLock<TaskStore<Arc<TaskInQueue>>>>,
     task_priority: Arc<RwLock<HashMap<TaskId, OrderedTaskPriority>>>,
     semaphore: Arc<Semaphore>,
     notifier: Arc<Notify>,
     tx: Sender<TaskPayload>,
-    // after the tasks in vec finished, the task itself continue to run
+    // after the tasks in subscriptions finished, the task itself continue to run
     task_subscription: Arc<RwLock<HashMap<TaskId, Vec<TaskId>>>>,
-    // after task finished, trigger the tasks in vec
+    // after task finished, trigger the tasks in dispatch
     task_dispatch: Arc<RwLock<HashMap<TaskId, Vec<TaskId>>>>,
 }
 
@@ -88,11 +83,12 @@ impl TaskPool {
 
         let task_subscription = Arc::new(RwLock::new(HashMap::new()));
         let task_dispatch = Arc::new(RwLock::new(HashMap::new()));
+        let task_mapping = Arc::new(RwLock::new(TaskStore::new()));
 
         let cpu_task_ctx = TaskPoolContext {
             task_bound: TaskBound::CPU,
             task_queue: Arc::new(RwLock::new(PriorityQueue::new())),
-            task_mapping: Arc::new(RwLock::new(HashMap::new())),
+            task_mapping: task_mapping.clone(),
             task_priority: Arc::new(RwLock::new(HashMap::new())),
             semaphore: Arc::new(Semaphore::new(concurrency.unwrap_or(1))),
             notifier: Arc::new(Notify::new()),
@@ -104,7 +100,7 @@ impl TaskPool {
         let io_task_ctx = TaskPoolContext {
             task_bound: TaskBound::IO,
             task_queue: Arc::new(RwLock::new(PriorityQueue::new())),
-            task_mapping: Arc::new(RwLock::new(HashMap::new())),
+            task_mapping: task_mapping.clone(),
             task_priority: Arc::new(RwLock::new(HashMap::new())),
             semaphore: Arc::new(Semaphore::new(concurrency.unwrap_or(1) * 2)),
             notifier: Arc::new(Notify::new()),
@@ -119,11 +115,6 @@ impl TaskPool {
         // loop for message
         tokio::spawn(async move {
             while let Some(payload) = rx.recv().await {
-                let task_mappings = vec![
-                    cpu_ctx_clone.task_mapping.clone(),
-                    io_ctx_clone.task_mapping.clone(),
-                ];
-
                 match payload {
                     TaskPayload::Task(NewTaskPayload {
                         file_identifier,
@@ -135,22 +126,13 @@ impl TaskPool {
                         let task_type = task_type.clone();
                         tracing::info!("Task received: {} {}", file_identifier, &task_type);
 
-                        let task_bound = get_task_bound(&task_type).await;
-
-                        let task_ctx = match task_bound {
-                            TaskBound::CPU => &cpu_ctx_clone,
-                            TaskBound::IO => &io_ctx_clone,
-                        };
+                        let task_id = TaskId::new(&file_identifier, &task_type);
 
                         // if task exists, ignore it
                         // 这里 task_queue 是所有未执行的任务
                         // task_mapping 还包括了正在执行的任务，所以用它
-                        if let Some(tasks) =
-                            task_ctx.task_mapping.read().await.get(&file_identifier)
-                        {
-                            if let Some(_) = tasks.get(&task_type) {
-                                continue;
-                            }
+                        if let Some(_) = task_mapping.read().await.get(&task_id.to_store_key()) {
+                            continue;
                         }
 
                         let task = Task {
@@ -158,6 +140,7 @@ impl TaskPool {
                             file_path: file_path.clone(),
                             task_type: task_type.clone(),
                         };
+                        let task = Arc::new(task);
 
                         if let Some(tx) = notifier.clone() {
                             if let Err(_) = tx
@@ -172,43 +155,43 @@ impl TaskPool {
                             }
                         }
 
-                        // record task in hash map
+                        let task_bound = get_task_bound(&task_type).await;
+                        let task_ctx = match task_bound {
+                            TaskBound::CPU => &cpu_ctx_clone,
+                            TaskBound::IO => &io_ctx_clone,
+                        };
+
+                        let current_cancel_token = CancellationToken::new();
+                        let priority: OrderedTaskPriority = priority.into();
+                        // 通过 order 确保在相同优先级和时间戳的情况下，先加入的任务优先级相对更高
+                        let priority = {
+                            let task_queue = task_ctx.task_queue.read().await;
+                            priority.with_insert_order(task_queue.len())
+                        };
+
+                        let task_in_queue = TaskInQueue {
+                            task: task.clone(),
+                            priority: priority.into(),
+                            cancel_token: current_cancel_token.clone(),
+                            notifier,
+                        };
+
+                        // record task in mapping
                         {
-                            let current_cancel_token = CancellationToken::new();
-                            let task_in_queue = TaskInQueue {
-                                task: task.clone(),
-                                priority: priority.into(),
-                                cancel_token: current_cancel_token.clone(),
-                                notifier,
-                            };
-                            let mut task_mapping = task_ctx.task_mapping.write().await;
-                            match task_mapping.get_mut(&file_identifier) {
-                                Some(item) => {
-                                    item.insert(task_type.clone(), task_in_queue);
-                                }
-                                None => {
-                                    let mut new_item = HashMap::new();
-                                    new_item.insert(task_type.clone(), task_in_queue);
-                                    task_mapping.insert(file_identifier.clone(), new_item);
-                                }
-                            };
+                            let mut task_mapping = task_mapping.write().await;
+                            task_mapping.set(&task_id.to_store_key(), Arc::new(task_in_queue));
                         }
 
                         {
                             let mut task_queue = task_ctx.task_queue.write().await;
-                            let priority: OrderedTaskPriority = priority.into();
-                            // 通过 order 确保在相同优先级和时间戳的情况下，先加入的任务优先级相对更高
-                            let priority = priority.with_insert_order(task_queue.len());
-                            task_queue.push(task, priority);
+                            task_queue.push(task_id, priority);
 
                             // 处理任务优先级
                             let current_priority = priority;
                             if task_ctx.semaphore.available_permits() == 0 {
                                 // 找到优先级低于当前任务的任务，并取消它
                                 let task_priority = task_ctx.task_priority.write().await;
-
                                 let mut min_task_id: Option<TaskId> = None;
-
                                 for (task_id, priority) in task_priority.iter() {
                                     if priority < &current_priority {
                                         if let Some(_min_task_id) = &min_task_id {
@@ -224,16 +207,13 @@ impl TaskPool {
                                 if let Some(task_id) = &min_task_id {
                                     let mut task_mapping = task_ctx.task_mapping.write().await;
                                     if let Some(item) =
-                                        task_mapping.get_mut(&task_id.file_identifier)
+                                        task_mapping.get_mut(&task_id.to_store_key())
                                     {
-                                        if let Some(task) = item.get(&task_id.task_type) {
-                                            task.cancel().await;
+                                        item.cancel().await;
 
-                                            // 需要把任务重新添加回去
-                                            let mut task_queue = task_ctx.task_queue.write().await;
-                                            task_queue
-                                                .push(task.task.clone(), task.priority.clone());
-                                        }
+                                        // 需要把任务重新添加回去
+                                        let mut task_queue = task_ctx.task_queue.write().await;
+                                        task_queue.push(task_id.clone(), item.priority.clone());
                                     }
                                 }
                             }
@@ -242,33 +222,22 @@ impl TaskPool {
                         task_ctx.notifier.notify_one();
                     }
                     TaskPayload::CancelByIdAndType(file_identifier, task_type) => {
-                        for task_mapping in task_mappings {
-                            let task_mapping = task_mapping.read().await;
-                            if let Some(item) = task_mapping.get(&file_identifier) {
-                                if let Some(task) = item.get(&task_type) {
-                                    task.cancel().await;
-                                }
-                            }
+                        let task_mapping = task_mapping.read().await;
+                        let task_id = TaskId::new(&file_identifier, &task_type);
+                        if let Some(task) = task_mapping.get(&task_id.to_store_key()) {
+                            task.cancel().await;
                         }
                     }
                     TaskPayload::CancelById(file_identifier) => {
-                        for task_mapping in task_mappings {
-                            let task_mapping = task_mapping.read().await;
-                            if let Some(item) = task_mapping.get(&file_identifier) {
-                                for (_, task) in item.iter() {
-                                    task.cancel().await;
-                                }
-                            }
+                        let task_mapping = task_mapping.read().await;
+                        for (_, task) in task_mapping.get_all(&format!("{}*", file_identifier)) {
+                            task.cancel().await;
                         }
                     }
                     TaskPayload::CancelAll => {
-                        for task_mapping in task_mappings {
-                            let task_mapping = task_mapping.read().await;
-                            for (_, item) in task_mapping.iter() {
-                                for (_, task) in item.iter() {
-                                    task.cancel().await;
-                                }
-                            }
+                        let task_mapping = task_mapping.read().await;
+                        for (_, task) in task_mapping.get_all("*") {
+                            task.cancel().await;
                         }
                     }
                 }
@@ -347,35 +316,20 @@ impl TaskPoolContext {
             let permit = self.semaphore.acquire().await.expect("semaphore acquired");
             let task = self.task_queue.write().await.pop();
 
-            if let Some((task, priority)) = task {
+            if let Some((task_id, priority)) = task {
                 let semaphore = self.semaphore.clone();
 
-                // TODO 这里 clone current_task 不是明智之举
-                // 应该直接从 task_mapping 中拿出来
-                // 但是现在 task_mapping 会用于判断任务重复执行
-                // 需要用新的数据结构来承载这些任务
-                let current_task = match self.task_mapping.read().await.get(&task.file_identifier) {
-                    Some(item) => match item.get(&task.task_type) {
-                        Some(current_task) => current_task.clone(),
-                        None => {
-                            tracing::error!("task not found: {}", &task.file_identifier);
-                            drop(permit);
-                            continue;
-                        }
-                    },
+                let current_task = match self.task_mapping.read().await.get(&task_id.to_store_key())
+                {
+                    Some(current_task) => current_task.clone(),
                     _ => {
-                        tracing::error!("task not found: {}", &task.file_identifier);
+                        tracing::error!("task not found: {}", &task_id);
                         drop(permit);
                         continue;
                     }
                 };
 
-                let task_id = TaskId {
-                    file_identifier: task.file_identifier.clone(),
-                    task_type: task.task_type.clone(),
-                };
-
-                tracing::debug!("Task popped: {} {}", &task.file_identifier, &task.task_type);
+                tracing::debug!("Task popped: {}", &task_id);
 
                 let deps = current_task.task.task_type.task_dependencies();
                 // If task has dependencies, add dependencies to task queue,
@@ -397,10 +351,7 @@ impl TaskPoolContext {
                         _ => {
                             let deps: Vec<TaskId> = deps
                                 .iter()
-                                .map(|v| TaskId {
-                                    file_identifier: task.file_identifier.clone(),
-                                    task_type: v.clone(),
-                                })
+                                .map(|v| TaskId::new(task_id.file_identifier(), v))
                                 .collect();
 
                             match task_subscription.get_mut(&task_id) {
@@ -421,11 +372,11 @@ impl TaskPoolContext {
                                     }
                                 }
 
-                                // add task back to queue
+                                // create new dependent tasks
                                 let mut payload = NewTaskPayload::new(
-                                    &dep.file_identifier,
-                                    &current_task.task.file_path.clone(),
-                                    dep.task_type.clone(),
+                                    dep.file_identifier(),
+                                    &current_task.task.file_path,
+                                    dep.task_type(),
                                 );
                                 payload.with_priority(Some(current_task.priority.into()));
                                 payload.with_notifier(current_task.notifier.clone());
@@ -437,18 +388,6 @@ impl TaskPoolContext {
 
                             // 不执行任务了
                             drop(permit);
-
-                            // // 移除任务记录
-                            // // FIXME duplicate code
-                            // match task_mapping.get_mut(&task.file_identifier) {
-                            //     Some(item) => {
-                            //         item.remove(&task.task_type);
-                            //         if item.is_empty() {
-                            //             task_mapping.remove(&task.file_identifier);
-                            //         }
-                            //     }
-                            //     None => {} // 前面已经读取到过了, 这里不可能 None, 真的遇到了忽略也没有问题
-                            // }
 
                             task_priority.remove(&task_id);
 
@@ -466,7 +405,7 @@ impl TaskPoolContext {
                 let task_priority = self.task_priority.clone();
                 let task_dispatch = self.task_dispatch.clone();
                 let task_subscription = self.task_subscription.clone();
-                let task_tx = self.tx.clone();
+                let task_queue = self.task_queue.clone();
 
                 tokio::spawn(async move {
                     {
@@ -474,18 +413,20 @@ impl TaskPoolContext {
                         task_priority.insert(task_id.clone(), priority);
                     }
 
+                    let task_id = current_task.task.id();
+
                     let file_info = FileInfo {
-                        file_identifier: task.file_identifier.clone(),
-                        file_path: task.file_path.clone(),
+                        file_identifier: task_id.file_identifier().to_string(),
+                        file_path: current_task.task.file_path.clone(),
                     };
 
                     if let Some(tx) = current_task.notifier.clone() {
                         if let Err(_) = tx
-                            .send(TaskNotification {
-                                task_type: task.task_type.clone(),
-                                status: TaskStatus::Started,
-                                message: None,
-                            })
+                            .send(TaskNotification::new(
+                                task_id.task_type(),
+                                TaskStatus::Started,
+                                None,
+                            ))
                             .await
                         {
                             tracing::error!("Failed to send task start notification");
@@ -493,23 +434,23 @@ impl TaskPoolContext {
                     }
 
                     tokio::select! {
-                        result = task.task_type.run(&file_info, &content_base) => {
+                        result = current_task.task.task_type.run(&file_info, &content_base) => {
                             let notification = match &result {
                                 Err(e) => {
-                                    tracing::error!("Task error: {} {} {}", &task.file_identifier, &task.task_type, e);
-                                    TaskNotification {
-                                        task_type: task.task_type.clone(),
-                                        status: TaskStatus::Error,
-                                        message: Some(e.to_string()),
-                                    }
+                                    tracing::error!("Task error: {} {}", &task_id, e);
+                                    TaskNotification::new(
+                                        task_id.task_type(),
+                                        TaskStatus::Error,
+                                        Some(e.to_string().as_str()),
+                                    )
                                 }
                                 _ => {
-                                    tracing::info!("Task finished: {} {}", &task.file_identifier, &task.task_type);
-                                    TaskNotification {
-                                        task_type: task.task_type.clone(),
-                                        status: TaskStatus::Finished,
-                                        message: None,
-                                    }
+                                    tracing::info!("Task finished: {}", &task_id);
+                                    TaskNotification::new(
+                                        task_id.task_type(),
+                                        TaskStatus::Finished,
+                                        None
+                                    )
                                 }
                             };
 
@@ -520,7 +461,7 @@ impl TaskPoolContext {
                             }
                         }
                         _ = current_task.cancel_token.cancelled() => {
-                            tracing::info!("Spawned task has been cancelled: {} {}", &task.file_identifier, &task.task_type);
+                            tracing::info!("Spawned task has been cancelled: {}", &task_id);
                         }
                     }
 
@@ -529,15 +470,7 @@ impl TaskPoolContext {
 
                     {
                         let mut task_mapping = task_mapping.write().await;
-                        match task_mapping.get_mut(&task.file_identifier) {
-                            Some(item) => {
-                                item.remove(&task.task_type);
-                                if item.is_empty() {
-                                    task_mapping.remove(&task.file_identifier);
-                                }
-                            }
-                            None => {} // 前面已经读取到过了, 这里不可能 None, 真的遇到了忽略也没有问题
-                        }
+                        task_mapping.remove(&task_id.to_store_key());
                     }
 
                     {
@@ -550,27 +483,22 @@ impl TaskPoolContext {
                         // 避免 deadlock
                         let mut task_subscription = task_subscription.write().await;
                         let mut task_dispatch = task_dispatch.write().await;
+                        let mut task_queue = task_queue.write().await;
+                        let task_mapping = task_mapping.read().await;
 
                         if let Some(targets) = task_dispatch.remove(&task_id) {
+                            // targets are the tasks that should be awaked
                             for target in targets.iter() {
                                 match task_subscription.get_mut(target) {
                                     Some(v) => {
                                         v.retain(|x| x != &task_id);
 
+                                        // if subscription is empty, the target task can be executed safely
                                         if v.is_empty() {
-                                            let mut payload = NewTaskPayload::new(
-                                                &target.file_identifier,
-                                                &current_task.task.file_path,
-                                                target.task_type.clone(),
-                                            );
-                                            payload
-                                                .with_priority(Some(current_task.priority.into()));
-                                            payload.with_notifier(current_task.notifier.clone());
-
-                                            if let Err(e) =
-                                                task_tx.send(TaskPayload::Task(payload)).await
+                                            if let Some(task) =
+                                                task_mapping.get(&target.to_store_key())
                                             {
-                                                tracing::error!("Failed to dispatch task: {}", e);
+                                                task_queue.push(task.task.id(), task.priority);
                                             }
                                         }
                                     }

@@ -3,11 +3,50 @@ use content_base_task::ContentTaskType;
 use std::path::{Path, PathBuf};
 use tokio::sync::mpsc;
 
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+pub struct TaskId {
+    file_identifier: String,
+    task_type: ContentTaskType,
+}
+
+impl std::fmt::Display for TaskId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.file_identifier, self.task_type)
+    }
+}
+
+impl TaskId {
+    pub fn new(file_identifier: &str, task_type: &ContentTaskType) -> Self {
+        Self {
+            file_identifier: file_identifier.to_string(),
+            task_type: task_type.clone(),
+        }
+    }
+
+    pub fn to_store_key(&self) -> String {
+        format!("{}:{}", self.file_identifier, self.task_type)
+    }
+
+    pub fn file_identifier(&self) -> &str {
+        &self.file_identifier
+    }
+
+    pub fn task_type(&self) -> &ContentTaskType {
+        &self.task_type
+    }
+}
+
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 pub(crate) struct Task {
     pub file_identifier: String,
     pub file_path: PathBuf,
     pub task_type: ContentTaskType,
+}
+
+impl Task {
+    pub fn id(&self) -> TaskId {
+        TaskId::new(&self.file_identifier, &self.task_type)
+    }
 }
 
 pub struct NewTaskPayload {
