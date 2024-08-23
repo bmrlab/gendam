@@ -105,7 +105,7 @@ export default function Header() {
             className="h-7 w-7 p-1 transition-none"
             onClick={() => urlImportDialog.setOpen(true)}
           >
-            <Icon.FolderAdd className="size-4" />
+            <Icon.Link2 className="size-4" />
           </Button>
 
           <div className="bg-toolbar-line mx-1 h-4 w-px"></div>

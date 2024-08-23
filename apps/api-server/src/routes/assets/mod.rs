@@ -316,11 +316,11 @@ where
                     debug!("create_web_page_object: {:?}", payload);
                     let library = ctx.library()?;
 
-                    let (file_path_data, _asset_object_data, asset_object_existed) =
+                    let (file_path_data, asset_object_data, asset_object_existed) =
                         process_web_page(&library, &payload.materialized_path, &payload.url)
                             .await?;
                     if !asset_object_existed {
-                        process_asset(&library, &ctx, file_path_data.id, None).await?;
+                        process_asset(&library, &ctx, asset_object_data.id, None).await?;
                         info!("process asset finished");
                     }
                     let file_path: FilePathWithAssetObjectData = get_file_path(

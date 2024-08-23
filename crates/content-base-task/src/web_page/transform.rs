@@ -35,7 +35,7 @@ impl ContentTask for WebPageTransformTask {
 
     fn task_parameters(&self, _ctx: &ContentBaseCtx) -> Value {
         json!({
-            "method": "html2md"
+            "method": "htmd"
         })
     }
 

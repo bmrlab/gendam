@@ -24,4 +24,4 @@ chromiumoxide = { git = "https://github.com/mattsse/chromiumoxide", features = [
   "tokio-runtime",
 ], default-features = false, branch = "main" }
 futures = { workspace = true }
-html2md = { version = "0.2.14" }
+htmd = { version = "0.1.6" }

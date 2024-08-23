@@ -1,7 +1,7 @@
-use std::{io::Read, path::Path};
-
 use chromiumoxide::{page::ScreenshotParams, Browser, BrowserConfig};
 use futures::StreamExt;
+use htmd::HtmlToMarkdown;
+use std::{io::Read, path::Path};
 use tracing::debug;
 
 pub async fn fetch_url(url: &str) -> anyhow::Result<(Option<String>, String, Vec<u8>)> {
@@ -42,7 +42,11 @@ pub fn convert_to_markdown(file_path: impl AsRef<Path>) -> anyhow::Result<String
     let mut buf = String::new();
     file.read_to_string(&mut buf)?;
 
-    let markdown_string = html2md::parse_html(&buf);
+    let converter = HtmlToMarkdown::builder()
+        .skip_tags(vec!["script", "style"])
+        .build();
+
+    let markdown_string = converter.convert(&buf)?;
 
     Ok(markdown_string)
 }
