@@ -31,19 +31,6 @@ impl TaskInQueue {
     async fn cancel(&self) {
         self.cancel_token.cancel();
 
-        if let Some(tx) = &self.notifier {
-            if let Err(e) = tx
-                .send(TaskNotification {
-                    task_type: self.task.task_type.clone(),
-                    status: TaskStatus::Cancelled,
-                    message: None,
-                })
-                .await
-            {
-                tracing::error!("Failed to send task cancelled notification: {}", e);
-            }
-        }
-
         tracing::info!(
             "Task cancelled {} {}",
             &self.task.file_identifier,
@@ -461,6 +448,19 @@ impl TaskPoolContext {
                             }
                         }
                         _ = current_task.cancel_token.cancelled() => {
+                            if let Some(tx) = &current_task.notifier {
+                                if let Err(e) = tx
+                                    .send(TaskNotification {
+                                        task_type: current_task.task.task_type.clone(),
+                                        status: TaskStatus::Cancelled,
+                                        message: None,
+                                    })
+                                    .await
+                                {
+                                    tracing::error!("Failed to send task cancelled notification: {}", e);
+                                }
+                            }
+
                             tracing::info!("Spawned task has been cancelled: {}", &task_id);
                         }
                     }

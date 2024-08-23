@@ -142,6 +142,13 @@ impl TaskRecord {
         self.tasks.get(task_type)
     }
 
+    pub async fn remove_all_record(&mut self, task_type: &ContentTaskType, ctx: &ContentBaseCtx) -> Option<Vec<TaskRunRecord>> {
+        let result = self.tasks.remove(task_type);
+        let _ = self.save(ctx).await;
+
+        result
+    }
+
     pub fn path(file_identifier: &str, ctx: &ContentBaseCtx) -> impl AsRef<Path> {
         ctx.artifacts_dir(file_identifier).join("artifacts.json")
     }

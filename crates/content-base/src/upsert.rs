@@ -11,22 +11,19 @@ use content_base_task::{
     audio::{
         trans_chunk::{AudioTransChunkTask, AudioTranscriptChunkTrait},
         trans_chunk_sum_embed::{AudioTransChunkSumEmbedTask, AudioTransChunkSumEmbedTrait},
-        waveform::AudioWaveformTask,
         AudioTaskType,
     },
-    image::{desc_embed::ImageDescEmbedTask, ImageTaskType},
+    image::ImageTaskType,
     raw_text::{
         chunk::{DocumentChunkTrait, RawTextChunkTask},
-        chunk_sum_embed::{DocumentChunkSumEmbedTrait, RawTextChunkSumEmbedTask},
+        chunk_sum_embed::DocumentChunkSumEmbedTrait,
         RawTextTaskType,
     },
     video::{
-        frame::VideoFrameTask, trans_chunk::VideoTransChunkTask,
-        trans_chunk_sum_embed::VideoTransChunkSumEmbedTask, VideoTaskType,
+        trans_chunk::VideoTransChunkTask, trans_chunk_sum_embed::VideoTransChunkSumEmbedTask,
+        VideoTaskType,
     },
-    web_page::{
-        chunk::WebPageChunkTask, chunk_sum_embed::WebPageChunkSumEmbedTask, WebPageTaskType,
-    },
+    web_page::{chunk::WebPageChunkTask, WebPageTaskType},
     ContentTask, ContentTaskType, FileInfo, TaskRecord,
 };
 use content_metadata::ContentMetadata;
@@ -93,86 +90,18 @@ impl ContentBase {
         };
         let file_info_clone = file_info.clone();
 
-        tokio::spawn(async move {
-            match payload.metadata {
-                ContentMetadata::Video(metadata) => {
-                    run_task(
-                        &task_pool,
-                        &file_info,
-                        VideoFrameTask,
-                        Some(TaskPriority::Low),
-                        Some(inner_tx.clone()),
-                    )
-                    .await;
+        let tasks = Self::tasks(&payload.metadata);
 
-                    if metadata.audio.is_some() {
-                        run_task(
-                            &task_pool,
-                            &file_info,
-                            VideoTransChunkSumEmbedTask,
-                            Some(TaskPriority::Low),
-                            Some(inner_tx.clone()),
-                        )
-                        .await;
-                    }
-                }
-                ContentMetadata::Audio(_metadata) => {
-                    run_task(
-                        &task_pool,
-                        &file_info,
-                        AudioWaveformTask,
-                        Some(TaskPriority::Normal),
-                        Some(inner_tx.clone()),
-                    )
-                    .await;
-                    run_task(
-                        &task_pool,
-                        &file_info,
-                        AudioTransChunkSumEmbedTask,
-                        Some(TaskPriority::Normal),
-                        Some(inner_tx.clone()),
-                    )
-                    .await;
-                }
-                ContentMetadata::Image(_) => {
-                    run_task(
-                        &task_pool,
-                        &file_info,
-                        ImageDescEmbedTask,
-                        Some(TaskPriority::Normal),
-                        Some(inner_tx.clone()),
-                    )
-                    .await;
-                }
-                ContentMetadata::RawText(_) => {
-                    run_task(
-                        &task_pool,
-                        &file_info,
-                        RawTextChunkSumEmbedTask,
-                        Some(TaskPriority::Normal),
-                        Some(inner_tx.clone()),
-                    )
-                    .await
-                }
-                ContentMetadata::WebPage(_) => {
-                    run_task(
-                        &task_pool,
-                        &file_info,
-                        WebPageChunkSumEmbedTask,
-                        Some(TaskPriority::Normal),
-                        Some(inner_tx.clone()),
-                    )
-                    .await
-                }
-                ContentMetadata::Unknown => {
-                    warn!(
-                        "unknown metadata for {}, do not trigger any tasks",
-                        &payload.file_identifier
-                    );
-                }
-                _ => {
-                    warn!("unsupported metadata, do not trigger any tasks");
-                }
+        tokio::spawn(async move {
+            for (task, priority) in tasks {
+                run_task(
+                    &task_pool,
+                    &file_info,
+                    task,
+                    Some(priority),
+                    Some(inner_tx.clone()),
+                )
+                .await;
             }
         });
 

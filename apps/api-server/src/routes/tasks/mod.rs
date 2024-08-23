@@ -1,16 +1,12 @@
 pub mod types;
 
 use crate::{routes::assets::process::process_asset, CtxWithLibrary};
-use content_base::{
-    delete::DeletePayload, task::CancelTaskPayload, ContentMetadata, ContentTaskType,
-};
+use content_base::{delete::DeletePayload, task::CancelTaskPayload, ContentTaskType};
 use prisma_client_rust::QueryError;
 use prisma_lib::{asset_object, file_handler_task};
 use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
 use specta::Type;
-
-use super::assets::process::generate_thumbnail;
 
 #[derive(Deserialize, Type, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -185,22 +181,6 @@ where
                     .delete(payload)
                     .await
                     .map_err(convert_anyhow_error)?;
-
-                let content_metadata: ContentMetadata = {
-                    if let Some(v) = &asset_object_data.media_data {
-                        serde_json::from_str(v).unwrap_or_default()
-                    } else {
-                        ContentMetadata::default()
-                    }
-                };
-
-                generate_thumbnail(
-                    &library,
-                    &content_base,
-                    &asset_object_data.hash,
-                    &content_metadata,
-                )
-                .await?;
 
                 process_asset(&library, &ctx, asset_object_data.id, None).await?;
 

@@ -23,5 +23,5 @@ content-base-pool = { path = "../content-base-pool" }
 content-handler = { path = "../content-handler" }
 content-metadata = { path = "../content-metadata" }
 uuid = { workspace = true }
-strum = "0.26"
-strum_macros = "0.26"
+strum = { workspace = true }
+strum_macros = { workspace = true }

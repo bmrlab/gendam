@@ -14,6 +14,7 @@ impl ContentBaseCtx {
             .join(file_identifier)
     }
 
+    /// Delete all artifacts, this is not recommended to use.
     pub async fn delete_artifacts(&self, file_identifier: &str) -> anyhow::Result<()> {
         self.remove_dir_all(self.artifacts_dir(file_identifier))
             .await

@@ -44,6 +44,7 @@ thiserror = "1.0.58"
 async-stream = "0.3.5"
 syn = { version = "2" }
 quote = "1"
+phf = { version = "0.11.2" }
 
 # image 0.25 got issue see https://github.com/bmrlab/gendam/issues/65
 image = "=0.25.2"

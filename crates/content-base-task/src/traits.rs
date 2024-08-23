@@ -32,6 +32,40 @@ pub trait ContentTask: Into<ContentTaskType> + Clone + Storage {
         Ok(())
     }
 
+    /// Delete all task run record and related artifacts.
+    async fn delete_artifacts(
+        &self,
+        file_info: &FileInfo,
+        ctx: &ContentBaseCtx,
+    ) -> anyhow::Result<()> {
+        let mut task_record = TaskRecord::from_content_base(&file_info.file_identifier, ctx).await;
+        if let Some(task_run_records) = task_record
+            .remove_all_record(&self.clone().into(), ctx)
+            .await
+        {
+            for task_run_record in task_run_records {
+                if let Some(output) = task_run_record.output() {
+                    match output {
+                        TaskRunOutput::File(path) => {
+                            self.remove_file(
+                                ctx.artifacts_dir(&file_info.file_identifier).join(path),
+                            )?;
+                        }
+                        TaskRunOutput::Folder(path) => {
+                            self.remove_dir_all(
+                                ctx.artifacts_dir(&file_info.file_identifier).join(path),
+                            )
+                            .await?;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Task implementation. Every task should implement its own `inner_run`.
     async fn inner_run(
         &self,
