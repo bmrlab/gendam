@@ -9,8 +9,18 @@ import videojs from 'video.js'
 import type Player from 'video.js/dist/types/player'
 
 const VIDEO_TS_SIZE = 10
+export type VideoPlayerOptions = {
+  currentTime: number
+  controls: boolean
+  autoPlay: boolean
+  loop: boolean
+  muted: boolean
+}
 
-export const useVideoPlayer = (assetObject: ExtractAssetObject<'video'>, currentTime?: number, autoPlay?: boolean) => {
+export const useVideoPlayer = (
+  assetObject: ExtractAssetObject<'video'>,
+  { currentTime, controls, autoPlay, loop, muted }: VideoPlayerOptions,
+) => {
   const videoRef = useRef<HTMLDivElement>(null)
   const videoElementRef = useRef<HTMLVideoElement | null>(null)
   const currentLibrary = useCurrentLibrary()
@@ -141,10 +151,10 @@ export const useVideoPlayer = (assetObject: ExtractAssetObject<'video'>, current
       const player = videojs(
         videoElement,
         {
-          controls: true,
-          autoPlay: false,
-          loop: false,
-          muted: true,
+          controls,
+          autoPlay,
+          loop,
+          muted,
           noSupportedMessage: 'This video cannot be played, please try again later',
           controlBar: {
             fullscreenToggle: false,

@@ -7,7 +7,8 @@ export default function VideoQuickView(props: ExtractExplorerItemWithType<'video
       <Video
         assetObject={props.assetObject}
         currentTime={'metadata' in props ? props.metadata.startTime : void 0}
-        autoPlay
+        autoPlay={true}
+        muted={false}
       />
     </div>
   )

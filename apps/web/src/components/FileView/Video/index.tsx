@@ -1,17 +1,18 @@
 import { ExtractAssetObject } from '@/Explorer/types'
 import 'video.js/dist/video-js.css'
-import { useVideoPlayer } from './useVideoPlayer'
+import { useVideoPlayer, VideoPlayerOptions } from './useVideoPlayer'
 
 export function Video({
   assetObject,
-  currentTime,
-  autoPlay,
+  currentTime = 0,
+  controls = true,
+  autoPlay = true,
+  loop = false,
+  muted = true,
 }: {
   assetObject: ExtractAssetObject<'video'>
-  currentTime?: number
-  autoPlay?: boolean
-}) {
-  const videoRef = useVideoPlayer(assetObject, currentTime, autoPlay)
+} & Partial<VideoPlayerOptions>) {
+  const videoRef = useVideoPlayer(assetObject, { currentTime, controls, autoPlay, loop, muted })
 
   return (
     <div
