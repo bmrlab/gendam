@@ -21,7 +21,7 @@ export default function ThumbItem({
       ) : data.assetObject ? (
         <FileThumb data={data} variant={variant} className={className} />
       ) : (
-        <Image src={Document_Light} alt="document" fill={true} priority></Image>
+        <Image src={Document_Light} alt="document" fill={true} className="object-contain" priority></Image>
       )}
     </div>
   )

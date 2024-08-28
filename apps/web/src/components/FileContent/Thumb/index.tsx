@@ -31,5 +31,7 @@ export default function FileThumb({
     .with(matchExplorerItemWithType('webPage'), (item) => (
       <WebPageThumb data={item.assetObject} className={className} />
     ))
-    .otherwise(() => <Image src={Document_Light} alt="document" fill={true} priority></Image>)
+    .otherwise(() => (
+      <Image src={Document_Light} alt="document" fill={true} className="object-contain" priority></Image>
+    ))
 }
