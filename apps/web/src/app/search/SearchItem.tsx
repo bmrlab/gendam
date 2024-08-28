@@ -38,7 +38,7 @@ const SearchItem: React.FC<ItemWithSize> = ({ data, width, height }) => {
   )
 
   return (
-    <ViewItem data={data} onClick={onSelect} onDoubleClick={() => quickview()}>
+    <ViewItem data={data} onClick={onSelect} onDoubleClick={() => quickview()} isDraggable={false}>
       <div
         className={classNames(
           'group relative overflow-hidden rounded-xl border-4',

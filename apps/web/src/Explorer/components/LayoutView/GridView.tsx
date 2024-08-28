@@ -101,7 +101,7 @@ const GridItem: React.FC<
   )
 
   return (
-    <ViewItem data={data} onClick={(e) => onSelect(e, data)} onDoubleClick={handleDoubleClick}>
+    <ViewItem data={data} onClick={(e) => onSelect(e, data)} onDoubleClick={handleDoubleClick} isDraggable={true}>
       <DroppableInner data={data} {...props} />
     </ViewItem>
   )

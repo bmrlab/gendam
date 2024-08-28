@@ -155,22 +155,12 @@ export default function ExplorerPage() {
           ) : (
             <Viewport.Content className="flex h-full w-full overflow-hidden">
               <LayoutGroup>
+                {/* TODO: 要修改下这里的 motion, 现在一行内容比较少没有铺满屏幕宽度的时候，items 会和弹簧一样反复伸缩 */}
                 <motion.div
                   className="h-full"
-                  animate={{
-                    width: inspector.show ? `calc(100% - ${width}px)` : '100%',
-                  }}
+                  animate={{ width: inspector.show ? `calc(100% - ${width}px)` : '100%' }}
                   transition={
-                    isResizing
-                      ? {
-                          type: 'spring',
-                          duration: 0,
-                        }
-                      : {
-                          type: 'spring',
-                          stiffness: 500,
-                          damping: 50,
-                        }
+                    isResizing ? { type: 'spring', duration: 0 } : { type: 'spring', stiffness: 500, damping: 50 }
                   }
                 >
                   <ExplorerLayout className="h-full w-full overflow-scroll" />
@@ -179,22 +169,10 @@ export default function ExplorerPage() {
                   {inspector.show && (
                     <motion.div
                       layout
-                      initial={{
-                        x: '100%',
-                      }}
-                      animate={{
-                        x: 0,
-                      }}
-                      exit={{
-                        x: '100%',
-                      }}
-                      transition={{
-                        x: {
-                          type: 'spring',
-                          stiffness: 500,
-                          damping: 50,
-                        },
-                      }}
+                      initial={{ x: '100%' }}
+                      animate={{ x: 0 }}
+                      exit={{ x: '100%' }}
+                      transition={{ x: { type: 'spring', stiffness: 500, damping: 50 } }}
                       style={{ width }}
                       className="flex h-full flex-none"
                     >

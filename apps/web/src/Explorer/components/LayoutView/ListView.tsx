@@ -99,7 +99,7 @@ const ListItem: React.FC<
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const quickViewStore = useQuickViewStore()
-  
+
   const filePath = useMemo(() => {
     if ('filePath' in data) return data.filePath
     return data.filePaths.at(0)
@@ -121,7 +121,7 @@ const ListItem: React.FC<
   )
 
   return (
-    <ViewItem data={data} onClick={(e) => onSelect(e, data)} onDoubleClick={handleDoubleClick}>
+    <ViewItem data={data} onClick={(e) => onSelect(e, data)} onDoubleClick={handleDoubleClick} isDraggable={true}>
       <DroppableInner data={data} index={index} {...props} />
     </ViewItem>
   )
