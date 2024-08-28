@@ -14,7 +14,7 @@ import classNames from 'classnames'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 const Version = () => {
@@ -148,13 +148,6 @@ export default function Sidebar() {
           <Icon.Finder className="text-ink/70 h-4 w-4" />
           <span>Copilot</span>
         </Link>
-        {/* <Link href="/video-tasks" className={menuClassNames('/video-tasks')}>
-          <Icon.Briefcase className="text-ink/70 h-4 w-4" />
-          <span>All jobs</span>
-          {inCompletedTasks?.data.length ? (
-            <Icon.FlashStroke className="h-3 w-3 text-orange-400" />
-          ) : null}
-        </Link> */}
         {/* <Link href="/debug/ui" className={menuClassNames('/debug/ui')}>
           <span className="font-light text-neutral-400">Debug</span>
         </Link> */}

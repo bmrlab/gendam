@@ -17,11 +17,9 @@ function Home() {
   // const versionQuery = rspc.useQuery(["version"]);
   useEffect(() => {
     // console.log("versionQuery data", versionQuery.data);
-    client
-      .query(['version'])
-      .then((res: any) => {
-        console.log('client query res', res)
-      })
+    client.query(['version']).then((res: any) => {
+      console.log('client query res', res)
+    })
   }, [])
 
   const doInvoke = async () => {
@@ -56,11 +54,6 @@ function Home() {
       <div>
         <Link href="/library" className="block bg-blue-400 p-2">
           go to library
-        </Link>
-      </div>
-      <div>
-        <Link href="/video-tasks" className="block bg-green-400 p-2">
-          go to video-tasks
         </Link>
       </div>
       <div>
