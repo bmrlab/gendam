@@ -1,6 +1,6 @@
 'use client'
 import { FilePath } from '@/lib/bindings'
-import { rspc } from '@/lib/rspc'
+import { queryClient, rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
 import { Folder_Light } from '@gendam/assets/images'
 import Icon from '@gendam/ui/icons'
@@ -105,14 +105,28 @@ export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement
     },
   ])
 
+  const createDirMut = rspc.useMutation(['assets.create_dir'])
+  const createNewFolder = async () => {
+    await createDirMut.mutateAsync({
+      materializedPath: '/',
+      name: 'untitled',
+    })
+    queryClient.invalidateQueries({
+      queryKey: ['assets.list', { materializedPath: '/' }],
+    })
+  }
+
   return (
     <div
       className={cn('bg-sidebar overflow-auto py-2', className)}
       // onClick={() => selectionState.set(null)}
     >
-      <div className="text-ink/50 mb-1 ml-5 flex text-xs font-medium">
+      <div className="text-ink/50 mb-1 ml-5 mr-5 flex items-center justify-between text-xs font-medium">
         <div className="hover:bg-sidebar-hover rounded p-1" onClick={(e) => router.push('/explorer')}>
           Folders
+        </div>
+        <div onClick={createNewFolder} className="hover:bg-sidebar-hover rounded p-1">
+          <Icon.Add className="size-3" />
         </div>
       </div>
       {/* <div className="ml-5 flex items-center justify-start">

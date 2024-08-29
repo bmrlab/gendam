@@ -6,32 +6,113 @@ use prisma_lib::{asset_object, file_path};
 use std::path::PathBuf;
 use storage::prelude::*;
 
+pub async fn split_materialized_path(materialized_path: &str) -> Option<(String, String)> {
+    let materialized_path_trimmed = materialized_path.trim_end_matches('/');
+    match materialized_path_trimmed.rsplit_once('/') {
+        Some((parent, dir_name)) => Some((format!("{}/", parent), dir_name.to_string())),
+        None => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[tokio::test]
+    async fn test_check_materialized_path_exists() {
+        let result = split_materialized_path("/a/b/c/").await;
+        assert_eq!(result, Some(("/a/b/".to_string(), "c".to_string())));
+        let result = split_materialized_path("/a/").await;
+        assert_eq!(result, Some(("/".to_string(), "a".to_string())));
+        let result = split_materialized_path("/").await;
+        assert_eq!(result, None);
+    }
+}
+
 pub async fn create_dir(
     library: &Library,
     materialized_path: &str,
     name: &str,
 ) -> Result<file_path::Data, rspc::Error> {
-    /*
-     * TODO
-     * 如果 path 是 /a/b/c/, 要确保存在一条数据 {path:"/a/b/",name:"c"}, 不然就是文件夹不存在
-     */
+    if let Some((parent_materialized_path, dir_name)) =
+        split_materialized_path(materialized_path).await
+    {
+        let dir_exists = library
+            .prisma_client()
+            .file_path()
+            .find_first(vec![
+                file_path::materialized_path::equals(parent_materialized_path),
+                file_path::name::equals(dir_name),
+            ])
+            .exec()
+            .await
+            .map_err(|e| {
+                rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    format!("sql error: {}", e),
+                )
+            })?
+            .is_some();
+
+        if !dir_exists {
+            return Err(rspc::Error::new(
+                rspc::ErrorCode::NotFound,
+                format!("materialized_path not found"),
+            ));
+        }
+    };
+
     let res = library
         .prisma_client()
-        .file_path()
-        .create(
-            true,
-            materialized_path.to_string(),
-            name.to_string(),
-            vec![],
-        )
-        .exec()
+        ._transaction()
+        .run(|client| async move {
+            let where_clause = vec![
+                file_path::materialized_path::equals(materialized_path.into()),
+                file_path::name::starts_with(name.into()),
+            ];
+            let matches = client.file_path().find_many(where_clause).exec().await?;
+            // find the max number "n" in format "name n"
+            let max_num = matches
+                .iter()
+                .filter_map(|file_path_data| {
+                    let name_1 = file_path_data.name.as_str();
+                    if name_1 == name {
+                        return Some(0);
+                    }
+                    let (name_1, num) = match name_1.rsplit_once(' ') {
+                        Some((prefix, num)) => (prefix, num),
+                        None => (name_1, "0"),
+                    };
+                    if name_1 == name {
+                        num.parse::<u32>().ok() // Converts from Result<T, E> to Option<T>
+                    } else {
+                        None
+                    }
+                })
+                .max();
+            let new_name = match max_num {
+                Some(max_num) => format!("{} {}", name, max_num + 1),
+                None => format!("{}", name), // same as name
+            };
+            let res = client
+                .file_path()
+                .create(
+                    true,
+                    materialized_path.to_string(),
+                    new_name.to_string(),
+                    vec![],
+                )
+                .exec()
+                .await?;
+            Ok(res)
+        })
         .await
-        .map_err(|e| {
+        .map_err(|e: QueryError| {
             rspc::Error::new(
                 rspc::ErrorCode::InternalServerError,
-                format!("failed to create file_path: {}", e),
+                format!("sql error: {}", e),
             )
         })?;
+
     Ok(res)
 }
 
