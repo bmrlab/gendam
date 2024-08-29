@@ -76,7 +76,14 @@ export default function ExplorerPage() {
   useEffect(() => {
     if (assetsQuery.isSuccess) {
       const revealedFilePath = assetsQuery.data.find((item) => item.id === initialRevealedFilePathId)
-      setItems([...assetsQuery.data])
+      /**
+       * 在文件名中确保 10 > 2
+       * TODO: 优化这部分代码，如果有分页，这个做法就失效了，后端要处理好。还有如果排序方式支持用户选，这里也要跟着改。
+       */
+      const sortedItems = assetsQuery.data.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
+      )
+      setItems(sortedItems)
       // 重新获取数据要清空选中的项目，以免出现不在列表中但是还被选中的情况
       if (revealedFilePath) {
         resetSelectedItems([

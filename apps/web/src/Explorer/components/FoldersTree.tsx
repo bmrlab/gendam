@@ -28,7 +28,7 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
     return pathname === '/explorer' && filePath.materializedPath + filePath.name + '/' === searchParams.get('dir')
   }, [filePath.materializedPath, filePath.name, pathname, searchParams])
 
-  const { data: subDirs } = rspc.useQuery(
+  const subDirsQuery = rspc.useQuery(
     [
       'assets.list',
       {
@@ -39,6 +39,17 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
     {
       // enabled: open
     },
+  )
+
+  /**
+   * 在文件名中确保 10 > 2
+   */
+  const sortedItems = useMemo(
+    () =>
+      [...(subDirsQuery.data || [])].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
+      ),
+    [subDirsQuery.data],
   )
 
   const onDoubleClick = useCallback(
@@ -64,7 +75,7 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
       <div className="flex items-center justify-start">
         {/* caret */}
         <div
-          className={cn('bg-sidebar text-ink/40 h-5 w-4 py-1 pl-1', !subDirs || !subDirs.length ? 'invisible' : '')}
+          className={cn('bg-sidebar text-ink/40 h-5 w-4 py-1 pl-1', !sortedItems.length ? 'invisible' : '')}
           onClick={() => setOpen(!open)}
         >
           <Icon.ArrowRight className={cn('size-3 transition-all duration-200', open ? 'rotate-90' : 'rotate-0')} />
@@ -87,7 +98,9 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
       {/* children */}
       {open ? (
         <div className="border-ink/10 ml-7 border-l">
-          {subDirs?.map((subFilePath) => <FoldersBlock key={subFilePath.id} filePath={subFilePath} />)}
+          {sortedItems.map((subFilePath) => (
+            <FoldersBlock key={subFilePath.id} filePath={subFilePath} />
+          ))}
         </div>
       ) : null}
     </div>
@@ -97,13 +110,24 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
 export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement>) {
   // const selectionState = useSelectionState()
   const router = useRouter()
-  const { data: dirs } = rspc.useQuery([
+  const dirsQuery = rspc.useQuery([
     'assets.list',
     {
       materializedPath: '/',
       isDir: true,
     },
   ])
+
+  /**
+   * 在文件名中确保 10 > 2
+   */
+  const sortedItems = useMemo(
+    () =>
+      [...(dirsQuery.data || [])].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
+      ),
+    [dirsQuery.data],
+  )
 
   const createDirMut = rspc.useMutation(['assets.create_dir'])
   const createNewFolder = async () => {
@@ -139,7 +163,11 @@ export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement
           <div className="text-xs">Home</div>
         </div>
       </div> */}
-      <div className="ml-3.5">{dirs?.map((filePath) => <FoldersBlock key={filePath.id} filePath={filePath} />)}</div>
+      <div className="ml-3.5">
+        {sortedItems.map((filePath) => (
+          <FoldersBlock key={filePath.id} filePath={filePath} />
+        ))}
+      </div>
     </div>
   )
 }
