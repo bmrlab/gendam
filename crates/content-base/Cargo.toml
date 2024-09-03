@@ -29,3 +29,4 @@ surrealdb = { git = "https://github.com/surrealdb/surrealdb.git", tag = "v2.0.0-
 
 # for test, remove it in production
 dotenvy = { workspace = true }
+rand = "0.8.5"
