@@ -19,6 +19,7 @@ pub struct DB {
     pub client: Surreal<Client>,
 }
 
+/// init db
 impl DB {
     pub async fn new() -> Self {
         Self {
