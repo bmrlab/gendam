@@ -31,7 +31,7 @@ DEFINE FIELD IF NOT EXISTS prompt ON TABLE image TYPE string;
 DEFINE FIELD IF NOT EXISTS prompt_vector ON TABLE image TYPE array;
 
 -- 创建 "image frame" 表
-DEFINE TABLE IF NOT EXISTS frame;
+DEFINE TABLE IF NOT EXISTS image_frame;
 -- 定义 "image frame" 表的字段
 DEFINE FIELD IF NOT EXISTS data ON TABLE image_frame TYPE array<record<image>>;
 DEFINE FIELD IF NOT EXISTS start_timestamp ON image_frame TYPE number;
