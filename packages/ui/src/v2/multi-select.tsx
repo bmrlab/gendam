@@ -1,21 +1,9 @@
 'use client'
+import { cn } from '@gendam/tailwind/utils'
 import { CaretSortIcon, CheckIcon, Cross2Icon } from '@radix-ui/react-icons'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
 import { Primitive, type ComponentPropsWithoutRef } from '@radix-ui/react-primitive'
 import { useControllableState } from '@radix-ui/react-use-controllable-state'
-import { createPortal } from 'react-dom'
-import { Badge } from './badge'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from './command'
-import { Tooltip } from '../v2/tooltip'
-import { cn } from '@gendam/tailwind/utils'
 import {
   ElementRef,
   FC,
@@ -30,6 +18,10 @@ import {
   useRef,
   useState,
 } from 'react'
+import { createPortal } from 'react-dom'
+import { Tooltip } from '../v2/tooltip'
+import { Badge } from './badge'
+import { CommandPrimitive } from './command'
 
 export interface MultiSelectOptionItem {
   value: string
@@ -38,21 +30,13 @@ export interface MultiSelectOptionItem {
 
 interface MultiSelectContextValue {
   value: string[]
-
   open: boolean
-
   onSelect(value: string, item: MultiSelectOptionItem): void
-
   onDeselect(value: string, item: MultiSelectOptionItem): void
-
   onSearch?(keyword: string | undefined): void
-
   filter?: boolean | ((keyword: string, current: string) => boolean)
-
   disabled?: boolean
-
   maxCount?: number
-
   itemCache: Map<string, MultiSelectOptionItem>
 }
 
@@ -80,7 +64,7 @@ export type MultiSelectProps = ComponentPropsWithoutRef<typeof PopoverPrimitive.
   maxCount?: number
 }
 
-const MultiSelect: FC<MultiSelectProps> = ({
+const MultiSelectRoot: FC<MultiSelectProps> = ({
   value: valueProp,
   onValueChange: onValueChangeProp,
   onDeselect: onDeselectProp,
@@ -171,7 +155,7 @@ const MultiSelect: FC<MultiSelectProps> = ({
   )
 }
 
-MultiSelect.displayName = 'MultiSelect'
+MultiSelectRoot.displayName = 'MultiSelectRoot'
 
 type MultiSelectTriggerElement = React.ElementRef<typeof Primitive.div>
 
@@ -196,7 +180,7 @@ const MultiSelectTrigger = forwardRef<MultiSelectTriggerElement, MultiSelectTrig
           data-disabled={disabled}
           {...props}
           className={cn(
-            'flex h-full min-h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring [&>span]:line-clamp-1',
+            'border-input ring-offset-background focus:ring-ring flex h-full min-h-9 w-full items-center justify-between whitespace-nowrap rounded-md border bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 [&>span]:line-clamp-1',
             disabled ? 'cursor-not-allowed opacity-50' : 'cursor-text',
             className,
             open && openClassName,
@@ -237,7 +221,7 @@ const MultiSelectValue = forwardRef<ElementRef<typeof Primitive.div>, MultiSelec
 
     if (!value.length || !firstRendered) {
       return (
-        <span className={cn('pointer-events-none text-muted-foreground', placeholderClassName)}>{placeholder}</span>
+        <span className={cn('text-muted-foreground pointer-events-none', placeholderClassName)}>{placeholder}</span>
       )
     }
 
@@ -272,7 +256,7 @@ const MultiSelectValue = forwardRef<ElementRef<typeof Primitive.div>, MultiSelec
                 }}
               >
                 <span>{child}</span>
-                <Cross2Icon className="ml-1 h-3 w-3 text-muted-foreground group-hover/multi-select-badge:text-foreground" />
+                <Cross2Icon className="text-muted-foreground group-hover/multi-select-badge:text-foreground ml-1 h-3 w-3" />
               </Badge>
             )
 
@@ -289,28 +273,30 @@ const MultiSelectValue = forwardRef<ElementRef<typeof Primitive.div>, MultiSelec
 
             return el
           })}
-          {renderRemain ? <span className="py-.5 text-xs leading-4 text-muted-foreground">+{renderRemain}</span> : null}
+          {renderRemain ? <span className="py-.5 text-muted-foreground text-xs leading-4">+{renderRemain}</span> : null}
         </div>
       </Tooltip.Provider>
     )
   },
 )
 
-const MultiSelectSearch = forwardRef<ElementRef<typeof CommandInput>, ComponentPropsWithoutRef<typeof CommandInput>>(
-  (props, ref) => {
-    const { onSearch } = useMultiSelect()
+const MultiSelectSearch = forwardRef<
+  ElementRef<typeof CommandPrimitive.Input>,
+  ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
+>((props, ref) => {
+  const { onSearch } = useMultiSelect()
 
-    return <CommandInput ref={ref} {...props} onValueChange={onSearch} />
-  },
-)
+  return <CommandPrimitive.Input ref={ref} {...props} onValueChange={onSearch} />
+})
 
 MultiSelectSearch.displayName = 'MultiSelectSearch'
 
-const MultiSelectList = forwardRef<React.ElementRef<typeof CommandList>, ComponentPropsWithoutRef<typeof CommandList>>(
-  ({ className, ...props }, ref) => {
-    return <CommandList ref={ref} className={cn('max-h-[unset] px-0 py-1', className)} {...props} />
-  },
-)
+const MultiSelectList = forwardRef<
+  React.ElementRef<typeof CommandPrimitive.List>,
+  ComponentPropsWithoutRef<typeof CommandPrimitive.List>
+>(({ className, ...props }, ref) => {
+  return <CommandPrimitive.List ref={ref} className={cn('max-h-[unset] px-0 py-1', className)} {...props} />
+})
 
 MultiSelectList.displayName = 'MultiSelectList'
 
@@ -330,7 +316,9 @@ const MultiSelectContent = forwardRef<ElementRef<typeof PopoverPrimitive.Content
     }
 
     if (!context.open) {
-      return fragmentRef.current ? createPortal(<Command>{children}</Command>, fragmentRef.current) : null
+      return fragmentRef.current
+        ? createPortal(<CommandPrimitive>{children}</CommandPrimitive>, fragmentRef.current)
+        : null
     }
 
     return (
@@ -341,7 +329,7 @@ const MultiSelectContent = forwardRef<ElementRef<typeof PopoverPrimitive.Content
           sideOffset={4}
           collisionPadding={10}
           className={cn(
-            'z-50 w-full rounded-md border bg-popover p-0 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+            'bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-full rounded-md border p-0 shadow-md outline-none',
             contentClassName,
           )}
           style={
@@ -355,19 +343,19 @@ const MultiSelectContent = forwardRef<ElementRef<typeof PopoverPrimitive.Content
           }
           {...props}
         >
-          <Command
+          <CommandPrimitive
             className={cn('max-h-96 w-full min-w-[var(--radix-select-trigger-width)] px-1', className)}
             shouldFilter={!context.onSearch}
           >
             {children}
-          </Command>
+          </CommandPrimitive>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     )
   },
 )
 
-type MultiSelectItemProps = ComponentPropsWithoutRef<typeof CommandItem> &
+type MultiSelectItemProps = ComponentPropsWithoutRef<typeof CommandPrimitive.Item> &
   Partial<MultiSelectOptionItem> & {
     checkIcon?: ReactNode
     onSelect?: (value: string, item: MultiSelectOptionItem) => void
@@ -375,7 +363,7 @@ type MultiSelectItemProps = ComponentPropsWithoutRef<typeof CommandItem> &
   }
 
 // eslint-disable-next-line react/display-name
-const MultiSelectItem = forwardRef<ElementRef<typeof CommandItem>, MultiSelectItemProps>(
+const MultiSelectItem = forwardRef<ElementRef<typeof CommandPrimitive.Item>, MultiSelectItemProps>(
   (
     {
       value,
@@ -423,48 +411,49 @@ const MultiSelectItem = forwardRef<ElementRef<typeof CommandItem>, MultiSelectIt
     }
 
     return (
-      <CommandItem
+      <CommandPrimitive.Item
         {...props}
         value={value}
-        className={cn(disabled && 'cursor-not-allowed text-muted-foreground', className)}
+        className={cn(disabled && 'text-muted-foreground cursor-not-allowed', 'flex items-center', className)}
         disabled={disabled}
         onSelect={!disabled && value ? handleClick : undefined}
         ref={forwardedRef}
       >
         <span className="mr-2 overflow-hidden text-ellipsis whitespace-nowrap">{children || label || value}</span>
         {selected ? checkIcon ? checkIcon : <CheckIcon className="ml-auto h-4 w-4 shrink-0" /> : null}
-      </CommandItem>
+      </CommandPrimitive.Item>
     )
   },
 )
 
 const MultiSelectGroup = forwardRef<
-  React.ElementRef<typeof CommandGroup>,
-  ComponentPropsWithoutRef<typeof CommandGroup>
+  React.ElementRef<typeof CommandPrimitive.Group>,
+  ComponentPropsWithoutRef<typeof CommandPrimitive.Group>
 >((props, forwardRef) => {
-  return <CommandGroup {...props} ref={forwardRef} />
+  return <CommandPrimitive.Group {...props} ref={forwardRef} />
 })
 
 MultiSelectGroup.displayName = 'MultiSelectGroup'
 
 const MultiSelectSeparator = forwardRef<
-  React.ElementRef<typeof CommandSeparator>,
-  ComponentPropsWithoutRef<typeof CommandSeparator>
+  React.ElementRef<typeof CommandPrimitive.Separator>,
+  ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
 >((props, forwardRef) => {
-  return <CommandSeparator {...props} ref={forwardRef} />
+  return <CommandPrimitive.Separator {...props} ref={forwardRef} />
 })
 
 MultiSelectSeparator.displayName = 'MultiSelectSeparator'
 
-const MultiSelectEmpty = forwardRef<ElementRef<typeof CommandEmpty>, ComponentPropsWithoutRef<typeof CommandEmpty>>(
-  ({ children = 'No Content', ...props }, forwardRef) => {
-    return (
-      <CommandEmpty {...props} ref={forwardRef}>
-        {children}
-      </CommandEmpty>
-    )
-  },
-)
+const MultiSelectEmpty = forwardRef<
+  ElementRef<typeof CommandPrimitive.Empty>,
+  ComponentPropsWithoutRef<typeof CommandPrimitive.Empty>
+>(({ children = 'No Content', ...props }, forwardRef) => {
+  return (
+    <CommandPrimitive.Empty {...props} ref={forwardRef}>
+      {children}
+    </CommandPrimitive.Empty>
+  )
+})
 
 MultiSelectEmpty.displayName = 'MultiSelectEmpty'
 
@@ -509,16 +498,17 @@ const renderMultiSelectOptions = (list: MultiSelectOption[]) => {
   })
 }
 
-export {
-  MultiSelect,
-  MultiSelectContent,
-  MultiSelectEmpty,
-  MultiSelectGroup,
-  MultiSelectItem,
-  MultiSelectList,
-  MultiSelectSearch,
-  MultiSelectSeparator,
-  MultiSelectTrigger,
-  MultiSelectValue,
-  renderMultiSelectOptions,
+const MultiSelect = {
+  Root: MultiSelectRoot,
+  Content: MultiSelectContent,
+  Empty: MultiSelectEmpty,
+  Group: MultiSelectGroup,
+  Item: MultiSelectItem,
+  List: MultiSelectList,
+  Search: MultiSelectSearch,
+  Separator: MultiSelectSeparator,
+  Trigger: MultiSelectTrigger,
+  Value: MultiSelectValue,
 }
+
+export { MultiSelect, renderMultiSelectOptions }
