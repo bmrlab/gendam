@@ -4,7 +4,7 @@ import { ExtractExplorerItemWithType } from '@/Explorer/types'
 export default function VideoQuickView(props: ExtractExplorerItemWithType<'video'>) {
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Video hash={props.assetObject.hash} currentTime={'metadata' in props ? props.metadata.startTime : void 0} />
+      <Video assetObject={props.assetObject} currentTime={'metadata' in props ? props.metadata.startTime : void 0} />
     </div>
   )
 }

@@ -39,7 +39,7 @@ type ValidContentTaskType<T extends AssetObjectType = AssetObjectType> = Extract
   { contentType: T }
 >['taskType']
 
-type ExtractAssetObject<T extends AssetObjectType> = AssetObject & {
+export type ExtractAssetObject<T extends AssetObjectType> = AssetObject & {
   mediaData: Extract<AssetObject['mediaData'], { contentType: T }> | null
 }
 type ExtractBaseItem<T extends AssetObjectType> = BaseItem & { assetObject: ExtractAssetObject<T> }

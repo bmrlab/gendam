@@ -22,7 +22,6 @@ export type Procedures = {
         { key: "tasks.list", input: TaskListRequestPayload, result: FileHandlerTask[] } | 
         { key: "users.get", input: never, result: Auth | null } | 
         { key: "version", input: never, result: string } | 
-        { key: "video.player.video_info", input: VideoPlayerInfoRequestPayload, result: VideoPlayerInfoResponse } | 
         { key: "video.player.video_ts", input: VideoPlayerTsRequestPayload, result: VideoPlayerTsResponse },
     mutations: 
         { key: "assets.create_asset_object", input: AssetObjectCreatePayload, result: FilePathWithAssetObjectData } | 
@@ -89,11 +88,7 @@ export type RecommendRequestPayload = { assetObjectHash: string; timestamp: numb
 
 export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string; Llm: string }
 
-export type VideoPlayerTsRequestPayload = { hash: string; index: number }
-
 export type AssetObjectWithMediaData = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string; mediaData: ContentMetadataWithType | null }
-
-export type VideoPlayerTsResponse = { data: number[] }
 
 export type TaskRedoRequestPayload = { assetObjectId: number }
 
@@ -121,11 +116,11 @@ export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: strin
 
 export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
 
+export type VideoPlayerTsResponse = { data: number[] }
+
 export type FilePathDeletePayload = { materializedPath: string; name: string }
 
 export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageCaption" | "AudioTranscript" | "TextEmbedding" | "LLM"
-
-export type VideoPlayerInfoResponse = { hash: string; duration: number; mimeType: string | null; hasVideo: boolean; hasAudio: boolean }
 
 export type ImageTaskTypeSpecta = "thumbnail" | "description" | "descEmbed"
 
@@ -169,9 +164,9 @@ export type TranscriptType = "Original" | "Summarization"
 
 export type VideoAvgFrameRate = { numerator: string; denominator: string }
 
-export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
+export type VideoPlayerTsRequestPayload = { hash: string; index: number; size: number }
 
-export type VideoPlayerInfoRequestPayload = { hash: string }
+export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type ImageRequestPayload = { hash: string }
 

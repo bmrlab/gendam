@@ -3,9 +3,9 @@ use content_metadata::{
     audio::AudioMetadata,
     video::{VideoAvgFrameRate, VideoMetadata},
 };
+use futures::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::{path::Path, process::Stdio};
+use std::{path::Path, pin::Pin, process::Stdio};
 use storage::add_tmp_suffix_to_path;
 use storage_macro::Storage;
 use tokio::process::Command;
@@ -397,79 +397,7 @@ impl VideoDecoder {
         }
     }
 
-    pub async fn get_video_duration(&self) -> anyhow::Result<f64> {
-        match std::process::Command::new(&self.ffprobe_file_path)
-            .args(&[
-                "-v",
-                "error",
-                "-show_entries",
-                "format=duration",
-                "-of",
-                "json",
-                self.video_file_path
-                    .to_str()
-                    .expect("invalid video file path"),
-            ])
-            .output()
-        {
-            Ok(output) => {
-                let stdout = std::str::from_utf8(&output.stdout)?;
-                let json: Value = serde_json::from_str(stdout)?;
-                if let Some(duration) = json["format"]["duration"].as_str() {
-                    let duration: f64 = duration.parse()?;
-                    Ok(duration)
-                } else {
-                    Err(anyhow::anyhow!(
-                        "Failed to get duration from ffprobe output"
-                    ))
-                }
-            }
-            Err(e) => {
-                bail!("Failed to get video duration: {e}");
-            }
-        }
-    }
-
-    pub async fn check_video_audio(&self) -> anyhow::Result<(bool, bool)> {
-        let output = Command::new(&self.ffprobe_file_path)
-            .args(&[
-                "-v",
-                "error",
-                "-show_streams",
-                "-of",
-                "json",
-                self.video_file_path
-                    .to_str()
-                    .expect("invalid video file path"),
-            ])
-            .output()
-            .await?;
-
-        let stdout = String::from_utf8(output.stdout)?;
-
-        let ffprobe_output: RawProbeOutput = serde_json::from_str(&stdout)?;
-
-        let mut has_video = false;
-        let mut has_audio = false;
-
-        for stream in ffprobe_output.streams.iter() {
-            if stream.codec_type == "video" {
-                has_video = true;
-            }
-            if stream.codec_type == "audio" {
-                has_audio = true;
-            }
-        }
-
-        Ok((has_video, has_audio))
-    }
-
-    pub async fn generate_ts(
-        &self,
-        ts_index: u32,
-        output_dir: impl AsRef<Path>,
-    ) -> anyhow::Result<Vec<u8>> {
-        tracing::debug!("generate_ts ts_index:{ts_index:?}");
+    pub async fn generate_ts(&self, ts_index: u32, ts_size: u32) -> anyhow::Result<Vec<u8>> {
         let output = Command::new(&self.binary_file_path)
             .args(&[
                 "-i",
@@ -478,57 +406,34 @@ impl VideoDecoder {
                     .expect("invalid video file path"),
                 "-c:v",
                 "libx264",
-                "-crf",
-                "28",
-                "-preset",
-                "ultrafast",
+                "-c:a",
+                "aac",
+                // 这么写其实有点问题，视频的时间是无法精准分割的
+                // 因此分割出来的两段可能有一些时间差异
                 "-ss",
-                format!("{}", ts_index * 10).to_string().as_str(), // Start time for the segment
+                &(ts_index * ts_size).to_string(), // Start time for the segment
                 "-t",
-                "10", // Duration of the segment
+                &ts_size.to_string(), // Duration of the segment
                 "-start_number",
-                &ts_index.to_string(), // Start generating from the specified segment number
+                &ts_index.to_string(),
                 "-hls_time",
                 "10",
                 "-hls_list_size",
-                "1", // Only one segment in the list
+                "1",
                 "-f",
-                "hls",
-                "-muxdelay", // 设置starttime 每个视频10 * index秒开始
-                format!("{}", 5 * ts_index).to_string().as_str(),
-                "-vf",
-                "scale=-2:426", // 设置视频高度， 用于降低4k视频尺寸
-                format!(
-                    "{}/index.m3u8",
-                    output_dir.as_ref().to_str().expect("invalid output path")
-                )
-                .as_str(),
+                "mpegts",
+                "-muxdelay",
+                &((ts_size * ts_index) as f32 / 2.0).to_string(),
+                "pipe:1",
             ])
+            .stdout(Stdio::piped())
             .output()
             .await;
 
         match output {
             Ok(ffmpeg_output) => {
                 if ffmpeg_output.status.success() {
-                    // 成功
-                    // 读取这个文件
-                    let ts_file_path = format!(
-                        "{}/index{}.ts",
-                        output_dir.as_ref().to_str().expect("invalid output path"),
-                        ts_index
-                    );
-
-                    // let ffprobe_out = Command::new(&self.ffprobe_file_path)
-                    //     .args(&["-show_format", "-show_streams", &ts_file_path])
-                    //     .output()
-                    //     .await?;
-
-                    // tracing::debug!("ffprobe: {}", String::from_utf8_lossy(&ffprobe_out.stdout));
-
-                    let file = tokio::fs::read(ts_file_path.clone()).await?;
-                    // 再删除这个文件
-                    let _ = tokio::fs::remove_file(ts_file_path).await?;
-                    Ok(file)
+                    Ok(ffmpeg_output.stdout)
                 } else {
                     tracing::error!(
                         "ffmpeg error: {}",

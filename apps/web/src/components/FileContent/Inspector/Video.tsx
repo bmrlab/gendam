@@ -18,7 +18,7 @@ export default function VideoDetail({ filePath, assetObject }: ExtractExplorerIt
   return (
     <InspectorItemContainer>
       <InspectorItemViewer>
-        <Video hash={assetObject.hash} />
+        <Video assetObject={assetObject} />
       </InspectorItemViewer>
 
       <InspectorItemFilePath filePath={filePath} />

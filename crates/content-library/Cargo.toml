@@ -17,4 +17,12 @@ qdrant-client = { workspace = true }
 anyhow = { workspace = true }
 serde_json = { workspace = true }
 walkdir = "2.5.0"
-zip = "1.1.2"
+zip = { version = "2.2.0", default-features = false, features = [
+  "aes-crypto",
+  "deflate",
+  "deflate64",
+  "lzma",
+  "time",
+  "xz",
+  "zstd",
+] } # 这些 features 就是默认的，除了 bzip2，bzip2 在我的电脑上 build 不过
