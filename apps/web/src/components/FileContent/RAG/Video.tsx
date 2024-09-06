@@ -3,7 +3,7 @@ import { ExtractExplorerItem } from '@/Explorer/types'
 import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import { formatDuration } from '@/lib/utils'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gendam/ui/v1/tabs'
+import { Tabs } from '@gendam/ui/v2/tabs'
 import Image from 'next/image'
 import { match } from 'ts-pattern'
 
@@ -81,14 +81,14 @@ function VideoTranscriptItem({
         </div>
       </div>
 
-      <Tabs defaultValue="tldr" className="w-full flex-1">
-        <TabsList>
-          <TabsTrigger value="tldr">TLDR</TabsTrigger>
-          <TabsTrigger value="transcript">Transcript</TabsTrigger>
-        </TabsList>
-        <TabsContent value="tldr">{summarization?.content ?? ''}</TabsContent>
-        <TabsContent value="transcript">{transcript?.content ?? ''}</TabsContent>
-      </Tabs>
+      <Tabs.Root defaultValue="tldr" className="w-full flex-1">
+        <Tabs.List>
+          <Tabs.Trigger value="tldr">TLDR</Tabs.Trigger>
+          <Tabs.Trigger value="transcript">Transcript</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="tldr">{summarization?.content ?? ''}</Tabs.Content>
+        <Tabs.Content value="transcript">{transcript?.content ?? ''}</Tabs.Content>
+      </Tabs.Root>
     </div>
   )
 }
