@@ -4,7 +4,7 @@ import { useCurrentLibrary } from '@/lib/library'
 import { client } from '@/lib/rspc'
 import { timeToSeconds } from '@/lib/utils'
 import muxjs from 'mux.js'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import videojs from 'video.js'
 import type Player from 'video.js/dist/types/player'
 
@@ -37,7 +37,7 @@ export const useVideoPlayer = (
     }
   }, 100)
 
-  const handleUpdateend = async () => {
+  const handleUpdateend = useCallback(async () => {
     if (
       segmentsRef.current.length == 0 &&
       !sourceBufferRef.current?.updating &&
@@ -63,9 +63,9 @@ export const useVideoPlayer = (
       transmuxerRef.current?.push(new Uint8Array(res.data))
       transmuxerRef.current?.flush()
     }
-  }
+  }, [assetObject.hash])
 
-  const loadVideoTS = async () => {
+  const loadVideoTS = useCallback(async () => {
     const mediaData = assetObject.mediaData
     if (!mediaData) return
     if (!videoRef.current || !videoElementRef.current) {
@@ -108,9 +108,9 @@ export const useVideoPlayer = (
         transmuxerRef.current.flush()
       }
     })
-  }
+  }, [assetObject, currentTime, handleUpdateend])
 
-  const loadVideo = async () => {
+  const loadVideo = useCallback(async () => {
     if (!playerRef.current) {
       return
     }
@@ -133,11 +133,10 @@ export const useVideoPlayer = (
     } else {
       loadVideoTS()
     }
-
     if (autoPlay) {
       player.play()
     }
-  }
+  }, [assetObject, autoPlay, currentTime, currentLibrary, loadVideoTS])
 
   useEffect(() => {
     if (!videoRef.current) return
@@ -180,8 +179,12 @@ export const useVideoPlayer = (
       )
     }
 
+    const currentVideoRef = videoRef.current
+    const currentVideoElementRef = videoElementRef.current
     return () => {
-      if (videoElementRef.current) videoRef.current?.removeChild(videoElementRef.current)
+      if (currentVideoRef && currentVideoElementRef) {
+        currentVideoRef.removeChild(currentVideoElementRef)
+      }
       if (playerRef.current && !playerRef.current.isDisposed()) {
         playerRef.current.dispose()
         playerRef.current = null
@@ -192,7 +195,7 @@ export const useVideoPlayer = (
       segmentsRef.current = []
       videoElementRef.current = null
     }
-  }, [playerRef, assetObject, videoRef])
+  }, [playerRef, assetObject, videoRef, debounceSeeking, loadVideo, autoPlay, controls, loop, muted, currentTime])
 
   useEffect(() => {
     return () => {
@@ -211,7 +214,7 @@ export const useVideoPlayer = (
     if (videoElementRef.current && videoElementRef.current.children?.[0] && currentTime) {
       ;(videoElementRef.current.children[0] as HTMLVideoElement).currentTime = Math.floor(currentTime / 1e3)
     }
-  }, [videoElementRef.current, currentTime])
+  }, [currentTime])
 
   return videoRef
 }
