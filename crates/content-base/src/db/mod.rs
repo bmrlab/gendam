@@ -5,6 +5,7 @@ use crate::db::constant::{
 use crate::db::model::audio::{AudioFrameModel, AudioModel};
 use crate::db::model::id::ID;
 use crate::db::model::payload::PayloadModel;
+use crate::db::model::video::{ImageFrameModel, VideoModel};
 use crate::db::model::{ImageModel, TextModel};
 use crate::db::sql::CREATE_TABLE;
 use crate::query::payload::SearchPayload;
@@ -92,7 +93,7 @@ impl DB {
         &self,
         image_model: ImageModel,
         payload: Option<SearchPayload>,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<ID> {
         let mut res = self
             .client
             .query(
@@ -108,12 +109,69 @@ impl DB {
 
         let id: Option<ID> = res.take::<Option<Thing>>(0)?.map(|x| x.into());
 
-        if let (Some(id), Some(payload)) = (id, payload) {
-            let payload_id = self.create_payload(payload.into()).await?;
-            self.create_with_relation(&id, &payload_id).await?;
+        match id {
+            Some(id) => {
+                if let Some(payload) = payload {
+                    let payload_id = self.create_payload(payload.into()).await?;
+                    self.create_with_relation(&id, &payload_id).await?;
+                }
+                Ok(id)
+            }
+            None => {
+                bail!("Failed to insert image");
+            }
         }
+    }
 
-        Ok(())
+    async fn batch_insert_image(&self, images: Vec<ImageModel>) -> anyhow::Result<Vec<ID>> {
+        let futures = images
+            .into_iter()
+            .map(|image| self.insert_image(image, None))
+            .collect::<Vec<_>>();
+        collect_async_results!(futures)
+    }
+
+    pub async fn insert_image_frame(&self, frame: ImageFrameModel) -> anyhow::Result<ID> {
+        let ids = self
+            .batch_insert_image(frame.data)
+            .await?
+            .into_iter()
+            .map(|id| id.id_with_table())
+            .collect::<Vec<String>>();
+        if ids.is_empty() {
+            bail!("Failed to insert image frame");
+        }
+        let create_image_frame_sql = format!(
+            "(CREATE ONLY image_frame CONTENT {{ data: [{}], start_timestamp: {}, end_timestamp: {} }}).id",
+            ids.join(", "),
+            frame.start_timestamp,
+            frame.end_timestamp
+        );
+        let mut res = self.client.query(create_image_frame_sql).await?;
+        match res.take::<Option<Thing>>(0)? {
+            Some(id) => {
+                let id: ID = id.into();
+                self.create_contain_relation(
+                    &id.id_with_table(),
+                    ids.iter().map(|id| id.as_str()).collect(),
+                )
+                .await?;
+                Ok(id.into())
+            }
+            None => Err(anyhow::anyhow!("Failed to insert image frame")),
+        }
+    }
+
+    async fn batch_insert_image_frame(
+        &self,
+        frames: Vec<ImageFrameModel>,
+    ) -> anyhow::Result<Vec<ID>> {
+        let futures = frames
+            .into_iter()
+            .map(|frame| self.insert_image_frame(frame))
+            .collect::<Vec<_>>();
+
+        collect_async_results!(futures)
     }
 
     async fn create_payload(&self, payload: PayloadModel) -> anyhow::Result<ID> {
@@ -182,7 +240,7 @@ impl DB {
     pub async fn insert_audio(
         &self,
         audio: AudioModel,
-        payload: Option<SearchPayload>,
+        payload: SearchPayload,
     ) -> anyhow::Result<ID> {
         let ids = self
             .batch_insert_audio_frame(audio.audio_frame)
@@ -207,17 +265,66 @@ impl DB {
                     ids.iter().map(|id| id.as_str()).collect(),
                 )
                 .await?;
-                if let Some(payload) = payload {
-                    let payload_id = self.create_payload(payload.into()).await?;
-                    self.create_with_relation(&id, &payload_id).await?;
-                }
+                let payload_id = self.create_payload(payload.into()).await?;
+                self.create_with_relation(&id, &payload_id).await?;
                 Ok(id)
             }
             None => Err(anyhow::anyhow!("Failed to insert audio")),
         }
     }
 
-    pub async fn insert_video(&self) {}
+    pub async fn insert_video(
+        &self,
+        video: VideoModel,
+        payload: SearchPayload,
+    ) -> anyhow::Result<ID> {
+        let image_frame_ids = self
+            .batch_insert_image_frame(video.image_frame)
+            .await?
+            .into_iter()
+            .map(|id| id.id_with_table())
+            .collect::<Vec<String>>();
+
+        let audio_frame_ids = self
+            .batch_insert_audio_frame(video.audio_frame)
+            .await?
+            .into_iter()
+            .map(|id| id.id_with_table())
+            .collect::<Vec<String>>();
+
+        let image_frame = if image_frame_ids.is_empty() {
+            "image_frame: []".to_string()
+        } else {
+            format!("image_frame: [{}]", image_frame_ids.join(", "))
+        };
+
+        let audio_frame = if audio_frame_ids.is_empty() {
+            "audio_frame: []".to_string()
+        } else {
+            format!("audio_frame: [{}]", audio_frame_ids.join(", "))
+        };
+
+        let sql = format!(
+            "(CREATE ONLY video CONTENT {{ {}, {} }}).id",
+            image_frame, audio_frame
+        );
+
+        let mut res = self.client.query(&sql).await?;
+        match res.take::<Option<Thing>>(0)? {
+            Some(id) => {
+                let id: ID = id.into();
+                self.create_contain_relation(
+                    &id.id_with_table(),
+                    image_frame_ids.iter().map(|id| id.as_str()).collect(),
+                )
+                .await?;
+                let payload = self.create_payload(payload.into()).await?;
+                self.create_with_relation(&id, &payload).await?;
+                Ok(id)
+            }
+            None => Err(anyhow::anyhow!("Failed to insert video")),
+        }
+    }
 
     pub async fn insert_document(&self) {}
 
@@ -348,7 +455,7 @@ mod test {
                         end_timestamp: 1.0,
                     }],
                 },
-                Some(SearchPayload {
+                SearchPayload {
                     file_identifier: "file_identifier_audio".to_string(),
                     task_type: ContentTaskType::Audio(crate::audio::AudioTaskType::TransChunk(
                         AudioTransChunkTask {},
@@ -359,7 +466,7 @@ mod test {
                             end_timestamp: 1,
                         },
                     ),
-                }),
+                },
             )
             .await
             .unwrap();
