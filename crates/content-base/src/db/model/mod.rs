@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 pub mod payload;
 pub mod id;
-mod audio;
-mod video;
-mod web;
-mod document;
+pub mod audio;
+pub mod video;
+pub mod web;
+pub mod document;
 
 #[derive(Serialize, Deserialize)]
 pub struct ImageModel {

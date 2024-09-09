@@ -26,6 +26,8 @@ uuid = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
 surrealdb = { git = "https://github.com/surrealdb/surrealdb.git", tag = "v2.0.0-alpha.9" }
+futures = { workspace = true }
+futures-util = "0.3.30"
 
 # for test, remove it in production
 dotenvy = { workspace = true }
