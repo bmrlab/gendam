@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use ort::{CoreMLExecutionProvider, ExecutionProvider, GraphOptimizationLevel, Session};
+use ort::{ExecutionProvider, GraphOptimizationLevel, Session};
 use tracing::warn;
 
 pub(crate) struct ONNXModelConfig {
@@ -27,10 +27,10 @@ pub(crate) fn load_onnx_model(
 ) -> anyhow::Result<Session> {
     let builder = Session::builder()?;
 
-    let coreml = CoreMLExecutionProvider::default();
-    if coreml.register(&builder).is_err() {
-        warn!("failed to register CoreMLExecutionProvider");
-    }
+    // let coreml = CoreMLExecutionProvider::default();
+    // if coreml.register(&builder).is_err() {
+    //     warn!("failed to register CoreMLExecutionProvider");
+    // }
 
     let config = config.unwrap_or(Default::default());
 
