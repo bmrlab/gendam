@@ -4,9 +4,9 @@ import { useVideoPlayer, VideoPlayerOptions } from './useVideoPlayer'
 
 export function Video({
   assetObject,
-  currentTime = 0,
+  currentTime,
   controls = true,
-  autoPlay = true,
+  autoPlay = false,
   loop = false,
   muted = true,
 }: {
