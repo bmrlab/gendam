@@ -1,15 +1,15 @@
 use crate::{
     ai::AIHandler,
     download::{DownloadReporter, DownloadStatus},
-    file_handler::TaskPayload,
     routes::p2p::ShareInfo,
 };
 use async_trait::async_trait;
+use content_base::ContentBase;
 use content_library::{Library, QdrantServerInfo};
 use p2p::Node;
 use std::{
     path::PathBuf,
-    sync::{mpsc::Sender, Arc, Mutex},
+    sync::{Arc, Mutex},
 };
 
 #[derive(Debug)]
@@ -38,7 +38,7 @@ pub trait CtxWithLibrary: Sync + CtxWithP2P + CtxWithAI + CtxWithDownload {
     fn library_id_in_store(&self) -> Option<String>;
 
     fn library(&self) -> Result<Library, rspc::Error>;
-    fn task_tx(&self) -> Result<Sender<TaskPayload>, rspc::Error>;
+    fn content_base(&self) -> Result<ContentBase, rspc::Error>;
     fn qdrant_info(&self) -> Result<QdrantServerInfo, rspc::Error>;
 
     async fn add_task(&self, task: cron::Task) -> Result<(), rspc::Error>;

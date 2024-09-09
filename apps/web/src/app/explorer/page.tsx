@@ -7,24 +7,27 @@ import {
   type ExplorerValue,
 } from '@/Explorer/hooks'
 // import { useExplorerStore } from '@/Explorer/store'
-import { type ExplorerItem } from '@/Explorer/types'
-import AudioDialog from '@/components/Audio/AudioDialog'
+import { type ExtractExplorerItem } from '@/Explorer/types'
 import Inspector from '@/components/Inspector'
+import { useInspector } from '@/components/Inspector/store'
+import AudioDialog from '@/components/TranscriptExport/AudioDialog'
 import Viewport from '@/components/Viewport'
+import { FilePath } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
-import { type FilePath } from '@/lib/bindings'
 import { Drop_To_Folder } from '@gendam/assets/images'
 import { RSPCError } from '@rspc/client'
+import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
-import ItemContextMenu from './_components/ItemContextMenu'
-import { useInspector } from '@/components/Inspector/store'
+import ItemContextMenuV2 from './_components/ItemContextMenu'
+import { useResizableInspector } from './_hooks/inspector'
 
 export default function ExplorerPage() {
   // const explorerStore = useExplorerStore()
+  // const currentLibrary = useCurrentLibrary()
   const searchParams = useSearchParams()
   let dirInSearchParams = searchParams.get('dir') || '/'
   if (!/^\/([^/\\:*?"<>|]+\/)+$/.test(dirInSearchParams)) {
@@ -49,7 +52,7 @@ export default function ExplorerPage() {
 
   const inspector = useInspector()
   const explorer = useExplorerValue({
-    items: items ? items.map((item) => ({ type: 'FilePath', filePath: item })) : null,
+    items: items ? items.map((item) => ({ type: 'FilePath', filePath: item, assetObject: item.assetObject! })) : null,
     materializedPath,
     settings: {
       layout,
@@ -76,10 +79,12 @@ export default function ExplorerPage() {
       setItems([...assetsQuery.data])
       // 重新获取数据要清空选中的项目，以免出现不在列表中但是还被选中的情况
       if (revealedFilePath) {
-        resetSelectedItems([{
-          type: 'FilePath',
-          filePath: revealedFilePath,
-        }])
+        resetSelectedItems([
+          {
+            type: 'FilePath',
+            filePath: revealedFilePath,
+          },
+        ])
         setShowInspector(true)
       } else {
         resetSelectedItems()
@@ -98,14 +103,36 @@ export default function ExplorerPage() {
     setLayout(explorer.settings.layout)
   }, [explorer.settings.layout])
 
-  const inspectorItem = useMemo<FilePath | null>(() => {
-    type T = Extract<ExplorerItem, { type: 'FilePath' }>
+  type T = ExtractExplorerItem<'FilePath'>
+  const inspectorItem = useMemo<T | null>(() => {
     const selectedItems = Array.from(explorer.selectedItems).filter((item) => item.type === 'FilePath') as T[]
     if (selectedItems.length === 1) {
-      return selectedItems[0].filePath
+      return selectedItems[0]
     }
     return null
   }, [explorer.selectedItems])
+
+  /**
+   * listen to meta + I to toggle inspector
+   * @todo 这个快捷键目前只是临时实现，之后应该统一的管理快捷键并且提供用户自定义的功能
+   */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey && e.key === 'i') {
+        inspector.setShow(!inspector.show)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [inspector])
+
+  /**
+   * TODO Inspector 拖拽的时候会有一些性能问题，看起来有点卡
+   * 如果拖拽的时候不显示 ExplorerLayout 会好很多
+   */
+  const { handleRef, width, isResizing } = useResizableInspector()
 
   if (assetsQuery.isError) {
     return <Viewport.Page className="text-ink/50 flex items-center justify-center">Failed to load assets</Viewport.Page>
@@ -114,7 +141,7 @@ export default function ExplorerPage() {
   return (
     <ExplorerViewContextProvider
       value={{
-        contextMenu: (data) => (data.type === 'FilePath' ? <ItemContextMenu data={data.filePath} /> : null),
+        contextMenu: (data) => (data.type === 'FilePath' ? <ItemContextMenuV2 /> : null),
       }}
     >
       <ExplorerContextProvider explorer={explorer}>
@@ -126,9 +153,56 @@ export default function ExplorerPage() {
               <div className="my-4 text-sm">Drag or paste videos here</div>
             </Viewport.Content>
           ) : (
-            <Viewport.Content className="flex h-full flex-row overflow-hidden">
-              <ExplorerLayout className="h-full w-auto flex-1 overflow-scroll" />
-              <Inspector data={inspectorItem} />
+            <Viewport.Content className="flex h-full w-full overflow-hidden">
+              <LayoutGroup>
+                <motion.div
+                  className="h-full"
+                  animate={{
+                    width: inspector.show ? `calc(100% - ${width}px)` : '100%',
+                  }}
+                  transition={
+                    isResizing
+                      ? {
+                          type: 'spring',
+                          duration: 0,
+                        }
+                      : {
+                          type: 'spring',
+                          stiffness: 500,
+                          damping: 50,
+                        }
+                  }
+                >
+                  <ExplorerLayout className="h-full w-full overflow-scroll" />
+                </motion.div>
+                <AnimatePresence mode="popLayout">
+                  {inspector.show && (
+                    <motion.div
+                      layout
+                      initial={{
+                        x: '100%',
+                      }}
+                      animate={{
+                        x: 0,
+                      }}
+                      exit={{
+                        x: '100%',
+                      }}
+                      transition={{
+                        x: {
+                          type: 'spring',
+                          stiffness: 500,
+                          damping: 50,
+                        },
+                      }}
+                      style={{ width }}
+                      className="flex h-full flex-none"
+                    >
+                      <Inspector data={inspectorItem} ref={handleRef} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </LayoutGroup>
             </Viewport.Content>
           )}
           <Footer /* Viewport.StatusBar */ />

@@ -1,10 +1,9 @@
-use std::path::PathBuf;
-
 use super::utils::generate_file_hash;
 use content_library::Library;
 use global_variable::get_current_fs_storage;
 use prisma_client_rust::QueryError;
 use prisma_lib::{asset_object, file_path};
+use std::path::PathBuf;
 use storage::prelude::*;
 
 pub async fn create_dir(
@@ -49,19 +48,7 @@ pub async fn create_asset_object(
             format!("failed to get video metadata: {}", e),
         )
     })?;
-    let kind = infer::get_from_path(&local_full_path);
-    let file_mime_type = match kind {
-        Ok(Some(mime)) => Some(mime.to_string()),
-        _ => {
-            if local_full_path.ends_with(".rm") {
-                Some("video/vnd.rn-realmedia".to_string()) // 正规的mime type 前面是 application/
-            } else if local_full_path.ends_with(".rmvb") {
-                Some("video/vnd.rn-realmedia-vbr".to_string()) // 正规的mime type 前面是 application/
-            } else {
-                None
-            }
-        }
-    };
+
     let file_size_in_bytes = fs_metadata.len() as i32;
     let file_hash = generate_file_hash(&local_full_path, fs_metadata.len() as u64)
         .await
@@ -73,10 +60,9 @@ pub async fn create_asset_object(
         })?;
     let duration = start_time.elapsed();
     tracing::info!(
-        "{:?}, hash: {:?}, mime_type: {:?}, duration: {:?}",
+        "{:?}, hash: {:?}, duration: {:?}",
         local_full_path,
         file_hash,
-        file_mime_type,
         duration
     );
 
@@ -122,11 +108,7 @@ pub async fn create_asset_object(
                 None => {
                     client
                         .asset_object()
-                        .create(
-                            file_hash.clone(),
-                            file_size_in_bytes,
-                            vec![asset_object::mime_type::set(file_mime_type)],
-                        )
+                        .create(file_hash.clone(), file_size_in_bytes, vec![])
                         .exec()
                         .await?
                 }

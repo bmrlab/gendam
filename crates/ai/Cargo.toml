@@ -5,8 +5,6 @@ edition = { workspace = true }
 
 [dependencies]
 file-downloader = { path = "../file-downloader" }
-storage = { path = "../storage" }
-storage-macro = { path = "../storage-macro" }
 global-variable = { path = "../global-variable" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -14,7 +12,7 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 tracing = { workspace = true }
 test-log = { workspace = true }
 ndarray = { version = "0.15.6", features = ["serde"] }
-tokenizers = "0.15.1"
+tokenizers = "0.19.1"
 image = { workspace = true }
 candle-core = { git = "https://github.com/huggingface/candle.git", features = [
   "accelerate",
@@ -30,7 +28,7 @@ candle-nn = { git = "https://github.com/huggingface/candle.git", features = [
 ] }
 half = "2.3.1"
 accelerate-src = "0.3.2"
-ort = { version = "2.0.0-rc.1" }
+ort = { version = "2.0.0-rc.4" }
 anyhow = { workspace = true }
 num-traits = "0.2.17"
 reqwest = { workspace = true }
@@ -39,3 +37,7 @@ async-trait = { workspace = true }
 derivative = "2.2.0"
 strum = { workspace = true }
 strum_macros = { workspace = true }
+rand = "0.8.5"
+reqwest-eventsource = "0.6.0"
+async-stream = { workspace = true }
+base64 = "0.22.1"

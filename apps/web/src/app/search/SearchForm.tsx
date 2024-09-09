@@ -2,13 +2,11 @@
 import Icon from '@gendam/ui/icons'
 import { CommandPrimitive } from '@gendam/ui/v2/command'
 import classNames from 'classnames'
-import { type SearchPayload } from './context'
 // import classNames from 'classnames'
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react'
 
 type FormData = {
   text: string
-  recordType: 'Frame' | 'Transcript'
 }
 
 export type SearchFormRef = {
@@ -23,40 +21,39 @@ const SearchFormWithRef = forwardRef<
   }
 >(function SearchForm({ onSubmit }, ref) {
   const [text, setText] = useState('')
-  const [recordType, setRecordType] = useState<'Frame' | 'Transcript' | null>(null)
+  // const [recordType, setRecordType] = useState<'Frame' | 'Transcript' | null>(null)
   // const [value, setValue] = useState<T | null>(null)
 
   useImperativeHandle<SearchFormRef, SearchFormRef>(ref, () => ({
-    getValue: () => (text && recordType ? { api: 'search.all', text, recordType } : null),
+    getValue: () => (text ? { api: 'search.all', text } : null),
     setValue: (value) => {
       if (value) {
         setText(value.text)
-        setRecordType(value.recordType)
       } else {
         setText('')
-        setRecordType(null)
+        // setRecordType(null)
       }
     },
   }))
 
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const [typing, setTyping] = useState(false)
+  const [_typing, setTyping] = useState(false)
 
-  const onSelectCommandItem = useCallback(
-    (recordType: 'Frame' | 'Transcript') => {
-      setRecordType(recordType)
-      setTyping(false)
-      searchInputRef.current?.blur()
-      if (text) {
-        setTimeout(() => onSubmit(), 0)
-      }
-    },
-    [text, onSubmit],
-  )
+  // const onSelectCommandItem = useCallback(
+  //   (recordType: 'Frame' | 'Transcript') => {
+  //     setRecordType(recordType)
+  //     setTyping(false)
+  //     searchInputRef.current?.blur()
+  //     if (text) {
+  //       setTimeout(() => onSubmit(), 0)
+  //     }
+  //   },
+  //   [text, onSubmit],
+  // )
 
   const onClearValue = useCallback(() => {
     setText('')
-    setRecordType(null)
+    // setRecordType(null)
     setTimeout(() => onSubmit(), 0)
   }, [onSubmit])
 
@@ -73,6 +70,11 @@ const SearchFormWithRef = forwardRef<
             onFocus={() => setTyping(true)}
             onBlur={() => setTimeout(() => setTyping(false), 200)}
             autoFocus={false}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                onSubmit()
+              }
+            }}
           />
           <Icon.MagnifyingGlass className="text-ink/50 absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform" />
           <Icon.Close
@@ -83,7 +85,7 @@ const SearchFormWithRef = forwardRef<
             onClick={() => onClearValue()}
           />
         </div>
-        {typing && (
+        {/* {typing && (
           <div className="border-app-line bg-app-box absolute top-full z-10 w-full rounded-md border p-1 text-sm shadow-md">
             <div className="text-ink/50 px-2 py-1">Search types</div>
             <CommandPrimitive.List>
@@ -113,7 +115,7 @@ const SearchFormWithRef = forwardRef<
               </CommandPrimitive.Item>
             </CommandPrimitive.List>
           </div>
-        )}
+        )} */}
       </CommandPrimitive>
     </div>
   )

@@ -5,20 +5,17 @@ use crate::{
     Model,
 };
 use anyhow::anyhow;
-use async_trait::async_trait;
 use image::RgbImage;
 pub use model::*;
 use ndarray::{Array1, Axis};
 use ort::Session;
 use std::path::{Path, PathBuf};
-use storage_macro::Storage;
 use tokenizers::tokenizer::Tokenizer;
 use utils::normalize;
 
 pub mod model;
 mod preprocess;
 
-#[derive(Storage)]
 pub struct CLIP {
     image_model: Option<Session>,
     text_model: Option<Session>,
@@ -35,7 +32,6 @@ pub enum CLIPInput {
     Text(String),
 }
 
-#[async_trait]
 impl Model for CLIP {
     type Item = MultiModalEmbeddingInput;
     type Output = MultiModalEmbeddingOutput;
@@ -143,8 +139,9 @@ impl CLIP {
         &self,
         image_path: impl AsRef<Path>,
     ) -> anyhow::Result<CLIPEmbedding> {
-        let image_data = self.read(image_path.as_ref().to_path_buf()).await?;
-        let image = image::load_from_memory(image_data.to_vec().as_slice())?;
+        let image = image::ImageReader::open(image_path)?
+            .with_guessed_format()?
+            .decode()?;
         self.get_image_embedding_from_image(&image.to_rgb8()).await
     }
 

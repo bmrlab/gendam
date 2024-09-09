@@ -1,7 +1,7 @@
 import type {
   // RecommendRequestPayload,
   // SearchRequestPayload,
-  SearchResultPayload as SearchResultPayload,
+  SearchResultPayload,
 } from '@/lib/bindings'
 import { client } from '@/lib/rspc'
 import { useSearchParams } from 'next/navigation'
@@ -20,11 +20,10 @@ export type SearchPayload =
   | {
       api: 'search.all'
       text: string
-      recordType: 'Frame' | 'Transcript'
     }
   | {
       api: 'search.recommend'
-      filePath: SearchResultPayload['filePath'] // FilePath
+      filePath?: SearchResultPayload['filePath'] // FilePath
       assetObjectHash: string
       timestamp: number
     }
@@ -39,10 +38,11 @@ function useSearchPayloadInURL(): {
   const searchPayloadInURL = useMemo<Extract<SearchPayload, { api: 'search.all' }> | null>(() => {
     try {
       const text = searchParams.get('text')
-      const recordType = searchParams.get('recordType')
-      if (text && (recordType === 'Frame' || recordType === 'Transcript')) {
-        return { api: 'search.all', text, recordType }
-      }
+      // const recordType = searchParams.get('recordType')
+      // if (text && (recordType === 'Frame' || recordType === 'Transcript')) {
+      //   return { api: 'search.all', text, recordType }
+      // }
+      if (text) return { api: 'search.all', text }
     } catch (e) {}
     return null
   }, [searchParams])
@@ -51,7 +51,6 @@ function useSearchPayloadInURL(): {
     if (payload?.api === 'search.all') {
       const search = new URLSearchParams()
       search.set('text', payload.text)
-      search.set('recordType', payload.recordType)
       window.history.replaceState({}, '', `${window.location.pathname}?${search}`)
     } else {
       window.history.replaceState({}, '', `${window.location.pathname}`)

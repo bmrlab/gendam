@@ -15,7 +15,7 @@ pub fn build_swarm(
             noise::Config::new,
             yamux::Config::default,
         )?
-        .with_quic()
+        // .with_quic()
         .with_relay_client(noise::Config::new, yamux::Config::default)?
         .with_behaviour(|key, relay_behaviour| {
             Behaviour::new(key.public(), relay_behaviour, metadata)

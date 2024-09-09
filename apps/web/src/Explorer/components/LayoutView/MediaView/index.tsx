@@ -1,21 +1,20 @@
 'use client'
-import { type ExplorerItem } from '@/Explorer/types'
+import { ExtractExplorerItem } from '@/Explorer/types'
 import { useMemo } from 'react'
 import Folders from './Folders'
 import Medias from './Medias'
 
-export type WithFilePathExplorerItem = Extract<ExplorerItem, { type: "FilePath" | "SearchResult" }>
-
-export default function MediaView({ items }: { items: WithFilePathExplorerItem[] }) {
+export default function MediaView({ items }: { items: ExtractExplorerItem<'FilePath'>[] }) {
   const [folders, medias] = useMemo(() => {
-    return items.reduce<[WithFilePathExplorerItem[], WithFilePathExplorerItem[]]>(
-      ([folders, medias], item) => {
+    return items.reduce<[ExtractExplorerItem<'FilePath'>[], ExtractExplorerItem<'FilePath'>[]]>(
+      ([folders, medias]: [ExtractExplorerItem<'FilePath'>[], ExtractExplorerItem<'FilePath'>[]], item) => {
         if (item.filePath.isDir) {
           folders.push(item)
         } else {
           medias.push(item)
         }
-        return [folders, medias]
+        // FIXME don't know why ts throw error on this type
+        return [folders, medias] as [ExtractExplorerItem<'FilePath'>[], ExtractExplorerItem<'FilePath'>[]]
       },
       [[], []],
     )

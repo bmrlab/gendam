@@ -1,5 +1,6 @@
-use super::search::{retrieve_assets_for_search, SearchResultPayload};
-use content_library::{Library, QdrantServerInfo};
+use super::search::SearchResultPayload;
+use content_base::ContentBase;
+use content_library::Library;
 use serde::Deserialize;
 use specta::Type;
 
@@ -11,26 +12,24 @@ pub struct RecommendRequestPayload {
 }
 
 pub async fn recommend_frames(
-    library: &Library,
-    qdrant_info: &QdrantServerInfo,
-    asset_object_hash: &str,
-    timestamp: i32,
+    _library: &Library,
+    _content_base: &ContentBase,
+    _asset_object_hash: &str,
+    _timestamp: i32,
 ) -> Result<Vec<SearchResultPayload>, rspc::Error> {
-    let search_results = file_handler::search::handle_recommend(
-        library.qdrant_client(),
-        qdrant_info.vision_collection.name.as_ref(),
-        asset_object_hash,
-        timestamp as i64,
-    )
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to recommend frames: {e}");
-        rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("Failed to recommend frames: {e}"),
-        )
-    })?;
+    // let payload = RecommendVideoFramePayload::new(asset_object_hash, timestamp as i64);
+    // let search_results = content_base
+    //     .recommend_video_frame(payload)
+    //     .await
+    //     .map_err(|e| {
+    //         tracing::error!("Failed to recommend frames: {e}");
+    //         rspc::Error::new(
+    //             rspc::ErrorCode::InternalServerError,
+    //             format!("Failed to recommend frames: {e}"),
+    //         )
+    //     })?;
 
-    let result = retrieve_assets_for_search(library, search_results).await?;
-    Ok(result)
+    // let result = retrieve_assets_for_search(library, search_results).await?;
+    // Ok(result)
+    todo!()
 }

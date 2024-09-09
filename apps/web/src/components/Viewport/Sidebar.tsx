@@ -144,6 +144,10 @@ export default function Sidebar() {
           <Icon.MagnifyingGlass className="text-ink/70 h-4 w-4" />
           <span>Search</span>
         </Link>
+        <Link href="/search/chat" className={menuClassNames('/search/chat')}>
+          <Icon.Finder className="text-ink/70 h-4 w-4" />
+          <span>Copilot</span>
+        </Link>
         {/* <Link href="/video-tasks" className={menuClassNames('/video-tasks')}>
           <Icon.Briefcase className="text-ink/70 h-4 w-4" />
           <span>All jobs</span>

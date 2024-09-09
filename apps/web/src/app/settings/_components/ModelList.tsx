@@ -1,18 +1,9 @@
 import { rspc } from '@/lib/rspc'
-import { useEffect } from 'react'
 import { ModelItem } from './ModelItem'
 
 export function ModelList() {
   const { data } = rspc.useQuery(['libraries.models.list'])
   const { data: settings } = rspc.useQuery(['libraries.get_library_settings'])
-
-  useEffect(() => {
-    console.log(data)
-  }, [data])
-
-  useEffect(() => {
-    console.log(settings)
-  }, [settings])
 
   return (
     <div>

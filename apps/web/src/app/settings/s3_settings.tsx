@@ -1,4 +1,4 @@
-import { S3Config } from '@/lib/bindings'
+import { type S3Config } from '@/lib/bindings'
 import { useCurrentLibrary } from '@/lib/library'
 import { Button } from '@gendam/ui/v2/button'
 import { Form, FormPrimitive } from '@gendam/ui/v2/form'

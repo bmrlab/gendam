@@ -1,13 +1,16 @@
-use glob::glob;
-use rspc::{Router, RouterBuilder};
-
+mod rag;
 mod recommend;
 mod search;
+
 use crate::{get_hash_from_url, get_library_settings, CtxWithLibrary};
+use glob::glob;
+use rag::{rag, RAGRequestPayload};
 use recommend::{recommend_frames, RecommendRequestPayload};
+use rspc::{Router, RouterBuilder};
 use search::{search_all, SearchRequestPayload};
 use storage::Storage;
 use storage::{EntryMode, S3Storage};
+use tokio::sync::mpsc;
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -17,18 +20,17 @@ where
         .query("all", |t| {
             t(|ctx: TCtx, input: SearchRequestPayload| async move {
                 let library = ctx.library()?;
-                let qdrant_info = ctx.qdrant_info()?;
-                let ai_handler = ctx.ai_handler()?;
-                search_all(&library, &qdrant_info, &ai_handler, input).await
+                let content_base = ctx.content_base()?;
+                search_all(&library, &content_base, input).await
             })
         })
         .query("recommend", |t| {
             t(|ctx: TCtx, input: RecommendRequestPayload| async move {
                 let library = ctx.library()?;
-                let qdrant_info = ctx.qdrant_info()?;
+                let content_base = ctx.content_base()?;
                 recommend_frames(
                     &library,
-                    &qdrant_info,
+                    &content_base,
                     &input.asset_object_hash,
                     input.timestamp,
                 )
@@ -142,6 +144,29 @@ where
                     }
                 }
                 Ok(results)
+            })
+        })
+        .subscription("rag", |t| {
+            t(|ctx, input: RAGRequestPayload| {
+                tracing::debug!("receive chat request");
+
+                let library = ctx.library().expect("library is valid");
+                let content_base = ctx.content_base().expect("content base is valid");
+                let ai_handler = ctx.ai_handler().expect("ai handler is valid");
+
+                return async_stream::stream! {
+                    let (tx, mut rx) = mpsc::channel(512);
+
+                    tokio::spawn(async move {
+                        if let Err(e) = rag(&library, &content_base, &ai_handler, input, tx).await {
+                            tracing::error!("RAG error: {}", e);
+                        }
+                    });
+
+                    while let Some(event) = rx.recv().await {
+                        yield event;
+                    }
+                };
             })
         })
 }

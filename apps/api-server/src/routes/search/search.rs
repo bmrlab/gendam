@@ -1,10 +1,9 @@
-use crate::ai::AIHandler;
-use crate::error::sql_error;
-use content_library::{Library, QdrantServerInfo};
-use file_handler::{
-    search::{SearchRequest, SearchResult},
-    SearchRecordType,
+use crate::{error::sql_error, routes::assets::types::FilePathWithAssetObjectData};
+use content_base::{
+    query::{payload::SearchResult, QueryPayload},
+    ContentBase,
 };
+use content_library::Library;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -12,59 +11,104 @@ use specta::Type;
 #[serde(rename_all = "camelCase")]
 pub struct SearchRequestPayload {
     pub text: String,
-    pub record_type: String,
 }
 
 #[derive(Serialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct SearchResultMetadata {
-    // #[serde(rename = "startTime")]
+pub struct VideoSearchResultMetadata {
     pub start_time: i32,
     pub end_time: i32,
-    pub score: f32,
+}
+
+#[derive(Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioSearchResultMetadata {
+    pub start_time: i32,
+    pub end_time: i32,
+}
+
+#[derive(Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageSearchResultMetadata {
+    data: i32,
+}
+
+#[derive(Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RawTextSearchResultMetadata {
+    start_index: u32,
+    end_index: u32,
+}
+
+#[derive(Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct WebPageSearchResultMetadata {
+    start_index: u32,
+    end_index: u32,
+}
+
+#[derive(Serialize, Type)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum SearchResultMetadata {
+    Video(VideoSearchResultMetadata),
+    Audio(AudioSearchResultMetadata),
+    Image(ImageSearchResultMetadata),
+    RawText(RawTextSearchResultMetadata),
+    WebPage(WebPageSearchResultMetadata),
+}
+
+impl From<&content_base::query::payload::SearchMetadata> for SearchResultMetadata {
+    fn from(metadata: &content_base::query::payload::SearchMetadata) -> Self {
+        match metadata {
+            content_base::query::payload::SearchMetadata::Video(item) => {
+                SearchResultMetadata::Video(VideoSearchResultMetadata {
+                    start_time: item.start_timestamp as i32,
+                    end_time: item.end_timestamp as i32,
+                })
+            }
+            content_base::query::payload::SearchMetadata::Audio(item) => {
+                SearchResultMetadata::Audio(AudioSearchResultMetadata {
+                    start_time: item.start_timestamp as i32,
+                    end_time: item.end_timestamp as i32,
+                })
+            }
+            content_base::query::payload::SearchMetadata::Image(_) => {
+                SearchResultMetadata::Image(ImageSearchResultMetadata { data: 0 })
+            }
+            content_base::query::payload::SearchMetadata::RawText(item) => {
+                SearchResultMetadata::RawText(RawTextSearchResultMetadata {
+                    start_index: item.start_index as u32,
+                    end_index: item.end_index as u32,
+                })
+            }
+            content_base::query::payload::SearchMetadata::WebPage(item) => {
+                SearchResultMetadata::WebPage(WebPageSearchResultMetadata {
+                    start_index: item.start_index as u32,
+                    end_index: item.end_index as u32,
+                })
+            }
+        }
+    }
 }
 
 #[derive(Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResultPayload {
-    pub file_path: prisma_lib::file_path::Data,
+    pub file_path: FilePathWithAssetObjectData,
     pub metadata: SearchResultMetadata,
+    pub score: f32,
 }
 
 pub async fn search_all(
     library: &Library,
-    qdrant_info: &QdrantServerInfo,
-    ai_handler: &AIHandler,
+    content_base: &ContentBase,
     input: SearchRequestPayload,
 ) -> Result<Vec<SearchResultPayload>, rspc::Error> {
     let text = input.text.clone();
-    let record_types = match input.record_type {
-        s if s == "Transcript" => vec![SearchRecordType::Transcript],
-        s if s == "FrameCaption" => {
-            vec![SearchRecordType::Frame, SearchRecordType::FrameCaption]
-        }
-        s if s == "Frame" => vec![SearchRecordType::Frame, SearchRecordType::FrameCaption],
-        _ => {
-            return Err(rspc::Error::new(
-                rspc::ErrorCode::BadRequest,
-                "invalid record_type".to_string(),
-            ))
-        }
-    };
-    let res = file_handler::search::handle_search(
-        SearchRequest {
-            text,
-            record_type: Some(record_types),
-        },
-        library.qdrant_client(),
-        qdrant_info.vision_collection.name.as_ref(),
-        qdrant_info.language_collection.name.as_ref(),
-        ai_handler.multi_modal_embedding.as_ref(),
-        ai_handler.text_embedding.as_ref(),
-    )
-    .await;
 
-    // debug!("search result: {:?}", res);
+    let payload = QueryPayload::new(&text);
+    let res = content_base.query(payload).await;
+    tracing::debug!("search result: {:?}", res);
 
     let search_results = match res {
         Ok(res) => res,
@@ -77,21 +121,29 @@ pub async fn search_all(
         }
     };
 
-    let result = retrieve_assets_for_search(library, search_results).await?;
+    let result = retrieve_assets_for_search(library, &search_results, |item, file_path| {
+        SearchResultPayload {
+            file_path: file_path.clone().into(),
+            metadata: SearchResultMetadata::from(&item.metadata),
+            score: item.score,
+        }
+    })
+    .await?;
     Ok(result)
 }
 
-pub async fn retrieve_assets_for_search(
+pub async fn retrieve_assets_for_search<TOriginal, TTarget, TFnConvert>(
     library: &Library,
-    search_results: Vec<SearchResult>,
-) -> Result<Vec<SearchResultPayload>, rspc::Error> {
+    search_results: &[TOriginal],
+    convert: TFnConvert,
+) -> Result<Vec<TTarget>, rspc::Error>
+where
+    TOriginal: SearchResult,
+    TFnConvert: Fn(&TOriginal, &prisma_lib::file_path::Data) -> TTarget,
+{
     let file_identifiers = search_results
         .iter()
-        .map(
-            |SearchResult {
-                 file_identifier, ..
-             }| { file_identifier.clone() },
-        )
+        .map(|v| v.file_identifier().to_string())
         .fold(Vec::new(), |mut acc, x| {
             if !acc.contains(&x) {
                 acc.push(x);
@@ -99,7 +151,6 @@ pub async fn retrieve_assets_for_search(
             acc
         });
 
-    // println!("file_identifiers: {:?}", file_identifiers);
     let asset_objects = library
         .prisma_client()
         .asset_object()
@@ -113,12 +164,10 @@ pub async fn retrieve_assets_for_search(
                 ))
                 .take(1),
         )
-        .with(prisma_lib::asset_object::media_data::fetch())
         .exec()
         .await
         .map_err(sql_error)?;
 
-    // println!("tasks: {:?}", tasks);
     let mut tasks_hash_map =
         std::collections::HashMap::<String, &prisma_lib::asset_object::Data>::new();
     asset_objects.iter().for_each(|asset_object_data| {
@@ -129,24 +178,12 @@ pub async fn retrieve_assets_for_search(
     let results_with_asset = search_results
         .iter()
         .filter_map(|search_result| {
-            let SearchResult {
-                file_identifier,
-                start_timestamp,
-                end_timestamp,
-                score,
-                ..
-            } = search_result;
-            let metadata = SearchResultMetadata {
-                start_time: (*start_timestamp).clone(),
-                end_time: (*end_timestamp).clone(),
-                score: *score,
-            };
-            let mut asset_object_data = match tasks_hash_map.get(file_identifier) {
+            let mut asset_object_data = match tasks_hash_map.get(search_result.file_identifier()) {
                 Some(asset_object_data) => (**asset_object_data).clone(),
                 None => {
                     tracing::error!(
                         "failed to find asset object data for file_identifier: {}",
-                        file_identifier
+                        search_result.file_identifier()
                     );
                     return None;
                 }
@@ -166,13 +203,16 @@ pub async fn retrieve_assets_for_search(
                     return None;
                 }
             };
-            let result = SearchResultPayload {
-                file_path,
-                metadata,
-            };
+
+            // let result = SearchResultPayload {
+            //     file_path: file_path.into(),
+            //     metadata: search_result.metadata().into(),
+            //     score: search_result.score(),
+            // };
+            let result = convert(search_result, &file_path);
             Some(result)
         })
         .collect::<Vec<_>>();
 
-    return Ok(results_with_asset);
+    Ok(results_with_asset)
 }

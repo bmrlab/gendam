@@ -37,7 +37,10 @@
         "minimize": true,
         "unmaximize": true,
         "unminimize": true,
-        "startDragging": true
+        "create": true,
+        "startDragging": true,
+        "setFocus": true,
+        "setSize": true
       },
       "process": {
         "all": false,

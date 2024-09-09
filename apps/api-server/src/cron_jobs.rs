@@ -1,16 +1,15 @@
-use crate::{ai::AIHandler, file_handler::get_file_handler_with_library};
-use content_library::{Library, QdrantServerInfo};
-use prisma_lib::asset_object;
+use content_base::{delete::DeletePayload, ContentBase};
+use content_library::Library;
+use prisma_lib::{asset_object, file_handler_task};
 use std::sync::Arc;
 use tracing::error;
 
 pub async fn delete_unlinked_assets(
     library: Arc<Library>,
-    ai_handler: AIHandler,
-    qdrant_info: QdrantServerInfo,
+    content_base: Arc<ContentBase>,
 ) -> Result<(), rspc::Error> {
-    // 查找所有未关联file path的assobject
-    // todo 怎么优化更好点
+    // 查找所有未关联 file path 的 asset object
+    // TODO 怎么优化更好点
     let all_assets = library
         .prisma_client()
         .asset_object()
@@ -51,25 +50,27 @@ pub async fn delete_unlinked_assets(
                 )
             })?;
 
+        library
+            .prisma_client()
+            .file_handler_task()
+            .delete_many(vec![file_handler_task::asset_object_id::equals(asset.id)])
+            .exec()
+            .await
+            .map_err(|e| {
+                rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    format!("failed to delete asset related tasks: {}", e),
+                )
+            })?;
+
         // delete from fs
         let file_path = library.file_path(&asset.hash);
         if let Err(e) = std::fs::remove_file(&file_path) {
             error!("failed to delete file({}): {}", file_path.display(), e);
         };
-        match get_file_handler_with_library(
-            &asset,
-            library.clone(),
-            ai_handler.clone(),
-            qdrant_info.clone(),
-        ) {
-            Ok(handler) => {
-                if let Err(e) = handler.delete_artifacts().await {
-                    error!("failed to delete artifacts: {}", e);
-                }
-            }
-            _ => {
-                error!("failed to get file handler");
-            }
+        let payload = DeletePayload::new(&asset.hash);
+        if let Err(e) = content_base.delete(payload).await {
+            error!("failed to delete artifacts: {}", e);
         }
     }
 

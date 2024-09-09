@@ -1,5 +1,9 @@
-use crate::CtxWithLibrary;
+pub mod types;
+
+use crate::{routes::assets::process::process_asset, CtxWithLibrary};
+use content_base::{delete::DeletePayload, task::CancelTaskPayload, ContentTaskType};
 use prisma_client_rust::QueryError;
+use prisma_lib::{asset_object, file_handler_task};
 use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
 use specta::Type;
@@ -19,10 +23,30 @@ struct TaskListRequestPayload {
     filter: TaskListRequestFilter,
 }
 
+#[derive(Deserialize, Type, Debug)]
+#[serde(rename_all = "camelCase")]
+struct TaskCancelRequestPayload {
+    asset_object_id: i32,
+    task_types: Option<Vec<String>>,
+}
+
+#[derive(Deserialize, Type, Debug)]
+#[serde(rename_all = "camelCase")]
+struct TaskRedoRequestPayload {
+    asset_object_id: i32,
+}
+
 fn sql_error(e: QueryError) -> rspc::Error {
     rspc::Error::new(
         rspc::ErrorCode::InternalServerError,
         format!("sql query failed: {}", e),
+    )
+}
+
+fn convert_anyhow_error(e: anyhow::Error) -> rspc::Error {
+    rspc::Error::new(
+        rspc::ErrorCode::InternalServerError,
+        format!("error: {}", e),
     )
 }
 
@@ -95,6 +119,72 @@ where
                     })
                     .collect::<Vec<prisma_lib::file_path::Data>>();
                 Ok(file_path_data_list)
+            })
+        })
+        .mutation("cancel", |t| {
+            t(|ctx: TCtx, input: TaskCancelRequestPayload| async move {
+                let library = ctx.library()?;
+                let asset_object = library
+                    .prisma_client()
+                    .asset_object()
+                    .find_first(vec![asset_object::id::equals(input.asset_object_id)])
+                    .exec()
+                    .await
+                    .map_err(sql_error)?
+                    .ok_or(anyhow::anyhow!("not found"))
+                    .map_err(convert_anyhow_error)?;
+
+                let content_base = ctx.content_base()?;
+                let payload = CancelTaskPayload::new(&asset_object.hash);
+                let task_types = input.task_types.as_ref().map(|v| {
+                    v.iter()
+                        .filter_map(|s| s.as_str().try_into().ok())
+                        .collect::<Vec<ContentTaskType>>()
+                });
+                let payload = match task_types {
+                    Some(task_types) => payload.with_tasks(&task_types),
+                    None => payload,
+                };
+                content_base
+                    .cancel_task(payload)
+                    .await
+                    .map_err(convert_anyhow_error)?;
+
+                Ok(())
+            })
+        })
+        .mutation("regenerate", |t| {
+            t(|ctx: TCtx, input: TaskRedoRequestPayload| async move {
+                let library = ctx.library()?;
+                let asset_object_data = library
+                    .prisma_client()
+                    .asset_object()
+                    .find_unique(asset_object::id::equals(input.asset_object_id))
+                    .exec()
+                    .await?
+                    .ok_or(anyhow::anyhow!("not found"))
+                    .map_err(convert_anyhow_error)?;
+
+                library
+                    .prisma_client()
+                    .file_handler_task()
+                    .delete_many(vec![file_handler_task::asset_object_id::equals(
+                        input.asset_object_id,
+                    )])
+                    .exec()
+                    .await?;
+
+                // delete existed artifacts
+                let content_base = ctx.content_base()?;
+                let payload = DeletePayload::new(&asset_object_data.hash);
+                content_base
+                    .delete(payload)
+                    .await
+                    .map_err(convert_anyhow_error)?;
+
+                process_asset(&library, &ctx, asset_object_data.id, None).await?;
+
+                Ok(())
             })
         })
 }

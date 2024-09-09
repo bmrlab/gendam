@@ -3,7 +3,6 @@ extern crate accelerate_src;
 use crate::traits::{ImageCaptionInput, ImageCaptionOutput};
 use crate::Model;
 use anyhow::{anyhow, bail};
-use async_trait::async_trait;
 use candle_core::backend::BackendDevice;
 use candle_core::MetalDevice;
 use candle_core::{Device, Tensor};
@@ -12,11 +11,9 @@ use candle_transformers::models::blip::VisionConfig;
 use candle_transformers::models::quantized_blip;
 use candle_transformers::models::{blip, blip_text};
 use std::path::Path;
-use storage_macro::Storage;
 use tokenizers::Tokenizer;
 use tracing::debug;
 
-#[derive(Storage)]
 pub struct BLIP {
     tokenizer: Tokenizer,
     model: quantized_blip::BlipForConditionalGeneration,
@@ -65,7 +62,6 @@ pub enum BLIPModel {
     Large,
 }
 
-#[async_trait]
 impl Model for BLIP {
     type Item = ImageCaptionInput;
     type Output = ImageCaptionOutput;
@@ -161,10 +157,7 @@ impl BLIP {
     }
 
     pub fn load_image<P: AsRef<std::path::Path>>(&self, p: P) -> candle_core::Result<Tensor> {
-        let data = self
-            .read_blocking(p.as_ref().to_path_buf())
-            .map_err(candle_core::Error::wrap)?;
-        let img = image::io::Reader::new(std::io::Cursor::new(data.to_vec()))
+        let img = image::ImageReader::open(p)?
             .with_guessed_format()?
             .decode()
             .map_err(candle_core::Error::wrap)?

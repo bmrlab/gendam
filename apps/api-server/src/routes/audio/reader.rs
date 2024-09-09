@@ -1,5 +1,4 @@
 use ai::AudioTranscriptOutput;
-use async_trait::async_trait;
 use csv::WriterBuilder;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize, Serializer};

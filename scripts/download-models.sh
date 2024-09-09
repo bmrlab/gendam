@@ -2,8 +2,12 @@
 
 resources_dir="apps/desktop/src-tauri/resources"
 
-if [ ! -d "${resources_dir}/stella-base-zh-v3-1792d" ]; then
-  curl -L "https://gendam.s3.us-west-1.amazonaws.com/models/stella-base-zh-v3-1792d.tar.gz" | tar xz -C "${resources_dir}/"
+if [ ! -d "${resources_dir}/puff-base-v1" ]; then
+  curl -L "https://gendam.s3.us-west-1.amazonaws.com/models/puff-base-v1.tar.gz" | tar xz -C "${resources_dir}/"
+fi
+
+if [ ! -d "${resources_dir}/qwen2" ]; then
+  curl -L "https://gendam.s3.us-west-1.amazonaws.com/models/qwen2.tar.gz" | tar xz -C "${resources_dir}/"
 fi
 
 if [ ! -d "${resources_dir}/whisper" ]; then

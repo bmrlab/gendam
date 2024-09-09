@@ -21,8 +21,8 @@ pub enum AIModelCategory {
     ImageCaption,
     AudioTranscript,
     TextEmbedding,
+    LLM,
 }
-
 
 #[derive(AsRefStr, Debug, Clone, Serialize, Deserialize, PartialEq, Eq, EnumString, Type)]
 pub enum ConcreteModelType {
@@ -32,8 +32,10 @@ pub enum ConcreteModelType {
     OrtTextEmbedding,
     Whisper,
     Yolo,
+    Qwen2,
+    OpenAI,
+    AzureOpenAI,
 }
-
 
 #[derive(Serialize, Deserialize, Type, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
