@@ -27,7 +27,9 @@ function withFindSimilarExplorerItem(BaseComponent: BaseContextMenuItem) {
                 filePath: 'filePaths' in item ? item.filePaths[0] : void 0,
               })
             },
-            true,
+            // FIXME disable find similar items for now, because search.recommend is not implemented for now
+            // true,
+            false,
           ] as const
         })
         .otherwise(() => {

@@ -5,11 +5,13 @@ import { useVideoPlayer } from './useVideoPlayer'
 export function Video({
   assetObject,
   currentTime,
+  autoPlay,
 }: {
   assetObject: ExtractAssetObject<'video'>
   currentTime?: number
+  autoPlay?: boolean
 }) {
-  const videoRef = useVideoPlayer(assetObject, currentTime)
+  const videoRef = useVideoPlayer(assetObject, currentTime, autoPlay)
 
   return (
     <div

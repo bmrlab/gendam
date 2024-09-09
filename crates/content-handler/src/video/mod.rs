@@ -3,9 +3,8 @@ use content_metadata::{
     audio::AudioMetadata,
     video::{VideoAvgFrameRate, VideoMetadata},
 };
-use futures::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
-use std::{path::Path, pin::Pin, process::Stdio};
+use std::{path::Path, process::Stdio};
 use storage::add_tmp_suffix_to_path;
 use storage_macro::Storage;
 use tokio::process::Command;

@@ -10,7 +10,7 @@ import type Player from 'video.js/dist/types/player'
 
 const VIDEO_TS_SIZE = 10
 
-export const useVideoPlayer = (assetObject: ExtractAssetObject<'video'>, currentTime?: number) => {
+export const useVideoPlayer = (assetObject: ExtractAssetObject<'video'>, currentTime?: number, autoPlay?: boolean) => {
   const videoRef = useRef<HTMLDivElement>(null)
   const videoElementRef = useRef<HTMLVideoElement | null>(null)
   const currentLibrary = useCurrentLibrary()
@@ -66,6 +66,9 @@ export const useVideoPlayer = (assetObject: ExtractAssetObject<'video'>, current
 
     mediaSourceRef.current = new MediaSource()
     ;(videoElementRef.current.children[0] as HTMLVideoElement).src = URL.createObjectURL(mediaSourceRef.current)
+    if (currentTime) {
+      ;(videoElementRef.current.children[0] as HTMLVideoElement).currentTime = Math.floor(currentTime / 1e3)
+    }
 
     mediaSourceRef.current.addEventListener('sourceopen', async () => {
       sourceBufferRef.current = mediaSourceRef.current.addSourceBuffer('video/mp4; codecs="avc1.64001e, mp4a.40.2"')
@@ -108,13 +111,21 @@ export const useVideoPlayer = (assetObject: ExtractAssetObject<'video'>, current
 
     const player = playerRef.current
     player.duration = () => mediaData.duration
-    player.poster(currentLibrary.getThumbnailSrc(assetObject.hash, 'video'))
+    if (currentTime && currentTime > 0) {
+      player.poster(currentLibrary.getPreviewSrc(assetObject.hash, 'video', Math.floor(currentTime / 1e3)))
+    } else {
+      player.poster(currentLibrary.getThumbnailSrc(assetObject.hash, 'video'))
+    }
 
     const src = currentLibrary.getFileSrc(assetObject.hash)
     if (assetObject.mimeType?.includes('mp4')) {
-      player.src({ type: 'video/mp4', src })
+      player.src({ type: 'video/mp4', src, currentTime: currentTime ? Math.floor(currentTime / 1e3) : void 0 })
     } else {
       loadVideoTS()
+    }
+
+    if (autoPlay) {
+      player.play()
     }
   }
 
@@ -187,8 +198,8 @@ export const useVideoPlayer = (assetObject: ExtractAssetObject<'video'>, current
   }, [])
 
   useEffect(() => {
-    if (videoElementRef.current && currentTime) {
-      videoElementRef.current.currentTime = Math.floor(currentTime / 1e3)
+    if (videoElementRef.current && videoElementRef.current.children?.[0] && currentTime) {
+      ;(videoElementRef.current.children[0] as HTMLVideoElement).currentTime = Math.floor(currentTime / 1e3)
     }
   }, [videoElementRef.current, currentTime])
 
