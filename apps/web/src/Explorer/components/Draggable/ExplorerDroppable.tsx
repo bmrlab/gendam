@@ -4,6 +4,7 @@ import { useDroppable, UseDroppableArguments } from '@dnd-kit/core'
 import { createContext, HTMLAttributes, useContext, useMemo } from 'react'
 
 export interface UseExplorerDroppableProps extends Omit<UseDroppableArguments, 'id'> {
+  region?: 'Sidebar' | 'Toolbar' | 'StatusBar' // see below for more info
   data: ExplorerItem
 }
 
@@ -30,13 +31,15 @@ const ExplorerDroppable = ({
     }
   }, [droppable, explorerStore])
 
+  /**
+   * 给 id 加一个 region, 确保不同地方的文件夹有不同的 id，因为相同 id 的 droppable 只有一个会被 DND 使用
+   * 这个 id 只给 DND 组件用，在其他地方都直接用 data 的 id
+   */
+  const id = `${uniqueId(droppable.data)}`
   const { isOver, setNodeRef } = useDroppable({
-    id: uniqueId(droppable.data),
+    id: droppable.region ? `${id}-${droppable.region}` : id,
     data: droppable.data,
-    disabled: itemIsBeingDragged || !(
-      droppable.data.type === 'FilePath' &&
-      droppable.data.filePath.isDir
-    ),
+    disabled: itemIsBeingDragged || !(droppable.data.type === 'FilePath' && droppable.data.filePath.isDir),
   })
 
   /**
@@ -45,12 +48,14 @@ const ExplorerDroppable = ({
    */
   const isDroppable = useMemo(() => isOver, [isOver])
 
-  const context = useMemo(() => ({ isDroppable }), [isDroppable]);
+  const context = useMemo(() => ({ isDroppable }), [isDroppable])
 
   return (
     // 把 isDroppable (即 Droppable 的 isOver 等信息带到子元素中去)
     <ExplorerDroppableContext.Provider value={context}>
-      <div ref={setNodeRef} data-component-hint='ExplorerDroppable'>{children}</div>
+      <div ref={setNodeRef} data-component-hint="ExplorerDroppable">
+        {children}
+      </div>
     </ExplorerDroppableContext.Provider>
   )
 }

@@ -1,5 +1,5 @@
 'use client'
-import { DndContext } from '@/Explorer/components/Draggable/DndContext'
+// import { DndContext } from '@/Explorer/components/Draggable/DndContext'
 import DragOverlay from '@/Explorer/components/Draggable/DragOverlay'
 import GridView from '@/Explorer/components/LayoutView/GridView'
 import ListView from '@/Explorer/components/LayoutView/ListView'
@@ -7,11 +7,11 @@ import MediaView from '@/Explorer/components/LayoutView/MediaView'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { queryClient, rspc } from '@/lib/rspc'
-import { DragCancelEvent, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import { DragCancelEvent, DragEndEvent, DragStartEvent, useDndMonitor } from '@dnd-kit/core'
 import { HTMLAttributes, useCallback } from 'react'
 import Selecto from 'react-selecto'
 import { match, P } from 'ts-pattern'
-import { uniqueId, type ExplorerItem } from '../types'
+import { type ExplorerItem } from '../types'
 
 export default function ExplorerLayout({
   renderLayout,
@@ -84,16 +84,16 @@ export default function ExplorerLayout({
 
   const onDragEnd = useCallback(
     (e: DragEndEvent) => {
-      // console.log('onDragEnd', e)
+      console.log('onDragEnd', e)
       const target = (e.over?.data?.current as ExplorerItem) ?? null
       if (target && explorerStore.drag?.type === 'dragging') {
         for (let active of explorerStore.drag.items) {
-          if (uniqueId(target) !== uniqueId(active)) {
-            // console.log('move item', active, 'to', target)
-            handleMoveRequest(active, target)
-          } else {
+          if (target.type !== 'FilePath' || (active.type === 'FilePath' && active.filePath.id === target.filePath.id)) {
             // 这个应该不会出现，因为设置了 disabled
             console.log('cannot move to self')
+          } else {
+            // console.log('move item', active, 'to', target)
+            handleMoveRequest(active, target)
           }
         }
       }
@@ -109,6 +109,16 @@ export default function ExplorerLayout({
     },
     [explorerStore],
   )
+
+  /**
+   * 参考了 spacedrive/interface/app/$libraryId/Explorer/useExplorerDnd.tsx
+   * <DndContext> 在比较外层，但是绑定事件是在 Explorer 信息被初始化了以后
+   */
+  useDndMonitor({
+    onDragStart,
+    onDragEnd,
+    onDragCancel,
+  })
 
   function renderLayoutFromSettings() {
     function filtered<K extends ExplorerItem['type'], T extends Extract<ExplorerItem, K>>(
@@ -141,10 +151,11 @@ export default function ExplorerLayout({
 
   return (
     <div data-selecto-container onClick={() => explorer.resetSelectedItems()} {...props}>
-      <DndContext onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
+      {/* <DndContext onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}> */}
+      <>
         {renderLayout ? renderLayout() : renderLayoutFromSettings()}
         <DragOverlay />
-      </DndContext>
+      </>
       <Selecto
         dragContainer="[data-selecto-container]"
         selectableTargets={['[data-selecto-item]']}

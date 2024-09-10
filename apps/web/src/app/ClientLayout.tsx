@@ -4,6 +4,7 @@ import LibrariesSelect from '@/components/LibrariesSelect'
 import Shared from '@/components/Shared'
 import SonnerToaster from '@/components/SonnerToaster'
 import Viewport from '@/components/Viewport'
+import { DndContext } from '@/Explorer/components/Draggable/DndContext'
 import { useP2PEvents } from '@/hooks/useP2PEvents'
 import { Auth, LibrarySettings } from '@/lib/bindings'
 import { AssetObjectType, AssetPreviewMetadata, CurrentLibrary, type Library } from '@/lib/library'
@@ -250,7 +251,7 @@ export default function ClientLayout({
 
       return _getFullSrc(fileFullPath)
     },
-    [library],
+    [library, _getFullSrc],
   )
 
   const getPreviewSrc: AssetPreviewMetadata = useCallback(
@@ -274,7 +275,7 @@ export default function ClientLayout({
         })
         .exhaustive()
     },
-    [library],
+    [library, _getFullSrc],
   )
 
   return (
@@ -306,9 +307,12 @@ export default function ClientLayout({
               getPreviewSrc,
             }}
           >
-            <Viewport.Sidebar />
-            {children /* children should be a Viewport.Page element */}
-            <Shared />
+            <DndContext>
+              {/* see apps/web/src/Explorer/components/ExplorerLayout.tsx for more info about DndContext */}
+              <Viewport.Sidebar />
+              {children /* children should be a Viewport.Page element */}
+              <Shared />
+            </DndContext>
             <WebsocketLayout />
           </CurrentLibrary.Provider>
         )}

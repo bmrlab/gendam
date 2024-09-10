@@ -1,4 +1,5 @@
 'use client'
+import ExplorerDroppable from '@/Explorer/components/Draggable/ExplorerDroppable'
 import { FilePath } from '@/lib/bindings'
 import { queryClient, rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
@@ -81,19 +82,26 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
           <Icon.ArrowRight className={cn('size-3 transition-all duration-200', open ? 'rotate-90' : 'rotate-0')} />
         </div>
         {/* folder icon and name */}
-        <div
-          className={cn(
-            'my-1 flex items-center justify-start gap-2 overflow-hidden rounded py-1 pl-1 pr-2',
-            // selectionState.id === filePath.id ? "bg-sidebar-hover" : ""
-            highlight ? 'bg-sidebar-hover' : 'hover:bg-sidebar-hover',
-          )}
-          // onDoubleClick={(e) => onDoubleClick(e)}
-          // onClick={(e) => onClick(e)}
-          onClick={(e) => onDoubleClick(e)}
+        <ExplorerDroppable
+          droppable={{
+            data: { type: 'FilePath', filePath: filePath },
+            region: 'Sidebar',
+          }}
         >
-          <Image src={Folder_Light} alt="folder" priority className="h-auto w-5"></Image>
-          <div className="truncate text-xs">{filePath.name}</div>
-        </div>
+          <div
+            className={cn(
+              'my-1 flex items-center justify-start gap-2 overflow-hidden rounded py-1 pl-1 pr-2',
+              // selectionState.id === filePath.id ? "bg-sidebar-hover" : ""
+              highlight ? 'bg-sidebar-hover' : 'hover:bg-sidebar-hover',
+            )}
+            // onDoubleClick={(e) => onDoubleClick(e)}
+            // onClick={(e) => onClick(e)}
+            onClick={(e) => onDoubleClick(e)}
+          >
+            <Image src={Folder_Light} alt="folder" priority className="h-auto w-5"></Image>
+            <div className="truncate text-xs">{filePath.name}</div>
+          </div>
+        </ExplorerDroppable>
       </div>
       {/* children */}
       {open ? (
