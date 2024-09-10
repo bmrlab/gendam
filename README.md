@@ -1,26 +1,6 @@
+# GenDAM
+
 ## Getting Started
-
-### 日志
-
-~~可以增加 `RUST_LOG` 环境变量，进行 `debug!` 日志的输出: `RUST_LOG=debug cargo tauri dev`~~
-
-项目使用 `tracing_subscriber` 来配置日志,，api_server 和 tauri 的 main 入口启动的时候通过 `init_tracing` 方法来进行日志格式的初始化，并支持每个 crate 单独配置日志 level，格式是：
-
-```yaml
-# 根目录 .env 文件中配置
-# 配置单个
-RUST_LOG="api_server=debug"
-# 配置多个
-RUST_LOG="api_server=debug,ai=debug,file_downloader=debug,file_handler=debug,muse_desktop=debug,content_library=debug"
-```
-
-打包后的 app 会同时打印日志到 oslog 和 ` ~/Library/Logs/ai.gendam.desktop` 下，oslog 的查看方式是：
-
-```bash
-log stream --debug --predicate 'subsystem=="ai.gendam.desktop" and category=="default"'
-log stream --type log --level debug | grep "\[ai.gendam.desktop"
-log stream --type log --level debug | grep ai.gendam.desktop
-```
 
 ### 开发环境准备
 
@@ -94,7 +74,7 @@ generator client {
 
 5. `cargo prisma migrate dev` 以后，在代码里直接引入 `PrismaClient` 开始使用
 
-## File Handler
+## File Handler (deprecated)
 
 - video - 视频解码相关，包括抽帧、音频提取等，提供 `VideoHandler` 进行视频文件处理
   - decoder - 解码相关
@@ -102,3 +82,26 @@ generator client {
     - utils - 相关的工具函数
 - audio - 音频转文本（whisper.cpp）
 - search_payload - 向量数据库对应的 payload 定义
+
+
+## 日志
+
+~~可以增加 `RUST_LOG` 环境变量，进行 `debug!` 日志的输出: `RUST_LOG=debug cargo tauri dev`~~
+
+项目使用 `tracing_subscriber` 来配置日志,，api_server 和 tauri 的 main 入口启动的时候通过 `init_tracing` 方法来进行日志格式的初始化，并支持每个 crate 单独配置日志 level，格式是：
+
+```yaml
+# 根目录 .env 文件中配置
+# 配置单个
+RUST_LOG="api_server=debug"
+# 配置多个
+RUST_LOG="api_server=debug,ai=debug,file_downloader=debug,file_handler=debug,muse_desktop=debug,content_library=debug"
+```
+
+打包后的 app 会同时打印日志到 oslog 和 ` ~/Library/Logs/ai.gendam.desktop` 下，oslog 的查看方式是：
+
+```bash
+log stream --debug --predicate 'subsystem=="ai.gendam.desktop" and category=="default"'
+log stream --type log --level debug | grep "\[ai.gendam.desktop"
+log stream --type log --level debug | grep ai.gendam.desktop
+```
