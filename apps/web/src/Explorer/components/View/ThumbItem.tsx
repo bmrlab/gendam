@@ -1,5 +1,5 @@
-import FileThumb from '@/components/FileContent/Thumb'
-import { ThumbnailVariant } from '@/components/FileContent/Thumb/types'
+import FileThumb from '@/components/MediaViewer/Thumb'
+import { ThumbnailVariant } from '@/components/MediaViewer/Thumb/types'
 import { ExtractExplorerItem } from '@/Explorer/types'
 import { Document_Light, Folder_Light } from '@gendam/assets/images'
 import classNames from 'classnames'
