@@ -20,9 +20,9 @@ use surrealdb::Surreal;
 use tracing::{debug, error};
 
 mod constant;
-mod model;
+pub mod model;
 mod sql;
-mod utils;
+pub mod utils;
 
 #[derive(Clone)]
 pub struct DB {
