@@ -1,5 +1,5 @@
 use crate::db::model::PageModel;
 
-pub struct WebModel {
+pub struct WebPageModel {
     pub data: Vec<PageModel>,
 }
