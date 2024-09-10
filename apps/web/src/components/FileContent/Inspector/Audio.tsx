@@ -1,3 +1,4 @@
+import Audio from '@/components/MediaViewer/Audio'
 import { ExtractExplorerItem } from '@/Explorer/types'
 import { formatDuration } from '@/lib/utils'
 import {
@@ -9,7 +10,6 @@ import {
   InspectorItemTasks,
   InspectorItemViewer,
 } from '.'
-import Audio from '../../FileView/Audio'
 import { useSortedTasks } from './hooks'
 
 export default function AudioDetail({ filePath, assetObject }: ExtractExplorerItem<'FilePath', 'audio'>) {

@@ -1,4 +1,4 @@
-import RawTextViewer from '@/components/FileView/RawText'
+import RawTextViewer from '@/components/MediaViewer/RawText'
 import { ExtractExplorerItemWithType } from '@/Explorer/types'
 
 export default function RawTextQuickView(props: ExtractExplorerItemWithType<'rawText'>) {

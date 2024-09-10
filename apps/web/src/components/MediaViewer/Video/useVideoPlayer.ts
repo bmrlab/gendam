@@ -4,7 +4,7 @@ import { useCurrentLibrary } from '@/lib/library'
 import { client } from '@/lib/rspc'
 import { timeToSeconds } from '@/lib/utils'
 import muxjs from 'mux.js'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import videojs from 'video.js'
 import type Player from 'video.js/dist/types/player'
 
@@ -21,7 +21,6 @@ export const useVideoPlayer = (
   assetObject: ExtractAssetObject<'video'>,
   { currentTime, controls, autoPlay, loop, muted }: VideoPlayerOptions,
 ) => {
-  const [initialized, setInitialized] = useState(false)
   const videoRef = useRef<HTMLDivElement>(null)
   const videoElementRef = useRef<HTMLVideoElement | null>(null)
   const currentLibrary = useCurrentLibrary()

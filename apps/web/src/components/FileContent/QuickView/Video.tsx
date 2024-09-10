@@ -1,4 +1,4 @@
-import { Video } from '@/components/FileView/Video'
+import { Video } from '@/components/MediaViewer/Video'
 import { ExtractExplorerItemWithType } from '@/Explorer/types'
 
 export default function VideoQuickView(props: ExtractExplorerItemWithType<'video'>) {

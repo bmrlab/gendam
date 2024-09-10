@@ -1,3 +1,4 @@
+import { Video } from '@/components/MediaViewer/Video'
 import { ExtractExplorerItem } from '@/Explorer/types'
 import { formatDuration } from '@/lib/utils'
 import {
@@ -9,7 +10,6 @@ import {
   InspectorItemTasks,
   InspectorItemViewer,
 } from '.'
-import { Video } from '../../FileView/Video'
 import { useSortedTasks } from './hooks'
 
 export default function VideoDetail({ filePath, assetObject }: ExtractExplorerItem<'FilePath', 'video'>) {

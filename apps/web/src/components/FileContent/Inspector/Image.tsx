@@ -1,4 +1,4 @@
-import ImageViewer from '@/components/FileView/Image'
+import ImageViewer from '@/components/MediaViewer/Image'
 import { ExtractExplorerItem } from '@/Explorer/types'
 import {
   InspectorItemContainer,

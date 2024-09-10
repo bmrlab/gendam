@@ -1,4 +1,4 @@
-import WebPageViewer from '@/components/FileView/WebPage'
+import WebPageViewer from '@/components/MediaViewer/WebPage'
 import { ExtractExplorerItemWithType } from '@/Explorer/types'
 
 export default function WebPageQuickView({

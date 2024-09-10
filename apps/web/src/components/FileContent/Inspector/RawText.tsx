@@ -1,4 +1,4 @@
-import RawTextViewer from '@/components/FileView/RawText'
+import RawTextViewer from '@/components/MediaViewer/RawText'
 import { ExtractExplorerItem } from '@/Explorer/types'
 import {
   InspectorItemContainer,

@@ -1,4 +1,4 @@
-import WebPageViewer from '@/components/FileView/WebPage'
+import WebPageViewer from '@/components/MediaViewer/WebPage'
 import { ExtractExplorerItem } from '@/Explorer/types'
 import {
   InspectorItemContainer,

@@ -1,4 +1,4 @@
-import Audio from '@/components/FileView/Audio'
+import Audio from '@/components/MediaViewer/Audio'
 import { ExtractExplorerItemWithType } from '@/Explorer/types'
 
 export default function AudioQuickView({
