@@ -374,6 +374,9 @@ mod test {
     use content_base_task::ContentTaskType;
     use rand::Rng;
     use test_log::test;
+    use content_base_task::video::trans_chunk::VideoTransChunkTask;
+    use content_base_task::video::VideoTaskType;
+    use crate::query::payload::video::VideoSearchMetadata;
 
     async fn setup() -> DB {
         dotenvy::dotenv().ok();
@@ -471,5 +474,60 @@ mod test {
             .await
             .unwrap();
         assert_eq!(id.tb(), &TB::Audio);
+    }
+    
+    #[test(tokio::test)]
+    async fn test_insert_video() {
+        let db = setup().await;
+        let id = db
+            .insert_video(
+                crate::db::model::video::VideoModel {
+                    image_frame: vec![crate::db::model::video::ImageFrameModel {
+                        data: vec![
+                            ImageModel {
+                                prompt: "p3".to_string(),
+                                vector: gen_vector(),
+                                prompt_vector: gen_vector(),
+                            },
+                            ImageModel {
+                                prompt: "p4".to_string(),
+                                vector: gen_vector(),
+                                prompt_vector: gen_vector(),
+                            },
+                        ],
+                        start_timestamp: 0.0,
+                        end_timestamp: 1.0,
+                    }],
+                    audio_frame: vec![crate::db::model::audio::AudioFrameModel {
+                        data: vec![
+                            TextModel {
+                                data: "data".to_string(),
+                                vector: gen_vector(),
+                                en_data: "en_data".to_string(),
+                                en_vector: gen_vector(),
+                            },
+                            TextModel {
+                                data: "data2".to_string(),
+                                vector: gen_vector(),
+                                en_data: "en_data2".to_string(),
+                                en_vector: gen_vector(),
+                            },
+                        ],
+                        start_timestamp: 0.0,
+                        end_timestamp: 1.0,
+                    }],
+                },
+                SearchPayload {
+                    file_identifier: "file_identifier_video".to_string(),
+                    task_type: ContentTaskType::Video(VideoTaskType::TransChunk(VideoTransChunkTask {})),
+                    metadata: SearchMetadata::Video(VideoSearchMetadata { 
+                        start_timestamp: 0,
+                        end_timestamp: 1,
+                    }),
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(id.tb(), &TB::Video);
     }
 }
