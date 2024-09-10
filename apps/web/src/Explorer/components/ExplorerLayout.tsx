@@ -24,8 +24,8 @@ export default function ExplorerLayout({
   const moveMut = rspc.useMutation(['assets.move_file_path'])
 
   const handleMoveRequest = useCallback(
-    async (active: ExplorerItem, target: ExplorerItem | null) => {
-      if (active.type !== 'FilePath' || (target && target.type !== 'FilePath')) {
+    async (active: ExplorerItem, target: ExplorerItem) => {
+      if (active.type !== 'FilePath' || (target.type !== 'LibraryRoot' && target.type !== 'FilePath')) {
         // 现阶段只支持 FilePath 可以被移动
         return
       }
@@ -37,14 +37,15 @@ export default function ExplorerLayout({
             isDir: active.filePath.isDir,
             name: active.filePath.name,
           },
-          target: target
-            ? {
-                id: target.filePath.id,
-                materializedPath: target.filePath.materializedPath,
-                isDir: target.filePath.isDir,
-                name: target.filePath.name,
-              }
-            : null,
+          target:
+            target.type === 'LibraryRoot'
+              ? null
+              : {
+                  id: target.filePath.id,
+                  materializedPath: target.filePath.materializedPath,
+                  isDir: target.filePath.isDir,
+                  name: target.filePath.name,
+                },
         })
       } catch (error) {}
       queryClient.invalidateQueries({
@@ -54,7 +55,8 @@ export default function ExplorerLayout({
         queryKey: [
           'assets.list',
           {
-            materializedPath: target ? target.filePath.materializedPath + target.filePath.name + '/' : '/',
+            materializedPath:
+              target.type === 'LibraryRoot' ? '/' : target.filePath.materializedPath + target.filePath.name + '/',
           },
         ],
       })
@@ -84,17 +86,18 @@ export default function ExplorerLayout({
 
   const onDragEnd = useCallback(
     (e: DragEndEvent) => {
-      console.log('onDragEnd', e)
+      // console.log('onDragEnd', e)
       const target = (e.over?.data?.current as ExplorerItem) ?? null
       if (target && explorerStore.drag?.type === 'dragging') {
+        // ExplorerDroppable 已经确保了 target 是 FilePath & isDir 或者是 LibraryRoot
         for (let active of explorerStore.drag.items) {
-          if (target.type !== 'FilePath' || (active.type === 'FilePath' && active.filePath.id === target.filePath.id)) {
+          if (active.type === 'FilePath' && target.type === 'FilePath' && active.filePath.id === target.filePath.id) {
             // 这个应该不会出现，因为设置了 disabled
             console.log('cannot move to self')
-          } else {
-            // console.log('move item', active, 'to', target)
-            handleMoveRequest(active, target)
+            continue
           }
+          // console.log('move item', active, 'to', target)
+          handleMoveRequest(active, target)
         }
       }
       explorerStore.setDrag(null)

@@ -154,9 +154,11 @@ export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement
       // onClick={() => selectionState.set(null)}
     >
       <div className="text-ink/50 mb-1 ml-5 mr-5 flex items-center justify-between text-xs font-medium">
-        <div className="hover:bg-sidebar-hover rounded p-1" onClick={(e) => router.push('/explorer')}>
-          Folders
-        </div>
+        <ExplorerDroppable droppable={{ data: { type: 'LibraryRoot' }, region: 'Sidebar' }}>
+          <div className="hover:bg-sidebar-hover rounded p-1" onClick={(e) => router.push('/explorer')}>
+            Folders
+          </div>
+        </ExplorerDroppable>
         <div onClick={createNewFolder} className="hover:bg-sidebar-hover rounded p-1">
           <Icon.Add className="size-3" />
         </div>

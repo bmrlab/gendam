@@ -2,7 +2,8 @@ import type { AssetObject, ContentTaskType, FilePath, SearchResultMetadata } fro
 import { AssetObjectType } from '@/lib/library'
 import { match } from 'ts-pattern'
 
-export type ExplorerItemType = 'FilePath' | 'SearchResult' | 'RetrievalResult' | 'Unknown'
+// LibraryRoot is a special type of item that represents the root of the library
+export type ExplorerItemType = 'FilePath' | 'SearchResult' | 'RetrievalResult' | 'LibraryRoot' | 'Unknown'
 export type RawFilePath = Omit<FilePath, 'assetObject'>
 
 type BaseItem = {
@@ -32,7 +33,11 @@ type UnknownItem = {
   type: 'Unknown'
 }
 
-export type ExplorerItem = FilePathItem | SearchResultItem | RetrievalResultItem | UnknownItem
+type LibraryRootItem = {
+  type: 'LibraryRoot'
+}
+
+export type ExplorerItem = FilePathItem | SearchResultItem | RetrievalResultItem | LibraryRootItem | UnknownItem
 
 type ValidContentTaskType<T extends AssetObjectType = AssetObjectType> = Extract<
   ContentTaskType,
@@ -60,25 +65,26 @@ export type ExtractRetrievalResultItem<
   }
 
 export type ExtractExplorerItem<
-  T extends ExplorerItemType = 'FilePath' | 'SearchResult' | 'RetrievalResult',
+  T extends ExplorerItemType = 'FilePath' | 'SearchResult' | 'RetrievalResult' | 'LibraryRoot' | 'Unknown',
   V extends AssetObjectType = AssetObjectType,
   U extends ValidContentTaskType<V> = ValidContentTaskType<V>,
-> = T extends 'Unknown'
-  ? UnknownItem
-  : T extends 'FilePath'
-    ? ExtractFilePathItem<V>
-    : T extends 'SearchResult'
-      ? ExtractSearchResultItem<V>
-      : RetrievalResultItem &
+> = T extends 'FilePath'
+  ? ExtractFilePathItem<V>
+  : T extends 'SearchResult'
+    ? ExtractSearchResultItem<V>
+    : T extends 'RetrievalResult'
+      ? RetrievalResultItem &
           ExtractBaseSearchResultItem<V> & {
             taskType: { contentType: V; taskType: U }
           }
+      : T extends 'LibraryRoot'
+        ? LibraryRootItem
+        : UnknownItem
 
 export type ExtractExplorerItemWithType<T extends AssetObjectType = AssetObjectType> =
   | ExtractFilePathItem<T>
   | ExtractSearchResultItem<T>
   | ExtractRetrievalResultItem<T>
-
 
 export function uniqueId(item: ExplorerItem): string {
   switch (item.type) {
@@ -88,6 +94,8 @@ export function uniqueId(item: ExplorerItem): string {
       return `SearchResult:${item.assetObject.id}:${uniqueIdForSearchMetadata(item.metadata)}`
     case 'RetrievalResult':
       return `RetrievalResult:${item.assetObject.id}:${item.taskType}:${uniqueIdForSearchMetadata(item.metadata)}`
+    case 'LibraryRoot':
+      return 'LibraryRoot'
     case 'Unknown':
       return `Unknown:${Math.random()}`
   }
