@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { BaseContextMenuItem } from './types'
 
 function withUploadExplorerItem(BaseComponent: BaseContextMenuItem) {
-  return () => {
+  return function ContextMenuUpload() {
     const explorer = useExplorerContext()
     const { mutateAsync: uploadToS3 } = rspc.useMutation(['storage.upload_to_s3'])
 
@@ -34,7 +34,7 @@ function withUploadExplorerItem(BaseComponent: BaseContextMenuItem) {
           toast.error('Upload failed')
         }
       }
-    }, [selectedFilePathItems])
+    }, [selectedFilePathItems, uploadToS3])
 
     return (
       <ContextMenu.Item onSelect={handleUpload} disabled={explorer.selectedItems.size > 1}>

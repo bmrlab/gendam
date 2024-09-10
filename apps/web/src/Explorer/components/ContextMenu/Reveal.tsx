@@ -5,7 +5,7 @@ import { useCallback } from 'react'
 import { BaseContextMenuItem } from './types'
 
 function withRevealExplorerItem(BaseComponent: BaseContextMenuItem) {
-  return () => {
+  return function ContextMenuReveal() {
     const router = useRouter()
     const explorer = useExplorerContext()
 

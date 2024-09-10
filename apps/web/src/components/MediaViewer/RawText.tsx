@@ -12,7 +12,16 @@ export default function RawTextViewer({ hash, variant }: { hash: string; variant
     fetch(textUrl).then((resp) => {
       resp.text().then(setText)
     })
-  }, [hash])
+  }, [hash, currentLibrary])
 
-  return <div className={classNames('h-full w-full p-2 overflow-scroll select-text cursor-text whitespace-pre-line', variant === 'sm' && 'text-sm')}>{text}</div>
+  return (
+    <div
+      className={classNames(
+        'h-full w-full cursor-text select-text overflow-scroll whitespace-pre-line p-2',
+        variant === 'sm' && 'text-sm',
+      )}
+    >
+      {text}
+    </div>
+  )
 }

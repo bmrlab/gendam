@@ -41,7 +41,7 @@ const DroppableInner: React.FC<
     } else {
       return [filePath.name.slice(0, -4), filePath.name.slice(-4)]
     }
-  }, [filePath?.name])
+  }, [filePath])
 
   return (
     <div {...props}>
@@ -97,7 +97,7 @@ const GridItem: React.FC<
         quickViewStore.open(data)
       }
     },
-    [data, explorer, router, explorerStore, quickViewStore],
+    [data, explorer, router, explorerStore, quickViewStore, filePath],
   )
 
   return (

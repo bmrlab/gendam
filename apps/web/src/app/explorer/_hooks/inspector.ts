@@ -52,12 +52,12 @@ export function useResizableInspector() {
       startWidthRef.current = width
     }
 
-    ref.current?.addEventListener('mousedown', handleMouseDown)
-
+    const refCurrent = ref.current
+    refCurrent?.addEventListener('mousedown', handleMouseDown)
     return () => {
-      ref.current?.removeEventListener('mousedown', handleMouseDown)
+      refCurrent?.removeEventListener('mousedown', handleMouseDown)
     }
-  }, [ref.current, width])
+  }, [width])
 
   useEffect(() => {
     if (width && !isResizing) {
@@ -65,7 +65,7 @@ export function useResizableInspector() {
         inspectorSize: width,
       })
     }
-  }, [width, isResizing])
+  }, [width, isResizing, currentLibrary])
 
   return { handleRef: ref, width, isResizing }
 }

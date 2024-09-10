@@ -7,7 +7,7 @@ import { useCallback } from 'react'
 import { BaseContextMenuItem } from './types'
 
 function withOpenExplorerItem(BaseComponent: BaseContextMenuItem) {
-  return () => {
+  return function ContextMenuOpen() {
     const router = useRouter()
     const explorer = useExplorerContext()
     const explorerStore = useExplorerStore()

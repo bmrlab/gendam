@@ -8,6 +8,7 @@ function ViewerControls({ src }: { src: string }) {
   // every time the src changes, reset to default view
   useEffect(() => {
     zoomToElement('image-viewer', void 0, 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src])
 
   return <></>
@@ -36,6 +37,7 @@ export function BasicImageViewer({ src, alt }: { src: string; alt: string }) {
             justifyContent: 'start',
           }}
         >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img id="image-viewer" src={src} alt={alt} />
         </TransformComponent>
       </>

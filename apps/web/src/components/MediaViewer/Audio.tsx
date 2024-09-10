@@ -41,7 +41,7 @@ export default function Audio({ hash, duration, className }: { hash: string; dur
         wavesurfer?.load(audioUrl)
       }
     })()
-  }, [wavesurfer])
+  }, [wavesurfer, currentLibrary, duration, hash])
 
   useEffect(() => {
     wavesurfer?.on('click', () => {

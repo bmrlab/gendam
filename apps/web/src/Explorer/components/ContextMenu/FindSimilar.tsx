@@ -7,7 +7,7 @@ import { match, P } from 'ts-pattern'
 import { BaseContextMenuItem } from './types'
 
 function withFindSimilarExplorerItem(BaseComponent: BaseContextMenuItem) {
-  return () => {
+  return function ContextMenuFindSimilar() {
     const explorer = useExplorerContext()
     const searchQuery = useSearchPageContext()
 

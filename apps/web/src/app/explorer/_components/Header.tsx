@@ -67,14 +67,14 @@ export default function Header() {
     if (filesDropped.length > 0) {
       handleSelectFiles(filesDropped)
     }
-  }, [filesDropped])
+  }, [filesDropped, handleSelectFiles])
 
   const { filesPasted } = useClipboardPaste()
   useEffect(() => {
     if (filesPasted.length > 0) {
       handleSelectFiles(filesPasted)
     }
-  }, [filesPasted])
+  }, [filesPasted, handleSelectFiles])
 
   return (
     <>

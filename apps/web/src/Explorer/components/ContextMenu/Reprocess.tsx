@@ -5,7 +5,7 @@ import { useCallback, useMemo } from 'react'
 import { BaseContextMenuItem } from './types'
 
 function withReprocessExplorerItem(BaseComponent: BaseContextMenuItem) {
-  return () => {
+  return function ContextMenuReprocess() {
     const explorer = useExplorerContext()
 
     const processJobsMut = rspc.useMutation(['tasks.regenerate'])

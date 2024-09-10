@@ -24,7 +24,7 @@ export const useClipboardPaste = () => {
     return () => {
       window.removeEventListener('paste', handlePaste)
     }
-  }, [])
+  }, [handlePaste])
 
   // tip: 其他类型的 pasted object, 如果需要监听也在这里返回
   return { filesPasted }

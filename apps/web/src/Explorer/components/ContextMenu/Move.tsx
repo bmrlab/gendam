@@ -4,7 +4,7 @@ import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { BaseContextMenuItem } from './types'
 
 function withMoveExplorerItem(BaseComponent: BaseContextMenuItem) {
-  return () => {
+  return function ContextMenuMove() {
     const { openFileSelection } = useOpenFileSelection()
     const { onMoveTargetSelected } = useMoveTargetSelected()
 

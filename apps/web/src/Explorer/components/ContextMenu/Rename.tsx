@@ -5,7 +5,7 @@ import { useCallback } from 'react'
 import { BaseContextMenuItem } from './types'
 
 function withRenameExplorerItem(BaseComponent: BaseContextMenuItem) {
-  return () => {
+  return function ContextMenuRename() {
     const explorer = useExplorerContext()
     const explorerStore = useExplorerStore()
 

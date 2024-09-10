@@ -70,7 +70,7 @@ const LibrarySettings: React.FC = () => {
   useEffect(() => {
     setTitle(currentLibrary.librarySettings.title)
     setAlwaysDeleteAfterUploadChecked(currentLibrary.librarySettings.alwaysDeleteLocalFileAfterUpload)
-  }, [currentLibrary.librarySettings.title])
+  }, [currentLibrary.librarySettings])
 
   return (
     <div>

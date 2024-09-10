@@ -5,13 +5,13 @@ import { useCallback, useMemo } from 'react'
 import { BaseContextMenuItem } from './types'
 
 function withDeleteExplorerItem(BaseComponent: BaseContextMenuItem) {
-  return () => {
+  return function ContextMenuDelete() {
     const deleteMut = rspc.useMutation(['assets.delete_file_path'])
     const explorer = useExplorerContext()
 
     const selectedFilePathItems = useMemo(() => {
       return Array.from(explorer.selectedItems).filter((item) => item.type === 'FilePath')
-    }, [])
+    }, [explorer.selectedItems])
 
     const handleDelete = useCallback(
       async (e: Event) => {

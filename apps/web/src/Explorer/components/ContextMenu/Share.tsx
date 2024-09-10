@@ -6,7 +6,7 @@ import { useCallback, useMemo } from 'react'
 import { BaseContextMenuItem } from './types'
 
 function withShareExplorerItem(BaseComponent: BaseContextMenuItem) {
-  return () => {
+  return function ContextMenuShare() {
     const explorer = useExplorerContext()
 
     const p2pStateQuery = rspc.useQuery(['p2p.state'])

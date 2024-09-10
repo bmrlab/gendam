@@ -25,7 +25,7 @@ export default function InspectorItem({ data }: { data: ExplorerItem | null }) {
     if (!containerRef.current) return
 
     setViewerHeight(containerRef.current.clientWidth)
-  }, [containerRef, containerRef.current?.clientWidth])
+  }, [containerRef, containerRef.current?.clientWidth, setViewerHeight])
 
   return (
     <div className="h-full w-full overflow-x-hidden overflow-y-scroll" ref={containerRef}>

@@ -5,7 +5,7 @@ import { useCallback } from 'react'
 import { BaseContextMenuItem } from './types'
 
 function withShowInspectorExplorerItem(BaseComponent: BaseContextMenuItem) {
-  return () => {
+  return function ContextMenuDetails() {
     const explorer = useExplorerContext()
     const inspector = useInspector()
 

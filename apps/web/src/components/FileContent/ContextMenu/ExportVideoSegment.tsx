@@ -59,7 +59,7 @@ export default function VideoExportContextMenu() {
     }
 
     return [exportSegment, true]
-  }, [explorer.selectedItems])
+  }, [explorer.selectedItems, exportSegmentMut])
 
   return (
     <ContextMenu.Item onSelect={handleExport} disabled={!valid}>

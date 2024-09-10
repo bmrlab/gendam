@@ -5,7 +5,7 @@ import { useCallback, useMemo } from 'react'
 import { BaseContextMenuItem } from './types'
 
 function withProcessMetadataExplorerItem(BaseComponent: BaseContextMenuItem) {
-  return () => {
+  return function ContextMenuProcessMetadata() {
     const explorer = useExplorerContext()
     const metadataMut = rspc.useMutation(['assets.process_asset_metadata'])
 
@@ -26,7 +26,7 @@ function withProcessMetadataExplorerItem(BaseComponent: BaseContextMenuItem) {
           })
         }
       },
-      [validAssetObjects, metadataMut],
+      [validAssetObjects, metadataMut, explorer.materializedPath],
     )
 
     return (
