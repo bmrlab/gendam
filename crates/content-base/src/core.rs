@@ -1,5 +1,5 @@
 use std::sync::Arc;
-
+use futures::executor::block_on;
 use crate::ContentBase;
 use content_base_context::ContentBaseCtx;
 use content_base_pool::{TaskPool, TaskPriority};
@@ -13,6 +13,7 @@ use content_base_task::{
 };
 use content_metadata::ContentMetadata;
 use qdrant_client::Qdrant;
+use crate::db::DB;
 
 impl ContentBase {
     /// Create a new ContentBase with Context. The context will be cloned,
@@ -24,10 +25,12 @@ impl ContentBase {
         vision_collection_name: &str,
     ) -> anyhow::Result<Self> {
         let task_pool = TaskPool::new(ctx, None)?;
+        let db = block_on(DB::new());
         Ok(Self {
             ctx: ctx.clone(),
             task_pool,
             qdrant: qdrant_client,
+            db: Arc::new(db),
             language_collection_name: language_collection_name.to_string(),
             vision_collection_name: vision_collection_name.to_string(),
         })
