@@ -1,4 +1,3 @@
-use crate::collect_async_results;
 use crate::db::constant::{
     DATABASE_HOST, DATABASE_NAME, DATABASE_NS, DATABASE_PASSWORD, DATABASE_PORT, DATABASE_USER,
 };
@@ -6,9 +5,11 @@ use crate::db::model::audio::{AudioFrameModel, AudioModel};
 use crate::db::model::id::ID;
 use crate::db::model::payload::PayloadModel;
 use crate::db::model::video::{ImageFrameModel, VideoModel};
-use crate::db::model::{ImageModel, TextModel};
+use crate::db::model::web::WebPageModel;
+use crate::db::model::{ImageModel, PageModel, TextModel};
 use crate::db::sql::CREATE_TABLE;
 use crate::query::payload::SearchPayload;
+use crate::{collect_async_results, concat_arrays};
 use anyhow::bail;
 use std::env;
 use surrealdb::engine::remote::ws::{Client, Ws};
@@ -326,9 +327,98 @@ impl DB {
         }
     }
 
-    pub async fn insert_document(&self) {}
+    pub async fn insert_page(&self, data: PageModel) -> anyhow::Result<ID> {
+        let text_ids = self
+            .batch_insert_text(data.text)
+            .await?
+            .into_iter()
+            .map(|id| id.id_with_table())
+            .collect::<Vec<String>>();
+        let image_ids = self
+            .batch_insert_image(data.image)
+            .await?
+            .into_iter()
+            .map(|id| id.id_with_table())
+            .collect::<Vec<String>>();
+        let image_frame = if text_ids.is_empty() {
+            "text: []".to_string()
+        } else {
+            format!("text: [{}]", text_ids.join(", "))
+        };
 
-    pub async fn insert_web_page(&self) {}
+        let audio_frame = if image_ids.is_empty() {
+            "image: []".to_string()
+        } else {
+            format!("image: [{}]", image_ids.join(", "))
+        };
+
+        let sql = format!(
+            "(CREATE ONLY page CONTENT {{ {}, {}, start_index: {}, end_index: {} }}).id",
+            image_frame, audio_frame, data.start_index, data.end_index
+        );
+        let mut res = self.client.query(&sql).await?;
+        match res.take::<Option<Thing>>(0)? {
+            Some(id) => {
+                let id: ID = id.into();
+                self.create_contain_relation(
+                    &id.id_with_table(),
+                    concat_arrays!(text_ids, image_ids)
+                        .to_vec()
+                        .iter()
+                        .map(|id| id.as_str())
+                        .collect(),
+                )
+                .await?;
+                Ok(id)
+            }
+            None => Err(anyhow::anyhow!("Failed to insert page")),
+        }
+    }
+
+    async fn batch_insert_page(&self, pages: Vec<PageModel>) -> anyhow::Result<Vec<ID>> {
+        let futures = pages
+            .into_iter()
+            .map(|page| self.insert_page(page))
+            .collect::<Vec<_>>();
+        collect_async_results!(futures)
+    }
+
+    pub async fn insert_web_page(
+        &self,
+        web_page: WebPageModel,
+        payload: SearchPayload,
+    ) -> anyhow::Result<ID> {
+        let page_ids = self
+            .batch_insert_page(web_page.data)
+            .await?
+            .into_iter()
+            .map(|id| id.id_with_table())
+            .collect::<Vec<String>>();
+        if page_ids.is_empty() {
+            bail!("Failed to insert web page, page is empty");
+        }
+        let sql = format!(
+            "(CREATE ONLY web CONTENT {{ data: [{}] }}).id",
+            page_ids.join(", ")
+        );
+        let mut res = self.client.query(&sql).await?;
+        match res.take::<Option<Thing>>(0)? {
+            Some(id) => {
+                let id: ID = id.into();
+                self.create_contain_relation(
+                    &id.id_with_table(),
+                    page_ids.iter().map(|id| id.as_str()).collect(),
+                )
+                .await?;
+                let payload_id = self.create_payload(payload.into()).await?;
+                self.create_with_relation(&id, &payload_id).await?;
+                Ok(id)
+            }
+            None => Err(anyhow::anyhow!("Failed to insert web page")),
+        }
+    }
+
+    pub async fn insert_document(&self) {}
 }
 
 // 关系
@@ -367,16 +457,18 @@ mod test {
     use crate::db::model::{ImageModel, TextModel};
     use crate::db::DB;
     use crate::query::payload::image::ImageSearchMetadata;
+    use crate::query::payload::video::VideoSearchMetadata;
     use crate::query::payload::{SearchMetadata, SearchPayload};
     use content_base_task::audio::trans_chunk::AudioTransChunkTask;
     use content_base_task::image::desc_embed::ImageDescEmbedTask;
     use content_base_task::image::ImageTaskType;
+    use content_base_task::video::trans_chunk::VideoTransChunkTask;
+    use content_base_task::video::VideoTaskType;
+    use content_base_task::web_page::transform::WebPageTransformTask;
+    use content_base_task::web_page::WebPageTaskType;
     use content_base_task::ContentTaskType;
     use rand::Rng;
     use test_log::test;
-    use content_base_task::video::trans_chunk::VideoTransChunkTask;
-    use content_base_task::video::VideoTaskType;
-    use crate::query::payload::video::VideoSearchMetadata;
 
     async fn setup() -> DB {
         dotenvy::dotenv().ok();
@@ -519,8 +611,10 @@ mod test {
                 },
                 SearchPayload {
                     file_identifier: "file_identifier_video".to_string(),
-                    task_type: ContentTaskType::Video(VideoTaskType::TransChunk(VideoTransChunkTask {})),
-                    metadata: SearchMetadata::Video(VideoSearchMetadata { 
+                    task_type: ContentTaskType::Video(VideoTaskType::TransChunk(
+                        VideoTransChunkTask {},
+                    )),
+                    metadata: SearchMetadata::Video(VideoSearchMetadata {
                         start_timestamp: 0,
                         end_timestamp: 1,
                     }),
@@ -529,5 +623,131 @@ mod test {
             .await
             .unwrap();
         assert_eq!(id.tb(), &TB::Video);
+    }
+
+    #[test(tokio::test)]
+    async fn test_insert_page() {
+        let db = setup().await;
+        let id = db
+            .insert_page(crate::db::model::PageModel {
+                text: vec![
+                    TextModel {
+                        data: "data".to_string(),
+                        vector: gen_vector(),
+                        en_data: "en_data".to_string(),
+                        en_vector: gen_vector(),
+                    },
+                    TextModel {
+                        data: "data2".to_string(),
+                        vector: gen_vector(),
+                        en_data: "en_data2".to_string(),
+                        en_vector: gen_vector(),
+                    },
+                ],
+                image: vec![
+                    ImageModel {
+                        prompt: "p3".to_string(),
+                        vector: gen_vector(),
+                        prompt_vector: gen_vector(),
+                    },
+                    ImageModel {
+                        prompt: "p4".to_string(),
+                        vector: gen_vector(),
+                        prompt_vector: gen_vector(),
+                    },
+                ],
+                start_index: 0,
+                end_index: 1,
+            })
+            .await
+            .unwrap();
+        assert_eq!(id.tb(), &TB::Page);
+    }
+
+    #[test(tokio::test)]
+    async fn test_insert_web_page() {
+        let db = setup().await;
+        let id = db
+            .insert_web_page(
+                crate::db::model::web::WebPageModel {
+                    data: vec![
+                        crate::db::model::PageModel {
+                            text: vec![
+                                TextModel {
+                                    data: "data".to_string(),
+                                    vector: gen_vector(),
+                                    en_data: "en_data".to_string(),
+                                    en_vector: gen_vector(),
+                                },
+                                TextModel {
+                                    data: "data2".to_string(),
+                                    vector: gen_vector(),
+                                    en_data: "en_data2".to_string(),
+                                    en_vector: gen_vector(),
+                                },
+                            ],
+                            image: vec![
+                                ImageModel {
+                                    prompt: "p3".to_string(),
+                                    vector: gen_vector(),
+                                    prompt_vector: gen_vector(),
+                                },
+                                ImageModel {
+                                    prompt: "p4".to_string(),
+                                    vector: gen_vector(),
+                                    prompt_vector: gen_vector(),
+                                },
+                            ],
+                            start_index: 0,
+                            end_index: 1,
+                        },
+                        crate::db::model::PageModel {
+                            text: vec![
+                                TextModel {
+                                    data: "data".to_string(),
+                                    vector: gen_vector(),
+                                    en_data: "en_data".to_string(),
+                                    en_vector: gen_vector(),
+                                },
+                                TextModel {
+                                    data: "data2".to_string(),
+                                    vector: gen_vector(),
+                                    en_data: "en_data2".to_string(),
+                                    en_vector: gen_vector(),
+                                },
+                            ],
+                            image: vec![
+                                ImageModel {
+                                    prompt: "p3".to_string(),
+                                    vector: gen_vector(),
+                                    prompt_vector: gen_vector(),
+                                },
+                                ImageModel {
+                                    prompt: "p4".to_string(),
+                                    vector: gen_vector(),
+                                    prompt_vector: gen_vector(),
+                                },
+                            ],
+                            start_index: 0,
+                            end_index: 1,
+                        },
+                    ],
+                },
+                SearchPayload {
+                    file_identifier: "file_identifier_web_page".to_string(),
+                    task_type: ContentTaskType::WebPage(WebPageTaskType::Transform(
+                        WebPageTransformTask {},
+                    )),
+                    metadata: SearchMetadata::WebPage(
+                        crate::query::payload::web_page::WebPageSearchMetadata {
+                            start_index: 0,
+                            end_index: 1,
+                        },
+                    ),
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(id.tb(), &TB::Web);
     }
 }
