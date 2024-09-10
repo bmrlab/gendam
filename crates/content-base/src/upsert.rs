@@ -1,4 +1,9 @@
+use crate::db::model::audio::AudioFrameModel;
+use crate::db::model::video::VideoModel;
+use crate::db::model::TextModel;
+use crate::db::DB;
 use crate::{
+    collect_async_results,
     query::payload::{
         audio::AudioIndexMetadata, image::ImageIndexMetadata, raw_text::RawTextIndexMetadata,
         video::VideoIndexMetadata, web_page::WebPageIndexMetadata, ContentIndexMetadata,
@@ -34,6 +39,7 @@ use qdrant_client::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
+    clone,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -109,6 +115,7 @@ impl ContentBase {
         // 对 task notification 做进一步处理
         let ctx = self.ctx.clone();
         let qdrant = self.qdrant.clone();
+        let db = self.db.clone();
         let language_collection_name = self.language_collection_name.clone();
         let vision_collection_name = self.vision_collection_name.clone();
         tokio::spawn(async move {
@@ -123,6 +130,7 @@ impl ContentBase {
                         &ctx,
                         &file_info_clone,
                         &task_type,
+                        db.clone(),
                         qdrant.clone(),
                         language_collection_name.as_str(),
                         vision_collection_name.as_str(),
@@ -166,21 +174,53 @@ async fn task_post_process(
     file_info: &FileInfo,
     task_type: &ContentTaskType,
     qdrant: Arc<Qdrant>,
+    db: Arc<DB>,
     language_collection_name: &str,
     _vision_collection_name: &str,
-) {
+) -> anyhow::Result<()> {
     match task_type {
         ContentTaskType::Video(VideoTaskType::TransChunkSumEmbed(_)) => {
-            let _ = transcript_sum_embed_post_process(
-                ctx,
-                qdrant,
-                language_collection_name,
-                file_info,
-                VideoTransChunkTask,
-                VideoTransChunkSumEmbedTask,
-                |start, end| VideoIndexMetadata::new(start, end),
+            let chunks = VideoTransChunkTask.chunk_content(file_info, ctx).await?;
+
+            let payload = SearchPayload {
+                file_identifier: file_info.file_identifier.clone(),
+                // 下面两个字段不会使用
+                task_type: VideoTransChunkSumEmbedTask.clone().into(),
+                metadata: SearchMetadata::Video(VideoSearchMetadata {
+                    start_timestamp: 0,
+                    end_timestamp: 0,
+                }),
+            };
+
+            let future = chunks
+                .into_iter()
+                .map(|chunk| async move {
+                    let embedding = VideoTransChunkSumEmbedTask
+                        .embed_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
+                        .await?;
+                    let audio_frame = AudioFrameModel {
+                        data: vec![TextModel {
+                            data: chunk.text.clone(),
+                            vector: embedding.clone(),
+                            // TODO: 是否需要英文
+                            en_data: "".to_string(),
+                            en_vector: vec![],
+                        }],
+                        start_timestamp: chunk.start_timestamp as f32,
+                        end_timestamp: chunk.end_timestamp as f32,
+                    };
+                    anyhow::Result::<AudioFrameModel>::Ok(audio_frame)
+                })
+                .collect::<Vec<_>>();
+            let audio_frame: anyhow::Result<Vec<AudioFrameModel>> = collect_async_results!(future);
+            db.insert_video(
+                VideoModel {
+                    audio_frame: audio_frame?,
+                    image_frame: vec![],
+                },
+                payload,
             )
-            .await;
+            .await?;
         }
         ContentTaskType::Audio(AudioTaskType::TransChunkSumEmbed(_)) => {
             let _ = transcript_sum_embed_post_process(
@@ -274,6 +314,7 @@ async fn task_post_process(
         }
         _ => {}
     }
+    Ok(())
 }
 
 #[tracing::instrument(skip_all)]
