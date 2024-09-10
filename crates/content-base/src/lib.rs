@@ -13,6 +13,7 @@ pub use content_base_pool::{TaskNotification, TaskStatus};
 pub use content_base_task::*;
 pub use content_metadata::ContentMetadata;
 use qdrant_client::Qdrant;
+use crate::db::DB;
 
 pub mod metadata {
     pub use content_metadata::*;
@@ -23,6 +24,7 @@ pub struct ContentBase {
     ctx: ContentBaseCtx,
     task_pool: TaskPool,
     pub qdrant: Arc<Qdrant>,
+    pub db: Arc<DB>,
     pub language_collection_name: String,
     pub vision_collection_name: String,
 }
