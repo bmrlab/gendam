@@ -2,7 +2,7 @@
 
 import { ExplorerItem } from '@/Explorer/types'
 import { ForwardedRef, forwardRef } from 'react'
-import InspectorItem from '../FileContent/Inspector'
+import InspectorItem from './InspectorItem'
 
 function Inspector({ data }: { data: ExplorerItem | null }, ref: ForwardedRef<HTMLDivElement>) {
   return (
