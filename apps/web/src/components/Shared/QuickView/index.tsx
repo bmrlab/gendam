@@ -1,8 +1,8 @@
 'use client'
 
-import QuickViewItem from '@/components/FileContent/QuickView'
 import { useCurrentLibrary } from '@/lib/library'
 import Icon from '@gendam/ui/icons'
+import QuickViewItem from './QuickViewItem'
 import { useQuickViewStore } from './store'
 
 export default function QuickView() {
