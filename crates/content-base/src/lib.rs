@@ -7,13 +7,13 @@ pub mod upsert;
 
 use std::sync::Arc;
 
+use crate::db::DB;
 pub use content_base_context::ContentBaseCtx;
 use content_base_pool::TaskPool;
 pub use content_base_pool::{TaskNotification, TaskStatus};
 pub use content_base_task::*;
 pub use content_metadata::ContentMetadata;
 use qdrant_client::Qdrant;
-use crate::db::DB;
 
 pub mod metadata {
     pub use content_metadata::*;
@@ -31,8 +31,6 @@ pub struct ContentBase {
 
 #[cfg(test)]
 mod test {
-    use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
-
     use crate::{upsert::UpsertPayload, ContentBase};
     use ai::{
         llm::{openai::OpenAI, LLM},
@@ -55,19 +53,49 @@ mod test {
     use content_metadata::ContentMetadata;
     use global_variable::{init_global_variables, set_current};
     use qdrant_client::Qdrant;
+    use std::path::Path;
+    use std::{env, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+
+    fn get_project_root() -> PathBuf {
+        let mut path = Path::new(env!("CARGO_MANIFEST_DIR"));
+
+        while let Some(parent) = path.parent() {
+            if parent.join("Cargo.toml").exists() {
+                return parent.to_path_buf();
+            }
+            path = parent;
+        }
+        path.to_path_buf()
+    }
+
+    fn get_desktop_path() -> PathBuf {
+        let home_dir = env::var("HOME").expect("HOME env var should be set");
+        PathBuf::from(home_dir).join("Desktop")
+    }
 
     #[test_log::test(tokio::test)]
     async fn test_task_pool() {
         init_global_variables!();
         // set storage root path
-        set_current!("abcdefg".into(), "/Users/zhuo/Desktop".into());
-
+        set_current!(
+            "abcdefg".into(),
+            get_desktop_path().to_str().unwrap().into()
+        );
         // the artifacts_dir is relative to the storage root
         let content_base = ContentBaseCtx::new("gendam-test-artifacts", "");
 
         // initialize AI models
-        let whisper =
-            AIModel::new(|| async { Whisper::new("/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/whisper/ggml-medium-q5_0.bin").await }, None).expect("whisper initialized");
+        let whisper = AIModel::new(
+            || async {
+                Whisper::new(
+                    get_project_root()
+                        .join("apps/desktop/src-tauri/resources/whisper/ggml-small-q5_1.bin"),
+                )
+                .await
+            },
+            None,
+        )
+        .expect("whisper initialized");
         let llm = AIModel::new(
             || async {
                 Ok(LLM::OpenAI(
@@ -84,21 +112,27 @@ mod test {
         .expect("");
         let text_embedding = AIModel::new(
             || async {
-                OrtTextEmbedding::new("/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/stella-base-zh-v3-1792d/model_quantized.onnx", "/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/stella-base-zh-v3-1792d/tokenizer.json").await
+                OrtTextEmbedding::new(
+                    get_project_root()
+                        .join("apps/desktop/src-tauri/resources/puff-base-v1/model_quantized.onnx"),
+                    get_project_root()
+                        .join("apps/desktop/src-tauri/resources/puff-base-v1/tokenizer.json")).await
             },
             None,
         ).expect("");
-        let tokenizer = Tokenizer::from_file("/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/qwen2/tokenizer.json").expect("");
+        let tokenizer = Tokenizer::from_file(
+            get_project_root().join("apps/desktop/src-tauri/resources/qwen2/tokenizer.json"),
+        )
+        .expect("");
 
         // add models to ContentBaseCtx
         let content_base = content_base
             .with_audio_transcript(Arc::new(whisper), "whisper")
             .with_llm(Arc::new(llm), tokenizer, "qwen2")
-            .with_text_embedding(Arc::new(text_embedding), "stella");
+            .with_text_embedding(Arc::new(text_embedding), "puff");
 
         let file_identifier = "abcdefghijklmn";
-        let file_path = PathBuf::from_str("/Users/zhuo/Desktop/测试视频/4月1日.mp4")
-            .expect("str should be valid path");
+        let file_path = get_desktop_path().join("测试视频/4月1日.mp4");
 
         let video_decoder = VideoDecoder::new(&file_path).expect("video decoder built");
         let metadata = video_decoder.get_video_metadata().expect("got metadata");
