@@ -110,6 +110,7 @@ impl Hash for ContentTaskType {
     }
 }
 
+#[allow(unused_imports, dead_code)]
 mod test {
     use crate::ContentTaskType;
     use crate::video::VideoTaskType;

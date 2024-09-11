@@ -488,8 +488,8 @@ impl DB {
     }
 }
 
+#[allow(unused_imports, dead_code)]
 mod test {
-    use crate::db::model::id::TB;
     use crate::db::model::{ImageModel, TextModel};
     use crate::db::DB;
     use crate::query::payload::image::ImageSearchMetadata;
@@ -508,6 +508,7 @@ mod test {
     use content_base_task::ContentTaskType;
     use rand::Rng;
     use test_log::test;
+    use crate::db::model::id::TB;
 
     async fn setup() -> DB {
         dotenvy::dotenv().ok();
