@@ -4,7 +4,7 @@ import { useCurrentLibrary } from '@/lib/library'
 import { client } from '@/lib/rspc'
 import { timeToSeconds } from '@/lib/utils'
 import muxjs from 'mux.js'
-import { useCallback, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import videojs from 'video.js'
 import type Player from 'video.js/dist/types/player'
 
@@ -37,7 +37,7 @@ export const useVideoPlayer = (
     }
   }, 100)
 
-  const handleUpdateend = useCallback(async () => {
+  const handleUpdateend = async () => {
     if (
       segmentsRef.current.length == 0 &&
       !sourceBufferRef.current?.updating &&
@@ -63,9 +63,9 @@ export const useVideoPlayer = (
       transmuxerRef.current?.push(new Uint8Array(res.data))
       transmuxerRef.current?.flush()
     }
-  }, [assetObject.hash])
+  }
 
-  const loadVideoTS = useCallback(async () => {
+  const loadVideoTS = async () => {
     const mediaData = assetObject.mediaData
     if (!mediaData) return
     if (!videoRef.current || !videoElementRef.current) {
@@ -108,9 +108,9 @@ export const useVideoPlayer = (
         transmuxerRef.current.flush()
       }
     })
-  }, [assetObject, currentTime, handleUpdateend])
+  }
 
-  const loadVideo = useCallback(async () => {
+  const loadVideo = async () => {
     if (!playerRef.current) {
       return
     }
@@ -136,7 +136,7 @@ export const useVideoPlayer = (
     if (autoPlay) {
       player.play()
     }
-  }, [assetObject, autoPlay, currentTime, currentLibrary, loadVideoTS])
+  }
 
   useEffect(() => {
     if (!videoRef.current) {
@@ -207,7 +207,8 @@ export const useVideoPlayer = (
       segmentsRef.current = []
       videoElementRef.current = null
     }
-  }, [assetObject, debounceSeeking, loadVideo, autoPlay, controls, loop, muted, currentTime])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     return () => {
