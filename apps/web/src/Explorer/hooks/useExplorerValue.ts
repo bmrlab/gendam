@@ -89,7 +89,12 @@ function useSelectedItems(items: ExplorerItem[] | null) {
       },
       [selectedItemIds.value, updateIds],
     ),
-    isItemSelected: useCallback((item: ExplorerItem) => selectedItems.has(item), [selectedItems]),
+    isItemSelected: useCallback(
+      (item: ExplorerItem) => {
+        return selectedItemIds.value.has(uniqueId(item))
+      },
+      [selectedItemIds],
+    ),
   }
 }
 
