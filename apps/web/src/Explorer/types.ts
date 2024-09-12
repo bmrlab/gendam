@@ -53,7 +53,10 @@ type ExtractBaseSearchResultItem<T extends AssetObjectType> = ExtractBaseItem<T>
   metadata: SearchResultMetadata & { type: T }
 }
 
-export type ExtractFilePathItem<T extends AssetObjectType> = FilePathItem & ExtractBaseItem<T>
+// export type ExtractFilePathItem<T extends AssetObjectType> = FilePathItem & ExtractBaseItem<T>
+export type ExtractFilePathItem<T extends AssetObjectType> = FilePathItem & {
+  assetObject?: ExtractAssetObject<T>
+}
 
 export type ExtractSearchResultItem<T extends AssetObjectType> = SearchResultItem & ExtractBaseSearchResultItem<T>
 export type ExtractRetrievalResultItem<

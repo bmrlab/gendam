@@ -1,7 +1,7 @@
 use std::path::Path;
 
+#[allow(unused_imports)]
 use ort::{ExecutionProvider, GraphOptimizationLevel, Session};
-use tracing::warn;
 
 pub(crate) struct ONNXModelConfig {
     pub num_intra_thread: usize,
@@ -29,7 +29,7 @@ pub(crate) fn load_onnx_model(
 
     // let coreml = CoreMLExecutionProvider::default();
     // if coreml.register(&builder).is_err() {
-    //     warn!("failed to register CoreMLExecutionProvider");
+    //     tracing::warn!("failed to register CoreMLExecutionProvider");
     // }
 
     let config = config.unwrap_or(Default::default());

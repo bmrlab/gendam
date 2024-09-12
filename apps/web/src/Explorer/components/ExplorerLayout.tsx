@@ -124,16 +124,17 @@ export default function ExplorerLayout({
   })
 
   function renderLayoutFromSettings() {
-    function filtered<K extends ExplorerItem['type'], T extends Extract<ExplorerItem, K>>(
+    function filtered<K extends ExplorerItem['type'], T extends Extract<ExplorerItem, { type: K }>>(
       items: ExplorerItem[],
-      types: ExplorerItem['type'][],
+      types: K[],
     ): T[] {
-      return items.filter((item) => types.includes(item.type)) as T[]
+      return items.filter((item) => types.includes(item.type as K)) as T[]
     }
 
     return match([explorer.settings.layout, explorer.items])
       .with(['grid', P.nonNullable], ([_, items]) => {
-        return <GridView items={filtered(items, ['FilePath', 'SearchResult'])} />
+        const res = filtered(items, ['FilePath', 'SearchResult'])
+        return <GridView items={res} />
       })
       .with(['list', P.nonNullable], ([_, items]) => {
         return <ListView items={filtered(items, ['FilePath', 'SearchResult'])} />
