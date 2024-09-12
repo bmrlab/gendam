@@ -13,7 +13,6 @@ use crate::query::payload::SearchPayload;
 use crate::{check_db_error_from_resp, collect_async_results, concat_arrays};
 use anyhow::bail;
 use std::env;
-use futures_util::future::try_join_all;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
 use surrealdb::sql::Thing;
