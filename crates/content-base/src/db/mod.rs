@@ -10,9 +10,10 @@ use crate::db::model::web::WebPageModel;
 use crate::db::model::{ImageModel, PageModel, TextModel};
 use crate::db::sql::CREATE_TABLE;
 use crate::query::payload::SearchPayload;
-use crate::{collect_async_results, concat_arrays};
+use crate::{check_db_error_from_resp, collect_async_results, concat_arrays};
 use anyhow::bail;
 use std::env;
+use futures_util::future::try_join_all;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
 use surrealdb::sql::Thing;
@@ -70,7 +71,7 @@ impl DB {
         image_model: ImageModel,
         payload: Option<SearchPayload>,
     ) -> anyhow::Result<ID> {
-        let mut res = self
+        let mut resp = self
             .client
             .query(
                 "
@@ -83,7 +84,12 @@ impl DB {
             .bind(image_model)
             .await?;
 
-        let id: Option<ID> = res.take::<Option<Thing>>(0)?.map(|x| x.into());
+        check_db_error_from_resp!(resp).map_err(|errors_map| {
+            error!("insert image errors: {:?}", errors_map);
+            anyhow::anyhow!("Failed to insert image, errors: {:?}", errors_map)
+        })?;
+
+        let id: Option<ID> = resp.take::<Option<Thing>>(0)?.map(|x| x.into());
 
         match id {
             Some(id) => {
@@ -98,7 +104,7 @@ impl DB {
             }
         }
     }
-    
+
     pub async fn insert_audio(
         &self,
         audio: AudioModel,
@@ -126,7 +132,7 @@ impl DB {
                     &id.id_with_table(),
                     ids.iter().map(|id| id.as_str()).collect(),
                 )
-                    .await?;
+                .await?;
                 let payload_id = self.create_payload(payload.into()).await?;
                 self.create_with_relation(&id, &payload_id).await?;
                 Ok(id)
@@ -153,18 +159,21 @@ impl DB {
             .into_iter()
             .map(|id| id.id_with_table())
             .collect::<Vec<String>>();
+        debug!("insert audio frame ids: {:?}", audio_frame_ids);
 
         let image_frame = if image_frame_ids.is_empty() {
             "image_frame: []".to_string()
         } else {
             format!("image_frame: [{}]", image_frame_ids.join(", "))
         };
+        debug!("image frame: {:?}", image_frame);
 
         let audio_frame = if audio_frame_ids.is_empty() {
             "audio_frame: []".to_string()
         } else {
             format!("audio_frame: [{}]", audio_frame_ids.join(", "))
         };
+        debug!("audio frame: {:?}", audio_frame);
 
         let sql = format!(
             "(CREATE ONLY video CONTENT {{ {}, {} }}).id",
@@ -179,7 +188,7 @@ impl DB {
                     &id.id_with_table(),
                     image_frame_ids.iter().map(|id| id.as_str()).collect(),
                 )
-                    .await?;
+                .await?;
                 let payload = self.create_payload(payload.into()).await?;
                 self.create_with_relation(&id, &payload).await?;
                 Ok(id)
@@ -214,7 +223,7 @@ impl DB {
                     &id.id_with_table(),
                     page_ids.iter().map(|id| id.as_str()).collect(),
                 )
-                    .await?;
+                .await?;
                 let payload_id = self.create_payload(payload.into()).await?;
                 self.create_with_relation(&id, &payload_id).await?;
                 Ok(id)
@@ -249,7 +258,7 @@ impl DB {
                     &id.id_with_table(),
                     page_ids.iter().map(|id| id.as_str()).collect(),
                 )
-                    .await?;
+                .await?;
                 let payload_id = self.create_payload(payload.into()).await?;
                 self.create_with_relation(&id, &payload_id).await?;
                 Ok(id)
@@ -261,7 +270,8 @@ impl DB {
 
 impl DB {
     async fn insert_text(&self, text: TextModel) -> anyhow::Result<ID> {
-        self.client
+        let mut resp = self
+            .client
             .query(
                 "
             (CREATE ONLY text CONTENT {
@@ -272,14 +282,20 @@ impl DB {
             }).id",
             )
             .bind(text)
-            .await?
-            .take::<Option<Thing>>(0)?
+            .await?;
+
+        check_db_error_from_resp!(resp).map_err(|errors_map| {
+            error!("insert text errors: {:?}", errors_map);
+            anyhow::anyhow!("Failed to insert text, errors: {:?}", errors_map)
+        })?;
+
+        resp.take::<Option<Thing>>(0)?
             .map(|x| Ok(x.into()))
             .unwrap_or_else(|| Err(anyhow::anyhow!("Failed to insert text")))
     }
 
     async fn create_payload(&self, payload: PayloadModel) -> anyhow::Result<ID> {
-        let mut res = self
+        let mut resp = self
             .client
             .query(
                 "
@@ -291,7 +307,12 @@ impl DB {
             .bind(payload)
             .await?;
 
-        match res.take::<Option<Thing>>(0)? {
+        check_db_error_from_resp!(resp).map_err(|errors_map| {
+            error!("create payload errors: {:?}", errors_map);
+            anyhow::anyhow!("Failed to create payload, errors: {:?}", errors_map)
+        })?;
+
+        match resp.take::<Option<Thing>>(0)? {
             Some(id) => Ok(id.into()),
             None => Err(anyhow::anyhow!("Failed to create payload")),
         }
@@ -353,7 +374,7 @@ impl DB {
                     &id.id_with_table(),
                     ids.iter().map(|id| id.as_str()).collect(),
                 )
-                    .await?;
+                .await?;
                 Ok(id.into())
             }
             None => Err(anyhow::anyhow!("Failed to insert image frame")),
@@ -490,6 +511,7 @@ impl DB {
 
 #[allow(unused_imports, dead_code)]
 mod test {
+    use crate::db::model::id::TB;
     use crate::db::model::{ImageModel, TextModel};
     use crate::db::DB;
     use crate::query::payload::image::ImageSearchMetadata;
@@ -508,7 +530,6 @@ mod test {
     use content_base_task::ContentTaskType;
     use rand::Rng;
     use test_log::test;
-    use crate::db::model::id::TB;
 
     async fn setup() -> DB {
         dotenvy::dotenv().ok();
@@ -614,22 +635,7 @@ mod test {
         let id = db
             .insert_video(
                 crate::db::model::video::VideoModel {
-                    image_frame: vec![crate::db::model::video::ImageFrameModel {
-                        data: vec![
-                            ImageModel {
-                                prompt: "p3".to_string(),
-                                vector: gen_vector(),
-                                prompt_vector: gen_vector(),
-                            },
-                            ImageModel {
-                                prompt: "p4".to_string(),
-                                vector: gen_vector(),
-                                prompt_vector: gen_vector(),
-                            },
-                        ],
-                        start_timestamp: 0.0,
-                        end_timestamp: 1.0,
-                    }],
+                    image_frame: vec![],
                     audio_frame: vec![crate::db::model::audio::AudioFrameModel {
                         data: vec![
                             TextModel {

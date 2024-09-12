@@ -35,13 +35,15 @@ use content_base_task::{
     ContentTaskType, FileInfo, TaskRecord,
 };
 use content_metadata::ContentMetadata;
+use futures_util::future::try_join_all;
 use serde::{Deserialize, Serialize};
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
 use tokio::sync::mpsc::{self, Receiver};
-use tracing::warn;
+use tokio::sync::RwLock;
+use tracing::{debug, warn};
 
 #[derive(Serialize, Deserialize)]
 pub struct UpsertPayload {
@@ -191,7 +193,7 @@ async fn task_post_process(
     ctx: &ContentBaseCtx,
     file_info: &FileInfo,
     task_type: &ContentTaskType,
-    db: Arc<DB>,
+    db: Arc<RwLock<DB>>,
     _vision_collection_name: &str,
 ) -> anyhow::Result<()> {
     match task_type {
@@ -203,6 +205,7 @@ async fn task_post_process(
                     let embedding = VideoTransChunkSumEmbedTask
                         .embed_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
                         .await?;
+                    debug!("chunk: {chunk:?}, embedding: {:?}", embedding.len());
                     anyhow::Result::<AudioFrameModel>::Ok(AudioFrameModel {
                         data: vec![TextModel {
                             data: chunk.text.clone(),
@@ -216,23 +219,24 @@ async fn task_post_process(
                     })
                 })
                 .collect::<Vec<_>>();
-            let audio_frame: anyhow::Result<Vec<AudioFrameModel>> = collect_async_results!(future);
-            db.insert_video(
-                VideoModel {
-                    audio_frame: audio_frame?,
-                    image_frame: vec![],
-                },
-                SearchPayload {
-                    file_identifier: file_info.file_identifier.clone(),
-                    // 下面两个字段不会使用
-                    task_type: VideoTransChunkSumEmbedTask.clone().into(),
-                    metadata: SearchMetadata::Video(VideoSearchMetadata {
-                        start_timestamp: 0,
-                        end_timestamp: 0,
-                    }),
-                },
-            )
-            .await?;
+            let audio_frame: Vec<AudioFrameModel> = try_join_all(future).await?;
+            db.try_read()?
+                .insert_video(
+                    VideoModel {
+                        audio_frame,
+                        image_frame: vec![],
+                    },
+                    SearchPayload {
+                        file_identifier: file_info.file_identifier.clone(),
+                        // 下面两个字段不会使用
+                        task_type: VideoTransChunkSumEmbedTask.clone().into(),
+                        metadata: SearchMetadata::Video(VideoSearchMetadata {
+                            start_timestamp: 0,
+                            end_timestamp: 0,
+                        }),
+                    },
+                )
+                .await?;
         }
         ContentTaskType::Audio(AudioTaskType::TransChunkSumEmbed(_)) => {
             let chunks = AudioTransChunkTask.chunk_content(file_info, ctx).await?;
@@ -256,7 +260,7 @@ async fn task_post_process(
                 })
                 .collect::<Vec<_>>();
             let audio_frame: anyhow::Result<Vec<AudioFrameModel>> = collect_async_results!(future);
-            db.insert_audio(
+            db.try_read()?.insert_audio(
                 AudioModel {
                     audio_frame: audio_frame?,
                 },
@@ -274,7 +278,7 @@ async fn task_post_process(
         }
         ContentTaskType::Image(ImageTaskType::DescEmbed(task_type)) => {
             let embedding = task_type.embed_content(file_info, ctx).await?;
-            db.insert_image(
+            db.try_read()?.insert_image(
                 ImageModel {
                     prompt: "".to_string(),
                     vector: embedding.clone(),
@@ -295,7 +299,8 @@ async fn task_post_process(
                 task_type,
                 RawTextChunkTask.chunk_content(file_info, ctx).await?
             );
-            db.insert_document(
+            debug!("pages: {pages:?}");
+            db.try_read()?.insert_document(
                 DocumentModel::new(pages?),
                 SearchPayload {
                     file_identifier: file_info.file_identifier.clone(),
@@ -316,7 +321,8 @@ async fn task_post_process(
                 task_type,
                 WebPageChunkTask.chunk_content(file_info, ctx).await?
             );
-            db.insert_web_page(
+            debug!("pages: {pages:?}");
+            db.try_read()?.insert_web_page(
                 WebPageModel::new(pages?),
                 SearchPayload {
                     file_identifier: file_info.file_identifier.clone(),
