@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 import Icon from '@gendam/ui/icons'
-import { MultiSelect } from '@gendam/ui/v2/multi-select'
+import { MultiSelect, type MultiSelectProps } from '@gendam/ui/v2/multi-select'
 import { FC } from 'react'
 
 export type MuseMultiSelectProps = MultiSelectProps & {

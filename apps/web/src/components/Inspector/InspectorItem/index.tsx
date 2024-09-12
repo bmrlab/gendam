@@ -94,9 +94,9 @@ export function InspectorItemDivider() {
 
 export function InspectorItemMetadataItem({ name, children }: PropsWithChildren<{ name: string }>) {
   return (
-    <div className="mt-2 flex justify-between">
+    <div className="mt-2 flex justify-between gap-2">
       <div className="text-ink/50 capitalize">{name}</div>
-      <div>{children}</div>
+      <div className="truncate">{children}</div>
     </div>
   )
 }

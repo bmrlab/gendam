@@ -25,7 +25,7 @@ function withOpenExplorerItem(BaseComponent: BaseContextMenuItem) {
         if (data.type === 'FilePath' && data.filePath.isDir) {
           let newPath = data.filePath.materializedPath + data.filePath.name + '/'
           router.push('/explorer?dir=' + newPath)
-        } else if (data.type !== 'Unknown' && data.assetObject) {
+        } else if (data.type !== 'Unknown' && data.type !== 'LibraryRoot' && data.assetObject) {
           quickViewStore.open(data)
         }
       },
