@@ -18,7 +18,7 @@ pub async fn split_materialized_path(materialized_path: &str) -> Option<(String,
 mod tests {
     use super::*;
     #[tokio::test]
-    async fn test_check_materialized_path_exists() {
+    async fn test_split_materialized_path() {
         let result = split_materialized_path("/a/b/c/").await;
         assert_eq!(result, Some(("/a/b/".to_string(), "c".to_string())));
         let result = split_materialized_path("/a/").await;
