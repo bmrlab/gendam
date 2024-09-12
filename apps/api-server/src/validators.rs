@@ -64,3 +64,13 @@ where
 {
     deserializer.deserialize_str(PathNameString)
 }
+
+pub fn replace_invalid_chars_in_path_name(input: &str) -> String {
+    input
+        .chars()
+        .map(|c| match c {
+            '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => ' ',
+            _ => c,
+        })
+        .collect()
+}

@@ -1,3 +1,4 @@
+use crate::validators;
 use blake3::Hasher;
 use content_base::{metadata::web_page::WebPageMetadata, ContentMetadata};
 use content_handler::web_page::fetch_url;
@@ -135,12 +136,13 @@ pub async fn process_web_page(
                 _ => html_title,
             };
 
+            let valid_path_name = validators::replace_invalid_chars_in_path_name(new_name.as_str());
             let file_path_data = client
                 .file_path()
                 .create(
                     false,
                     materialized_path.to_string(),
-                    new_name.clone(),
+                    valid_path_name,
                     vec![file_path::asset_object_id::set(Some(asset_object_data.id))],
                 )
                 .exec()
