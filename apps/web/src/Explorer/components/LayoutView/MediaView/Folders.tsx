@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 import ThumbItem from '../../View/ThumbItem'
 
-const DroppableInner: React.FC<{ data: ExtractExplorerItem<'FilePath'> }> = ({ data }) => {
+const DroppableInner: React.FC<{ data: ExtractExplorerItem<'FilePathDir'> }> = ({ data }) => {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
 
@@ -39,7 +39,7 @@ const DroppableInner: React.FC<{ data: ExtractExplorerItem<'FilePath'> }> = ({ d
   )
 }
 
-const FolderItem: React.FC<{ data: ExtractExplorerItem<'FilePath'> }> = ({ data }) => {
+const FolderItem: React.FC<{ data: ExtractExplorerItem<'FilePathDir'> }> = ({ data }) => {
   const router = useRouter()
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
@@ -49,14 +49,14 @@ const FolderItem: React.FC<{ data: ExtractExplorerItem<'FilePath'> }> = ({ data 
     (e: React.FormEvent<HTMLDivElement>) => {
       explorer.resetSelectedItems()
       explorerStore.reset()
-      let newPath = data.filePath.materializedPath + data.filePath.name + '/'
+      const newPath = data.filePath.materializedPath + data.filePath.name + '/'
       router.push('/explorer?dir=' + newPath)
     },
     [data, explorer, router, explorerStore],
   )
 
   const onSelect = useCallback(
-    (e: React.MouseEvent, data: ExtractExplorerItem<'FilePath'>) => {
+    (e: React.MouseEvent, data: ExtractExplorerItem<'FilePathDir'>) => {
       explorer.resetSelectedItems([data])
       explorerStore.reset()
     },
@@ -70,7 +70,7 @@ const FolderItem: React.FC<{ data: ExtractExplorerItem<'FilePath'> }> = ({ data 
   )
 }
 
-export default function Folders({ items }: { items: ExtractExplorerItem<'FilePath'>[] }) {
+export default function Folders({ items }: { items: ExtractExplorerItem<'FilePathDir'>[] }) {
   return (
     // <div className="w-full overflow-hidden">
     <div className="flex flex-wrap content-start items-start justify-start gap-6 overflow-scroll p-8">

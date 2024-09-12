@@ -1,7 +1,7 @@
 'use client'
 
 import { matchExplorerItemWithType } from '@/Explorer/pattern'
-import { ExplorerItem } from '@/Explorer/types'
+import { ExtractExplorerItem, type ExplorerItem } from '@/Explorer/types'
 import { Document_Light } from '@gendam/assets/images'
 import Image from 'next/image'
 import { match } from 'ts-pattern'
@@ -17,7 +17,7 @@ export default function FileThumb({
   className,
   variant,
 }: {
-  data: ExplorerItem
+  data: ExtractExplorerItem<'FilePathWithAssetObject'>
   className?: string
   variant: ThumbnailVariant
 }) {

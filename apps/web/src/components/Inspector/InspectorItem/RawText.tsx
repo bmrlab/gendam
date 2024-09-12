@@ -11,7 +11,10 @@ import {
 } from '.'
 import { useSortedTasks } from './hooks'
 
-export default function RawTextDetail({ filePath, assetObject }: ExtractExplorerItem<'FilePath', 'rawText'>) {
+export default function RawTextDetail({
+  filePath,
+  assetObject,
+}: ExtractExplorerItem<'FilePathWithAssetObject', 'rawText'>) {
   const { sortedTasks, handleJobsCancel } = useSortedTasks(assetObject)
 
   return (

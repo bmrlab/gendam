@@ -25,7 +25,10 @@ export default function ExplorerLayout({
 
   const handleMoveRequest = useCallback(
     async (active: ExplorerItem, target: ExplorerItem) => {
-      if (active.type !== 'FilePath' || (target.type !== 'LibraryRoot' && target.type !== 'FilePath')) {
+      if (
+        (active.type !== 'FilePathDir' && active.type !== 'FilePathWithAssetObject') ||
+        (target.type !== 'LibraryRoot' && target.type !== 'FilePathDir')
+      ) {
         // 现阶段只支持 FilePath 可以被移动
         return
       }
@@ -88,10 +91,10 @@ export default function ExplorerLayout({
     (e: DragEndEvent) => {
       // console.log('onDragEnd', e)
       const target = (e.over?.data?.current as ExplorerItem) ?? null
-      if (target && explorerStore.drag?.type === 'dragging') {
+      if (target && target.type === 'FilePathDir' && explorerStore.drag?.type === 'dragging') {
         // ExplorerDroppable 已经确保了 target 是 FilePath & isDir 或者是 LibraryRoot
         for (let active of explorerStore.drag.items) {
-          if (active.type === 'FilePath' && target.type === 'FilePath' && active.filePath.id === target.filePath.id) {
+          if (active.type === 'FilePathDir' && active.filePath.id === target.filePath.id) {
             // 这个应该不会出现，因为设置了 disabled
             console.log('cannot move to self')
             continue
@@ -133,14 +136,14 @@ export default function ExplorerLayout({
 
     return match([explorer.settings.layout, explorer.items])
       .with(['grid', P.nonNullable], ([_, items]) => {
-        const res = filtered(items, ['FilePath', 'SearchResult'])
+        const res = filtered(items, ['FilePathDir', 'FilePathWithAssetObject', 'SearchResult'])
         return <GridView items={res} />
       })
       .with(['list', P.nonNullable], ([_, items]) => {
-        return <ListView items={filtered(items, ['FilePath', 'SearchResult'])} />
+        return <ListView items={filtered(items, ['FilePathDir', 'FilePathWithAssetObject', 'SearchResult'])} />
       })
       .with(['media', P.nonNullable], ([_, items]) => {
-        return <MediaView items={filtered(items, ['FilePath', 'SearchResult'])} />
+        return <MediaView items={filtered(items, ['FilePathDir', 'FilePathWithAssetObject', 'SearchResult'])} />
       })
       .otherwise(() => null)
   }

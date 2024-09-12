@@ -29,24 +29,16 @@ export default function InspectorItem({ data }: { data: ExplorerItem | null }) {
 
   return (
     <div className="h-full w-full overflow-x-hidden overflow-y-scroll" ref={containerRef}>
-      {data ? (
-        'filePath' in data ? (
-          data.filePath.isDir ? (
-            <FolderDetail data={data.filePath} />
-          ) : data.assetObject ? (
-            match(data)
-              .with(matchExplorerItemWithType('video'), (props) => <VideoDetail {...props} />)
-              .with(matchExplorerItemWithType('audio'), (props) => <AudioDetail {...props} />)
-              .with(matchExplorerItemWithType('image'), (props) => <ImageDetail {...props} />)
-              .with(matchExplorerItemWithType('rawText'), (props) => <RawTextDetail {...props} />)
-              .with(matchExplorerItemWithType('webPage'), (props) => <WebPageDetail {...props} />)
-              .otherwise(() => <></>)
-          ) : (
-            <></>
-          )
-        ) : (
-          <></>
-        )
+      {data?.type === 'FilePathDir' ? (
+        <FolderDetail data={data.filePath} />
+      ) : data?.type === 'FilePathWithAssetObject' ? (
+        match(data)
+          .with(matchExplorerItemWithType('video'), (props) => <VideoDetail {...props} />)
+          .with(matchExplorerItemWithType('audio'), (props) => <AudioDetail {...props} />)
+          .with(matchExplorerItemWithType('image'), (props) => <ImageDetail {...props} />)
+          .with(matchExplorerItemWithType('rawText'), (props) => <RawTextDetail {...props} />)
+          .with(matchExplorerItemWithType('webPage'), (props) => <WebPageDetail {...props} />)
+          .otherwise(() => <></>)
       ) : (
         <></>
       )}

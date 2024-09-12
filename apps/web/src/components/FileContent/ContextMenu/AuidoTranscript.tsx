@@ -8,13 +8,12 @@ export default function AudioTranscriptContextMenuList() {
   const explorer = useExplorerContext()
   const audioDialog = useAudioDialog()
 
-  type T = ExtractExplorerItem<'FilePath', 'video' | 'audio'>
+  type T = ExtractExplorerItem<'FilePathWithAssetObject', 'video' | 'audio'>
   const selectedFilePathItems = useMemo(() => {
     return Array.from(explorer.selectedItems).filter(
       (item) =>
-        item.type === 'FilePath' &&
-        !!item.assetObject &&
-        ((item.assetObject.mediaData?.contentType === 'video' && !!item.assetObject.mediaData.audio) ||
+        item.type === 'FilePathWithAssetObject' &&
+        ((item.assetObject.mediaData?.contentType === 'video' && !!item.assetObject.mediaData?.audio) ||
           item.assetObject.mediaData?.contentType === 'audio'),
     ) as T[]
   }, [explorer.selectedItems])

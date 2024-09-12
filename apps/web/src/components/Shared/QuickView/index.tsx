@@ -1,13 +1,11 @@
 'use client'
-
-import { useCurrentLibrary } from '@/lib/library'
 import Icon from '@gendam/ui/icons'
 import QuickViewItem from './QuickViewItem'
 import { useQuickViewStore } from './store'
 
 export default function QuickView() {
   const quickViewStore = useQuickViewStore()
-  const currentLibrary = useCurrentLibrary()
+  // const currentLibrary = useCurrentLibrary()
 
   // quickViewStore.show === true 的时候 quickViewStore.data 不会为空，这里只是为了下面 tsc 检查通过
   return quickViewStore.show && quickViewStore.data ? (
@@ -17,7 +15,9 @@ export default function QuickView() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute left-0 top-6 w-full overflow-hidden px-12 text-center font-medium text-white/90">
-          <div className="truncate">{quickViewStore.data.type === 'FilePath' && quickViewStore.data.filePath.name}</div>
+          <div className="truncate">
+            {quickViewStore.data.type === 'FilePathWithAssetObject' && quickViewStore.data.filePath.name}
+          </div>
         </div>
 
         <QuickViewItem data={quickViewStore.data} />

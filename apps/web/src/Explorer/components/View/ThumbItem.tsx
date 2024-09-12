@@ -10,15 +10,15 @@ export default function ThumbItem({
   className,
   variant,
 }: {
-  data: ExtractExplorerItem<'FilePath' | 'SearchResult'>
+  data: ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject' | 'SearchResult'>
   className?: string
   variant: ThumbnailVariant
 }) {
   return (
     <div className={classNames('relative overflow-hidden', className)}>
-      {data.type === 'FilePath' && data.filePath.isDir ? (
+      {data.type === 'FilePathDir' ? (
         <Image src={Folder_Light} alt="folder" priority fill={true} className="object-contain"></Image>
-      ) : data.assetObject ? (
+      ) : data.type === 'FilePathWithAssetObject' ? (
         <FileThumb data={data} variant={variant} className={className} />
       ) : (
         <Image src={Document_Light} alt="document" fill={true} className="object-contain" priority></Image>

@@ -17,15 +17,15 @@ function withOpenExplorerItem(BaseComponent: BaseContextMenuItem) {
       (e: Event) => {
         // e.stopPropagation()
         const data = Array.from(explorer.selectedItems).at(0)
-
-        if (!data) return
-
+        if (!data) {
+          return
+        }
         explorer.resetSelectedItems()
         explorerStore.reset()
-        if (data.type === 'FilePath' && data.filePath.isDir) {
+        if (data.type === 'FilePathDir') {
           let newPath = data.filePath.materializedPath + data.filePath.name + '/'
           router.push('/explorer?dir=' + newPath)
-        } else if (data.type !== 'Unknown' && data.type !== 'LibraryRoot' && data.assetObject) {
+        } else if (data.type === 'FilePathWithAssetObject') {
           quickViewStore.open(data)
         }
       },

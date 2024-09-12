@@ -15,7 +15,7 @@ import ThumbItem from '../View/ThumbItem'
 
 const DroppableInner: React.FC<
   {
-    data: ExtractExplorerItem<'FilePath' | 'SearchResult'>
+    data: ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject' | 'SearchResult'>
     index: number
   } & HTMLAttributes<HTMLDivElement>
 > = ({ data, index, className, ...props }) => {
@@ -56,7 +56,9 @@ const DroppableInner: React.FC<
       <div className="h-8 w-8">
         <ThumbItem data={data} className="h-full w-full" variant="list" />
       </div>
-      {explorer.isItemSelected(data) && explorerStore.isRenaming && data.type === 'FilePath' ? (
+      {explorer.isItemSelected(data) &&
+      explorerStore.isRenaming &&
+      (data.type === 'FilePathDir' || data.type === 'FilePathWithAssetObject') ? (
         <div className="max-w-96 flex-1">
           <RenamableItemText data={data} onClose={() => explorerStore.setIsRenaming(false)} />
         </div>
@@ -79,10 +81,10 @@ const DroppableInner: React.FC<
         </div>
       )}
       <div className={classNames('w-24 text-xs text-neutral-500', highlight ? 'text-white' : null)}>
-        {data.assetObject ? formatBytes(data.assetObject.size) : null}
+        {data.type === 'FilePathWithAssetObject' ? formatBytes(data.assetObject.size) : null}
       </div>
       <div className={classNames('w-24 text-xs text-neutral-500', highlight ? 'text-white' : null)}>
-        {data.type === 'FilePath' && filePath?.isDir ? 'Folder' : data.assetObject?.mimeType ?? 'unknown'}
+        {data.type === 'FilePathDir' ? 'Folder' : data.assetObject.mimeType ?? 'unknown'}
       </div>
     </div>
   )
@@ -90,9 +92,12 @@ const DroppableInner: React.FC<
 
 const ListItem: React.FC<
   {
-    data: ExtractExplorerItem<'FilePath' | 'SearchResult'>
+    data: ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject' | 'SearchResult'>
     index: number
-    onSelect: (e: React.MouseEvent, data: ExtractExplorerItem<'FilePath' | 'SearchResult'>) => void
+    onSelect: (
+      e: React.MouseEvent,
+      data: ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject' | 'SearchResult'>,
+    ) => void
   } & Omit<HTMLAttributes<HTMLDivElement>, 'onSelect'>
 > = ({ data, index, onSelect, ...props }) => {
   const router = useRouter()
@@ -100,24 +105,19 @@ const ListItem: React.FC<
   const explorerStore = useExplorerStore()
   const quickViewStore = useQuickViewStore()
 
-  const filePath = useMemo(() => {
-    if ('filePath' in data) return data.filePath
-    return data.filePaths.at(0)
-  }, [data])
-
   const handleDoubleClick = useCallback(
     (e: React.FormEvent<HTMLDivElement>) => {
       // e.stopPropagation()
       explorer.resetSelectedItems()
       explorerStore.reset()
-      if (filePath?.isDir) {
-        let newPath = filePath.materializedPath + filePath.name + '/'
+      if (data.type === 'FilePathDir') {
+        const newPath = data.filePath.materializedPath + data.filePath.name + '/'
         router.push('/explorer?dir=' + newPath)
-      } else if (data.assetObject) {
+      } else if (data.type === 'FilePathWithAssetObject') {
         quickViewStore.open(data)
       }
     },
-    [data, explorer, router, explorerStore, quickViewStore, filePath],
+    [data, explorer, router, explorerStore, quickViewStore],
   )
 
   return (
@@ -127,13 +127,17 @@ const ListItem: React.FC<
   )
 }
 
-export default function ListView({ items }: { items: ExtractExplorerItem<'FilePath' | 'SearchResult'>[] }) {
+export default function ListView({
+  items,
+}: {
+  items: ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject' | 'SearchResult'>[]
+}) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
 
   const onSelect = useCallback(
-    (e: React.MouseEvent, data: ExtractExplorerItem<'FilePath' | 'SearchResult'>) => {
+    (e: React.MouseEvent, data: ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject' | 'SearchResult'>) => {
       const selectIndex = items.indexOf(data)
       if (e.metaKey) {
         if (explorer.isItemSelected(data)) {

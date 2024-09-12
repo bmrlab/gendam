@@ -10,7 +10,9 @@ function withDeleteExplorerItem(BaseComponent: BaseContextMenuItem) {
     const explorer = useExplorerContext()
 
     const selectedFilePathItems = useMemo(() => {
-      return Array.from(explorer.selectedItems).filter((item) => item.type === 'FilePath')
+      return Array.from(explorer.selectedItems).filter(
+        (item) => item.type === 'FilePathDir' || item.type === 'FilePathWithAssetObject',
+      )
     }, [explorer.selectedItems])
 
     const handleDelete = useCallback(

@@ -12,7 +12,10 @@ import {
 } from '.'
 import { useSortedTasks } from './hooks'
 
-export default function VideoDetail({ filePath, assetObject }: ExtractExplorerItem<'FilePath', 'video'>) {
+export default function VideoDetail({
+  filePath,
+  assetObject,
+}: ExtractExplorerItem<'FilePathWithAssetObject', 'video'>) {
   const { sortedTasks, handleJobsCancel } = useSortedTasks(assetObject)
 
   return (

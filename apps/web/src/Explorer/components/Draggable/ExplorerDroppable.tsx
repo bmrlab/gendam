@@ -36,8 +36,7 @@ const ExplorerDroppable = ({
    * 这个 id 只给 DND 组件用，在其他地方都直接用 data 的 id
    */
   const id = `${uniqueId(droppable.data)}`
-  const isDir =
-    droppable.data.type === 'LibraryRoot' || (droppable.data.type === 'FilePath' && droppable.data.filePath.isDir)
+  const isDir = droppable.data.type === 'LibraryRoot' || droppable.data.type === 'FilePathDir'
   const { isOver, setNodeRef } = useDroppable({
     id: droppable.region ? `${droppable.region}/${id}` : id,
     data: droppable.data,

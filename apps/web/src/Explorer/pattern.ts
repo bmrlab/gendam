@@ -4,7 +4,7 @@ import { P } from 'ts-pattern'
 
 export function matchFilePath<T extends AssetObjectType>(contentType: T) {
   return {
-    type: 'FilePath' as const,
+    type: 'FilePathWithAssetObject' as const,
     assetObject: {
       mediaData: {
         contentType,

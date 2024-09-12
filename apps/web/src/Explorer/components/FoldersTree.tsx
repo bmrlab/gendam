@@ -1,7 +1,8 @@
 'use client'
 import ExplorerDroppable from '@/Explorer/components/Draggable/ExplorerDroppable'
 import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
-import { FilePath } from '@/lib/bindings'
+import { type ExtractExplorerItem } from '@/Explorer/types'
+import { type FilePath } from '@/lib/bindings'
 import { queryClient, rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
 import { Folder_Light } from '@gendam/assets/images'
@@ -22,14 +23,15 @@ const useFoldersTreeStore = create<FoldersTreeState>((set) => ({
   setIsRenaming: (isRenaming) => set({ isRenaming }),
 }))
 
-const FolderItem: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
+const FolderItem: React.FC<{ data: ExtractExplorerItem<'FilePathDir'> }> = ({ data }) => {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const foldersTreeStore = useFoldersTreeStore()
+  const { filePath } = data
   const highlight = useMemo(() => {
     return pathname === '/explorer' && filePath.materializedPath + filePath.name + '/' === searchParams.get('dir')
   }, [filePath.materializedPath, filePath.name, pathname, searchParams])
-  const foldersTreeStore = useFoldersTreeStore()
 
   const onDoubleClick = useCallback(
     (e: React.FormEvent<HTMLDivElement>) => {
@@ -43,12 +45,7 @@ const FolderItem: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
   return (
     <ContextMenu.Root onOpenChange={() => {}}>
       <ContextMenu.Trigger>
-        <ExplorerDroppable
-          droppable={{
-            data: { type: 'FilePath', filePath: filePath },
-            region: 'Sidebar',
-          }}
-        >
+        <ExplorerDroppable droppable={{ data, region: 'Sidebar' }}>
           <div
             className={cn(
               'my-1 flex items-center justify-start gap-2 overflow-hidden rounded py-1 pl-1 pr-2',
@@ -61,10 +58,7 @@ const FolderItem: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
           >
             <Image src={Folder_Light} alt="folder" priority className="h-auto w-5"></Image>
             {foldersTreeStore.isRenaming?.id === filePath.id ? (
-              <RenamableItemText
-                data={{ type: 'FilePath', filePath }}
-                onClose={() => foldersTreeStore.setIsRenaming(null)}
-              />
+              <RenamableItemText data={data} onClose={() => foldersTreeStore.setIsRenaming(null)} />
             ) : (
               <div className="truncate text-xs">{filePath.name}</div>
             )}
@@ -80,9 +74,9 @@ const FolderItem: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
   )
 }
 
-const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
+const FoldersBlock: React.FC<{ data: ExtractExplorerItem<'FilePathDir'> }> = ({ data }) => {
   const [open, setOpen] = useState(false)
-
+  const { filePath } = data
   const subDirsQuery = rspc.useQuery(
     [
       'assets.list',
@@ -99,13 +93,12 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
   /**
    * 在文件名中确保 10 > 2
    */
-  const sortedItems = useMemo(
-    () =>
-      [...(subDirsQuery.data || [])].sort((a, b) =>
-        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
-      ),
-    [subDirsQuery.data],
-  )
+  const sortedItems = useMemo(() => {
+    const sorted = [...(subDirsQuery.data || [])].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
+    )
+    return sorted.map((item) => ({ type: 'FilePathDir', filePath: item }) as ExtractExplorerItem<'FilePathDir'>)
+  }, [subDirsQuery.data])
 
   // const onClick = useCallback(
   //   (e: React.FormEvent<HTMLDivElement>) => {
@@ -127,13 +120,13 @@ const FoldersBlock: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
           <Icon.ArrowRight className={cn('size-3 transition-all duration-200', open ? 'rotate-90' : 'rotate-0')} />
         </div>
         {/* folder icon and name */}
-        <FolderItem filePath={filePath} />
+        <FolderItem data={data} />
       </div>
       {/* children */}
       {open ? (
         <div className="border-ink/10 ml-7 border-l">
           {sortedItems.map((subFilePath) => (
-            <FoldersBlock key={subFilePath.id} filePath={subFilePath} />
+            <FoldersBlock key={subFilePath.filePath.id} data={subFilePath} />
           ))}
         </div>
       ) : null}
@@ -155,13 +148,12 @@ export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement
   /**
    * 在文件名中确保 10 > 2
    */
-  const sortedItems = useMemo(
-    () =>
-      [...(dirsQuery.data || [])].sort((a, b) =>
-        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
-      ),
-    [dirsQuery.data],
-  )
+  const sortedItems = useMemo(() => {
+    const sorted = [...(dirsQuery.data || [])].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
+    )
+    return sorted.map((item) => ({ type: 'FilePathDir', filePath: item }) as ExtractExplorerItem<'FilePathDir'>)
+  }, [dirsQuery.data])
 
   const createDirMut = rspc.useMutation(['assets.create_dir'])
   const createNewFolder = async () => {
@@ -200,8 +192,8 @@ export default function FoldersTree({ className }: HTMLAttributes<HTMLDivElement
         </div>
       </div> */}
       <div className="ml-3.5">
-        {sortedItems.map((filePath) => (
-          <FoldersBlock key={filePath.id} filePath={filePath} />
+        {sortedItems.map((item) => (
+          <FoldersBlock key={item.filePath.id} data={item} />
         ))}
       </div>
     </div>

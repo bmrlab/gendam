@@ -51,8 +51,7 @@ export default function DragOverlay({ children }: PropsWithChildren) {
       {explorerStore.drag.items.map((data) => (
         <div key={uniqueId(data)} className="mb-2 flex w-60 items-center justify-start">
           <div className="h-6 w-6">
-            {(data.type === 'FilePath' && data.filePath.isDir) ||
-            (data.type === 'SearchResult' && data.filePaths.at(0)?.isDir) ? (
+            {data.type === 'FilePathDir' || (data.type === 'SearchResult' && data.filePaths.at(0)?.isDir) ? (
               <Image src={Folder_Light} alt="folder" priority></Image>
             ) : (
               <Image src={Document_Light} alt="document" priority></Image>
@@ -60,7 +59,7 @@ export default function DragOverlay({ children }: PropsWithChildren) {
           </div>
           <div className="ml-2 flex flex-1 justify-start overflow-hidden">
             <div className="truncate rounded-lg bg-blue-500 px-2 py-1 text-xs text-white">
-              {data.type === 'FilePath'
+              {data.type === 'FilePathDir' || data.type === 'FilePathWithAssetObject'
                 ? data.filePath.name
                 : data.type === 'SearchResult'
                   ? data.filePaths.at(0)?.name

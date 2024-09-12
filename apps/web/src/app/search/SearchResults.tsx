@@ -1,15 +1,13 @@
 'use client'
 
 import { useExplorerContext } from '@/Explorer/hooks'
-import { uniqueId, type ExplorerItem } from '@/Explorer/types'
+import { uniqueId, type ExtractExplorerItem } from '@/Explorer/types'
 import type { SearchResultPayload } from '@/lib/bindings'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import SearchItem from './SearchItem'
 
-type SearchResultExplorerItem = Extract<ExplorerItem, { type: 'SearchResult' }>
-
 export type ItemWithSize = {
-  data: SearchResultExplorerItem
+  data: ExtractExplorerItem<'SearchResult'>
   width: number // width in px
   height: number // height in px
 }
@@ -22,7 +20,9 @@ export default function SearchResults() {
 
   const explorer = useExplorerContext()
 
-  const items = (explorer.items || []).filter((item) => item.type === 'SearchResult') as SearchResultExplorerItem[]
+  const items = (explorer.items || []).filter(
+    (item) => item.type === 'SearchResult',
+  ) as ExtractExplorerItem<'SearchResult'>[]
 
   useEffect(() => {
     const $el = ref.current

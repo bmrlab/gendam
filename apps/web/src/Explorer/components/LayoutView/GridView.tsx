@@ -16,7 +16,7 @@ import ThumbItem from '../View/ThumbItem'
 
 const DroppableInner: React.FC<
   {
-    data: ExtractExplorerItem<'FilePath' | 'SearchResult'>
+    data: ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject' | 'SearchResult'>
   } & HTMLAttributes<HTMLDivElement>
 > = ({ data, ...props }) => {
   // const currentLibrary = useCurrentLibrary()
@@ -48,7 +48,9 @@ const DroppableInner: React.FC<
       <div className={classNames('mb-1 h-28 w-full rounded-lg p-2', highlight ? 'bg-app-hover' : null)}>
         <ThumbItem data={data} className="h-full w-full" variant="grid" />
       </div>
-      {explorer.isItemSelected(data) && explorerStore.isRenaming && data.type === 'FilePath' ? (
+      {explorer.isItemSelected(data) &&
+      explorerStore.isRenaming &&
+      (data.type === 'FilePathDir' || data.type === 'FilePathWithAssetObject') ? (
         <div>
           <RenamableItemText data={data} onClose={() => explorerStore.setIsRenaming(false)} className="text-center" />
         </div>
@@ -70,8 +72,11 @@ const DroppableInner: React.FC<
 
 const GridItem: React.FC<
   {
-    data: ExtractExplorerItem<'FilePath' | 'SearchResult'>
-    onSelect: (e: React.MouseEvent, data: ExtractExplorerItem<'FilePath' | 'SearchResult'>) => void
+    data: ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject' | 'SearchResult'>
+    onSelect: (
+      e: React.MouseEvent,
+      data: ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject' | 'SearchResult'>,
+    ) => void
   } & Omit<HTMLAttributes<HTMLDivElement>, 'onSelect'>
 > = ({ data, onSelect, ...props }) => {
   const router = useRouter()
@@ -80,24 +85,19 @@ const GridItem: React.FC<
   const explorerStore = useExplorerStore()
   const quickViewStore = useQuickViewStore()
 
-  const filePath = useMemo(() => {
-    if ('filePath' in data) return data.filePath
-    return data.filePaths.at(0)
-  }, [data])
-
   const handleDoubleClick = useCallback(
     (e: React.FormEvent<HTMLDivElement>) => {
       // e.stopPropagation()
       explorer.resetSelectedItems()
       explorerStore.reset()
-      if (filePath?.isDir) {
-        let newPath = filePath.materializedPath + filePath.name + '/'
+      if (data.type === 'FilePathDir') {
+        const newPath = data.filePath.materializedPath + data.filePath.name + '/'
         router.push('/explorer?dir=' + newPath)
-      } else if (data.assetObject) {
+      } else if (data.type === 'FilePathWithAssetObject') {
         quickViewStore.open(data)
       }
     },
-    [data, explorer, router, explorerStore, quickViewStore, filePath],
+    [data, explorer, router, explorerStore, quickViewStore],
   )
 
   return (
@@ -107,7 +107,11 @@ const GridItem: React.FC<
   )
 }
 
-export default function GridView({ items }: { items: ExtractExplorerItem<'FilePath' | 'SearchResult'>[] }) {
+export default function GridView({
+  items,
+}: {
+  items: ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject' | 'SearchResult'>[]
+}) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
@@ -145,7 +149,7 @@ export default function GridView({ items }: { items: ExtractExplorerItem<'FilePa
   }, [containerWidth])
 
   const onSelect = useCallback(
-    (e: React.MouseEvent, data: ExtractExplorerItem<'FilePath' | 'SearchResult'>) => {
+    (e: React.MouseEvent, data: ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject' | 'SearchResult'>) => {
       // 按住 cmd 键多选
       const selectIndex = items.indexOf(data)
       if (e.metaKey) {

@@ -10,15 +10,21 @@ export type ExplorerItemType =
   | 'SearchResult'
   | 'RetrievalResult'
   | 'Unknown'
+
+// TODO: do not export RawFilePath
 export type RawFilePath = Omit<FilePath, 'assetObject'>
 
+type LibraryRootItem = {
+  type: 'LibraryRoot'
+}
+
 type FilePathDirItem = {
-  type: 'FilePath'
+  type: 'FilePathDir'
   filePath: Omit<RawFilePath, 'isDir'> & { isDir: true }
 }
 
 type FilePathWithAssetObjectItem = {
-  type: 'FilePath'
+  type: 'FilePathWithAssetObject'
   filePath: Omit<RawFilePath, 'isDir'> & { isDir: false }
   assetObject: AssetObject
 }
@@ -39,10 +45,6 @@ type RetrievalResultItem = {
 
 type UnknownItem = {
   type: 'Unknown'
-}
-
-type LibraryRootItem = {
-  type: 'LibraryRoot'
 }
 
 export type ExplorerItem =
@@ -117,14 +119,16 @@ export type ExtractExplorerItemWithType<V extends AssetObjectType = AssetObjectT
 
 export function uniqueId(item: ExplorerItem): string {
   switch (item.type) {
-    case 'FilePath':
-      return `FilePath:${item.filePath.id}`
+    case 'LibraryRoot':
+      return 'LibraryRoot'
+    case 'FilePathDir':
+      return `FilePathDir:${item.filePath.id}`
+    case 'FilePathWithAssetObject':
+      return `FilePathWithAssetObject:${item.filePath.id}`
     case 'SearchResult':
       return `SearchResult:${item.assetObject.id}:${uniqueIdForSearchMetadata(item.metadata)}`
     case 'RetrievalResult':
       return `RetrievalResult:${item.assetObject.id}:${item.taskType}:${uniqueIdForSearchMetadata(item.metadata)}`
-    case 'LibraryRoot':
-      return 'LibraryRoot'
     case 'Unknown':
       return `Unknown:${Math.random()}`
   }

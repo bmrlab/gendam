@@ -12,9 +12,11 @@ function withShareExplorerItem(BaseComponent: BaseContextMenuItem) {
     const p2pStateQuery = rspc.useQuery(['p2p.state'])
     const p2pMut = rspc.useMutation(['p2p.share'])
 
-    type T = ExtractExplorerItem<'FilePath'>
+    type T = ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject'>
     const selectedFilePathItems: T[] = useMemo(() => {
-      return Array.from(explorer.selectedItems).filter((item) => item.type === 'FilePath') as T[]
+      return Array.from(explorer.selectedItems).filter(
+        (item) => item.type === 'FilePathDir' || item.type === 'FilePathWithAssetObject',
+      ) as T[]
     }, [explorer.selectedItems])
 
     const handleShare = useCallback(

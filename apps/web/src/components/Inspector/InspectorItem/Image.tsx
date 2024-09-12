@@ -1,5 +1,6 @@
 import ImageViewer from '@/components/MediaViewer/Image'
 import { ExtractExplorerItem } from '@/Explorer/types'
+import { rspc } from '@/lib/rspc'
 import {
   InspectorItemContainer,
   InspectorItemDivider,
@@ -10,9 +11,11 @@ import {
   InspectorItemViewer,
 } from '.'
 import { useSortedTasks } from './hooks'
-import { rspc } from '@/lib/rspc'
 
-export default function ImageDetail({ filePath, assetObject }: ExtractExplorerItem<'FilePath', 'image'>) {
+export default function ImageDetail({
+  filePath,
+  assetObject,
+}: ExtractExplorerItem<'FilePathWithAssetObject', 'image'>) {
   const { sortedTasks, handleJobsCancel } = useSortedTasks(assetObject)
   const { data } = rspc.useQuery(['assets.artifacts.image.description', { hash: assetObject.hash }])
 
@@ -39,8 +42,8 @@ export default function ImageDetail({ filePath, assetObject }: ExtractExplorerIt
       <InspectorItemDivider />
 
       <div className="flex flex-col">
-        <div className="text-xs font-semibold mb-2">Description</div>
-        <div className="h-48 overflow-y-scroll text-xs select-text cursor-text whitespace-pre-line">{data}</div>
+        <div className="mb-2 text-xs font-semibold">Description</div>
+        <div className="h-48 cursor-text select-text overflow-y-scroll whitespace-pre-line text-xs">{data}</div>
       </div>
 
       <InspectorItemDivider />

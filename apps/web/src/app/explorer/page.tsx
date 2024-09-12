@@ -12,7 +12,6 @@ import Inspector from '@/components/Inspector'
 import { useInspector } from '@/components/Inspector/store'
 import AudioDialog from '@/components/TranscriptExport/AudioDialog'
 import Viewport from '@/components/Viewport'
-import { FilePath } from '@/lib/bindings'
 import { rspc } from '@/lib/rspc'
 import { Drop_To_Folder } from '@gendam/assets/images'
 import { RSPCError } from '@rspc/client'
@@ -47,12 +46,14 @@ export default function ExplorerPage() {
   // const [materializedPath, setMaterializedPath] = useState<string>(dirInSearchParams)
   const materializedPath = useMemo(() => dirInSearchParams, [dirInSearchParams])
 
-  const [items, setItems] = useState<FilePath[] | null>(null)
+  const [items, setItems] = useState<
+    (ExtractExplorerItem<'FilePathDir'> | ExtractExplorerItem<'FilePathWithAssetObject'>)[] | null
+  >(null)
   const [layout, setLayout] = useState<ExplorerValue['settings']['layout']>('grid')
 
   const inspector = useInspector()
   const explorer = useExplorerValue({
-    items: items ? items.map((item) => ({ type: 'FilePath', filePath: item, assetObject: item.assetObject! })) : null,
+    items,
     materializedPath,
     settings: {
       layout,
@@ -75,7 +76,6 @@ export default function ExplorerPage() {
   const setShowInspector = inspector.setShow
   useEffect(() => {
     if (assetsQuery.isSuccess) {
-      const revealedFilePath = assetsQuery.data.find((item) => item.id === initialRevealedFilePathId)
       /**
        * 在文件名中确保 10 > 2
        * TODO: 优化这部分代码，如果有分页，这个做法就失效了，后端要处理好。还有如果排序方式支持用户选，这里也要跟着改。
@@ -83,15 +83,23 @@ export default function ExplorerPage() {
       const sortedItems = assetsQuery.data.sort((a, b) =>
         a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
       )
-      setItems(sortedItems)
+      const explorerItems = sortedItems.map((item) => {
+        return item.isDir
+          ? ({
+              type: 'FilePathDir',
+              filePath: item,
+            } as ExtractExplorerItem<'FilePathDir'>)
+          : ({
+              type: 'FilePathWithAssetObject',
+              filePath: item,
+              assetObject: item.assetObject!,
+            } as ExtractExplorerItem<'FilePathWithAssetObject'>)
+      })
+      setItems(explorerItems)
+      const revealedItem = explorerItems.find((item) => item.filePath.id === initialRevealedFilePathId)
       // 重新获取数据要清空选中的项目，以免出现不在列表中但是还被选中的情况
-      if (revealedFilePath) {
-        resetSelectedItems([
-          {
-            type: 'FilePath',
-            filePath: revealedFilePath,
-          },
-        ])
+      if (revealedItem) {
+        resetSelectedItems([revealedItem])
         setShowInspector(true)
       } else {
         resetSelectedItems()
@@ -110,9 +118,11 @@ export default function ExplorerPage() {
     setLayout(explorer.settings.layout)
   }, [explorer.settings.layout])
 
-  type T = ExtractExplorerItem<'FilePath'>
+  type T = ExtractExplorerItem<'FilePathDir'> | ExtractExplorerItem<'FilePathWithAssetObject'>
   const inspectorItem = useMemo<T | null>(() => {
-    const selectedItems = Array.from(explorer.selectedItems).filter((item) => item.type === 'FilePath') as T[]
+    const selectedItems = Array.from(explorer.selectedItems).filter(
+      (item) => item.type === 'FilePathDir' || item.type === 'FilePathWithAssetObject',
+    ) as T[]
     if (selectedItems.length === 1) {
       return selectedItems[0]
     }
@@ -148,7 +158,9 @@ export default function ExplorerPage() {
   return (
     <ExplorerViewContextProvider
       value={{
-        contextMenu: (data) => (data.type === 'FilePath' ? <ItemContextMenuV2 /> : null),
+        contextMenu: (data) =>
+          // checking for data.type is not necessary ...
+          data.type === 'FilePathDir' || data.type === 'FilePathWithAssetObject' ? <ItemContextMenuV2 /> : null,
       }}
     >
       <ExplorerContextProvider explorer={explorer}>

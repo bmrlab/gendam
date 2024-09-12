@@ -8,7 +8,7 @@ export default function RenamableItemText({
   className,
   onClose,
 }: HTMLAttributes<HTMLDivElement> & {
-  data: ExtractExplorerItem<'FilePath'>
+  data: ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject'>
   onClose: () => void
 }) {
   const renameMut = rspc.useMutation(['assets.rename_file_path'])

@@ -11,7 +11,10 @@ import {
 } from '.'
 import { useSortedTasks } from './hooks'
 
-export default function WebPageDetail({ filePath, assetObject }: ExtractExplorerItem<'FilePath', 'webPage'>) {
+export default function WebPageDetail({
+  filePath,
+  assetObject,
+}: ExtractExplorerItem<'FilePathWithAssetObject', 'webPage'>) {
   const { sortedTasks, handleJobsCancel } = useSortedTasks(assetObject)
 
   return (

@@ -11,17 +11,22 @@ function withUploadExplorerItem(BaseComponent: BaseContextMenuItem) {
     const explorer = useExplorerContext()
     const { mutateAsync: uploadToS3 } = rspc.useMutation(['storage.upload_to_s3'])
 
-    type T = ExtractExplorerItem<'FilePath'>
+    type T = ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject'>
     const selectedFilePathItems: T[] = useMemo(() => {
-      return Array.from(explorer.selectedItems).filter((item) => item.type === 'FilePath') as T[]
+      return Array.from(explorer.selectedItems).filter(
+        (item) => item.type === 'FilePathDir' || item.type === 'FilePathWithAssetObject',
+      ) as T[]
     }, [explorer.selectedItems])
 
     const handleUpload = useCallback(async () => {
-      let hashes = selectedFilePathItems.map((s) => s.assetObject?.hash).filter((s) => !!s) as string[]
-      let materializedPaths = selectedFilePathItems
-        .filter((s) => s.filePath.isDir)
+      const hashes = selectedFilePathItems
+        .filter((s) => s.type === 'FilePathWithAssetObject')
+        .map((s) => s.assetObject.hash)
+        .filter((s) => !!s) as string[]
+      const materializedPaths = selectedFilePathItems
+        .filter((s) => s.type === 'FilePathDir')
         .map((s) => `${s.filePath.materializedPath}${s.filePath.name}/`)
-      let payload = {
+      const payload = {
         hashes,
         materializedPaths,
       }

@@ -4,17 +4,21 @@ import { useMemo } from 'react'
 import Folders from './Folders'
 import Medias from './Medias'
 
-export default function MediaView({ items }: { items: ExtractExplorerItem<'FilePath'>[] }) {
+export default function MediaView({
+  items,
+}: {
+  items: ExtractExplorerItem<'FilePathDir' | 'FilePathWithAssetObject'>[]
+}) {
   const [folders, medias] = useMemo(() => {
-    return items.reduce<[ExtractExplorerItem<'FilePath'>[], ExtractExplorerItem<'FilePath'>[]]>(
-      ([folders, medias]: [ExtractExplorerItem<'FilePath'>[], ExtractExplorerItem<'FilePath'>[]], item) => {
-        if (item.filePath.isDir) {
+    return items.reduce<[ExtractExplorerItem<'FilePathDir'>[], ExtractExplorerItem<'FilePathWithAssetObject'>[]]>(
+      ([folders, medias], item) => {
+        if (item.type === 'FilePathDir') {
           folders.push(item)
         } else {
           medias.push(item)
         }
         // FIXME don't know why ts throw error on this type
-        return [folders, medias] as [ExtractExplorerItem<'FilePath'>[], ExtractExplorerItem<'FilePath'>[]]
+        return [folders, medias]
       },
       [[], []],
     )

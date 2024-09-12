@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ThumbItem from '../../View/ThumbItem'
 
 type ItemWithSize = {
-  data: ExtractExplorerItem<'FilePath'>
+  data: ExtractExplorerItem<'FilePathWithAssetObject'>
   width: number
   height: number
 }
@@ -63,7 +63,7 @@ const DroppableInner: React.FC<ItemWithSize> = ({ data, width, height }) => {
 
 const MediaItem: React.FC<
   ItemWithSize & {
-    onSelect: (e: React.MouseEvent, data: ExtractExplorerItem<'FilePath'>) => void
+    onSelect: (e: React.MouseEvent, data: ExtractExplorerItem<'FilePathWithAssetObject'>) => void
   }
 > = ({ data, onSelect, ...props }) => {
   const explorer = useExplorerContext()
@@ -74,9 +74,7 @@ const MediaItem: React.FC<
     (e: React.FormEvent<HTMLDivElement>) => {
       explorer.resetSelectedItems()
       explorerStore.reset()
-      if (data.assetObject) {
-        quickViewStore.open(data)
-      }
+      quickViewStore.open(data)
     },
     [data, explorer, explorerStore, quickViewStore],
   )
@@ -88,7 +86,7 @@ const MediaItem: React.FC<
   )
 }
 
-export default function Medias({ items }: { items: ExtractExplorerItem<'FilePath'>[] }) {
+export default function Medias({ items }: { items: ExtractExplorerItem<'FilePathWithAssetObject'>[] }) {
   const explorer = useExplorerContext()
   const explorerStore = useExplorerStore()
   const [lastSelectIndex, setLastSelectedIndex] = useState<number>(-1)
@@ -155,7 +153,7 @@ export default function Medias({ items }: { items: ExtractExplorerItem<'FilePath
   }, [containerWidth, items])
 
   const onSelect = useCallback(
-    (e: React.MouseEvent, data: ExtractExplorerItem<'FilePath'>) => {
+    (e: React.MouseEvent, data: ExtractExplorerItem<'FilePathWithAssetObject'>) => {
       // 只处理 medias 的选择
       const selectIndex = items.indexOf(data)
       if (e.metaKey) {

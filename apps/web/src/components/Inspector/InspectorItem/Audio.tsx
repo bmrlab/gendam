@@ -12,7 +12,10 @@ import {
 } from '.'
 import { useSortedTasks } from './hooks'
 
-export default function AudioDetail({ filePath, assetObject }: ExtractExplorerItem<'FilePath', 'audio'>) {
+export default function AudioDetail({
+  filePath,
+  assetObject,
+}: ExtractExplorerItem<'FilePathWithAssetObject', 'audio'>) {
   const { sortedTasks, handleJobsCancel } = useSortedTasks(assetObject)
 
   return (

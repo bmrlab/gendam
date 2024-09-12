@@ -16,7 +16,7 @@ function withRevealExplorerItem(BaseComponent: BaseContextMenuItem) {
       }
 
       const [dir, id] = (() => {
-        if (item.type === 'FilePath') {
+        if (item.type === 'FilePathDir' || item.type === 'FilePathWithAssetObject') {
           return [item.filePath.materializedPath, item.filePath.id]
         }
 
