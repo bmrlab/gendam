@@ -1,17 +1,16 @@
-'use client'
-// import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
-import { useExplorerStore } from '@/Explorer/store'
-import { type FilePath } from '@/lib/bindings'
-import { ExtractExplorerItem, type ExplorerItem } from '@/Explorer/types'
-import { rspc, queryClient } from '@/lib/rspc'
-import { HTMLAttributes, useCallback, useEffect, useRef } from 'react'
+import { ExtractExplorerItem } from '@/Explorer/types'
+import { queryClient, rspc } from '@/lib/rspc'
 import classNames from 'classnames'
+import { HTMLAttributes, useCallback, useEffect, useRef } from 'react'
 
 export default function RenamableItemText({
-  data, className
-}: HTMLAttributes<HTMLDivElement> & { data: ExtractExplorerItem<'FilePath'> }) {
-  const explorerStore = useExplorerStore()
-  // const explorer = useExplorerContext()
+  data,
+  className,
+  onClose,
+}: HTMLAttributes<HTMLDivElement> & {
+  data: ExtractExplorerItem<'FilePath'>
+  onClose: () => void
+}) {
   const renameMut = rspc.useMutation(['assets.rename_file_path'])
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -40,8 +39,7 @@ export default function RenamableItemText({
       if (!inputRef.current?.value) {
         return
       }
-      explorerStore.setIsRenaming(false)
-      // explorerStore.reset()
+      onClose()
       /**
        * @todo 这里 mutate({}, { onSuccess }) 里面的 onSuccess 不会被触发,
        * 但是 uploadqueue 里面可以, 太奇怪了
@@ -56,28 +54,28 @@ export default function RenamableItemText({
         })
       } catch (error) {}
       queryClient.invalidateQueries({
-        queryKey: ['assets.list', { materializedPath: data.filePath.materializedPath }]
+        queryKey: ['assets.list', { materializedPath: data.filePath.materializedPath }],
       })
     },
-    [explorerStore, renameMut, data],
+    [onClose, renameMut, data],
   )
 
   return (
-    <form className={classNames("w-full")} onSubmit={handleInputSubmit}>
+    <form className={classNames('w-full')} onSubmit={handleInputSubmit}>
       <input
         ref={inputRef}
         className={classNames(
-          "block w-full text-ink bg-app text-xs",
+          'text-ink bg-app block w-full text-xs',
           // "border-2 border-blue-600",
-          "rounded shadow-[inset_0_0_0_1px] shadow-blue-600",
-          "outline-none border-none px-1 py-1",
-          className
+          'rounded shadow-[inset_0_0_0_1px] shadow-blue-600',
+          'border-none px-1 py-1 outline-none',
+          className,
         )}
         type="text"
         onClick={(e) => e.stopPropagation()}
         onDoubleClick={(e) => e.stopPropagation()}
         onBlur={() => {
-          explorerStore.setIsRenaming(false)
+          onClose()
           console.log('on blur, but do nothing, press enter to submit')
         }}
       />

@@ -1,16 +1,15 @@
 'use client'
 import ExplorerDroppable from '@/Explorer/components/Draggable/ExplorerDroppable'
-import { ExtractExplorerItem } from '@/Explorer/types'
+import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import { FilePath } from '@/lib/bindings'
 import { queryClient, rspc } from '@/lib/rspc'
 import { cn } from '@/lib/utils'
 import { Folder_Light } from '@gendam/assets/images'
 import Icon from '@gendam/ui/icons'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
-import classNames from 'classnames'
 import Image from 'next/image'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { HTMLAttributes, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { HTMLAttributes, useCallback, useMemo, useState } from 'react'
 import { create } from 'zustand'
 
 interface FoldersTreeState {
@@ -22,79 +21,6 @@ const useFoldersTreeStore = create<FoldersTreeState>((set) => ({
   isRenaming: null,
   setIsRenaming: (isRenaming) => set({ isRenaming }),
 }))
-
-// 这里先复制一个 RenamableItemText, 因为 Explorer 组件下的 RenamableItemText 绑定了 explorerStore
-const RenamableItemText = ({
-  data,
-  className,
-}: HTMLAttributes<HTMLDivElement> & {
-  data: ExtractExplorerItem<'FilePath'>
-}) => {
-  const foldersTreeStore = useFoldersTreeStore()
-  const renameMut = rspc.useMutation(['assets.rename_file_path'])
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (inputRef.current) {
-      const el = inputRef.current
-      el.value = data.filePath.name
-      setTimeout(() => {
-        el.focus()
-        el.select()
-      }, 100)
-    }
-  }, [inputRef, data.filePath.name])
-
-  const handleInputSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault()
-      if (!inputRef.current?.value) {
-        return
-      }
-      foldersTreeStore.setIsRenaming(null)
-      // explorerStore.reset()
-      /**
-       * @todo 这里 mutate({}, { onSuccess }) 里面的 onSuccess 不会被触发,
-       * 但是 uploadqueue 里面可以, 太奇怪了
-       */
-      try {
-        await renameMut.mutateAsync({
-          id: data.filePath.id,
-          materializedPath: data.filePath.materializedPath,
-          isDir: data.filePath.isDir,
-          oldName: data.filePath.name,
-          newName: inputRef.current.value,
-        })
-      } catch (error) {}
-      queryClient.invalidateQueries({
-        queryKey: ['assets.list', { materializedPath: data.filePath.materializedPath }],
-      })
-    },
-    [foldersTreeStore, renameMut, data],
-  )
-
-  return (
-    <form className={classNames('w-full')} onSubmit={handleInputSubmit}>
-      <input
-        ref={inputRef}
-        className={classNames(
-          'text-ink bg-app block w-full text-xs',
-          // "border-2 border-blue-600",
-          'rounded shadow-[inset_0_0_0_1px] shadow-blue-600',
-          'border-none px-1 py-1 outline-none',
-          className,
-        )}
-        type="text"
-        onClick={(e) => e.stopPropagation()}
-        onDoubleClick={(e) => e.stopPropagation()}
-        onBlur={() => {
-          foldersTreeStore.setIsRenaming(null)
-          console.log('on blur, but do nothing, press enter to submit')
-        }}
-      />
-    </form>
-  )
-}
 
 const FolderItem: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
   const router = useRouter()
@@ -135,7 +61,10 @@ const FolderItem: React.FC<{ filePath: FilePath }> = ({ filePath }) => {
           >
             <Image src={Folder_Light} alt="folder" priority className="h-auto w-5"></Image>
             {foldersTreeStore.isRenaming?.id === filePath.id ? (
-              <RenamableItemText data={{ type: 'FilePath', filePath }} />
+              <RenamableItemText
+                data={{ type: 'FilePath', filePath }}
+                onClose={() => foldersTreeStore.setIsRenaming(null)}
+              />
             ) : (
               <div className="truncate text-xs">{filePath.name}</div>
             )}

@@ -44,7 +44,7 @@ const DroppableInner: React.FC<ItemWithSize> = ({ data, width, height }) => {
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming ? (
         <div>
-          <RenamableItemText data={data} className="text-center" />
+          <RenamableItemText data={data} onClose={() => explorerStore.setIsRenaming(false)} className="text-center" />
         </div>
       ) : (
         <div

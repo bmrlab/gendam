@@ -58,7 +58,7 @@ const DroppableInner: React.FC<
       </div>
       {explorer.isItemSelected(data) && explorerStore.isRenaming && data.type === 'FilePath' ? (
         <div className="max-w-96 flex-1">
-          <RenamableItemText data={data} />
+          <RenamableItemText data={data} onClose={() => explorerStore.setIsRenaming(false)} />
         </div>
       ) : (
         <div
