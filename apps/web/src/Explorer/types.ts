@@ -3,30 +3,38 @@ import { AssetObjectType } from '@/lib/library'
 import { match } from 'ts-pattern'
 
 // LibraryRoot is a special type of item that represents the root of the library
-export type ExplorerItemType = 'FilePath' | 'SearchResult' | 'RetrievalResult' | 'LibraryRoot' | 'Unknown'
+export type ExplorerItemType =
+  | 'LibraryRoot'
+  | 'FilePathDir'
+  | 'FilePathWithAssetObject'
+  | 'SearchResult'
+  | 'RetrievalResult'
+  | 'Unknown'
 export type RawFilePath = Omit<FilePath, 'assetObject'>
 
-type BaseItem = {
+type FilePathDirItem = {
+  type: 'FilePath'
+  filePath: Omit<RawFilePath, 'isDir'> & { isDir: true }
+}
+
+type FilePathWithAssetObjectItem = {
+  type: 'FilePath'
+  filePath: Omit<RawFilePath, 'isDir'> & { isDir: false }
   assetObject: AssetObject
 }
 
-type BaseSearchResultItem = BaseItem & {
+type SearchResultItem = {
+  type: 'SearchResult'
+  filePaths: RawFilePath[]
+  assetObject: AssetObject
   metadata: SearchResultMetadata
 }
 
-type FilePathItem = Partial<BaseItem> & {
-  type: 'FilePath'
-  filePath: RawFilePath
-}
-
-type SearchResultItem = BaseSearchResultItem & {
-  type: 'SearchResult'
-  filePaths: RawFilePath[]
-}
-
-type RetrievalResultItem = BaseSearchResultItem & {
+type RetrievalResultItem = {
   type: 'RetrievalResult'
   taskType: ContentTaskType
+  assetObject: AssetObject
+  metadata: SearchResultMetadata
 }
 
 type UnknownItem = {
@@ -37,57 +45,75 @@ type LibraryRootItem = {
   type: 'LibraryRoot'
 }
 
-export type ExplorerItem = FilePathItem | SearchResultItem | RetrievalResultItem | LibraryRootItem | UnknownItem
+export type ExplorerItem =
+  | LibraryRootItem
+  | FilePathDirItem
+  | FilePathWithAssetObjectItem
+  | SearchResultItem
+  | RetrievalResultItem
+  | UnknownItem
 
-type ValidContentTaskType<T extends AssetObjectType = AssetObjectType> = Extract<
+type ValidContentTaskType<V extends AssetObjectType = AssetObjectType> = Extract<
   ContentTaskType,
-  { contentType: T }
+  { contentType: V }
 >['taskType']
 
-export type ExtractAssetObject<T extends AssetObjectType> = AssetObject & {
-  mediaData: Extract<AssetObject['mediaData'], { contentType: T }> | null
-}
-type ExtractBaseItem<T extends AssetObjectType> = BaseItem & { assetObject: ExtractAssetObject<T> }
-
-type ExtractBaseSearchResultItem<T extends AssetObjectType> = ExtractBaseItem<T> & {
-  metadata: SearchResultMetadata & { type: T }
+export type ExtractAssetObject<V extends AssetObjectType> = AssetObject & {
+  mediaData: Extract<AssetObject['mediaData'], { contentType: V }> | null
 }
 
-// export type ExtractFilePathItem<T extends AssetObjectType> = FilePathItem & ExtractBaseItem<T>
-export type ExtractFilePathItem<T extends AssetObjectType> = FilePathItem & {
-  assetObject?: ExtractAssetObject<T>
+export type ExtractFilePathWithAssetObjectItem<V extends AssetObjectType> = FilePathWithAssetObjectItem & {
+  assetObject: ExtractAssetObject<V>
 }
 
-export type ExtractSearchResultItem<T extends AssetObjectType> = SearchResultItem & ExtractBaseSearchResultItem<T>
+export type ExtractSearchResultItem<V extends AssetObjectType> = SearchResultItem & {
+  assetObject: ExtractAssetObject<V>
+  metadata: SearchResultMetadata & { type: V }
+}
+
 export type ExtractRetrievalResultItem<
-  T extends AssetObjectType,
-  V extends ValidContentTaskType<T> = ValidContentTaskType<T>,
-> = RetrievalResultItem &
-  ExtractBaseSearchResultItem<T> & {
-    taskType: { contentType: T; taskType: V }
-  }
-
-export type ExtractExplorerItem<
-  T extends ExplorerItemType = 'FilePath' | 'SearchResult' | 'RetrievalResult' | 'LibraryRoot' | 'Unknown',
   V extends AssetObjectType = AssetObjectType,
   U extends ValidContentTaskType<V> = ValidContentTaskType<V>,
-> = T extends 'FilePath'
-  ? ExtractFilePathItem<V>
-  : T extends 'SearchResult'
-    ? ExtractSearchResultItem<V>
-    : T extends 'RetrievalResult'
-      ? RetrievalResultItem &
-          ExtractBaseSearchResultItem<V> & {
-            taskType: { contentType: V; taskType: U }
-          }
-      : T extends 'LibraryRoot'
-        ? LibraryRootItem
-        : UnknownItem
+> = RetrievalResultItem & {
+  assetObject: ExtractAssetObject<V>
+  metadata: SearchResultMetadata & { type: V }
+} & {
+  taskType: { contentType: V; taskType: U }
+}
 
-export type ExtractExplorerItemWithType<T extends AssetObjectType = AssetObjectType> =
-  | ExtractFilePathItem<T>
-  | ExtractSearchResultItem<T>
-  | ExtractRetrievalResultItem<T>
+export type ExtractExplorerItem<
+  T extends ExplorerItemType =
+    | 'LibraryRoot'
+    | 'FilePathDir'
+    | 'FilePathWithAssetObject'
+    | 'SearchResult'
+    | 'RetrievalResult'
+    | 'Unknown',
+  V extends AssetObjectType = AssetObjectType,
+  U extends ValidContentTaskType<V> = ValidContentTaskType<V>,
+> = T extends 'LibraryRoot'
+  ? LibraryRootItem
+  : T extends 'FilePathDir'
+    ? FilePathDirItem
+    : T extends 'FilePathWithAssetObject'
+      ? ExtractFilePathWithAssetObjectItem<V>
+      : T extends 'SearchResult'
+        ? ExtractSearchResultItem<V>
+        : T extends 'RetrievalResult'
+          ? // ExtractRetrievalResultItem<V, U>
+            // 这里其实就是 ExtractRetrievalResultItem<V, U>，但是得展开来写，不然类型会报错
+            RetrievalResultItem & {
+              assetObject: ExtractAssetObject<V>
+              metadata: SearchResultMetadata & { type: V }
+            } & {
+              taskType: { contentType: V; taskType: U }
+            }
+          : UnknownItem
+
+export type ExtractExplorerItemWithType<V extends AssetObjectType = AssetObjectType> =
+  | ExtractFilePathWithAssetObjectItem<V>
+  | ExtractSearchResultItem<V>
+  | ExtractRetrievalResultItem<V>
 
 export function uniqueId(item: ExplorerItem): string {
   switch (item.type) {
