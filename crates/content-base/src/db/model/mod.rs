@@ -6,14 +6,14 @@ pub mod video;
 pub mod web;
 pub mod document;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ImageModel {
     pub prompt: String,
     pub vector: Vec<f32>,
     pub prompt_vector: Vec<f32>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct TextModel {
     pub data: String,
     pub vector: Vec<f32>,
@@ -21,7 +21,7 @@ pub struct TextModel {
     pub en_vector: Vec<f32>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PageModel {
     pub text: Vec<TextModel>,
     pub image: Vec<ImageModel>,
