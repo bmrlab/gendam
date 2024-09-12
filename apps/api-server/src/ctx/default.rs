@@ -20,6 +20,7 @@ use std::{
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc, Mutex},
 };
+use tokio::sync::RwLock;
 use vector_db::{get_language_collection_name, get_vision_collection_name, kill_qdrant_server};
 
 /**
@@ -503,10 +504,10 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                     Arc::new(ai_handler.image_caption.0.clone()),
                     &ai_handler.image_caption.1,
                 );
-            let mut current_cb = self.content_base.lock().map_err(unexpected_err)?;
             let cb = ContentBase::new(
                 &cb_ctx,
                 library.qdrant_client(),
+                Arc::new(RwLock::new(content_base::db::DB::new().await)),
                 &qdrant_info.language_collection.name,
                 &qdrant_info.vision_collection.name,
             )
@@ -518,6 +519,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 )
             })?;
             tracing::info!(task = "init task pool", "Success");
+            let mut current_cb = self.content_base.lock().map_err(unexpected_err)?;
             current_cb.replace(cb.clone());
 
             cb

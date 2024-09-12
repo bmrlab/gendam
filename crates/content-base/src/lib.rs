@@ -1,5 +1,5 @@
 mod core;
-mod db;
+pub mod db;
 pub mod delete;
 pub mod query;
 pub mod task;
@@ -14,6 +14,7 @@ pub use content_base_pool::{TaskNotification, TaskStatus};
 pub use content_base_task::*;
 pub use content_metadata::ContentMetadata;
 use qdrant_client::Qdrant;
+use tokio::sync::RwLock;
 
 pub mod metadata {
     pub use content_metadata::*;
@@ -24,13 +25,14 @@ pub struct ContentBase {
     ctx: ContentBaseCtx,
     task_pool: TaskPool,
     pub qdrant: Arc<Qdrant>,
-    pub db: Arc<DB>,
+    pub db: Arc<RwLock<DB>>,
     pub language_collection_name: String,
     pub vision_collection_name: String,
 }
 
 #[cfg(test)]
 mod test {
+    use crate::db::DB;
     use crate::{upsert::UpsertPayload, ContentBase};
     use ai::{
         llm::{openai::OpenAI, LLM},
@@ -55,6 +57,7 @@ mod test {
     use qdrant_client::Qdrant;
     use std::path::Path;
     use std::{env, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+    use tokio::sync::RwLock;
 
     fn get_project_root() -> PathBuf {
         let mut path = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -116,10 +119,13 @@ mod test {
                     get_project_root()
                         .join("apps/desktop/src-tauri/resources/puff-base-v1/model_quantized.onnx"),
                     get_project_root()
-                        .join("apps/desktop/src-tauri/resources/puff-base-v1/tokenizer.json")).await
+                        .join("apps/desktop/src-tauri/resources/puff-base-v1/tokenizer.json"),
+                )
+                .await
             },
             None,
-        ).expect("");
+        )
+        .expect("");
         let tokenizer = Tokenizer::from_file(
             get_project_root().join("apps/desktop/src-tauri/resources/qwen2/tokenizer.json"),
         )
@@ -220,6 +226,7 @@ mod test {
         let content_base = ContentBase::new(
             &ctx,
             Arc::new(qdrant),
+            Arc::new(RwLock::new(DB::new().await)),
             "content-base-language",
             "content-base-vision",
         )
