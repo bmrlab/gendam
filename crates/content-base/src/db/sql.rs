@@ -48,7 +48,7 @@ DEFINE FIELD IF NOT EXISTS end_timestamp ON audio_frame TYPE number;
 -- 创建 "audio" 表
 DEFINE TABLE IF NOT EXISTS audio;
 -- 定义 "audio" 表的字段
-DEFINE FIELD IF NOT EXISTS audio_frame ON TABLE audio TYPE array<record<audio_frame>>;
+DEFINE FIELD IF NOT EXISTS frame ON TABLE audio TYPE array<record<audio_frame>>;
 
 ---- relation "with" payload
 -- 创建 "video" 表
@@ -60,8 +60,8 @@ DEFINE FIELD IF NOT EXISTS audio_frame ON TABLE video TYPE array<record<audio_fr
 -- 创建 "page" 表
 DEFINE TABLE IF NOT EXISTS page;
 -- 定义 "page" 表的字段
-DEFINE FIELD IF NOT EXISTS text ON TABLE item TYPE array<record<text>>;
-DEFINE FIELD IF NOT EXISTS image ON TABLE item TYPE array<record<image>>;
+DEFINE FIELD IF NOT EXISTS text ON TABLE page TYPE array<record<text>>;
+DEFINE FIELD IF NOT EXISTS image ON TABLE page TYPE array<record<image>>;
 DEFINE FIELD IF NOT EXISTS start_index ON TABLE page TYPE number;
 DEFINE FIELD IF NOT EXISTS end_index ON TABLE page TYPE number;
 
@@ -69,13 +69,13 @@ DEFINE FIELD IF NOT EXISTS end_index ON TABLE page TYPE number;
 -- 创建 "web" 表
 DEFINE TABLE IF NOT EXISTS web;
 -- 定义 "web" 表的字段
-DEFINE FIELD IF NOT EXISTS data ON TABLE web TYPE array<record<page>>;
+DEFINE FIELD IF NOT EXISTS page ON TABLE web TYPE array<record<page>>;
 
 ---- relation "with" payload
 -- 创建 "document" 表
 DEFINE TABLE IF NOT EXISTS document;
 -- 定义 "document" 表的字段
-DEFINE FIELD IF NOT EXISTS data ON TABLE document TYPE array<record<page>>;
+DEFINE FIELD IF NOT EXISTS page ON TABLE document TYPE array<record<page>>;
 
 -- 定义向量索引
 DEFINE INDEX IF NOT EXISTS idx_text_vector_hnsw_d512 ON text FIELDS vector HNSW DIMENSION 1024 DIST EUCLIDEAN;
