@@ -99,7 +99,7 @@ impl ContentBase {
     // }
 
     pub async fn query(&self, payload: QueryPayload) -> anyhow::Result<Vec<SearchResultData>> {
-        let search_model = self.query_payload_to_model(payload);
+        let search_model = self.query_payload_to_model(payload).await?;
         Ok(vec![])
     }
 
