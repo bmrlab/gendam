@@ -1,9 +1,15 @@
+use frame::{AudioFrameEntity, ImageFrameEntity};
+use page::PageEntity;
 use serde::Deserialize;
 use surrealdb::sql::Thing;
 
 use super::model::id::ID;
 
+pub(crate) mod frame;
 pub(crate) mod full_text;
+pub(crate) mod page;
+pub(crate) mod payload;
+pub(crate) mod relation;
 pub(crate) mod vector;
 
 impl From<Thing> for ID {
@@ -22,10 +28,9 @@ pub struct TextEntity {
 #[derive(Debug, Deserialize)]
 pub struct ImageEntity {
     id: Thing,
-    url: String,
+    vector: Vec<f32>,
     prompt: String,
     prompt_vector: Vec<f32>,
-    vector: Vec<f32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -35,21 +40,27 @@ pub struct ItemEntity {
     image: Vec<ImageEntity>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct ContainRelationEntity {
+#[derive(Debug, Deserialize)]
+pub struct AudioEntity {
     id: Thing,
-    r#in: Thing,
-    out: Thing,
+    frame: Vec<AudioFrameEntity>,
 }
 
-impl ContainRelationEntity {
-    pub fn in_id(&self) -> String {
-        format!("{}:{}", self.r#in.tb, self.r#in.id.to_raw())
-    }
+#[derive(Debug, Deserialize)]
+pub struct VideoEntity {
+    id: Thing,
+    image_frame: Vec<ImageFrameEntity>,
+    audio_frame: Vec<AudioFrameEntity>,
+}
 
-    pub fn out_id(&self) -> String {
-        format!("{}:{}", self.out.tb, self.out.id.to_raw())
-    }
+#[derive(Debug, Deserialize)]
+pub struct WebPageEntity {
+    page: Vec<PageEntity>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DocumentEntity {
+    page: Vec<PageEntity>,
 }
 
 #[derive(Debug)]

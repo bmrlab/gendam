@@ -1,12 +1,11 @@
 use crate::db::model::PageModel;
 
 pub struct DocumentModel {
-    pub data: Vec<PageModel>,
+    pub page: Vec<PageModel>,
 }
 
 impl DocumentModel {
-    pub fn new(data: Vec<PageModel>) -> Self {
-        Self { data }
+    pub fn new(page: Vec<PageModel>) -> Self {
+        Self { page }
     }
-    
 }
