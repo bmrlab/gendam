@@ -13,7 +13,7 @@ pub enum TB {
     Page,
     Web,
     Document,
-    Payload
+    Payload,
 }
 
 impl TB {
@@ -46,15 +46,9 @@ pub struct ID {
     tb: TB,
 }
 
-impl From<Thing> for ID {
-    fn from(value: Thing) -> Self {
-        ID::new(value.id.to_raw(), value.tb.as_str().into())
-    }
-}
-
 impl From<&Thing> for ID {
     fn from(value: &Thing) -> Self {
-        ID::from(value.clone())
+        ID::new(value.id.to_raw(), value.tb.as_str().into())
     }
 }
 

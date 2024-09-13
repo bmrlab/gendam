@@ -55,11 +55,13 @@ pub struct VideoEntity {
 
 #[derive(Debug, Deserialize)]
 pub struct WebPageEntity {
+    id: Thing,
     page: Vec<PageEntity>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct DocumentEntity {
+    id: Thing,
     page: Vec<PageEntity>,
 }
 
@@ -68,6 +70,10 @@ pub enum SelectResultEntity {
     Text(TextEntity),
     Image(ImageEntity),
     Item(ItemEntity),
+    Audio(AudioEntity),
+    Video(VideoEntity),
+    WebPage(WebPageEntity),
+    Document(DocumentEntity),
 }
 
 impl SelectResultEntity {
@@ -76,6 +82,10 @@ impl SelectResultEntity {
             SelectResultEntity::Text(text) => ID::from(&text.id),
             SelectResultEntity::Image(image) => ID::from(&image.id),
             SelectResultEntity::Item(item) => ID::from(&item.id),
+            SelectResultEntity::Audio(audio) => ID::from(&audio.id),
+            SelectResultEntity::Video(video) => ID::from(&video.id),
+            SelectResultEntity::WebPage(web) => ID::from(&web.id),
+            SelectResultEntity::Document(document) => ID::from(&document.id),
         }
     }
 }
