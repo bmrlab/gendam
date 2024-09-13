@@ -78,8 +78,8 @@ DEFINE TABLE IF NOT EXISTS document;
 DEFINE FIELD IF NOT EXISTS page ON TABLE document TYPE array<record<page>>;
 
 -- 定义向量索引
-DEFINE INDEX IF NOT EXISTS idx_text_vector_hnsw_d512 ON text FIELDS vector HNSW DIMENSION 1024 DIST EUCLIDEAN;
-DEFINE INDEX IF NOT EXISTS idx_image_prompt_vector_hnsw_d512 ON image FIELDS prompt_vector HNSW DIMENSION 1024 DIST EUCLIDEAN;
+DEFINE INDEX IF NOT EXISTS idx_text_vector_hnsw_d1024 ON text FIELDS vector HNSW DIMENSION 1024 DIST EUCLIDEAN;
+DEFINE INDEX IF NOT EXISTS idx_image_prompt_vector_hnsw_d1024 ON image FIELDS prompt_vector HNSW DIMENSION 1024 DIST EUCLIDEAN;
 DEFINE INDEX IF NOT EXISTS idx_image_vector_hnsw_d512 ON image FIELDS vector HNSW DIMENSION 512 DIST COSINE;
 
 -- 定义分词器
