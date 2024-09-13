@@ -211,7 +211,7 @@ impl DB {
         payload: SearchPayload,
     ) -> anyhow::Result<ID> {
         let page_ids = self
-            .batch_insert_page(web_page.data)
+            .batch_insert_page(web_page.page)
             .await?
             .into_iter()
             .map(|id| id.id_with_table())
@@ -220,7 +220,7 @@ impl DB {
             bail!("Failed to insert web page, page is empty");
         }
         let sql = format!(
-            "(CREATE ONLY web CONTENT {{ data: [{}] }}).id",
+            "(CREATE ONLY web CONTENT {{ page: [{}] }}).id",
             page_ids.join(", ")
         );
         let mut res = self.client.query(&sql).await?;
@@ -246,7 +246,7 @@ impl DB {
         payload: SearchPayload,
     ) -> anyhow::Result<ID> {
         let page_ids = self
-            .batch_insert_page(document.data)
+            .batch_insert_page(document.page)
             .await?
             .into_iter()
             .map(|id| id.id_with_table())
@@ -255,7 +255,7 @@ impl DB {
             bail!("Failed to insert document, page is empty");
         }
         let sql = format!(
-            "(CREATE ONLY document CONTENT {{ data: [{}] }}).id",
+            "(CREATE ONLY document CONTENT {{ page: [{}] }}).id",
             page_ids.join(", ")
         );
         let mut res = self.client.query(&sql).await?;
@@ -517,8 +517,9 @@ impl DB {
     }
 }
 
-// full-text search
+// search
 impl DB {
+    // 🔍 全文搜索实现
     pub async fn full_text_search(
         &self,
         data: Vec<String>,
@@ -576,6 +577,7 @@ impl DB {
         Ok(res)
     }
 
+    // 🔍 向量搜索实现
     pub async fn vector_search(
         &self,
         data: Vec<f32>,
