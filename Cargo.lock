@@ -1843,6 +1843,7 @@ dependencies = [
  "futures",
  "futures-util",
  "global-variable",
+ "itertools 0.13.0",
  "qdrant-client",
  "rand 0.8.5",
  "regex",
