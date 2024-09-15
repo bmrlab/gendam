@@ -1,10 +1,15 @@
 use futures::{stream, StreamExt};
+use itertools::Itertools;
 
 use crate::db::{
     entity::{relation::RelationEntity, ImageEntity, SelectResultEntity, TextEntity},
     model::id::{ID, TB},
     DB,
 };
+
+/// audio -> audio_frame -> text
+/// 当 TB 在 MIDDLE_LAYER_LIST 中时，需要继续向上查询一层，才是最终的结果
+const MIDDLE_LAYER_LIST: [TB; 3] = [TB::AudioFrame, TB::ImageFrame, TB::Page];
 
 // 数据查询
 impl DB {
@@ -97,7 +102,39 @@ impl DB {
                 }
                 _ => {}
             });
-        Ok(result.into_iter().flatten().collect())
+
+        // 目前可以确定只有一层 contain 关系
+        // 如果以后有多层 contain 关系，可以递归
+        let futures = result
+            .into_iter()
+            .flatten()
+            .map(|r| async move {
+                match r.in_table() {
+                    tb if MIDDLE_LAYER_LIST.contains(&tb) => {
+                        let mut resp = self
+                            .client
+                            .query(format!("SELECT * from contains where out = {};", r.in_id()))
+                            .await?;
+                        let result = resp.take::<Vec<RelationEntity>>(0)?;
+                        Ok::<_, anyhow::Error>(result)
+                    }
+                    _ => Ok::<_, anyhow::Error>(vec![r]),
+                }
+            })
+            .collect::<Vec<_>>();
+
+        let futures_result: Vec<Vec<RelationEntity>> = stream::iter(futures)
+            .buffered(1)
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .filter(Result::is_ok)
+            .try_collect()?;
+
+        Ok(futures_result
+            .into_iter()
+            .flatten()
+            .collect::<Vec<RelationEntity>>())
     }
 
     async fn select_text(&self, ids: Vec<impl AsRef<str>>) -> anyhow::Result<Vec<TextEntity>> {
