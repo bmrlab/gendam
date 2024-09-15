@@ -1,6 +1,8 @@
 use serde::Deserialize;
 use surrealdb::sql::Thing;
 
+use crate::db::model::id::TB;
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct RelationEntity {
     id: Thing,
@@ -9,6 +11,10 @@ pub struct RelationEntity {
 }
 
 impl RelationEntity {
+    pub fn in_table(&self) -> TB {
+        self.r#in.tb.as_str().into()
+    }
+
     pub fn in_id(&self) -> String {
         format!("{}:{}", self.r#in.tb, self.r#in.id.to_raw())
     }
