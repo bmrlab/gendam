@@ -6,7 +6,7 @@ use crate::{
     ContentBase,
 };
 use content_base_context::ContentBaseCtx;
-use content_base_pool::{TaskNotification, TaskPool, TaskPriority};
+use content_base_pool::{TaskNotification, TaskPool, TaskPriority, TaskStatus};
 use content_base_task::{
     audio::{
         trans_chunk::{AudioTransChunkTask, AudioTranscriptChunkTrait},
@@ -113,18 +113,21 @@ impl ContentBase {
         tokio::spawn(async move {
             while let Some(notification) = inner_rx.recv().await {
                 let task_type = notification.task_type.clone();
+                let task_status = notification.status.clone();
+                // receive notification from content_base_pool and send to client
                 let _ = notification_tx.send(notification).await;
-
                 // 对完成的任务进行后处理
-                task_post_process(
-                    &ctx,
-                    &file_info_clone,
-                    &task_type,
-                    qdrant.clone(),
-                    language_collection_name.as_str(),
-                    vision_collection_name.as_str(),
-                )
-                .await;
+                if let TaskStatus::Finished = task_status {
+                    task_post_process(
+                        &ctx,
+                        &file_info_clone,
+                        &task_type,
+                        qdrant.clone(),
+                        language_collection_name.as_str(),
+                        vision_collection_name.as_str(),
+                    )
+                    .await;
+                }
             }
         });
 
