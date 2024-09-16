@@ -9,10 +9,10 @@ use content_library::Library;
 use prisma_client_rust::QueryError;
 use prisma_lib::{asset_object, file_handler_task};
 use std::path::Path;
-use tracing::{error, info};
+use tracing::Instrument;
 
 fn sql_error(e: QueryError) -> rspc::Error {
-    error!("sql query failed: {e}",);
+    tracing::error!("sql query failed: {e}",);
     rspc::Error::new(
         rspc::ErrorCode::InternalServerError,
         format!("sql query failed: {}", e),
@@ -20,22 +20,23 @@ fn sql_error(e: QueryError) -> rspc::Error {
 }
 
 fn error_404(msg: &str) -> rspc::Error {
-    error!("{}", msg);
+    tracing::error!("{}", msg);
     rspc::Error::new(rspc::ErrorCode::NotFound, String::from(msg))
 }
 
+#[tracing::instrument(skip(library, ctx, _with_existing_artifacts))]
 pub async fn process_asset(
     library: &Library,
     ctx: &impl CtxWithLibrary,
-    asset_object_id: i32,
+    asset_object_hash: String, // 为了更好的 tracing, 这里用 hash 而不是用 id
     _with_existing_artifacts: Option<bool>,
 ) -> Result<(), rspc::Error> {
-    info!("process asset for asset_object_id: {asset_object_id}");
+    tracing::info!("processing asset");
 
     let asset_object_data = library
         .prisma_client()
         .asset_object()
-        .find_unique(asset_object::id::equals(asset_object_id))
+        .find_unique(asset_object::hash::equals(asset_object_hash))
         .exec()
         .await
         .map_err(|e| {
@@ -72,67 +73,78 @@ pub async fn process_asset(
             let library = library.clone();
             // 接收来自 content_base 的任务状态通知
             // TODO 任务状态通知的实现还需要进一步优化
-            tokio::spawn(async move {
-                while let Some(msg) = rx.recv().await {
-                    tracing::debug!("receive message: {:?}", msg);
+            tokio::spawn(
+                async move {
+                    while let Some(msg) = rx.recv().await {
+                        tracing::info!("{:?}", msg);
 
-                    let update = match msg.status {
-                        content_base::TaskStatus::Started => {
-                            vec![
-                                file_handler_task::exit_code::set(None),
-                                file_handler_task::exit_message::set(None),
-                                file_handler_task::ends_at::set(None),
-                                file_handler_task::starts_at::set(Some(chrono::Utc::now().into())),
-                            ]
-                        }
-                        content_base::TaskStatus::Error => {
-                            vec![
-                                file_handler_task::exit_code::set(Some(1)),
-                                file_handler_task::exit_message::set(msg.message),
-                                file_handler_task::ends_at::set(Some(chrono::Utc::now().into())),
-                            ]
-                        }
-                        content_base::TaskStatus::Finished => {
-                            vec![
-                                file_handler_task::exit_code::set(Some(0)),
-                                file_handler_task::ends_at::set(Some(chrono::Utc::now().into())),
-                            ]
-                        }
-                        content_base::TaskStatus::Cancelled => {
-                            vec![
-                                file_handler_task::exit_code::set(Some(1)),
-                                file_handler_task::exit_message::set(Some("cancelled".into())),
-                                file_handler_task::ends_at::set(Some(chrono::Utc::now().into())),
-                            ]
-                        }
-                        _ => {
-                            vec![]
-                        }
-                    };
+                        let update = match msg.status {
+                            content_base::TaskStatus::Started => {
+                                vec![
+                                    file_handler_task::exit_code::set(None),
+                                    file_handler_task::exit_message::set(None),
+                                    file_handler_task::ends_at::set(None),
+                                    file_handler_task::starts_at::set(Some(
+                                        chrono::Utc::now().into(),
+                                    )),
+                                ]
+                            }
+                            content_base::TaskStatus::Error => {
+                                vec![
+                                    file_handler_task::exit_code::set(Some(1)),
+                                    file_handler_task::exit_message::set(msg.message),
+                                    file_handler_task::ends_at::set(Some(
+                                        chrono::Utc::now().into(),
+                                    )),
+                                ]
+                            }
+                            content_base::TaskStatus::Finished => {
+                                vec![
+                                    file_handler_task::exit_code::set(Some(0)),
+                                    file_handler_task::ends_at::set(Some(
+                                        chrono::Utc::now().into(),
+                                    )),
+                                ]
+                            }
+                            content_base::TaskStatus::Cancelled => {
+                                vec![
+                                    file_handler_task::exit_code::set(Some(1)),
+                                    file_handler_task::exit_message::set(Some("cancelled".into())),
+                                    file_handler_task::ends_at::set(Some(
+                                        chrono::Utc::now().into(),
+                                    )),
+                                ]
+                            }
+                            _ => {
+                                vec![]
+                            }
+                        };
 
-                    let x = library
-                        .prisma_client()
-                        .file_handler_task()
-                        .upsert(
-                            file_handler_task::asset_object_id_task_type(
-                                asset_object_data.id,
-                                msg.task_type.to_string(),
-                            ),
-                            file_handler_task::create(
-                                asset_object_data.id,
-                                msg.task_type.to_string(),
-                                vec![],
-                            ),
-                            update,
-                        )
-                        .exec()
-                        .await;
+                        let x = library
+                            .prisma_client()
+                            .file_handler_task()
+                            .upsert(
+                                file_handler_task::asset_object_id_task_type(
+                                    asset_object_data.id,
+                                    msg.task_type.to_string(),
+                                ),
+                                file_handler_task::create(
+                                    asset_object_data.id,
+                                    msg.task_type.to_string(),
+                                    vec![],
+                                ),
+                                update,
+                            )
+                            .exec()
+                            .await;
 
-                    if let Err(e) = x {
-                        error!("Failed to update task: {}", e);
+                        if let Err(e) = x {
+                            tracing::error!("Failed to update task: {}", e);
+                        }
                     }
                 }
-            });
+                .instrument(tracing::Span::current()), // 把 span 信息带到 acync block 里，这样可以在 log 里看到
+            );
 
             Ok(())
         }
@@ -174,7 +186,6 @@ pub async fn process_asset_metadata(
     asset_object_id: i32,
     local_full_path: Option<impl AsRef<Path>>,
 ) -> Result<(), rspc::Error> {
-    info!("process metadata for asset_object_id: {asset_object_id}");
     let asset_object_data = match library
         .prisma_client()
         .asset_object()
@@ -185,13 +196,15 @@ pub async fn process_asset_metadata(
     {
         Some(asset_object_data) => asset_object_data,
         None => {
-            error!("failed to find file_path or asset_object");
+            tracing::error!("failed to find file_path or asset_object");
             return Err(rspc::Error::new(
                 rspc::ErrorCode::NotFound,
                 String::from("failed to find file_path or asset_object"),
             ));
         }
     };
+
+    tracing::info!(hash = &asset_object_data.hash, "processing asset metadata");
 
     let local_full_path = local_full_path
         .map(|v| v.as_ref().to_path_buf())
@@ -229,7 +242,7 @@ pub async fn process_asset_metadata(
 
     results.0.map_err(sql_error)?;
     if let Err(e) = results.1 {
-        error!("Failed to create thumbnail: {}", e);
+        tracing::error!("Failed to create thumbnail: {}", e);
     }
 
     Ok(())
@@ -243,7 +256,7 @@ pub async fn export_video_segment(
     milliseconds_from: u32,
     milliseconds_to: u32,
 ) -> Result<(), rspc::Error> {
-    info!("export video segment for asset_object_id: {asset_object_id}");
+    tracing::info!("export video segment for asset_object_id: {asset_object_id}");
 
     let asset_object_data = match library
         .prisma_client()
@@ -259,7 +272,7 @@ pub async fn export_video_segment(
     let video_path = library.file_path(&asset_object_data.hash);
 
     let video_decoder = VideoDecoder::new(video_path).map_err(|e| {
-        error!("Failed to create video decoder: {e}");
+        tracing::error!("Failed to create video decoder: {e}");
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
             format!("failed to get video decoder: {}", e),
@@ -274,7 +287,7 @@ pub async fn export_video_segment(
             milliseconds_to,
         )
         .map_err(|e| {
-            error!("failed to save video segment: {e}");
+            tracing::error!("failed to save video segment: {e}");
             rspc::Error::new(
                 rspc::ErrorCode::InternalServerError,
                 format!("failed to save video segment: {}", e),

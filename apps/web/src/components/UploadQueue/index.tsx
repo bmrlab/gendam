@@ -1,4 +1,3 @@
-'use client'
 import { useUploadQueueStore } from '@/components/UploadQueue/store'
 import { queryClient, rspc } from '@/lib/rspc'
 import Icon from '@gendam/ui/icons'

@@ -182,7 +182,7 @@ where
                     .await
                     .map_err(convert_anyhow_error)?;
 
-                process_asset(&library, &ctx, asset_object_data.id, None).await?;
+                process_asset(&library, &ctx, asset_object_data.hash, None).await?;
 
                 Ok(())
             })

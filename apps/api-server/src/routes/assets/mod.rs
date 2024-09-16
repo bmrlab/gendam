@@ -80,7 +80,7 @@ where
                         )
                         .await?;
                         info!("process metadata finished");
-                        process_asset(&library, &ctx, asset_object_data.id, None).await?;
+                        process_asset(&library, &ctx, asset_object_data.hash, None).await?;
                         info!("process asset finished");
                     }
                     let file_path: FilePathWithAssetObjectData = get_file_path(
@@ -108,7 +108,7 @@ where
 
                     let library = ctx.library()?;
                     let content_base = ctx.content_base()?;
-                    let (file_path_data, asset_object_data, asset_object_existed) =
+                    let (_file_path_data, asset_object_data, asset_object_existed) =
                         create_asset_object(
                             &library,
                             &input.materialized_path,
@@ -138,7 +138,7 @@ where
                         )
                         .await?;
                         info!("process asset metadata finished");
-                        process_asset(&library, &ctx, file_path_data.id, Some(true)).await?;
+                        process_asset(&library, &ctx, asset_object_data.hash, Some(true)).await?;
                     }
 
                     Ok(())
@@ -257,10 +257,10 @@ where
             })
         })
         .mutation("process_asset", |t| {
-            t(|ctx, input: i32| async move {
+            t(|ctx, input: String| async move {
                 let library = ctx.library()?;
-                let file_path_id = input;
-                process_asset(&library, &ctx, file_path_id, None).await?;
+                let asset_object_hash = input;
+                process_asset(&library, &ctx, asset_object_hash, None).await?;
                 Ok(())
             })
         })
@@ -320,7 +320,7 @@ where
                         process_web_page(&library, &payload.materialized_path, &payload.url)
                             .await?;
                     if !asset_object_existed {
-                        process_asset(&library, &ctx, asset_object_data.id, None).await?;
+                        process_asset(&library, &ctx, asset_object_data.hash, None).await?;
                         info!("process asset finished");
                     }
                     let file_path: FilePathWithAssetObjectData = get_file_path(

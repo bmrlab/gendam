@@ -103,7 +103,7 @@ pub struct TaskId {
 5. 序列化友好：实现了 `Display` trait，便于日志记录和调试。
 
 
-## 任务池
+### 任务池 TaskPool
 
 任务池的主循环在 `TaskPool::new()` 方法中初始化。它会一直运行，直到程序结束或任务池被明确关闭（当前实现中没有提供关闭机制）。
 
@@ -159,48 +159,85 @@ pub struct TaskId {
 
    这些循环也会持续运行，负责实际执行队列中的任务。
 
+
+### TaskNotification
+
+`TaskNotification` 是一个用于通知任务状态变化的机制。当任务池中的任务状态发生变化时，会通过预先设置的通知通道发送 `TaskNotification` 消息。接收到这些消息后，通常会根据不同的状态执行相应的操作。以下是一些常见的例子：
+
+1. 任务初始化 (TaskStatus::Init):
+  ```rust
+  match notification.status {
+      TaskStatus::Init => {
+          println!("Task {} has been initialized", notification.task_type);
+          // 可能会更新UI，显示任务已添加到队列
+          update_ui_task_added(notification.task_type);
+      }
+      // ...
+  }
+  ```
+
+2. 任务开始执行 (TaskStatus::Started):
+  ```rust
+  TaskStatus::Started => {
+      println!("Task {} has started", notification.task_type);
+      // 更新进度指示器
+      update_progress_indicator(notification.task_type, 0);
+      // 记录任务开始时间
+      record_task_start_time(notification.task_type);
+  }
+  ```
+
+3. 任务完成 (TaskStatus::Finished):
+  ```rust
+  TaskStatus::Finished => {
+      println!("Task {} has finished", notification.task_type);
+      // 更新UI，显示任务完成
+      update_ui_task_completed(notification.task_type);
+      // 触发后续操作
+      trigger_next_steps(notification.task_type);
+  }
+  ```
+
+4. 任务出错 (TaskStatus::Error):
+  ```rust
+  TaskStatus::Error => {
+      eprintln!("Task {} encountered an error: {:?}", notification.task_type, notification.message);
+      // 显示错误消息
+      show_error_message(notification.task_type, notification.message);
+      // 尝试错误恢复或重试
+      handle_task_error(notification.task_type);
+  }
+  ```
+
+5. 任务被取消 (TaskStatus::Cancelled):
+  ```rust
+  TaskStatus::Cancelled => {
+      println!("Task {} was cancelled", notification.task_type);
+      // 清理相关资源
+      cleanup_resources(notification.task_type);
+      // 更新UI，显示任务已取消
+      update_ui_task_cancelled(notification.task_type);
+  }
+  ```
+
+6. 通用处理:
+  ```rust
+  // 无论哪种状态，都更新任务状态日志
+  update_task_status_log(notification.task_type, notification.status, notification.message);
+
+  // 检查是否所有任务都已完成
+  if check_all_tasks_completed() {
+      trigger_final_processing();
+  }
+  ```
+
 ## 任务处理流程
+upsert
 
-当调用 `add_task` 方法后，任务的执行流程如下：
+创建 notification channel 给调用者，用于通知调用者，也就是 api-server
+mpsc::channel 创建的通道（channel）会在发送端（Sender）和接收端（Receiver）都被丢弃时自动释放
+创建 inner channel 给 `content_base_pool`，用于接受 pool 的通知
+调用 run_task，把 task 加到 `content_base_pool::TaskPool` 中（通过 TaskPool.add_task），这个 pool 是在 content-base 的 new 中创建的
 
-1. 消息传递：
-   - `add_task` 方法创建一个 `NewTaskPayload` 对象，并将其包装在 `TaskPayload::Task` 中。
-   - 这个 payload 通过 `self.tx.send()` 发送到任务池的消息通道。
-
-2. 消息处理：
-   - 在任务池的主循环中（由 `tokio::spawn` 创建的异步任务），不断从 `rx` 接收消息。
-   - 当收到 `TaskPayload::Task` 消息时，进行以下处理：
-
-3. 任务创建和初始化：
-   - 创建 `Task` 和 `TaskId` 对象。
-   - 检查任务是否已存在，如果存在则忽略。
-   - 创建 `TaskInQueue` 对象，包含任务信息、优先级、取消令牌等。
-
-4. 任务存储：
-   - 将任务信息存储在 `task_mapping` 中。
-   - 将任务 ID 和优先级添加到对应的任务队列（CPU 或 IO）中。
-
-5. 优先级处理：
-   - 如果没有可用的信号量（即所有工作线程都忙），检查是否有优先级较低的任务可以被取消。
-   - 如果找到，取消该任务并将其重新加入队列。
-
-6. 任务执行准备：
-   - 通知任务执行器有新任务可用（`task_ctx.notifier.notify_one()`）。
-
-7. 任务执行：
-   - 在任务执行循环中（`run` 方法），等待信号量并从任务队列中获取最高优先级的任务。
-   - 检查任务依赖，如果有未完成的依赖，创建这些依赖任务并重新安排当前任务。
-   - 如果没有依赖或依赖已完成，启动一个新的异步任务来执行实际的工作。
-
-8. 任务执行过程：
-   - 更新任务状态和发送通知（如果配置了通知器）。
-   - 执行实际的任务逻辑（`current_task.task.task_type.run()`）。
-   - 处理任务完成、错误或取消的情况。
-
-9. 任务完成后处理：
-   - 释放信号量。
-   - 从各种映射和队列中移除任务信息。
-   - 检查并更新依赖关系，可能会触发其他等待中的任务。
-
-10. 循环继续：
-    - 任务执行器继续循环，处理队列中的下一个任务。
+`TaskPool::new` 的时候会创建一个 tx，这个 tx 是 pool 的主队列，同时还会创建两个子队列，分别是 CPU 和 IO 任务的。
+`TaskPool.add_task` 会创建一个 NewTaskPayload，并且关联 notifier (前面的 inner channel) 和 priority

@@ -111,9 +111,9 @@ impl TaskPool {
                         notifier,
                     }) => {
                         let task_type = task_type.clone();
-                        tracing::info!("Task received: {} {}", file_identifier, &task_type);
 
                         let task_id = TaskId::new(&file_identifier, &task_type);
+                        tracing::info!("Task received: {}", &task_id);
 
                         // if task exists, ignore it
                         // 这里 task_queue 是所有未执行的任务

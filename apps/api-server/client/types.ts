@@ -30,7 +30,7 @@ export type Procedures = {
         { key: "assets.delete_file_path", input: FilePathDeletePayload, result: null } | 
         { key: "assets.export_video_segment", input: VideoSegmentExportPayload, result: null } | 
         { key: "assets.move_file_path", input: FilePathMovePayload, result: null } | 
-        { key: "assets.process_asset", input: number, result: null } | 
+        { key: "assets.process_asset", input: string, result: null } | 
         { key: "assets.process_asset_metadata", input: number, result: null } | 
         { key: "assets.receive_asset", input: AssetObjectReceivePayload, result: null } | 
         { key: "assets.rename_file_path", input: FilePathRenamePayload, result: null } | 
