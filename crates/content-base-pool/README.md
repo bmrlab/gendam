@@ -232,12 +232,44 @@ pub struct TaskId {
   ```
 
 ## 任务处理流程
-upsert
 
-创建 notification channel 给调用者，用于通知调用者，也就是 api-server
-mpsc::channel 创建的通道（channel）会在发送端（Sender）和接收端（Receiver）都被丢弃时自动释放
-创建 inner channel 给 `content_base_pool`，用于接受 pool 的通知
-调用 run_task，把 task 加到 `content_base_pool::TaskPool` 中（通过 TaskPool.add_task），这个 pool 是在 content-base 的 new 中创建的
+### Upsert 操作
 
-`TaskPool::new` 的时候会创建一个 tx，这个 tx 是 pool 的主队列，同时还会创建两个子队列，分别是 CPU 和 IO 任务的。
-`TaskPool.add_task` 会创建一个 NewTaskPayload，并且关联 notifier (前面的 inner channel) 和 priority
+1. 创建通知通道：
+  - 为调用者（如 api-server）创建 `notification channel`，用于接收任务状态更新。
+  - 使用 `mpsc::channel` 创建通道，该通道会在发送端（Sender）和接收端（Receiver）都被丢弃时自动释放资源。
+
+2. 创建内部通道：
+  - 创建 `inner channel` 给 `content_base_pool::TaskPool`，用于接收来自任务池的通知。
+
+3. 任务添加：
+  - 调用 `run_task` 函数，将任务添加到 `content_base_pool::TaskPool` 中。
+  - 使用 `TaskPool.add_task` 方法实现任务添加。
+  - 注意：TaskPool 是在 `content_base::ContentBase` 的 `new` 方法中创建的。
+
+### 添加任务（add_task）
+
+1. 创建任务负载：
+  - `TaskPool.add_task` 会创建一个 `NewTaskPayload` 对象。
+  - 将 notifier（之前创建的 inner channel）和 priority 与任务关联。
+
+2. 任务池初始化：
+  - 在 `TaskPool::new` 调用时，会创建一个主队列（tx）。
+  - 同时创建两个子队列，分别用于 CPU 和 IO 任务。
+
+3. 任务处理流程：
+  1. 持续监听 `add_task` 中的 `tx.send`，接收到任务后开始处理。
+  2. 判断任务类型（IO 或 CPU），确定 `TaskBound`，根据 `TaskBound` 选择对应的 `TaskPoolContext`（子队列）。
+  4. 创建 `TaskInQueue` 对象，包含 task、priority、cancel_token 和 notifier（就是 Upsert 时候创建的 notification channel）。
+  5. 在 `TaskPoolContext.task_mapping` 中记录 `TaskId` 和 `TaskInQueue` 的映射关系。
+    - 注意：队列中只存储 `TaskId`，需要时通过 `TaskId` 查找完整的 `TaskInQueue`。
+  6. 将任务（`TaskId`）添加到选定的 `TaskPoolContext` 中。
+  7. 通过 `TaskPoolContext.notifier.notify_one` 方法通知下一个任务的执行。
+
+4. 任务执行：
+  - 当 `notify_one` 被调用时，TaskPoolContext 会从队列中取出下一个任务并执行。
+
+### 5. 并发控制
+
+- 通过 CPU 和 IO 分离的子队列，实现了更有效的资源利用和并发控制。
+- 使用信号量（Semaphore）控制同时执行的任务数量，防止资源过度占用。
