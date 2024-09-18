@@ -56,20 +56,24 @@ export default function UploadQueue({ close }: { close: () => void }) {
     // useUploadQueueStore.subscribe((e) => {})
     const uploading = uploadQueueStore.nextUploading()
     if (uploading) {
-      const { materializedPath, name, localFullPath } = uploading
-      uploadMut
-        .mutateAsync({ materializedPath, name, localFullPath })
-        .then((filePathData) => {
-          uploadQueueStore.completeUploading(filePathData)
-        })
-        .catch(() => {
-          uploadQueueStore.failedUploading()
-        })
-        .finally(() => {
-          queryClient.invalidateQueries({
-            queryKey: ['assets.list', { materializedPath: materializedPath }],
+      const { materializedPath, name, dataType, payload } = uploading
+      if (dataType === 'path') {
+        uploadMut
+          .mutateAsync({ materializedPath, name, localFullPath: payload })
+          .then((filePathData) => {
+            uploadQueueStore.completeUploading(filePathData)
           })
-        })
+          .catch(() => {
+            uploadQueueStore.failedUploading()
+          })
+          .finally(() => {
+            queryClient.invalidateQueries({
+              queryKey: ['assets.list', { materializedPath: materializedPath }],
+            })
+          })
+      } else if (dataType === 'file') {
+        // TODO
+      }
     }
   }, [uploadQueueStore, uploadMut])
 

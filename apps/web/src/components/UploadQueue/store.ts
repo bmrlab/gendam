@@ -1,13 +1,21 @@
 // TODO: move this to Shared Folder
 
-import { create } from 'zustand'
 import { type FilePath } from '@/lib/bindings'
+import { create } from 'zustand'
 
 export type FileItem = {
   materializedPath: string
   name: string
-  localFullPath: string
-}
+} & (
+  | {
+      dataType: 'path'
+      payload: string
+    }
+  | {
+      dataType: 'file'
+      payload: File
+    }
+)
 
 interface UploadQueue {
   inProcess: FilePath[]

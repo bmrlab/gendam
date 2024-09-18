@@ -42,20 +42,37 @@ export default function Header() {
   // 只监听 enqueue，监听 uploadQueueStore 数据变化，不然 handleSelectFiles 会一直更新导致后面有个 useEffect 始终被触发
   const enqueue = uploadQueueStore.enqueue
   const handleSelectFiles = useCallback(
-    (fileFullPaths: string[]) => {
+    (files: File[]) => {
       // TODO 暂时隐藏
       // const { supportedFiles, unsupportedExtensionsSet } = filterFiles(fileFullPaths)
       // if (Array.from(unsupportedExtensionsSet).length > 0) {
       //   toast.error(`Unsupported file types: ${Array.from(unsupportedExtensionsSet).join(',')}`)
       // }
-      const supportedFiles = fileFullPaths
+      const supportedFiles = files
       if (explorer.materializedPath && supportedFiles.length > 0) {
+        // for (const fileFullPath of fileFullPaths) {
+        //   const name = fileFullPath.split('/').slice(-1).join('')
+        //   enqueue({
+        //     materializedPath: explorer.materializedPath,
+        //     name: name,
+        //     dataType: 'file',
+        //     payload: file,
+        //   })
+        // }
+      }
+    },
+    [explorer.materializedPath, enqueue],
+  )
+  const handleSelectFilePaths = useCallback(
+    (fileFullPaths: string[]) => {
+      if (explorer.materializedPath && fileFullPaths.length > 0) {
         for (const fileFullPath of fileFullPaths) {
           const name = fileFullPath.split('/').slice(-1).join('')
           enqueue({
             materializedPath: explorer.materializedPath,
             name: name,
-            localFullPath: fileFullPath,
+            dataType: 'path',
+            payload: fileFullPath,
           })
         }
       }
@@ -66,9 +83,9 @@ export default function Header() {
   const { filesDropped } = useFileDrop()
   useEffect(() => {
     if (filesDropped.length > 0) {
-      handleSelectFiles(filesDropped)
+      handleSelectFilePaths(filesDropped)
     }
-  }, [filesDropped, handleSelectFiles])
+  }, [filesDropped, handleSelectFilePaths])
 
   const { filesPasted } = useClipboardPaste()
   useEffect(() => {
@@ -96,7 +113,7 @@ export default function Header() {
           </Button>
           <Button variant="ghost" size="sm" className="h-7 w-7 p-1 transition-none" asChild>
             {/* 加上 asChild 不使用 native button, 因为里面是个 form, native button 可能会触发 form submit */}
-            <UploadButton onSelectFiles={handleSelectFiles}>
+            <UploadButton onSelectFiles={handleSelectFilePaths}>
               <Icon.Upload className="size-4" />
             </UploadButton>
           </Button>
