@@ -219,5 +219,24 @@ mod test {
             .unwrap();
         // the desired result is video
         println!("video_res: {:?}", video_res);
+        // Text data needs to be inserted in advance
+        // no relation data
+        let text_res = db
+            .select_relation_by_out(vec!["text:qtx3nucfeo7rzm3mun5b"])
+            .await
+            .unwrap();
+        // the desired result is empty
+        println!("text_res: {:?}", text_res);
+        // Combine data needs to be inserted in advance
+        // audio and no relation data
+        let combine_res = db
+            .select_relation_by_out(vec![
+                "text:hkot8rlbc8ogoiwoxnms",
+                "text:qtx3nucfeo7rzm3mun5b",
+            ])
+            .await
+            .unwrap();
+        // the desired result only is audio
+        println!("combine_res: {:?}", combine_res);
     }
 }
