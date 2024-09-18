@@ -126,7 +126,10 @@ pub async fn create_asset_object(
     let fs_metadata = std::fs::metadata(&local_full_path).map_err(|e| {
         rspc::Error::new(
             rspc::ErrorCode::InternalServerError,
-            format!("failed to get video metadata: {}", e),
+            format!(
+                "failed to get video metadata from {}: {}",
+                local_full_path, e
+            ),
         )
     })?;
 

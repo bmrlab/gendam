@@ -13,13 +13,35 @@ rust-version = "1.60"
 tauri-build = { version = "1.5.1", features = [] }
 
 [dependencies]
-tauri = { version = "1.5.4", features = [ "window-create", "window-set-size", "window-set-focus", "clipboard-all", "shell-all", "macos-private-api", "window-start-dragging", "window-minimize", "window-hide", "window-unminimize", "window-unmaximize", "window-show", "window-close", "window-maximize", "dialog-save", "dialog-confirm", "updater", "process-exit", "process-relaunch", "dialog-message", "os-all", "path-all",
-  "dialog-ask",
-  "dialog-open",
-  "protocol-all",
-  "process-command-api",
-  "fs-all",
-  "devtools",
+tauri = { version = "1.5.4", features = [
+    "window-create",
+    "window-set-size",
+    "window-set-focus",
+    "clipboard-all",
+    "shell-all",
+    "macos-private-api",
+    "window-start-dragging",
+    "window-minimize",
+    "window-hide",
+    "window-unminimize",
+    "window-unmaximize",
+    "window-show",
+    "window-close",
+    "window-maximize",
+    "dialog-save",
+    "dialog-confirm",
+    "updater",
+    "process-exit",
+    "process-relaunch",
+    "dialog-message",
+    "os-all",
+    "path-all",
+    "dialog-ask",
+    "dialog-open",
+    "protocol-all",
+    "process-command-api",
+    "fs-all",
+    "devtools",
 ] }
 tauri-plugin-store = { git = "https://github.com/tauri-apps/plugins-workspace", rev = "dbe0277824676b978ed616ddb28f988689df6f7e" } # branch = "v1" }
 prisma-lib = { path = "../../../crates/prisma" }
@@ -43,7 +65,7 @@ tokio-util = { workspace = true }
 dotenvy = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
-tauri-plugin-clipboard = "1.0.1"
+tauri-plugin-clipboard = "1.1.4"
 
 percent-encoding = "2.3.1"
 url = { version = "2.3" }

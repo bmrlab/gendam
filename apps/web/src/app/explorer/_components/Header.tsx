@@ -39,7 +39,8 @@ export default function Header() {
   }, [router])
 
   const uploadQueueStore = useUploadQueueStore()
-
+  // 只监听 enqueue，监听 uploadQueueStore 数据变化，不然 handleSelectFiles 会一直更新导致后面有个 useEffect 始终被触发
+  const enqueue = uploadQueueStore.enqueue
   const handleSelectFiles = useCallback(
     (fileFullPaths: string[]) => {
       // TODO 暂时隐藏
@@ -51,7 +52,7 @@ export default function Header() {
       if (explorer.materializedPath && supportedFiles.length > 0) {
         for (const fileFullPath of fileFullPaths) {
           const name = fileFullPath.split('/').slice(-1).join('')
-          uploadQueueStore.enqueue({
+          enqueue({
             materializedPath: explorer.materializedPath,
             name: name,
             localFullPath: fileFullPath,
@@ -59,7 +60,7 @@ export default function Header() {
         }
       }
     },
-    [explorer.materializedPath, uploadQueueStore],
+    [explorer.materializedPath, enqueue],
   )
 
   const { filesDropped } = useFileDrop()

@@ -6,7 +6,7 @@ export const useClipboardPaste = () => {
   const handlePaste = useCallback(async (e: ClipboardEvent) => {
     const files: string[] = []
     try {
-      const res = await clipboard.readFiles()
+      const res: string[] = await clipboard.readFiles()
       res.forEach((item) => {
         // clipboard 里面的文件名会被 encode，需要解码一下
         files.push(window.decodeURIComponent(item))

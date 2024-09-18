@@ -104,8 +104,8 @@ importers:
         specifier: ^1.4.41
         version: 1.4.41(react-dom@18.2.0)(react@18.2.0)
       tauri-plugin-clipboard-api:
-        specifier: ^1.0.1
-        version: 1.0.1
+        specifier: ^1.1.4
+        version: 1.1.4
       ts-pattern:
         specifier: ^5.2.0
         version: 5.2.0
@@ -6231,11 +6231,11 @@ packages:
     engines: {node: '>=6'}
     dev: true
 
-  /tauri-plugin-clipboard-api@1.0.1:
-    resolution: {integrity: sha512-n7ttdZr7Y3fMPtM/SbgyZ/ImCHJFQA+hTw/+L5L+tSB2573c8RWLiH150N4QJqQQGDiadoojUyki8uGJhm9w2w==}
+  /tauri-plugin-clipboard-api@1.1.4:
+    resolution: {integrity: sha512-bq00ENlp4oeMrNoCBsfHvFgZh1YSkT1KszegilMsb+2vw0PEo5RwlcBfUzKvQXv5BKIzCcobYEB9C1VwiKhWTA==}
     dependencies:
       '@tauri-apps/api': 1.5.3
-      tslib: 2.6.2
+      tslib: 2.6.3
       zod: 3.23.8
     dev: false
 
