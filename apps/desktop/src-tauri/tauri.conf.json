@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "GenDAM",
-    "version": "0.1.1"
+    "version": "0.2.0"
   },
   "tauri": {
     "allowlist": {
@@ -57,9 +57,7 @@
       },
       "protocol": {
         "all": true,
-        "assetScope": [
-          "/**/*"
-        ]
+        "assetScope": ["/**/*"]
       }
     },
     "bundle": {
@@ -69,19 +67,8 @@
       "deb": {
         "depends": []
       },
-      "externalBin": [
-        "sidecar/qdrant",
-        "sidecar/ffmpeg",
-        "sidecar/ffprobe",
-        "sidecar/whisper"
-      ],
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
+      "externalBin": ["sidecar/qdrant", "sidecar/ffmpeg", "sidecar/ffprobe", "sidecar/whisper"],
+      "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
       "identifier": "ai.gendam.desktop",
       "longDescription": "",
       "macOS": {
@@ -91,9 +78,7 @@
         "providerShortName": null,
         "signingIdentity": null
       },
-      "resources": [
-        "resources/*"
-      ],
+      "resources": ["resources/*"],
       "shortDescription": "",
       "targets": "all",
       "windows": {
@@ -107,9 +92,7 @@
     },
     "updater": {
       "active": true,
-      "endpoints": [
-        "https://gendam.ai/api/releases/{{current_version}}/{{target}}/{{arch}}"
-      ],
+      "endpoints": ["https://gendam.ai/api/releases/{{current_version}}/{{target}}/{{arch}}"],
       "dialog": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVEN0E3MTE2RDM4OTY4RkMKUldUOGFJblRGbkY2WFJ4Q0VwVjErRytuSU1Eajl3ZTg4OGUrU2w2d0Y4VlNUQlJyb01wNVJGa24K"
     },

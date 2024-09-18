@@ -1,13 +1,9 @@
 [workspace]
 resolver = "2"
-members = [
-  "crates/*",
-  "apps/api-server",
-  "apps/desktop/src-tauri"
-]
+members = ["crates/*", "apps/api-server", "apps/desktop/src-tauri"]
 
 [workspace.package]
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 
 [workspace.dependencies]
@@ -16,15 +12,15 @@ rspc-axum = { version = "0.1.1", features = ["ws"] }
 rspc-tauri = { version = "0.0.1" }
 specta = { version = "1", features = ["chrono"] }
 prisma-client-rust = { git = "https://github.com/Brendonovich/prisma-client-rust", branch = "rspc-0.2.0", features = [
-  "specta",
-  "rspc",
-  "migrations",
-  "sqlite",
+    "specta",
+    "rspc",
+    "migrations",
+    "sqlite",
 ], default-features = false }
 prisma-client-rust-cli = { git = "https://github.com/Brendonovich/prisma-client-rust", branch = "rspc-0.2.0", features = [
-  "rspc",
-  "migrations",
-  "sqlite",
+    "rspc",
+    "migrations",
+    "sqlite",
 ], default-features = false }
 chrono = "0.4.34"
 uuid = { version = "1.8.0", features = ["v4", "v5", "serde"] }
