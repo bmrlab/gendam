@@ -492,12 +492,6 @@ mod test {
     use test_log::test;
 
     #[test(tokio::test)]
-    async fn test_init_db() {
-        let db = setup().await;
-        println!("{:?}", db.client.query("INFO FOR DB;").await.unwrap());
-    }
-
-    #[test(tokio::test)]
     async fn test_insert_text() {
         let id = setup()
             .await
