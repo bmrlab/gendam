@@ -43,28 +43,26 @@ export default function Header() {
   const enqueue = uploadQueueStore.enqueue
   const handleSelectFiles = useCallback(
     (files: File[]) => {
-      // TODO 暂时隐藏
-      // const { supportedFiles, unsupportedExtensionsSet } = filterFiles(fileFullPaths)
-      // if (Array.from(unsupportedExtensionsSet).length > 0) {
-      //   toast.error(`Unsupported file types: ${Array.from(unsupportedExtensionsSet).join(',')}`)
-      // }
-      const supportedFiles = files
-      if (explorer.materializedPath && supportedFiles.length > 0) {
-        // for (const fileFullPath of fileFullPaths) {
-        //   const name = fileFullPath.split('/').slice(-1).join('')
-        //   enqueue({
-        //     materializedPath: explorer.materializedPath,
-        //     name: name,
-        //     dataType: 'file',
-        //     payload: file,
-        //   })
-        // }
+      if (explorer.materializedPath && files.length > 0) {
+        for (const file of files) {
+          enqueue({
+            materializedPath: explorer.materializedPath,
+            name: file.name,
+            dataType: 'file',
+            payload: file,
+          })
+        }
       }
     },
     [explorer.materializedPath, enqueue],
   )
   const handleSelectFilePaths = useCallback(
     (fileFullPaths: string[]) => {
+      // TODO 暂时隐藏
+      // const { supportedFiles, unsupportedExtensionsSet } = filterFiles(fileFullPaths)
+      // if (Array.from(unsupportedExtensionsSet).length > 0) {
+      //   toast.error(`Unsupported file types: ${Array.from(unsupportedExtensionsSet).join(',')}`)
+      // }
       if (explorer.materializedPath && fileFullPaths.length > 0) {
         for (const fileFullPath of fileFullPaths) {
           const name = fileFullPath.split('/').slice(-1).join('')
@@ -113,7 +111,7 @@ export default function Header() {
           </Button>
           <Button variant="ghost" size="sm" className="h-7 w-7 p-1 transition-none" asChild>
             {/* 加上 asChild 不使用 native button, 因为里面是个 form, native button 可能会触发 form submit */}
-            <UploadButton onSelectFiles={handleSelectFilePaths}>
+            <UploadButton onSelectFilePaths={handleSelectFilePaths} onSelectFiles={handleSelectFiles}>
               <Icon.Upload className="size-4" />
             </UploadButton>
           </Button>

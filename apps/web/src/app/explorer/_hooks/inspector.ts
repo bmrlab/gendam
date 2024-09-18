@@ -59,13 +59,12 @@ export function useResizableInspector() {
     }
   }, [width])
 
+  const updateLibrarySettings = currentLibrary.updateLibrarySettings
   useEffect(() => {
     if (width && !isResizing) {
-      currentLibrary.updateLibrarySettings({
-        inspectorSize: width,
-      })
+      updateLibrarySettings({ inspectorSize: width })
     }
-  }, [width, isResizing, currentLibrary])
+  }, [width, isResizing, updateLibrarySettings])
 
   return { handleRef: ref, width, isResizing }
 }

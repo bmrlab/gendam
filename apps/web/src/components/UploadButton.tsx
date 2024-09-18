@@ -1,15 +1,15 @@
-'use client'
-import { SUPPORTED_CONTENT_TYPES } from '@/constants'
+// import { SUPPORTED_CONTENT_TYPES } from '@/constants'
 import { cn } from '@/lib/utils'
 import { open } from '@tauri-apps/api/dialog'
 import { HTMLAttributes, PropsWithChildren, useCallback } from 'react'
 
 type Props = {
-  onSelectFiles: (fileFullPath: string[]) => void
+  onSelectFiles?: (fileFullPath: File[]) => void
+  onSelectFilePaths?: (fileFullPath: string[]) => void
 }
 
 const TauriUploadButton: React.FC<PropsWithChildren<Props> & HTMLAttributes<HTMLLabelElement>> = ({
-  onSelectFiles,
+  onSelectFilePaths,
   children,
   className,
   ...props
@@ -30,11 +30,11 @@ const TauriUploadButton: React.FC<PropsWithChildren<Props> & HTMLAttributes<HTML
     console.log('tauri selected file:', results)
     if (results && results.length) {
       const fileFullPaths = results as string[]
-      onSelectFiles(fileFullPaths)
+      onSelectFilePaths && onSelectFilePaths(fileFullPaths)
     } else {
       return null
     }
-  }, [onSelectFiles])
+  }, [onSelectFilePaths])
 
   return (
     <form className="block appearance-none">
@@ -49,8 +49,9 @@ const TauriUploadButton: React.FC<PropsWithChildren<Props> & HTMLAttributes<HTML
   )
 }
 
-const WebUploadButton: React.FC<PropsWithChildren<Props> & HTMLAttributes<HTMLLabelElement>> = ({
-  onSelectFiles,
+// Deprecated
+const WebUploadButtonFromListFile: React.FC<PropsWithChildren<Props> & HTMLAttributes<HTMLLabelElement>> = ({
+  onSelectFilesPaths,
   children,
   className,
   ...props
@@ -82,11 +83,11 @@ const WebUploadButton: React.FC<PropsWithChildren<Props> & HTMLAttributes<HTMLLa
           .map((s) => s.trim())
           .filter((s) => !!s.length)
         // console.log(fileFullPaths)
-        onSelectFiles(fileFullPaths)
+        onSelectFilesPaths && onSelectFilesPaths(fileFullPaths)
       }
       reader.readAsText(file)
     },
-    [onSelectFiles],
+    [onSelectFilesPaths],
   )
 
   return (
@@ -103,6 +104,45 @@ const WebUploadButton: React.FC<PropsWithChildren<Props> & HTMLAttributes<HTMLLa
         onInput={onFileInput}
       />
       {/* <button type="submit">上传文件</button> */}
+    </form>
+  )
+}
+
+const WebUploadButton: React.FC<PropsWithChildren<Props> & HTMLAttributes<HTMLLabelElement>> = ({
+  onSelectFiles,
+  children,
+  className,
+  ...props
+}) => {
+  const onFileInput = useCallback(
+    (e: React.FormEvent<HTMLInputElement>) => {
+      if (e.currentTarget.files) {
+        const files: File[] = []
+        const _files = e.currentTarget.files
+        for (let i = 0; i < _files.length; i++) {
+          files.push(_files[i])
+        }
+        console.log('form input selected file:', files)
+        onSelectFiles && onSelectFiles(files)
+      }
+      e.currentTarget.value = '' // 重置 inputvalue 以便下次选择同一个文件时触发 onInput 事件
+    },
+    [onSelectFiles],
+  )
+
+  return (
+    <form className="block appearance-none">
+      <label htmlFor="file-input-select-new-asset" className={cn('cursor-default', className)}>
+        {children ? children : <div className="text-xs">Import medias</div>}
+      </label>
+      <input
+        type="file"
+        id="file-input-select-new-asset"
+        className="hidden"
+        multiple={true}
+        accept="*"
+        onInput={onFileInput}
+      />
     </form>
   )
 }

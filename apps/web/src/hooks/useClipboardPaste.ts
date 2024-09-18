@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
 
 export const useClipboardPaste = () => {
-  const [filesPasted, setFilesPasted] = useState<string[]>([])
+  const [filesPasted, setFilesPasted] = useState<File[]>([])
   const handlePaste = useCallback(async (e: ClipboardEvent) => {
-    const files: string[] = []
-    // try {
-    //   const res: string[] = await clipboard.readFiles()
-    //   res.forEach((item) => {
-    //     // clipboard 里面的文件名会被 encode，需要解码一下
-    //     files.push(window.decodeURIComponent(item))
-    //   })
-    // } catch (e) {}
-    // 只阻拦文件
+    const files: File[] = []
+    const items = e.clipboardData?.items
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i]
+        if (item.kind === 'file') {
+          const file = item.getAsFile()
+          if (file) {
+            files.push(file)
+          }
+        }
+      }
+    }
     if (files.length > 0) {
       e.preventDefault()
       setFilesPasted(files)
