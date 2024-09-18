@@ -23,6 +23,8 @@ pub struct TextEntity {
     id: Thing,
     data: String,
     vector: Vec<f32>,
+    en_data: String,
+    en_vector: Vec<f32>,
 }
 
 #[derive(Debug, Deserialize)]
