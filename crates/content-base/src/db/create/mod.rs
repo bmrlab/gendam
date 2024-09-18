@@ -141,7 +141,10 @@ impl DB {
                 let id: ID = id.into();
                 self.create_contain_relation(
                     &id.id_with_table(),
-                    image_frame_ids.iter().map(|id| id.as_str()).collect(),
+                    concat_arrays!(image_frame_ids, audio_frame_ids)
+                        .iter()
+                        .map(|id| id.as_str())
+                        .collect(),
                 )
                 .await?;
                 let payload = self.create_payload(payload.into()).await?;
@@ -469,6 +472,7 @@ impl DB {
 mod test {
     use crate::db::model::id::TB;
     use crate::db::model::{ImageModel, TextModel};
+    use crate::db::shared::test::{gen_vector, setup};
     use crate::db::DB;
     use crate::query::payload::image::ImageSearchMetadata;
     use crate::query::payload::raw_text::RawTextSearchMetadata;
@@ -486,18 +490,6 @@ mod test {
     use content_base_task::ContentTaskType;
     use rand::Rng;
     use test_log::test;
-
-    async fn setup() -> DB {
-        dotenvy::dotenv().ok();
-
-        DB::new().await
-    }
-
-    fn gen_vector(size: usize) -> Vec<f32> {
-        (0..size)
-            .map(|_| rand::thread_rng().gen_range(0.0..1.0))
-            .collect()
-    }
 
     #[test(tokio::test)]
     async fn test_init_db() {

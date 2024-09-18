@@ -185,3 +185,39 @@ impl DB {
         Ok(result.into_iter().flatten().collect())
     }
 }
+
+#[allow(unused_imports)]
+mod test {
+    use crate::{
+        db::{
+            model::{id::TB, ImageModel, TextModel},
+            shared::test::{gen_vector, setup},
+        },
+        query::payload::{SearchMetadata, SearchPayload},
+    };
+    use content_base_task::{
+        web_page::{transform::WebPageTransformTask, WebPageTaskType},
+        ContentTaskType,
+    };
+    use test_log::test;
+
+    #[test(tokio::test)]
+    async fn test_select_relation_by_out() {
+        let db = setup().await;
+        // Document data needs to be inserted in advance
+        // can insert data by running the test in `create/mod`
+        let document_res = db
+            .select_relation_by_out(vec!["image:5it65bxgm0u603livkv8"])
+            .await
+            .unwrap();
+        // the desired result is document
+        println!("document_res: {:?}", document_res);
+        // Video data needs to be inserted in advance
+        let video_res = db
+            .select_relation_by_out(vec!["text:vu3lb2verv2h36hti5im"])
+            .await
+            .unwrap();
+        // the desired result is video
+        println!("video_res: {:?}", video_res);
+    }
+}
