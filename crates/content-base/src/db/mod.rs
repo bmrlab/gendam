@@ -54,3 +54,15 @@ impl DB {
         Ok(())
     }
 }
+
+#[allow(unused_imports, dead_code)]
+mod test {
+    use crate::db::shared::test::setup;
+    use test_log::test;
+
+    #[test(tokio::test)]
+    async fn test_init_db() {
+        let db = setup().await;
+        println!("{:?}", db.client.query("INFO FOR DB;").await.unwrap());
+    }
+}

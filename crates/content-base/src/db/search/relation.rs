@@ -1,11 +1,41 @@
-use futures::{stream, StreamExt};
-use itertools::Itertools;
-
 use crate::db::{
-    entity::{relation::RelationEntity, ImageEntity, SelectResultEntity, TextEntity},
+    entity::{
+        relation::RelationEntity, AudioEntity, DocumentEntity, ImageEntity, SelectResultEntity,
+        TextEntity, VideoEntity, WebPageEntity,
+    },
     model::id::{ID, TB},
     DB,
 };
+use futures::{stream, StreamExt};
+use itertools::Itertools;
+use tracing::error;
+
+macro_rules! select_some_macro {
+    ($fetch:expr, $client:expr, $ids:expr, $return_type:ty) => {{
+        let mut result = vec![];
+
+        stream::iter($ids)
+            .then(|id| async move {
+                let mut resp = $client
+                    .query(format!("SELECT * FROM {} {};", id.as_ref(), $fetch))
+                    .await?;
+                let result = resp.take::<Vec<$return_type>>(0)?;
+                Ok::<_, anyhow::Error>(result)
+            })
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .for_each(|res| match res {
+                Ok(image) => {
+                    result.push(image);
+                }
+                Err(e) => {
+                    error!("select error: {e:?}");
+                }
+            });
+        Ok(result.into_iter().flatten().collect())
+    }};
+}
 
 /// audio -> audio_frame -> text
 /// 当 TB 在 MIDDLE_LAYER_LIST 中时，需要继续向上查询一层，才是最终的结果
@@ -28,7 +58,7 @@ impl DB {
                     .map(|r| r.in_id())
                     .collect::<Vec<_>>();
                 if !relation.is_empty() {
-                    // TODO: 有 contain 关系的情况
+                    // 有 contain 关系的情况
                     // let item = self.select_item(deduplicate(relation)).await?;
                     // res.push(
                     //     item.into_iter()
@@ -138,51 +168,48 @@ impl DB {
     }
 
     async fn select_text(&self, ids: Vec<impl AsRef<str>>) -> anyhow::Result<Vec<TextEntity>> {
-        let mut result = vec![];
-
-        stream::iter(ids)
-            .then(|id| async move {
-                let mut resp = self
-                    .client
-                    .query(format!("SELECT * FROM {};", id.as_ref()))
-                    .await?;
-                let result = resp.take::<Vec<TextEntity>>(0)?;
-                Ok::<_, anyhow::Error>(result)
-            })
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .for_each(|res| match res {
-                Ok(image) => {
-                    result.push(image);
-                }
-                _ => {}
-            });
-        Ok(result.into_iter().flatten().collect())
+        select_some_macro!("", self.client, ids, TextEntity)
     }
 
     async fn select_image(&self, ids: Vec<impl AsRef<str>>) -> anyhow::Result<Vec<ImageEntity>> {
-        let mut result = vec![];
+        select_some_macro!("", self.client, ids, ImageEntity)
+    }
 
-        stream::iter(ids)
-            .then(|id| async move {
-                let mut resp = self
-                    .client
-                    .query(format!("SELECT * FROM {};", id.as_ref()))
-                    .await?;
-                let result = resp.take::<Vec<ImageEntity>>(0)?;
-                Ok::<_, anyhow::Error>(result)
-            })
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .for_each(|res| match res {
-                Ok(image) => {
-                    result.push(image);
-                }
-                _ => {}
-            });
-        Ok(result.into_iter().flatten().collect())
+    async fn select_audio(&self, ids: Vec<impl AsRef<str>>) -> anyhow::Result<Vec<AudioEntity>> {
+        select_some_macro!("FETCH frame, frame.data", self.client, ids, AudioEntity)
+    }
+
+    async fn select_video(&self, ids: Vec<impl AsRef<str>>) -> anyhow::Result<Vec<VideoEntity>> {
+        select_some_macro!(
+            "FETCH image_frame, audio_frame, image_frame.data, audio_frame.data",
+            self.client,
+            ids,
+            VideoEntity
+        )
+    }
+
+    async fn select_web_page(
+        &self,
+        ids: Vec<impl AsRef<str>>,
+    ) -> anyhow::Result<Vec<WebPageEntity>> {
+        select_some_macro!(
+            "FETCH page, page.text, page.image",
+            self.client,
+            ids,
+            WebPageEntity
+        )
+    }
+
+    async fn select_document(
+        &self,
+        ids: Vec<impl AsRef<str>>,
+    ) -> anyhow::Result<Vec<DocumentEntity>> {
+        select_some_macro!(
+            "FETCH page, page.text, page.image",
+            self.client,
+            ids,
+            DocumentEntity
+        )
     }
 }
 
@@ -238,5 +265,65 @@ mod test {
             .unwrap();
         // the desired result only is audio
         println!("combine_res: {:?}", combine_res);
+    }
+
+    #[test(tokio::test)]
+    async fn test_select_text() {
+        let db = setup().await;
+        let text_res = db
+            .select_text(vec!["text:7dd12x11yvt5fgamdjb0"])
+            .await
+            .unwrap();
+        println!("text_res: {:?}", text_res);
+    }
+
+    #[test(tokio::test)]
+    async fn test_select_image() {
+        let db = setup().await;
+        let image_res = db
+            .select_image(vec!["image:flzkn6ncniglqttxnrsm"])
+            .await
+            .unwrap();
+        println!("image_res: {:?}", image_res);
+    }
+
+    #[test(tokio::test)]
+    async fn test_select_audio() {
+        let db = setup().await;
+        let audio_res = db
+            .select_audio(vec!["audio:gkzq6db9jwr34l3j0gmz"])
+            .await
+            .unwrap();
+        println!("audio_res: {:?}", audio_res);
+    }
+
+    #[test(tokio::test)]
+    async fn test_select_video() {
+        let db = setup().await;
+        let video_res = db
+            .select_video(vec!["video:u456grwuvl6w74zgqemc"])
+            .await
+            .unwrap();
+        println!("video_res: {:?}", video_res);
+    }
+
+    #[test(tokio::test)]
+    async fn test_select_web_page() {
+        let db = setup().await;
+        let web_page_res = db
+            .select_web_page(vec!["web:nobc02c8ffyol3kqbsln"])
+            .await
+            .unwrap();
+        println!("web_page_res: {:?}", web_page_res);
+    }
+
+    #[test(tokio::test)]
+    async fn test_select_document() {
+        let db = setup().await;
+        let document_res = db
+            .select_document(vec!["document:6dr6glzpf7ixefh7vjks"])
+            .await
+            .unwrap();
+        println!("document_res: {:?}", document_res);
     }
 }
