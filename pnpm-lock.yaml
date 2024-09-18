@@ -103,9 +103,6 @@ importers:
       sonner:
         specifier: ^1.4.41
         version: 1.4.41(react-dom@18.2.0)(react@18.2.0)
-      tauri-plugin-clipboard-api:
-        specifier: ^1.1.4
-        version: 1.1.4
       ts-pattern:
         specifier: ^5.2.0
         version: 5.2.0
@@ -6231,14 +6228,6 @@ packages:
     engines: {node: '>=6'}
     dev: true
 
-  /tauri-plugin-clipboard-api@1.1.4:
-    resolution: {integrity: sha512-bq00ENlp4oeMrNoCBsfHvFgZh1YSkT1KszegilMsb+2vw0PEo5RwlcBfUzKvQXv5BKIzCcobYEB9C1VwiKhWTA==}
-    dependencies:
-      '@tauri-apps/api': 1.5.3
-      tslib: 2.6.3
-      zod: 3.23.8
-    dev: false
-
   /text-table@0.2.0:
     resolution: {integrity: sha512-N+8UisAXDGk8PFXP4HAzVR9nbfmVJ3zYLAWiTIoqC5v5isinhr+r5uaO8+7r3BMfuNIufIsA7RdpVgacC2cSpw==}
     dev: true
@@ -6656,10 +6645,6 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
     dev: true
-
-  /zod@3.23.8:
-    resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
-    dev: false
 
   /zustand@4.5.2(@types/react@18.2.55)(immer@10.0.3)(react@18.2.0):
     resolution: {integrity: sha512-2cN1tPkDVkwCy5ickKrI7vijSjPksFRfqS6237NzT0vqSsztTNnQdHw9mmN7uBdk3gceVXU0a+21jFzFzAc9+g==}
