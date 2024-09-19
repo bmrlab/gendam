@@ -1,15 +1,17 @@
+use crate::query::rank::Rank;
 use crate::ContentBase;
-use ai::TextEmbeddingModel;
+use itertools::Itertools;
 use model::SearchModel;
 use payload::{RetrievalResultData, SearchPayload, SearchResultData};
 use qdrant_client::qdrant::SearchPointsBuilder;
 use search::{group_results_by_asset, reorder_final_results};
 use serde_json::json;
-use std::collections::HashMap;
+use tracing::info;
 
 mod data_handler;
 pub mod model;
 pub mod payload;
+mod rank;
 pub mod search;
 
 const RETRIEVAL_COUNT: u64 = 20;
@@ -99,7 +101,31 @@ impl ContentBase {
     // }
 
     pub async fn query(&self, payload: QueryPayload) -> anyhow::Result<Vec<SearchResultData>> {
+        // 目前 QueryPayload 只是文本
         let search_model = self.query_payload_to_model(payload).await?;
+        match search_model {
+            SearchModel::Text(text) => {
+                info!("search tokens: {:?}", text.tokens.0);
+                let full_text_result = self.db.try_read()?.full_text_search(text.tokens.0).await?;
+                let vector_result = self
+                    .db
+                    .try_read()?
+                    .vector_search(text.text_vector, text.vision_vector, None)
+                    .await?;
+
+                let search_ids = Rank::rank((full_text_result, vector_result), Some(10))?
+                    .into_iter()
+                    .unique()
+                    .map(|s| s.id)
+                    .collect();
+
+                info!("search ids: {:?}", search_ids);
+
+                let select_result = self.db.try_read()?.select_by_id(search_ids).await?;
+                // TODO: convert SelectResultEntity to SearchResultData
+            }
+            SearchModel::Image(_) => {}
+        }
         Ok(vec![])
     }
 
