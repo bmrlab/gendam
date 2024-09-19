@@ -4,10 +4,7 @@ use tracing::{debug, error};
 
 use super::{constant::MAX_FULLTEXT_TOKEN, entity::vector::VectorSearchEntity, DB};
 use crate::db::entity::relation::RelationEntity;
-use crate::db::entity::{
-    AudioEntity, DocumentEntity, ImageEntity, SelectResultEntity, TextEntity, VideoEntity,
-    WebPageEntity,
-};
+use crate::db::entity::{AudioEntity, DocumentEntity, ImageEntity, PayloadEntity, SelectResultEntity, TextEntity, VideoEntity, WebPageEntity};
 use crate::db::model::id::{ID, TB};
 use crate::query::model::vector::VectorSearchTable;
 use crate::utils::deduplicate;
@@ -178,39 +175,7 @@ impl DB {
                         .collect::<Vec<&RelationEntity>>();
 
                     stream::iter(relation)
-                        .then(|r| async move {
-                            let res = match r.in_table() {
-                                TB::Audio => self
-                                    .select_audio(vec![r.in_id()])
-                                    .await?
-                                    .into_iter()
-                                    .map(SelectResultEntity::Audio)
-                                    .collect::<Vec<SelectResultEntity>>(),
-                                TB::Video => self
-                                    .select_video(vec![r.in_id()])
-                                    .await?
-                                    .into_iter()
-                                    .map(SelectResultEntity::Video)
-                                    .collect::<Vec<SelectResultEntity>>(),
-                                TB::Web => self
-                                    .select_web_page(vec![r.in_id()])
-                                    .await?
-                                    .into_iter()
-                                    .map(SelectResultEntity::WebPage)
-                                    .collect::<Vec<SelectResultEntity>>(),
-                                TB::Document => self
-                                    .select_document(vec![r.in_id()])
-                                    .await?
-                                    .into_iter()
-                                    .map(SelectResultEntity::Document)
-                                    .collect::<Vec<SelectResultEntity>>(),
-                                _ => {
-                                    error!("select_by_id inner error: {:?}", r);
-                                    vec![]
-                                }
-                            };
-                            Ok::<_, anyhow::Error>(res)
-                        })
+                        .then(|r| self.select_entity_by_relation(r))
                         .collect::<Vec<_>>()
                         .await
                         .into_iter()
@@ -304,6 +269,18 @@ impl DB {
             self.client,
             ids,
             DocumentEntity
+        )
+    }
+
+    async fn select_payload(
+        &self,
+        ids: Vec<impl AsRef<str>>,
+    ) -> anyhow::Result<Vec<PayloadEntity>> {
+        select_some_macro!(
+            "",
+            self.client,
+            ids,
+            PayloadEntity
         )
     }
 }
