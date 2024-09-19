@@ -6,6 +6,7 @@ use crate::db::{
     model::id::{ID, TB},
     DB,
 };
+use crate::utils::deduplicate;
 use futures::{stream, StreamExt};
 use itertools::Itertools;
 use tracing::error;
@@ -51,25 +52,67 @@ impl DB {
         stream::iter(ids)
             .then(|id| async move {
                 let mut res = vec![];
-                let relation = self
+                let relation_by_out = self
                     .select_relation_by_out(vec![id.id_with_table()])
-                    .await?
-                    .into_iter()
+                    .await?;
+                let relation = relation_by_out
+                    .iter()
                     .map(|r| r.in_id())
                     .collect::<Vec<_>>();
                 if !relation.is_empty() {
-                    // 有 contain 关系的情况
-                    // let item = self.select_item(deduplicate(relation)).await?;
-                    // res.push(
-                    //     item.into_iter()
-                    //         .map(SelectResultEntity::Item)
-                    //         .collect::<Vec<SelectResultEntity>>(),
-                    // );
+                    let relation = deduplicate(relation)
+                        .into_iter()
+                        .filter_map(|id| relation_by_out.iter().find(|r| r.in_id() == id))
+                        .collect::<Vec<&RelationEntity>>();
+
+                    stream::iter(relation)
+                        .then(|r| async move {
+                            let res = match r.in_table() {
+                                TB::Audio => self
+                                    .select_audio(vec![r.in_id()])
+                                    .await?
+                                    .into_iter()
+                                    .map(SelectResultEntity::Audio)
+                                    .collect::<Vec<SelectResultEntity>>(),
+                                TB::Video => self
+                                    .select_video(vec![r.in_id()])
+                                    .await?
+                                    .into_iter()
+                                    .map(SelectResultEntity::Video)
+                                    .collect::<Vec<SelectResultEntity>>(),
+                                TB::Web => self
+                                    .select_web_page(vec![r.in_id()])
+                                    .await?
+                                    .into_iter()
+                                    .map(SelectResultEntity::WebPage)
+                                    .collect::<Vec<SelectResultEntity>>(),
+                                TB::Document => self
+                                    .select_document(vec![r.in_id()])
+                                    .await?
+                                    .into_iter()
+                                    .map(SelectResultEntity::Document)
+                                    .collect::<Vec<SelectResultEntity>>(),
+                                _ => {
+                                    error!("select_by_id inner error: {:?}", r);
+                                    vec![]
+                                }
+                            };
+                            Ok::<_, anyhow::Error>(res)
+                        })
+                        .collect::<Vec<_>>()
+                        .await
+                        .into_iter()
+                        .for_each(|select_entity| match select_entity {
+                            Ok(s) => {
+                                res.push(s);
+                            }
+                            _ => {}
+                        });
                 } else {
                     // 没有 contain 关系的情况
                     match id.tb() {
                         TB::Text => {
-                            let text = self.select_text(vec![id.id()]).await?;
+                            let text = self.select_text(vec![id.id_with_table()]).await?;
                             res.push(
                                 text.into_iter()
                                     .map(SelectResultEntity::Text)
@@ -77,7 +120,7 @@ impl DB {
                             );
                         }
                         TB::Image => {
-                            let image = self.select_image(vec![id.id()]).await?;
+                            let image = self.select_image(vec![id.id_with_table()]).await?;
                             res.push(
                                 image
                                     .into_iter()
@@ -85,7 +128,9 @@ impl DB {
                                     .collect::<Vec<SelectResultEntity>>(),
                             );
                         }
-                        _ => {}
+                        _ => {
+                            error!("should not be here: {:?}", id);
+                        }
                     }
                 }
                 Ok::<Vec<SelectResultEntity>, anyhow::Error>(res.into_iter().flatten().collect())
@@ -97,7 +142,9 @@ impl DB {
                 Ok(res) => {
                     backtrack.push(res);
                 }
-                _ => {}
+                _ => {
+                    error!("select_by_id out error: {:?}", res);
+                }
             });
 
         Ok(backtrack.into_iter().flatten().collect())
@@ -110,44 +157,32 @@ impl DB {
         &self,
         ids: Vec<impl AsRef<str>>,
     ) -> anyhow::Result<Vec<RelationEntity>> {
-        let mut result: Vec<Vec<RelationEntity>> = vec![];
-        stream::iter(ids)
+        let futures = stream::iter(ids)
             .then(|id| async move {
-                let mut resp = self
-                    .client
-                    .query(format!(
-                        "SELECT * from contains where out = {};",
-                        id.as_ref()
-                    ))
-                    .await?;
-                let result = resp.take::<Vec<RelationEntity>>(0)?;
-                Ok::<_, anyhow::Error>(result)
+                Ok::<_, anyhow::Error>(
+                    self.client
+                        .query(format!(
+                            "SELECT * from contains where out = {};",
+                            id.as_ref()
+                        ))
+                        .await?
+                        .take::<Vec<RelationEntity>>(0)?,
+                )
             })
             .collect::<Vec<_>>()
             .await
             .into_iter()
-            .for_each(|res| match res {
-                Ok(relations) => {
-                    result.push(relations);
-                }
-                _ => {}
-            });
-
-        // 目前可以确定只有一层 contain 关系
-        // 如果以后有多层 contain 关系，可以递归
-        let futures = result
-            .into_iter()
+            .filter_map(Result::ok)
             .flatten()
             .map(|r| async move {
                 match r.in_table() {
-                    tb if MIDDLE_LAYER_LIST.contains(&tb) => {
-                        let mut resp = self
-                            .client
+                    // 可以确定在 MIDDLE_LAYER_LIST 表中的还有一层 contain 关系
+                    tb if MIDDLE_LAYER_LIST.contains(&tb) => Ok::<_, anyhow::Error>(
+                        self.client
                             .query(format!("SELECT * from contains where out = {};", r.in_id()))
-                            .await?;
-                        let result = resp.take::<Vec<RelationEntity>>(0)?;
-                        Ok::<_, anyhow::Error>(result)
-                    }
+                            .await?
+                            .take::<Vec<RelationEntity>>(0)?,
+                    ),
                     _ => Ok::<_, anyhow::Error>(vec![r]),
                 }
             })
@@ -226,6 +261,7 @@ mod test {
         web_page::{transform::WebPageTransformTask, WebPageTaskType},
         ContentTaskType,
     };
+    use itertools::Itertools;
     use test_log::test;
 
     #[test(tokio::test)]
@@ -325,5 +361,21 @@ mod test {
             .await
             .unwrap();
         println!("document_res: {:?}", document_res);
+    }
+
+    #[test(tokio::test)]
+    async fn test_select_by_id() {
+        let db = setup().await;
+        let res = db
+            .select_by_id(vec![
+                "text:0k611fzdax6vdqexqv82".into(),
+                "text:1xv13ncm0i0h3ykhv1t2".into(),
+                "text:2uftzfxknwiu0iasroxw".into(),
+                "text:7r2g1vj5ennxtbi0hp5a".into(),
+                "text:aw2cyxkvukk6gvy20x4r".into(),
+            ])
+            .await
+            .unwrap();
+        println!("res: {:?}", res.into_iter().map(|r| r.id()).collect_vec());
     }
 }
