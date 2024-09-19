@@ -2,13 +2,11 @@ use frame::{AudioFrameEntity, ImageFrameEntity};
 use page::PageEntity;
 use serde::Deserialize;
 use surrealdb::sql::Thing;
-
 use super::model::id::ID;
 
 pub(crate) mod frame;
 pub(crate) mod full_text;
 pub(crate) mod page;
-pub(crate) mod payload;
 pub(crate) mod relation;
 pub(crate) mod vector;
 
@@ -67,6 +65,13 @@ pub struct DocumentEntity {
     page: Vec<PageEntity>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct PayloadEntity {
+    id: Thing,
+    file_identifier: Option<String>,
+    url: Option<String>,
+}
+
 #[derive(Debug)]
 pub enum SelectResultEntity {
     Text(TextEntity),
@@ -76,6 +81,7 @@ pub enum SelectResultEntity {
     Video(VideoEntity),
     WebPage(WebPageEntity),
     Document(DocumentEntity),
+    Payload(PayloadEntity)
 }
 
 impl SelectResultEntity {
@@ -88,6 +94,7 @@ impl SelectResultEntity {
             SelectResultEntity::Video(video) => ID::from(&video.id),
             SelectResultEntity::WebPage(web) => ID::from(&web.id),
             SelectResultEntity::Document(document) => ID::from(&document.id),
+            SelectResultEntity::Payload(payload) => ID::from(&payload.id),
         }
     }
 }

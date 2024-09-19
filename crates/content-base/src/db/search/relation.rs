@@ -1,10 +1,21 @@
+use crate::db::entity::{PayloadEntity, SelectResultEntity};
+use crate::db::model::id::ID;
 use crate::db::{entity::relation::RelationEntity, model::id::TB, DB};
 use futures::{stream, StreamExt};
 use itertools::Itertools;
+use tracing::error;
 
 /// audio -> audio_frame -> text
 /// 当 TB 在 MIDDLE_LAYER_LIST 中时，需要继续向上查询一层，才是最终的结果
 const MIDDLE_LAYER_LIST: [TB; 3] = [TB::AudioFrame, TB::ImageFrame, TB::Page];
+const HAS_PAYLOAD_LIST: [TB; 6] = [
+    TB::Text,
+    TB::Image,
+    TB::Audio,
+    TB::Video,
+    TB::Web,
+    TB::Document,
+];
 
 // 数据查询
 impl DB {
@@ -58,6 +69,94 @@ impl DB {
             .into_iter()
             .flatten()
             .collect::<Vec<RelationEntity>>())
+    }
+
+    /// `with` payload only has one
+    pub async fn select_payload_by_id(&self, id: ID) -> anyhow::Result<PayloadEntity> {
+        if HAS_PAYLOAD_LIST.contains(&id.tb()) {
+            let relation = self.select_with_relation(&id).await?.pop().ok_or_else(|| {
+                anyhow::anyhow!("no relation data under {} table", id.id_with_table())
+            })?;
+
+            self.select_payload(vec![relation.in_id()])
+                .await?
+                .pop()
+                .ok_or_else(|| {
+                    anyhow::anyhow!("no payload data under {} table", id.id_with_table())
+                })
+        } else {
+            Err(anyhow::anyhow!(
+                "no payload under {} table",
+                id.table_name()
+            ))
+        }
+    }
+
+    /// only in HAS_PAYLOAD_LIST table has payload
+    async fn select_with_relation(&self, id: &ID) -> anyhow::Result<Vec<RelationEntity>> {
+        self.client
+            .query(format!(
+                "SELECT * from with where in = {};",
+                id.id_with_table()
+            ))
+            .await?
+            .take::<Vec<RelationEntity>>(0)
+            .map_err(Into::into)
+    }
+
+    pub async fn select_entity_by_relation(
+        &self,
+        relation: &RelationEntity,
+    ) -> anyhow::Result<Vec<SelectResultEntity>> {
+        let in_id = relation.in_id();
+        Ok(match relation.in_table() {
+            TB::Text => self
+                .select_text(vec![in_id])
+                .await?
+                .into_iter()
+                .map(SelectResultEntity::Text)
+                .collect::<Vec<SelectResultEntity>>(),
+            TB::Image => self
+                .select_image(vec![in_id])
+                .await?
+                .into_iter()
+                .map(SelectResultEntity::Image)
+                .collect::<Vec<SelectResultEntity>>(),
+            TB::Audio => self
+                .select_audio(vec![in_id])
+                .await?
+                .into_iter()
+                .map(SelectResultEntity::Audio)
+                .collect::<Vec<SelectResultEntity>>(),
+            TB::Video => self
+                .select_video(vec![in_id])
+                .await?
+                .into_iter()
+                .map(SelectResultEntity::Video)
+                .collect::<Vec<SelectResultEntity>>(),
+            TB::Web => self
+                .select_web_page(vec![in_id])
+                .await?
+                .into_iter()
+                .map(SelectResultEntity::WebPage)
+                .collect::<Vec<SelectResultEntity>>(),
+            TB::Document => self
+                .select_document(vec![in_id])
+                .await?
+                .into_iter()
+                .map(SelectResultEntity::Document)
+                .collect::<Vec<SelectResultEntity>>(),
+            TB::Payload => self
+                .select_payload(vec![in_id])
+                .await?
+                .into_iter()
+                .map(SelectResultEntity::Payload)
+                .collect::<Vec<SelectResultEntity>>(),
+            _ => {
+                error!("select entity by relation {relation:?} error: no implementation");
+                vec![]
+            }
+        })
     }
 }
 
@@ -114,5 +213,19 @@ mod test {
             .unwrap();
         // the desired result only is audio
         println!("combine_res: {:?}", combine_res);
+    }
+
+    #[test(tokio::test)]
+    async fn test_select_payload_by_id() {
+        let db = setup().await;
+        let res = db
+            .select_payload_by_id("text:vu3lb2verv2h36hti5im".into())
+            .await;
+        assert!(res.is_err());
+
+        let res = db
+            .select_payload_by_id("document:6dr6glzpf7ixefh7vjks".into())
+            .await;
+        assert!(res.is_ok())
     }
 }
