@@ -32,14 +32,6 @@ pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
     TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
-    #[derive(Deserialize, Type, Debug)]
-    #[serde(rename_all = "camelCase")]
-    struct AssetObjectCreatePayload {
-        #[serde(deserialize_with = "validators::materialized_path_string")]
-        materialized_path: String,
-        name: String,
-        local_full_path: String,
-    }
     Router::<TCtx>::new()
         .mutation("create_dir", |t| {
             t({
@@ -60,6 +52,15 @@ where
         })
         .mutation("create_asset_object", |t| {
             t({
+                #[derive(Deserialize, Type, Debug)]
+                #[serde(rename_all = "camelCase")]
+                struct AssetObjectCreatePayload {
+                    #[serde(deserialize_with = "validators::materialized_path_string")]
+                    materialized_path: String,
+                    name: String,
+                    local_full_path: String,
+                    // TODO: 加一个参数，指定是否需要删除源文件，对于客户端临时上传的文件，可以考虑删除
+                }
                 |ctx: TCtx, input: AssetObjectCreatePayload| async move {
                     info!("received create_asset_object: {input:?}");
                     let library = ctx.library()?;

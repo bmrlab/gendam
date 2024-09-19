@@ -1,10 +1,8 @@
-'use client'
-
 import { ExplorerItem } from '@/Explorer/types'
 import { ForwardedRef, forwardRef } from 'react'
 import InspectorItem from './InspectorItem'
 
-function Inspector({ data }: { data: ExplorerItem | null }, ref: ForwardedRef<HTMLDivElement>) {
+function InspectorPaneWithRef({ data }: { data: ExplorerItem | null }, ref: ForwardedRef<HTMLDivElement>) {
   return (
     <div className="flex h-full w-full overflow-auto">
       <div ref={ref} className="group flex h-full w-2 flex-none justify-center hover:cursor-col-resize">
@@ -15,4 +13,4 @@ function Inspector({ data }: { data: ExplorerItem | null }, ref: ForwardedRef<HT
   )
 }
 
-export default forwardRef(Inspector)
+export const InspectorPane = forwardRef(InspectorPaneWithRef)

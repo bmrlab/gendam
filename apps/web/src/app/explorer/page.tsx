@@ -8,8 +8,7 @@ import {
 } from '@/Explorer/hooks'
 // import { useExplorerStore } from '@/Explorer/store'
 import { type ExtractExplorerItem } from '@/Explorer/types'
-import Inspector from '@/components/Inspector'
-import { useInspector } from '@/components/Inspector/store'
+import { InspectorPane, useInspector, useResizableInspector } from '@/components/Inspector'
 import AudioDialog from '@/components/TranscriptExport/AudioDialog'
 import Viewport from '@/components/Viewport'
 import { rspc } from '@/lib/rspc'
@@ -22,7 +21,6 @@ import { useEffect, useMemo, useState } from 'react'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
 import ItemContextMenuV2 from './_components/ItemContextMenu'
-import { useResizableInspector } from './_hooks/inspector'
 
 export default function ExplorerPage() {
   // const explorerStore = useExplorerStore()
@@ -52,6 +50,12 @@ export default function ExplorerPage() {
   const [layout, setLayout] = useState<ExplorerValue['settings']['layout']>('grid')
 
   const inspector = useInspector()
+  /**
+   * TODO Inspector 拖拽的时候会有一些性能问题，看起来有点卡
+   * 如果拖拽的时候不显示 ExplorerLayout 会好很多
+   */
+  const resizableInspector = useResizableInspector()
+
   const explorer = useExplorerValue({
     items,
     materializedPath,
@@ -119,7 +123,7 @@ export default function ExplorerPage() {
   }, [explorer.settings.layout])
 
   type T = ExtractExplorerItem<'FilePathDir'> | ExtractExplorerItem<'FilePathWithAssetObject'>
-  const inspectorItem = useMemo<T | null>(() => {
+  const inspectorItemData = useMemo<T | null>(() => {
     const selectedItems = Array.from(explorer.selectedItems).filter(
       (item) => item.type === 'FilePathDir' || item.type === 'FilePathWithAssetObject',
     ) as T[]
@@ -144,12 +148,6 @@ export default function ExplorerPage() {
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [inspector])
-
-  /**
-   * TODO Inspector 拖拽的时候会有一些性能问题，看起来有点卡
-   * 如果拖拽的时候不显示 ExplorerLayout 会好很多
-   */
-  const { handleRef, width, isResizing } = useResizableInspector()
 
   if (assetsQuery.isError) {
     return <Viewport.Page className="text-ink/50 flex items-center justify-center">Failed to load assets</Viewport.Page>
@@ -177,9 +175,11 @@ export default function ExplorerPage() {
                 {/* TODO: 要修改下这里的 motion, 现在一行内容比较少没有铺满屏幕宽度的时候，items 会和弹簧一样反复伸缩 */}
                 <motion.div
                   className="h-full"
-                  animate={{ width: inspector.show ? `calc(100% - ${width}px)` : '100%' }}
+                  animate={{ width: inspector.show ? `calc(100% - ${resizableInspector.width}px)` : '100%' }}
                   transition={
-                    isResizing ? { type: 'spring', duration: 0 } : { type: 'spring', stiffness: 500, damping: 50 }
+                    resizableInspector.isResizing
+                      ? { type: 'spring', duration: 0 }
+                      : { type: 'spring', stiffness: 500, damping: 50 }
                   }
                 >
                   <ExplorerLayout className="h-full w-full overflow-scroll" />
@@ -192,10 +192,10 @@ export default function ExplorerPage() {
                       animate={{ x: 0 }}
                       exit={{ x: '100%' }}
                       transition={{ x: { type: 'spring', stiffness: 500, damping: 50 } }}
-                      style={{ width }}
+                      style={{ width: resizableInspector.width }}
                       className="flex h-full flex-none"
                     >
-                      <Inspector data={inspectorItem} ref={handleRef} />
+                      <InspectorPane data={inspectorItemData} ref={resizableInspector.handleRef} />
                     </motion.div>
                   )}
                 </AnimatePresence>
