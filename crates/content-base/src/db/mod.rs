@@ -9,7 +9,7 @@ use surrealdb::Surreal;
 
 mod constant;
 mod create;
-mod entity;
+pub mod entity;
 pub mod model;
 mod search;
 mod shared;

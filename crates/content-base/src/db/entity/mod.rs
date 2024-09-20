@@ -1,8 +1,8 @@
+use super::model::id::ID;
 use frame::{AudioFrameEntity, ImageFrameEntity};
 use page::PageEntity;
 use serde::Deserialize;
 use surrealdb::sql::Thing;
-use super::model::id::ID;
 
 pub(crate) mod frame;
 pub(crate) mod full_text;
@@ -72,6 +72,15 @@ pub struct PayloadEntity {
     url: Option<String>,
 }
 
+impl PayloadEntity {
+    pub fn url(&self) -> String {
+        self.url.clone().unwrap_or_default()
+    }
+    pub fn file_identifier(&self) -> String {
+        self.file_identifier.clone().unwrap_or_default()
+    }
+}
+
 #[derive(Debug)]
 pub enum SelectResultEntity {
     Text(TextEntity),
@@ -81,7 +90,7 @@ pub enum SelectResultEntity {
     Video(VideoEntity),
     WebPage(WebPageEntity),
     Document(DocumentEntity),
-    Payload(PayloadEntity)
+    Payload(PayloadEntity),
 }
 
 impl SelectResultEntity {

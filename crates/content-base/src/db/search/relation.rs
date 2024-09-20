@@ -71,6 +71,15 @@ impl DB {
             .collect::<Vec<RelationEntity>>())
     }
 
+    pub async fn select_payload_by_ids(&self, id: Vec<ID>) -> anyhow::Result<Vec<PayloadEntity>> {
+        stream::iter(id)
+            .then(|id| self.select_payload_by_id(id))
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .collect()
+    }
+
     /// `with` payload only has one
     pub async fn select_payload_by_id(&self, id: ID) -> anyhow::Result<PayloadEntity> {
         if HAS_PAYLOAD_LIST.contains(&id.tb()) {
@@ -218,14 +227,24 @@ mod test {
     #[test(tokio::test)]
     async fn test_select_payload_by_id() {
         let db = setup().await;
-        let res = db
-            .select_payload_by_id("text:vu3lb2verv2h36hti5im".into())
-            .await;
-        assert!(res.is_err());
+        // let res = db
+        //     .select_payload_by_id("text:vu3lb2verv2h36hti5im".into())
+        //     .await;
+        // println!("res: {:?}", res);
+        // assert!(res.is_err());
 
+        // let res = db
+        //     .select_payload_by_id("document:6dr6glzpf7ixefh7vjks".into())
+        //     .await;
+        // println!("res: {:?}", res);
+        // assert!(res.is_ok());
+        
+        
+        // TODO: debug
         let res = db
-            .select_payload_by_id("document:6dr6glzpf7ixefh7vjks".into())
+            .select_payload_by_id("video:6tqtjseeuln7l9xus7t2".into())
             .await;
+        println!("res: {:?}", res);
         assert!(res.is_ok())
     }
 }

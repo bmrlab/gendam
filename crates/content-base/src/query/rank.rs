@@ -2,7 +2,7 @@ use crate::concat_arrays;
 use crate::db::model::id::ID;
 use crate::query::model::full_text::FullTextSearchResult;
 use crate::query::model::vector::VectorSearchResult;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tracing::info;
 
 pub struct Rank;
@@ -77,6 +77,7 @@ impl Rank {
 
     pub fn rank(
         (full_text_data, vector_data): (Vec<FullTextSearchResult>, Vec<VectorSearchResult>),
+        remove_duplicate: Option<bool>,
         drain: Option<usize>,
     ) -> anyhow::Result<Vec<RankResult>> {
         let full_text_rank = Rank::full_text_rank(full_text_data, ScoreType::Average, None)?;
@@ -92,7 +93,7 @@ impl Rank {
                 id: ID::from(x.as_str()),
                 score: concat_arrays
                     .iter()
-                    .find(|y| y.id.id() == x)
+                    .find(|y| y.id.id_with_table() == x)
                     .unwrap_or(&RankResult {
                         id: ID::from(x.as_str()),
                         score: 0.0,
@@ -103,6 +104,13 @@ impl Rank {
 
         info!("rank_result: {:?}", rank_result);
 
+        if remove_duplicate.unwrap_or(true) {
+            let mut seen = HashSet::new();
+            rank_result = rank_result
+                .into_iter()
+                .filter(|rank| seen.insert(rank.id.clone()))
+                .collect();
+        }
         let drain = std::cmp::min(drain.unwrap_or(rank_result.len()), rank_result.len());
 
         Ok(rank_result.drain(..drain).collect())
@@ -125,7 +133,7 @@ trait Rankable {
 
 impl Rankable for RankResult {
     fn id(&self) -> String {
-        self.id.id()
+        self.id.id_with_table()
     }
 }
 
@@ -211,7 +219,6 @@ mod test {
         assert_eq!(res[0].id.id_with_table(), "text:3");
         assert_eq!(res[1].id.id_with_table(), "text:2");
         assert_eq!(res[2].id.id_with_table(), "text:1");
-
 
         let data = vec![
             FullTextSearchResult {
