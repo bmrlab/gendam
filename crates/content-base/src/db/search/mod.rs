@@ -4,7 +4,10 @@ use tracing::{debug, error};
 
 use super::{constant::MAX_FULLTEXT_TOKEN, entity::vector::VectorSearchEntity, DB};
 use crate::db::entity::relation::RelationEntity;
-use crate::db::entity::{AudioEntity, DocumentEntity, ImageEntity, PayloadEntity, SelectResultEntity, TextEntity, VideoEntity, WebPageEntity};
+use crate::db::entity::{
+    AudioEntity, DocumentEntity, ImageEntity, PayloadEntity, SelectResultEntity, TextEntity,
+    VideoEntity, WebPageEntity,
+};
 use crate::db::model::id::{ID, TB};
 use crate::query::model::vector::VectorSearchTable;
 use crate::utils::deduplicate;
@@ -16,6 +19,7 @@ use crate::{
     },
 };
 use futures::{stream, StreamExt};
+use itertools::Itertools;
 
 mod relation;
 
@@ -123,7 +127,7 @@ impl DB {
                 VectorSearchTable::Text => text_vector.clone(),
                 VectorSearchTable::EnText => text_vector.clone(),
                 VectorSearchTable::Image => vision_vector.clone(),
-                VectorSearchTable::ImagePrompt => vision_vector.clone(),
+                VectorSearchTable::ImagePrompt => text_vector.clone(),
             };
             async move {
                 let mut res = self
@@ -156,11 +160,13 @@ impl DB {
     /// ids: 只包含 text 和 image 表的 ID
     /// ids 是去重的
     /// 查询出的结果顺序是和 ids 一致的
-    pub async fn select_by_id(&self, ids: Vec<ID>) -> anyhow::Result<Vec<SelectResultEntity>> {
-        let mut backtrack = vec![];
-        stream::iter(ids)
+    pub async fn select_by_ids(
+        &self,
+        ids: Vec<ID>,
+    ) -> anyhow::Result<Vec<(ID, SelectResultEntity)>> {
+        let backtrack = stream::iter(ids)
             .then(|id| async move {
-                let mut res = vec![];
+                let mut res: Vec<Vec<(ID, SelectResultEntity)>> = vec![];
                 let relation_by_out = self
                     .select_relation_by_out(vec![id.id_with_table()])
                     .await?;
@@ -181,7 +187,7 @@ impl DB {
                         .into_iter()
                         .for_each(|select_entity| match select_entity {
                             Ok(s) => {
-                                res.push(s);
+                                res.push(s.into_iter().map(|s| (id.clone(), s)).collect());
                             }
                             _ => {}
                         });
@@ -192,8 +198,8 @@ impl DB {
                             let text = self.select_text(vec![id.id_with_table()]).await?;
                             res.push(
                                 text.into_iter()
-                                    .map(SelectResultEntity::Text)
-                                    .collect::<Vec<SelectResultEntity>>(),
+                                    .map(|t| (id.clone(), SelectResultEntity::Text(t)))
+                                    .collect::<Vec<(ID, SelectResultEntity)>>(),
                             );
                         }
                         TB::Image => {
@@ -201,8 +207,8 @@ impl DB {
                             res.push(
                                 image
                                     .into_iter()
-                                    .map(SelectResultEntity::Image)
-                                    .collect::<Vec<SelectResultEntity>>(),
+                                    .map(|i| (id.clone(), SelectResultEntity::Image(i)))
+                                    .collect::<Vec<(ID, SelectResultEntity)>>(),
                             );
                         }
                         _ => {
@@ -210,21 +216,20 @@ impl DB {
                         }
                     }
                 }
-                Ok::<Vec<SelectResultEntity>, anyhow::Error>(res.into_iter().flatten().collect())
+                Ok::<Vec<(ID, SelectResultEntity)>, anyhow::Error>(
+                    res.into_iter().flatten().collect(),
+                )
             })
             .collect::<Vec<_>>()
             .await
             .into_iter()
-            .for_each(|res| match res {
-                Ok(res) => {
-                    backtrack.push(res);
-                }
-                _ => {
-                    error!("select_by_id out error: {:?}", res);
-                }
-            });
+            .filter_map(Result::ok)
+            .collect::<Vec<Vec<(ID, SelectResultEntity)>>>();
 
-        Ok(backtrack.into_iter().flatten().collect())
+        Ok(backtrack
+            .into_iter()
+            .flatten()
+            .collect::<Vec<(ID, SelectResultEntity)>>())
     }
 
     async fn select_text(&self, ids: Vec<impl AsRef<str>>) -> anyhow::Result<Vec<TextEntity>> {
@@ -276,12 +281,7 @@ impl DB {
         &self,
         ids: Vec<impl AsRef<str>>,
     ) -> anyhow::Result<Vec<PayloadEntity>> {
-        select_some_macro!(
-            "",
-            self.client,
-            ids,
-            PayloadEntity
-        )
+        select_some_macro!("", self.client, ids, PayloadEntity)
     }
 }
 
@@ -352,10 +352,10 @@ mod test {
     }
 
     #[test(tokio::test)]
-    async fn test_select_by_id() {
+    async fn test_select_by_ids() {
         let db = setup().await;
         let res = db
-            .select_by_id(vec![
+            .select_by_ids(vec![
                 "text:0k611fzdax6vdqexqv82".into(),
                 "text:1xv13ncm0i0h3ykhv1t2".into(),
                 "text:2uftzfxknwiu0iasroxw".into(),
@@ -364,6 +364,6 @@ mod test {
             ])
             .await
             .unwrap();
-        println!("res: {:?}", res.into_iter().map(|r| r.id()).collect_vec());
+        println!("res: {:?}", res.into_iter().map(|r| r.0).collect_vec());
     }
 }

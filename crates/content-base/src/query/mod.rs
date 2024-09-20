@@ -1,12 +1,20 @@
+use crate::db::entity::SelectResultEntity;
+use crate::db::model::id::{ID, TB};
+use crate::query::payload::audio::AudioSearchMetadata;
+use crate::query::payload::image::ImageSearchMetadata;
+use crate::query::payload::raw_text::RawTextSearchMetadata;
+use crate::query::payload::video::VideoSearchMetadata;
+use crate::query::payload::web_page::WebPageSearchMetadata;
+use crate::query::payload::SearchMetadata;
 use crate::query::rank::Rank;
 use crate::ContentBase;
-use itertools::Itertools;
+use futures_util::{stream, StreamExt};
 use model::SearchModel;
 use payload::{RetrievalResultData, SearchPayload, SearchResultData};
 use qdrant_client::qdrant::SearchPointsBuilder;
 use search::{group_results_by_asset, reorder_final_results};
 use serde_json::json;
-use tracing::info;
+use tracing::{debug, info};
 
 mod data_handler;
 pub mod model;
@@ -113,20 +121,81 @@ impl ContentBase {
                     .vector_search(text.text_vector, text.vision_vector, None)
                     .await?;
 
-                let search_ids = Rank::rank((full_text_result, vector_result), Some(10))?
+                let rank_result =
+                    Rank::rank((full_text_result, vector_result), Some(true), Some(10))?;
+                info!("rank result: {:?}", rank_result);
+                let search_ids: Vec<_> = rank_result.iter().map(|x| x.id.clone()).collect();
+                debug!("search ids: {:?}", search_ids);
+
+                let select_by_id_result = self.db.try_read()?.select_by_ids(search_ids).await?;
+                debug!(
+                    "select by id result: {:?}",
+                    select_by_id_result
+                        .iter()
+                        .map(|x| x.0.id())
+                        .collect::<Vec<_>>()
+                );
+                let select_result = select_by_id_result
+                    .iter()
+                    .filter_map(|(id, s)| {
+                        rank_result
+                            .iter()
+                            .find(|r| r.id.eq(&id))
+                            .map(|r| (s, r.score))
+                    })
+                    .collect::<Vec<(&SelectResultEntity, f32)>>();
+                debug!(
+                    "select result: {:?}",
+                    select_result
+                        .iter()
+                        .map(|(s, score)| (s.id(), score))
+                        .collect::<Vec<_>>()
+                );
+
+                Ok(stream::iter(select_result)
+                    .then(|(result, score)| async move {
+                        let payload = self
+                            .db
+                            .try_read()?
+                            .select_payload_by_id(result.id())
+                            .await?;
+                        debug!("id: {:?}, payload: {payload:?}", result.id());
+                        Ok::<_, anyhow::Error>(SearchResultData {
+                            file_identifier: payload.file_identifier(),
+                            score,
+                            metadata: match result.id().tb() {
+                                TB::Image => SearchMetadata::Image(ImageSearchMetadata {}),
+                                TB::Audio => SearchMetadata::Audio(AudioSearchMetadata {
+                                    start_timestamp: 0,
+                                    end_timestamp: 0,
+                                }),
+                                TB::Video => SearchMetadata::Video(VideoSearchMetadata {
+                                    start_timestamp: 0,
+                                    end_timestamp: 0,
+                                }),
+                                TB::Web => SearchMetadata::WebPage(WebPageSearchMetadata {
+                                    start_index: 0,
+                                    end_index: 0,
+                                }),
+                                TB::Document => SearchMetadata::RawText(RawTextSearchMetadata {
+                                    start_index: 0,
+                                    end_index: 0,
+                                }),
+                                _ => SearchMetadata::Audio(AudioSearchMetadata {
+                                    start_timestamp: 0,
+                                    end_timestamp: 0,
+                                }),
+                            },
+                        })
+                    })
+                    .collect::<Vec<_>>()
+                    .await
                     .into_iter()
-                    .map(|s| s.id)
-                    .unique()
-                    .collect();
-
-                info!("search ids: {:?}", search_ids);
-
-                let select_result = self.db.try_read()?.select_by_id(search_ids).await?;
-                // TODO: convert SelectResultEntity to SearchResultData
+                    .filter_map(Result::ok)
+                    .collect::<Vec<SearchResultData>>())
             }
-            SearchModel::Image(_) => {}
+            SearchModel::Image(_) => Ok(vec![]),
         }
-        Ok(vec![])
     }
 
     /// 实现基于文本特征的基础召回
