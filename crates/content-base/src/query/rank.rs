@@ -1,3 +1,4 @@
+use crate::concat_arrays;
 use crate::db::model::id::ID;
 use crate::query::model::full_text::FullTextSearchResult;
 use crate::query::model::vector::VectorSearchResult;
@@ -6,9 +7,16 @@ use tracing::info;
 
 pub struct Rank;
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RankResult {
     pub id: ID,
+    /// 并不是真正的得分，而是排序的依据
+    pub score: f32,
+}
+
+pub enum ScoreType {
+    Average,
+    Maximum,
 }
 
 impl Rank {
@@ -16,21 +24,31 @@ impl Rank {
     /// 越大越靠前
     pub fn full_text_rank(
         data: Vec<FullTextSearchResult>,
+        score_type: ScoreType,
         drain: Option<usize>,
     ) -> anyhow::Result<Vec<RankResult>> {
         let drain = std::cmp::min(drain.unwrap_or(data.len()), data.len());
         let mut res = data;
         res.sort_by(|a, b| {
-            let a_avg_score = a.score.iter().map(|x| x.1).sum::<f32>() / a.score.len() as f32;
-            let b_avg_score = b.score.iter().map(|x| x.1).sum::<f32>() / b.score.len() as f32;
-            b_avg_score
-                .partial_cmp(&a_avg_score)
+            let a_score = Self::calculate_score(a.score.iter().map(|x| x.1).collect(), &score_type);
+            let b_score = Self::calculate_score(b.score.iter().map(|x| x.1).collect(), &score_type);
+            b_score
+                .partial_cmp(&a_score)
                 .ok_or(std::cmp::Ordering::Equal)
-                .unwrap()
+                .expect(
+                    format!(
+                        "Failed to compare a_score: {}, b_score: {}",
+                        a_score, b_score
+                    )
+                    .as_str(),
+                )
         });
         Ok(res
             .drain(..drain)
-            .map(|x| RankResult { id: x.id.clone() })
+            .map(|x| RankResult {
+                id: x.id.clone(),
+                score: Self::calculate_score(x.score.iter().map(|x| x.1).collect(), &score_type),
+            })
             .collect())
     }
 
@@ -50,7 +68,10 @@ impl Rank {
         });
         Ok(res
             .drain(..drain)
-            .map(|x| RankResult { id: x.id.clone() })
+            .map(|x| RankResult {
+                id: x.id.clone(),
+                score: if x.distance < 0.0 { 0.0 } else { x.distance },
+            })
             .collect())
     }
 
@@ -58,13 +79,27 @@ impl Rank {
         (full_text_data, vector_data): (Vec<FullTextSearchResult>, Vec<VectorSearchResult>),
         drain: Option<usize>,
     ) -> anyhow::Result<Vec<RankResult>> {
-        let full_text_rank = Rank::full_text_rank(full_text_data, None)?;
+        let full_text_rank = Rank::full_text_rank(full_text_data, ScoreType::Average, None)?;
         let vector_rank = Rank::vector_rank(vector_data, None)?;
 
         info!("full_text_rank: {:?}", full_text_rank);
         info!("vector_rank: {:?}", vector_rank);
 
-        let mut rank_result = Rank::rrf(vec![full_text_rank, vector_rank], None);
+        let concat_arrays = concat_arrays!(full_text_rank.clone(), vector_rank.clone()).into_vec();
+        let mut rank_result: Vec<RankResult> = Rank::rrf(vec![full_text_rank, vector_rank], None)
+            .into_iter()
+            .map(|x| RankResult {
+                id: ID::from(x.as_str()),
+                score: concat_arrays
+                    .iter()
+                    .find(|y| y.id.id() == x)
+                    .unwrap_or(&RankResult {
+                        id: ID::from(x.as_str()),
+                        score: 0.0,
+                    })
+                    .score,
+            })
+            .collect();
 
         info!("rank_result: {:?}", rank_result);
 
@@ -72,25 +107,30 @@ impl Rank {
 
         Ok(rank_result.drain(..drain).collect())
     }
+
+    fn calculate_score(score: Vec<f32>, score_type: &ScoreType) -> f32 {
+        match score_type {
+            ScoreType::Average => score.iter().sum::<f32>() / score.len() as f32,
+            ScoreType::Maximum => score
+                .into_iter()
+                .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .unwrap_or(0.0),
+        }
+    }
 }
 
 trait Rankable {
     fn id(&self) -> String;
-    fn from_str(s: &str) -> Self;
 }
 
 impl Rankable for RankResult {
     fn id(&self) -> String {
         self.id.id()
     }
-
-    fn from_str(s: &str) -> Self {
-        RankResult { id: s.into() }
-    }
 }
 
 impl Rank {
-    fn rrf<T: Rankable>(rankings: Vec<Vec<T>>, k: Option<usize>) -> Vec<T> {
+    fn rrf<T: Rankable>(rankings: Vec<Vec<T>>, k: Option<usize>) -> Vec<String> {
         let mut rrf_scores: HashMap<String, f64> = HashMap::new();
         let k = k.unwrap_or(60);
 
@@ -110,9 +150,6 @@ impl Rank {
         });
 
         fused_ranking
-            .into_iter()
-            .map(|f| T::from_str(f.as_str()))
-            .collect()
     }
 }
 
@@ -167,22 +204,45 @@ mod test {
                 score: vec![("e".to_string(), 0.3), ("f".to_string(), 0.4)],
             },
         ];
-        let res = Rank::full_text_rank(data, None);
+        let res = Rank::full_text_rank(data, crate::query::rank::ScoreType::Average, None);
         assert_eq!(res.is_ok(), true);
         let res = res.unwrap();
         assert_eq!(res.len(), 3);
-        assert_eq!(res[0].id.id(), "text:3");
-        assert_eq!(res[1].id.id(), "text:2");
-        assert_eq!(res[2].id.id(), "text:1");
+        assert_eq!(res[0].id.id_with_table(), "text:3");
+        assert_eq!(res[1].id.id_with_table(), "text:2");
+        assert_eq!(res[2].id.id_with_table(), "text:1");
+
+
+        let data = vec![
+            FullTextSearchResult {
+                id: ID::new("1".to_string(), "text"),
+                score: vec![
+                    ("a".to_string(), 0.2),
+                    ("b".to_string(), 0.2),
+                    ("bb".to_string(), 0.2),
+                    ("bbb".to_string(), 0.2),
+                ],
+            },
+            FullTextSearchResult {
+                id: ID::new("2".to_string(), "text"),
+                score: vec![("c".to_string(), 0.1), ("d".to_string(), 0.8)],
+            },
+            FullTextSearchResult {
+                id: ID::new("3".to_string(), "text"),
+                score: vec![("e".to_string(), 0.5), ("f".to_string(), 0.4)],
+            },
+        ];
+        let res = Rank::full_text_rank(data, crate::query::rank::ScoreType::Maximum, None);
+        assert_eq!(res.is_ok(), true);
+        let res = res.unwrap();
+        assert_eq!(res[0].id.id_with_table(), "text:2");
+        assert_eq!(res[1].id.id_with_table(), "text:3");
+        assert_eq!(res[2].id.id_with_table(), "text:1");
     }
 
     impl Rankable for String {
         fn id(&self) -> String {
             self.to_string()
-        }
-
-        fn from_str(s: &str) -> Self {
-            s.to_string()
         }
     }
 
