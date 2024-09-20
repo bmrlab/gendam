@@ -115,8 +115,8 @@ impl ContentBase {
 
                 let search_ids = Rank::rank((full_text_result, vector_result), Some(10))?
                     .into_iter()
-                    .unique()
                     .map(|s| s.id)
+                    .unique()
                     .collect();
 
                 info!("search ids: {:?}", search_ids);
