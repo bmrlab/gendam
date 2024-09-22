@@ -195,11 +195,12 @@ export default function ExplorerPage() {
       })
       setItems(explorerItems)
       const revealedItem = explorerItems.find((item) => item.filePath.id === initialRevealedFilePathId)
-      // 重新获取数据要清空选中的项目，以免出现不在列表中但是还被选中的情况
       if (revealedItem) {
         resetSelectedItems([revealedItem])
       } else {
-        resetSelectedItems()
+        // resetSelectedItems()
+        // 重新获取数据要清空选中的项目，以免出现不在列表中但是还被选中的情况
+        // 实际上不需要，因为 selectedItems 是个 useMemo，已经过滤掉了 explorer.items 中不存在的 item
       }
     }
   }, [assetsQuery.isLoading, assetsQuery.isSuccess, assetsQuery.data, resetSelectedItems, initialRevealedFilePathId])

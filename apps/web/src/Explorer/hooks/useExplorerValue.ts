@@ -25,6 +25,10 @@ function useSettings({ inspectorSize = 240, inspectorShow = false, layout = 'gri
 }
 
 function useSelectedItems(items: ExplorerItem[] | null) {
+  // 要注意一个点，selectedItemIds 可能包含 explorer.items 中不存在的 item（重新获取数据后并不一定会 resetSelectedItems）
+  // 但是 selectedItems 会过滤掉 explorer.items 中不存在的 item, 所以使用 selectedItems 是安全的
+  // 以及 add / remove 方法也都是安全的，除了 isItemSelected 方法，要判断下 id 是否也在 itemsMap 中存在
+  // 如果加其他方法也要注意这个点
   const itemIdsWeakMap = useRef(new WeakMap<ExplorerItem, string>())
   const [selectedItemIds, setSelectedItemIds] = useState(() => ({
     value: new Set<string>(),
@@ -47,15 +51,15 @@ function useSelectedItems(items: ExplorerItem[] | null) {
     () =>
       Array.from(selectedItemIds.value).reduce((items, id) => {
         const item = itemsMap.get(id)
+        // 过滤掉 explorer.items 中不存在的 item
         if (item) items.add(item)
         return items
       }, new Set<ExplorerItem>()),
     [itemsMap, selectedItemIds],
   )
-
   return {
     selectedItems,
-    selectedItemIds,
+    // selectedItemIds,  // 不要直接暴露 selectedItemIds，而是使用过滤过的 selectedItems
     addSelectedItemById: useCallback(
       (newId: string) => {
         selectedItemIds.value.add(newId)
@@ -94,9 +98,10 @@ function useSelectedItems(items: ExplorerItem[] | null) {
     ),
     isItemSelected: useCallback(
       (item: ExplorerItem) => {
-        return selectedItemIds.value.has(uniqueId(item))
+        const id = uniqueId(item)
+        return selectedItemIds.value.has(id) && itemsMap.has(id)
       },
-      [selectedItemIds],
+      [selectedItemIds, itemsMap],
     ),
   }
 }
