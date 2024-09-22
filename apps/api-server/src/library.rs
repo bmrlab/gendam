@@ -15,7 +15,7 @@ pub enum LibrarySettingsThemeEnum {
     Dark,
 }
 
-#[derive(Serialize, EnumString, Display, Type, Debug, Clone)]
+#[derive(EnumString, Display, Serialize, Deserialize, Type, Clone, Debug)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum LibrarySettingsLayoutEnum {
@@ -24,7 +24,25 @@ pub enum LibrarySettingsLayoutEnum {
     Media,
 }
 
-#[derive(Serialize, Type, Debug, Deserialize, Clone)]
+#[derive(Type, Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct LibrarySettingsExplorer {
+    pub layout: LibrarySettingsLayoutEnum,
+    pub inspector_size: u32,
+    pub inspector_show: bool,
+}
+
+impl Default for LibrarySettingsExplorer {
+    fn default() -> Self {
+        LibrarySettingsExplorer {
+            layout: LibrarySettingsLayoutEnum::Grid,
+            inspector_size: 240,
+            inspector_show: false,
+        }
+    }
+}
+
+#[derive(Type, Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct LibraryModels {
     pub multi_modal_embedding: String,
@@ -51,8 +69,7 @@ impl Default for LibraryModels {
 pub struct LibrarySettings {
     pub title: String,
     pub appearance_theme: LibrarySettingsThemeEnum,
-    pub explorer_layout: LibrarySettingsLayoutEnum,
-    pub inspector_size: u32,
+    pub explorer: LibrarySettingsExplorer,
     pub models: LibraryModels,
     pub always_delete_local_file_after_upload: bool,
     pub s3_config: Option<S3Config>,
@@ -78,12 +95,10 @@ impl<'de> Deserialize<'de> for LibrarySettings {
                 .unwrap_or_default()
                 .parse()
                 .unwrap_or(LibrarySettingsThemeEnum::Light),
-            explorer_layout: value["explorerLayout"]
-                .as_str()
-                .unwrap_or_default()
-                .parse()
-                .unwrap_or(LibrarySettingsLayoutEnum::Grid),
-            inspector_size: value["inspectorSize"].as_u64().unwrap_or(256) as u32,
+            explorer: serde_json::from_value::<LibrarySettingsExplorer>(
+                value["explorer"].to_owned(),
+            )
+            .unwrap_or_default(),
             models: serde_json::from_value::<LibraryModels>(value["models"].to_owned())
                 .unwrap_or_default(),
             always_delete_local_file_after_upload: value["alwaysDeleteLocalFileAfterUpload"]
@@ -101,8 +116,7 @@ impl Default for LibrarySettings {
         LibrarySettings {
             title: "Untitled".to_string(),
             appearance_theme: LibrarySettingsThemeEnum::Light,
-            explorer_layout: LibrarySettingsLayoutEnum::List,
-            inspector_size: 256,
+            explorer: Default::default(),
             models: Default::default(),
             always_delete_local_file_after_upload: false,
             s3_config: None,

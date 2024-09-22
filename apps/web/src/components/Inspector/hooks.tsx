@@ -1,12 +1,13 @@
-import { useCurrentLibrary } from '@/lib/library'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react'
 
-export function useResizableInspector() {
-  const currentLibrary = useCurrentLibrary()
+/**
+ * useResizableInspector
+ */
 
+export function useResizableInspector(initialWidth: number) {
   const ref = useRef<HTMLDivElement>(null)
 
-  const [width, setWidth] = useState(currentLibrary.librarySettings.inspectorSize)
+  const [width, setWidth] = useState(initialWidth)
 
   const [isResizing, setIsResizing] = useState(false)
   const startXRef = useRef(0)
@@ -61,13 +62,37 @@ export function useResizableInspector() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, ref.current])
 
-  const updateLibrarySettings = currentLibrary.updateLibrarySettings
-  const librarySettings = currentLibrary.librarySettings
-  useEffect(() => {
-    if (width && width !== librarySettings.inspectorSize && !isResizing) {
-      updateLibrarySettings({ inspectorSize: width })
-    }
-  }, [width, isResizing, updateLibrarySettings, librarySettings.inspectorSize])
-
   return { handleRef: ref, width, isResizing }
+}
+
+/**
+ * useInspector
+ */
+
+interface InspectorContextType {
+  show: boolean
+  setShow: (show: boolean) => void
+  viewerHeight: number
+  setViewerHeight: (viewerHeight: number) => void
+}
+
+const InspectorContext = createContext<InspectorContextType | undefined>(undefined)
+
+export function InspectorProvider({ children, initialShow = false }: { children: ReactNode; initialShow?: boolean }) {
+  const [show, setShow] = useState(initialShow)
+  const [viewerHeight, setViewerHeight] = useState(192)
+
+  return (
+    <InspectorContext.Provider value={{ show, setShow, viewerHeight, setViewerHeight }}>
+      {children}
+    </InspectorContext.Provider>
+  )
+}
+
+export function useInspector() {
+  const context = useContext(InspectorContext)
+  if (context === undefined) {
+    throw new Error('useInspector must be used within an InspectorProvider')
+  }
+  return context
 }

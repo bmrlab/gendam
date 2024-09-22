@@ -75,6 +75,8 @@ export type Auth = { id: string; name: string }
 
 export type SharePayload = { fileIdList: number[]; peerId: string }
 
+export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string; Llm: string }
+
 export type TranscriptResponse = { content: string }
 
 export type ContentMetadataWithType = ({ contentType: "audio" } & AudioMetadata) | ({ contentType: "video" } & VideoMetadata) | ({ contentType: "image" } & ImageMetadata) | ({ contentType: "rawText" } & RawTextMetadata) | ({ contentType: "webPage" } & WebPageMetadata) | { contentType: "unknown" }
@@ -90,8 +92,6 @@ export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: 
 export type RawTextTaskTypeSpecta = "chunk" | "chunkSum" | "chunkSumEmbed"
 
 export type RecommendRequestPayload = { assetObjectHash: string; timestamp: number }
-
-export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string; Llm: string }
 
 export type AssetObjectWithMediaData = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string; mediaData: ContentMetadataWithType | null }
 
@@ -115,6 +115,8 @@ export type RAGRequestPayload = { query: string }
 
 export type SearchResultPayload = { filePath: FilePathWithAssetObjectData; metadata: SearchResultMetadata; score: number }
 
+export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorer: LibrarySettingsExplorer; models: LibraryModels; alwaysDeleteLocalFileAfterUpload: boolean; s3Config: S3Config | null }
+
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
 export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: string[] | null }
@@ -134,8 +136,6 @@ export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string 
 export type WebPageTaskTypeSpecta = "transform" | "chunk" | "chunkSum" | "chunkSumEmbed"
 
 export type RawTextRequestPayload = { hash: string; index: number }
-
-export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorerLayout: LibrarySettingsLayoutEnum; inspectorSize: number; models: LibraryModels; alwaysDeleteLocalFileAfterUpload: boolean; s3Config: S3Config | null }
 
 export type VideoSegmentExportPayload = { verboseFileName: string; outputDir: string; assetObjectId: number; millisecondsFrom: number; millisecondsTo: number }
 
@@ -159,6 +159,8 @@ export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPa
 
 export type LibraryLoadResult = { id: string; dir: string }
 
+export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
+
 export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo" | "Qwen2" | "OpenAI" | "AzureOpenAI"
 
 export type SearchRequestPayload = { text: string }
@@ -176,8 +178,6 @@ export type TranscriptType = "Original" | "Summarization"
 export type VideoAvgFrameRate = { numerator: string; denominator: string }
 
 export type VideoPlayerTsRequestPayload = { hash: string; index: number; size: number }
-
-export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type ImageRequestPayload = { hash: string }
 
@@ -210,5 +210,7 @@ export type AssetObjectCreatePayload = { materializedPath: string; name: string;
 export type AudioResp = { type: AudioType; content: string }
 
 export type AudioSearchResultMetadata = { startTime: number; endTime: number }
+
+export type LibrarySettingsExplorer = { layout: LibrarySettingsLayoutEnum; inspectorSize: number; inspectorShow: boolean }
 
 export type RAGResult = { result_type: "Reference"; data: RetrievalResultPayload } | { result_type: "Response"; data: string } | { result_type: "Error"; data: string } | { result_type: "Done" }

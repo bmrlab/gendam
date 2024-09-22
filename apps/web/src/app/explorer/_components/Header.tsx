@@ -4,7 +4,7 @@ import PageNav from '@/components/PageNav'
 import UploadButton from '@/components/UploadButton'
 import Viewport from '@/components/Viewport'
 // import { rspc } from '@/lib/rspc'
-import { useInspector } from '@/components/Inspector/store'
+import { useInspector } from '@/components/Inspector'
 import { useUploadQueueStore } from '@/components/UploadQueue/store'
 import { useClipboardPaste } from '@/hooks/useClipboardPaste'
 import { useFileDrop } from '@/hooks/useFileDrop'
@@ -166,7 +166,11 @@ export default function Header() {
             variant="ghost"
             size="sm"
             className={classNames('h-7 w-7 p-1 transition-none', inspector.show && 'bg-toolbar-hover')}
-            onClick={() => inspector.setShow(!inspector.show)}
+            onClick={() => {
+              const show = !inspector.show
+              inspector.setShow(show)
+              explorer.settings.update({ inspectorShow: show }) // Header 上的按钮会保存设置
+            }}
           >
             <Icon.Sidebar className="size-4" />
           </Button>

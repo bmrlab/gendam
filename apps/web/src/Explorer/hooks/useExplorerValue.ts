@@ -2,10 +2,13 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { uniqueId, type ExplorerItem } from '../types'
 
 type UseExplorerSettings = {
+  inspectorSize: number
+  inspectorShow: boolean
   layout: 'grid' | 'list' | 'media'
 }
 
-function useSettings(defaultSettings: UseExplorerSettings) {
+function useSettings({ inspectorSize = 240, inspectorShow = false, layout = 'grid' }: Partial<UseExplorerSettings>) {
+  const defaultSettings = { inspectorSize, inspectorShow, layout }
   const [settings, setSettings] = useState<UseExplorerSettings>(defaultSettings)
 
   const update = useCallback(
@@ -102,7 +105,7 @@ type UseExplorerProps = {
   count?: number
   items: ExplorerItem[] | null
   materializedPath?: string
-  settings: UseExplorerSettings
+  settings: Partial<UseExplorerSettings>
 }
 
 export function useExplorerValue({ count, items, materializedPath, settings }: UseExplorerProps) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useInspector } from '@/components/Inspector/store'
+import { useInspector } from '@/components/Inspector/hooks'
 import { matchExplorerItemWithType } from '@/Explorer/pattern'
 import { ExplorerItem, RawFilePath } from '@/Explorer/types'
 import { AssetObject, FileHandlerTask } from '@/lib/bindings'
