@@ -51,7 +51,7 @@ const TauriUploadButton: React.FC<PropsWithChildren<Props> & HTMLAttributes<HTML
 
 // Deprecated
 const WebUploadButtonFromListFile: React.FC<PropsWithChildren<Props> & HTMLAttributes<HTMLLabelElement>> = ({
-  onSelectFilesPaths,
+  onSelectFilePaths,
   children,
   className,
   ...props
@@ -83,11 +83,11 @@ const WebUploadButtonFromListFile: React.FC<PropsWithChildren<Props> & HTMLAttri
           .map((s) => s.trim())
           .filter((s) => !!s.length)
         // console.log(fileFullPaths)
-        onSelectFilesPaths && onSelectFilesPaths(fileFullPaths)
+        onSelectFilePaths && onSelectFilePaths(fileFullPaths)
       }
       reader.readAsText(file)
     },
-    [onSelectFilesPaths],
+    [onSelectFilePaths],
   )
 
   return (

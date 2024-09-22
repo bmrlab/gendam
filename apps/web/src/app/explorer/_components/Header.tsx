@@ -78,19 +78,21 @@ export default function Header() {
     [explorer.materializedPath, enqueue],
   )
 
-  const { filesDropped } = useFileDrop()
+  const { filesDropped, setFilesDropped } = useFileDrop()
   useEffect(() => {
     if (filesDropped.length > 0) {
+      setFilesDropped([]) // 要立即清空，不然 handleSelectFiles 因为 materializedPath 变化会再次触发同一批文件
       handleSelectFilePaths(filesDropped)
     }
-  }, [filesDropped, handleSelectFilePaths])
+  }, [filesDropped, setFilesDropped, handleSelectFilePaths])
 
-  const { filesPasted } = useClipboardPaste()
+  const { filesPasted, setFilesPasted } = useClipboardPaste()
   useEffect(() => {
     if (filesPasted.length > 0) {
+      setFilesPasted([]) // 要立即清空，不然 handleSelectFiles 因为 materializedPath 变化会再次触发同一批文件
       handleSelectFiles(filesPasted)
     }
-  }, [filesPasted, handleSelectFiles])
+  }, [filesPasted, setFilesPasted, handleSelectFiles])
 
   return (
     <>

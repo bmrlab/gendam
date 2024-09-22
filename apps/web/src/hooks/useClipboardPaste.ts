@@ -30,5 +30,5 @@ export const useClipboardPaste = () => {
   }, [handlePaste])
 
   // tip: 其他类型的 pasted object, 如果需要监听也在这里返回
-  return { filesPasted }
+  return { filesPasted, setFilesPasted }
 }

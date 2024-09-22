@@ -27,5 +27,5 @@ export const useFileDrop = () => {
     }
   }, [])
 
-  return { filesDropped }
+  return { filesDropped, setFilesDropped }
 }
