@@ -1,7 +1,7 @@
 'use client'
-
 import { useExplorerContext } from '@/Explorer/hooks'
 import { uniqueId, type ExtractExplorerItem } from '@/Explorer/types'
+import useDebouncedCallback from '@/hooks/useDebouncedCallback'
 import type { SearchResultPayload } from '@/lib/bindings'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import SearchItem from './SearchItem'
@@ -24,6 +24,10 @@ export default function SearchResults() {
     (item) => item.type === 'SearchResult',
   ) as ExtractExplorerItem<'SearchResult'>[]
 
+  const debounceSetContainerWidth = useDebouncedCallback((containerWidth: number) => {
+    setContainerWidth(containerWidth)
+  }, 100)
+
   useEffect(() => {
     const $el = ref.current
     if (!$el) {
@@ -36,7 +40,7 @@ export default function SearchResults() {
       for (let entry of entries) {
         if (entry.target === $el) {
           const containerWidth = Math.max(0, ($el.clientWidth || 0) - padding * 2)
-          setContainerWidth(containerWidth)
+          debounceSetContainerWidth(containerWidth)
         }
       }
     })
@@ -44,7 +48,7 @@ export default function SearchResults() {
     return () => {
       resizeObserver.unobserve($el)
     }
-  }, [])
+  }, [debounceSetContainerWidth])
 
   const framesWidth = useCallback((metadata: SearchResultPayload['metadata'], singleWidth: number) => {
     // const startTime = Math.floor(metadata.startTime / 1e3)

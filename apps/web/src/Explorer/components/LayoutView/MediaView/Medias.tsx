@@ -6,6 +6,7 @@ import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExtractExplorerItem, uniqueId } from '@/Explorer/types'
+import useDebouncedCallback from '@/hooks/useDebouncedCallback'
 import classNames from 'classnames'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ThumbItem from '../../View/ThumbItem'
@@ -96,6 +97,10 @@ export default function Medias({ items }: { items: ExtractExplorerItem<'FilePath
   const padding = 30 // container 左右 padding
   const [containerWidth, setContainerWidth] = useState<number>(0)
 
+  const debounceSetContainerWidth = useDebouncedCallback((containerWidth: number) => {
+    setContainerWidth(containerWidth)
+  }, 100)
+
   useEffect(() => {
     const $el = ref.current
     if (!$el) {
@@ -108,7 +113,7 @@ export default function Medias({ items }: { items: ExtractExplorerItem<'FilePath
       for (let entry of entries) {
         if (entry.target === $el) {
           const containerWidth = Math.max(0, ($el.clientWidth || 0) - padding * 2)
-          setContainerWidth(containerWidth)
+          debounceSetContainerWidth(containerWidth)
         }
       }
     })
@@ -116,7 +121,7 @@ export default function Medias({ items }: { items: ExtractExplorerItem<'FilePath
     return () => {
       resizeObserver.unobserve($el)
     }
-  }, [])
+  }, [debounceSetContainerWidth])
 
   const itemsWithSize = useMemo<ItemWithSize[]>(() => {
     if (!containerWidth) {

@@ -76,12 +76,13 @@ function _ExplorerPage() {
       ) : (
         <Viewport.Content className="flex h-full w-full overflow-hidden">
           <LayoutGroup>
-            {/* TODO: 要修改下这里的 motion, 现在一行内容比较少没有铺满屏幕宽度的时候，items 会和弹簧一样反复伸缩 */}
             <motion.div
               className="h-full"
               animate={{ width: inspector.show ? `calc(100% - ${resizableInspector.width}px)` : '100%' }}
               transition={
-                resizableInspector.isResizing
+                // 关闭 inspector 的时候动画也瞬间完成，但是 animate width 的设置得继续保留
+                // 不然现在一行内容比较少没有铺满屏幕宽度的时候，items 会和弹簧一样反复伸缩
+                resizableInspector.isResizing || !inspector.show
                   ? { type: 'spring', duration: 0 }
                   : { type: 'spring', stiffness: 500, damping: 50 }
               }

@@ -5,6 +5,7 @@ import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks/useExplorerContext'
 import { useExplorerStore } from '@/Explorer/store'
 import { ExtractExplorerItem, uniqueId } from '@/Explorer/types'
+import useDebouncedCallback from '@/hooks/useDebouncedCallback'
 // import { useCurrentLibrary } from '@/lib/library'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import { useCurrentLibrary } from '@/lib/library'
@@ -121,6 +122,10 @@ export default function GridView({
   const padding = 30 // container 左右 padding
   const [containerWidth, setContainerWidth] = useState<number>(0)
 
+  const debounceSetContainerWidth = useDebouncedCallback((containerWidth: number) => {
+    setContainerWidth(containerWidth)
+  }, 100)
+
   useEffect(() => {
     const $el = ref.current
     if (!$el) {
@@ -133,7 +138,8 @@ export default function GridView({
       for (let entry of entries) {
         if (entry.target === $el) {
           const containerWidth = Math.max(0, ($el.clientWidth || 0) - padding * 2)
-          setContainerWidth(containerWidth)
+          debounceSetContainerWidth(containerWidth)
+          break
         }
       }
     })
@@ -141,7 +147,7 @@ export default function GridView({
     return () => {
       resizeObserver.unobserve($el)
     }
-  }, [])
+  }, [debounceSetContainerWidth])
 
   const gridItemWidth = useMemo(() => {
     const columns = Math.round(containerWidth / 175)
