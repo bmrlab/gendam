@@ -1,5 +1,6 @@
 use crate::db::model::PageModel;
 
+#[derive(Debug)]
 pub struct DocumentModel {
     pub page: Vec<PageModel>,
 }

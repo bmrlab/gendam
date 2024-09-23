@@ -20,7 +20,6 @@ use crate::{
     },
 };
 use futures::{stream, StreamExt};
-use itertools::Itertools;
 
 mod relation;
 
