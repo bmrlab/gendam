@@ -1,5 +1,6 @@
-use crate::db::entity::{PayloadEntity, SelectResultEntity};
+use crate::db::entity::SelectResultEntity;
 use crate::db::model::id::ID;
+use crate::db::model::PayloadModel;
 use crate::db::{entity::relation::RelationEntity, model::id::TB, DB};
 use futures::{stream, StreamExt};
 use itertools::Itertools;
@@ -71,17 +72,18 @@ impl DB {
             .collect::<Vec<RelationEntity>>())
     }
 
-    pub async fn select_payload_by_ids(&self, id: Vec<ID>) -> anyhow::Result<Vec<PayloadEntity>> {
-        stream::iter(id)
+    pub async fn select_payload_by_ids(&self, id: Vec<ID>) -> anyhow::Result<Vec<PayloadModel>> {
+        Ok(stream::iter(id)
             .then(|id| self.select_payload_by_id(id))
             .collect::<Vec<_>>()
             .await
             .into_iter()
-            .collect()
+            .filter_map(|s| Result::ok(s).map(Into::into))
+            .collect())
     }
 
     /// `with` payload only has one
-    pub async fn select_payload_by_id(&self, id: ID) -> anyhow::Result<PayloadEntity> {
+    pub async fn select_payload_by_id(&self, id: ID) -> anyhow::Result<PayloadModel> {
         if HAS_PAYLOAD_LIST.contains(&id.tb()) {
             let relation = self.select_with_relation(&id).await?.pop().ok_or_else(|| {
                 anyhow::anyhow!("no relation data under {} table", id.id_with_table())
@@ -90,6 +92,7 @@ impl DB {
             self.select_payload(vec![relation.out_id()])
                 .await?
                 .pop()
+                .map(Into::into)
                 .ok_or_else(|| {
                     anyhow::anyhow!("no payload data under {} table", id.id_with_table())
                 })
@@ -238,7 +241,6 @@ mod test {
         //     .await;
         // println!("res: {:?}", res);
         // assert!(res.is_ok());
-
 
         // TODO: debug
         let res = db
