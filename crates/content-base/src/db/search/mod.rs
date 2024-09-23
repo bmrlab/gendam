@@ -12,6 +12,7 @@ use crate::db::model::id::{ID, TB};
 use crate::query::model::vector::VectorSearchTable;
 use crate::utils::deduplicate;
 use crate::{
+    check_db_error_from_resp,
     db::{constant::SELEC_LIMIT, entity::full_text::FullTextSearchEntity},
     query::model::{
         full_text::{FullTextSearchResult, FULL_TEXT_SEARCH_TABLE},
@@ -32,6 +33,10 @@ macro_rules! select_some_macro {
                 let mut resp = $client
                     .query(format!("SELECT * FROM {} {};", id.as_ref(), $fetch))
                     .await?;
+                check_db_error_from_resp!(resp).map_err(|errors_map| {
+                    error!("select_some_macro errors: {errors_map:?}");
+                    anyhow::anyhow!("Failed to select some")
+                })?;
                 let result = resp.take::<Vec<$return_type>>(0)?;
                 Ok::<_, anyhow::Error>(result)
             })
