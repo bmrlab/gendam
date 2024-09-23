@@ -1,20 +1,15 @@
-use crate::db::entity::SelectResultEntity;
-use crate::db::model::id::{ID, TB};
-use crate::query::payload::audio::AudioSearchMetadata;
-use crate::query::payload::image::ImageSearchMetadata;
-use crate::query::payload::raw_text::RawTextSearchMetadata;
-use crate::query::payload::video::VideoSearchMetadata;
-use crate::query::payload::web_page::WebPageSearchMetadata;
-use crate::query::payload::SearchMetadata;
+use crate::db::model::id::ID;
+use crate::db::model::SelectResultModel;
 use crate::query::rank::Rank;
 use crate::ContentBase;
 use futures_util::{stream, StreamExt};
+use itertools::Itertools;
 use model::SearchModel;
 use payload::{RetrievalResultData, SearchPayload, SearchResultData};
 use qdrant_client::qdrant::SearchPointsBuilder;
 use search::{group_results_by_asset, reorder_final_results};
 use serde_json::json;
-use tracing::{debug, info};
+use tracing::debug;
 
 mod data_handler;
 pub mod model;
@@ -130,75 +125,56 @@ impl ContentBase {
                 let rank_result =
                     Rank::rank((full_text_result, vector_result), Some(true), Some(10))?;
                 debug!("rank result: {rank_result:?}");
-                let search_ids: Vec<_> = rank_result.iter().map(|x| x.id.clone()).collect();
+                let search_ids: Vec<ID> =
+                    rank_result.iter().map(|x| x.id.clone()).unique().collect();
                 debug!("search ids: {search_ids:?}");
 
+                // (search_id, select_result)
+                // 回传 search_id 是为了匹配 rank 中的分数
                 let select_by_id_result = self.db.try_read()?.select_by_ids(search_ids).await?;
                 debug!(
                     "select by id result: {:?}",
                     select_by_id_result
                         .iter()
-                        .map(|x| x.0.id())
-                        .collect::<Vec<_>>()
+                        .map(|x| (x.0.id_with_table(), x.1.id().id_with_table()))
+                        .collect::<Vec<_>>(),
                 );
                 let select_result = select_by_id_result
-                    .iter()
+                    .into_iter()
                     .filter_map(|(id, s)| {
                         rank_result
                             .iter()
                             .find(|r| r.id.eq(&id))
-                            .map(|r| (s, r.score))
+                            .map(|r| ((s.id(), s.into()), r.score))
                     })
-                    .collect::<Vec<(&SelectResultEntity, f32)>>();
+                    .collect::<Vec<((ID, SelectResultModel), f32)>>();
                 debug!(
                     "select result: {:?}",
                     select_result
                         .iter()
-                        .map(|(s, score)| (s.id(), score))
+                        .map(|(s, score)| (s.0.clone(), score))
                         .collect::<Vec<_>>()
                 );
 
                 Ok(stream::iter(select_result)
-                    .then(|(result, score)| async move {
+                    .then(|((id, result), score)| async move {
                         let payload = self
                             .db
                             .try_read()?
-                            .select_payload_by_id(result.id())
-                            .await?;
-                        debug!("id: {:?}, payload: {payload:?}", result.id());
-                        Ok::<_, anyhow::Error>(SearchResultData {
-                            file_identifier: payload.file_identifier(),
-                            score,
-                            metadata: match result.id().tb() {
-                                TB::Image => SearchMetadata::Image(ImageSearchMetadata {}),
-                                TB::Audio => SearchMetadata::Audio(AudioSearchMetadata {
-                                    start_timestamp: 0,
-                                    end_timestamp: 0,
-                                }),
-                                TB::Video => SearchMetadata::Video(VideoSearchMetadata {
-                                    start_timestamp: 0,
-                                    end_timestamp: 0,
-                                }),
-                                TB::Web => SearchMetadata::WebPage(WebPageSearchMetadata {
-                                    start_index: 0,
-                                    end_index: 0,
-                                }),
-                                TB::Document => SearchMetadata::RawText(RawTextSearchMetadata {
-                                    start_index: 0,
-                                    end_index: 0,
-                                }),
-                                _ => SearchMetadata::Audio(AudioSearchMetadata {
-                                    start_timestamp: 0,
-                                    end_timestamp: 0,
-                                }),
-                            },
-                        })
+                            .select_payload_by_id(id.clone())
+                            .await?
+                            .into();
+                        debug!("id: {:?}, payload: {payload:?}", id.id_with_table());
+                        Ok::<Vec<SearchResultData>, anyhow::Error>(
+                            self.expand_select_result(&result, score, &payload).await?,
+                        )
                     })
                     .collect::<Vec<_>>()
                     .await
                     .into_iter()
                     .filter_map(Result::ok)
-                    .collect::<Vec<SearchResultData>>())
+                    .flatten()
+                    .collect())
             }
             SearchModel::Image(_) => Ok(vec![]),
         }

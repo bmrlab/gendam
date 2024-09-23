@@ -1,3 +1,4 @@
+use serde::Serialize;
 use crate::db::model::audio::AudioModel;
 use crate::db::model::document::DocumentModel;
 use crate::db::model::video::VideoModel;
@@ -10,14 +11,14 @@ pub mod payload;
 pub mod video;
 pub mod web;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct ImageModel {
     pub prompt: String,
     pub vector: Vec<f32>,
     pub prompt_vector: Vec<f32>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct TextModel {
     pub data: String,
     pub vector: Vec<f32>,
