@@ -108,13 +108,19 @@ impl ContentBase {
     //     Ok(reorder_final_results(&mut retrieval_results)?)
     // }
 
+    /// 首先将入参转换为内部查询参数
+    /// - 文本搜索流程
+    ///     1. 获取全文搜索和向量搜索的结果（全文搜索和向量搜索只会搜索文本和图片）
+    ///     2. 将上述结果进行 rank
+    ///     3. 对上述 rank 的结果进行向上回溯
+    ///     4. 填充 payload 信息
     pub async fn query(&self, payload: QueryPayload) -> anyhow::Result<Vec<SearchResultData>> {
         // 目前 QueryPayload 只是文本
-        let search_model = self.query_payload_to_model(payload).await?;
-        match search_model {
+        match self.query_payload_to_model(payload).await? {
             SearchModel::Text(text) => {
-                info!("search tokens: {:?}", text.tokens.0);
+                debug!("search tokens: {:?}", text.tokens.0);
                 let full_text_result = self.db.try_read()?.full_text_search(text.tokens.0).await?;
+                debug!("full text result: {full_text_result:?}",);
                 let vector_result = self
                     .db
                     .try_read()?
@@ -123,9 +129,9 @@ impl ContentBase {
 
                 let rank_result =
                     Rank::rank((full_text_result, vector_result), Some(true), Some(10))?;
-                info!("rank result: {:?}", rank_result);
+                debug!("rank result: {rank_result:?}");
                 let search_ids: Vec<_> = rank_result.iter().map(|x| x.id.clone()).collect();
-                debug!("search ids: {:?}", search_ids);
+                debug!("search ids: {search_ids:?}");
 
                 let select_by_id_result = self.db.try_read()?.select_by_ids(search_ids).await?;
                 debug!(

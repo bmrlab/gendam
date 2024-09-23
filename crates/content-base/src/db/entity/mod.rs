@@ -1,4 +1,9 @@
 use super::model::id::ID;
+use crate::db::model::audio::{AudioFrameModel, AudioModel};
+use crate::db::model::document::DocumentModel;
+use crate::db::model::video::{ImageFrameModel, VideoModel};
+use crate::db::model::web::WebPageModel;
+use crate::db::model::{ImageModel, PageModel, PayloadModel, SelectResultModel, TextModel};
 use frame::{AudioFrameEntity, ImageFrameEntity};
 use page::PageEntity;
 use serde::Deserialize;
@@ -25,12 +30,33 @@ pub struct TextEntity {
     en_vector: Vec<f32>,
 }
 
+impl From<TextEntity> for TextModel {
+    fn from(value: TextEntity) -> Self {
+        Self {
+            data: value.data,
+            vector: value.vector,
+            en_data: value.en_data,
+            en_vector: value.en_vector,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ImageEntity {
     id: Thing,
     vector: Vec<f32>,
     prompt: String,
     prompt_vector: Vec<f32>,
+}
+
+impl From<ImageEntity> for ImageModel {
+    fn from(value: ImageEntity) -> Self {
+        Self {
+            prompt: value.prompt,
+            vector: value.vector,
+            prompt_vector: value.prompt_vector,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -53,10 +79,35 @@ pub struct VideoEntity {
     audio_frame: Vec<AudioFrameEntity>,
 }
 
+impl From<VideoEntity> for VideoModel {
+    fn from(value: VideoEntity) -> Self {
+        Self {
+            image_frame: value
+                .image_frame
+                .into_iter()
+                .map(ImageFrameModel::from)
+                .collect(),
+            audio_frame: value
+                .audio_frame
+                .into_iter()
+                .map(AudioFrameModel::from)
+                .collect(),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct WebPageEntity {
     id: Thing,
     page: Vec<PageEntity>,
+}
+
+impl From<WebPageEntity> for WebPageModel {
+    fn from(value: WebPageEntity) -> Self {
+        Self {
+            page: value.page.into_iter().map(PageModel::from).collect(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -65,11 +116,28 @@ pub struct DocumentEntity {
     page: Vec<PageEntity>,
 }
 
+impl From<DocumentEntity> for DocumentModel {
+    fn from(value: DocumentEntity) -> Self {
+        Self {
+            page: value.page.into_iter().map(PageModel::from).collect(),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct PayloadEntity {
     id: Thing,
     file_identifier: Option<String>,
     url: Option<String>,
+}
+
+impl From<PayloadEntity> for PayloadModel {
+    fn from(value: PayloadEntity) -> Self {
+        Self {
+            file_identifier: value.file_identifier,
+            url: value.url,
+        }
+    }
 }
 
 impl PayloadEntity {
@@ -91,6 +159,27 @@ pub enum SelectResultEntity {
     WebPage(WebPageEntity),
     Document(DocumentEntity),
     Payload(PayloadEntity),
+}
+
+impl From<SelectResultEntity> for SelectResultModel {
+    fn from(value: SelectResultEntity) -> Self {
+        match value {
+            SelectResultEntity::Text(text) => SelectResultModel::Text(TextModel::from(text)),
+            SelectResultEntity::Image(image) => SelectResultModel::Image(ImageModel::from(image)),
+            SelectResultEntity::Audio(audio) => SelectResultModel::Audio(AudioModel {
+                audio_frame: audio.frame.into_iter().map(AudioFrameModel::from).collect(),
+            }),
+            SelectResultEntity::Video(video) => SelectResultModel::Video(VideoModel::from(video)),
+            SelectResultEntity::WebPage(web) => SelectResultModel::WebPage(WebPageModel::from(web)),
+            SelectResultEntity::Document(document) => {
+                SelectResultModel::Document(DocumentModel::from(document))
+            }
+            SelectResultEntity::Payload(payload) => {
+                SelectResultModel::Payload(PayloadModel::from(payload))
+            }
+            _ => unimplemented!(),
+        }
+    }
 }
 
 impl SelectResultEntity {
