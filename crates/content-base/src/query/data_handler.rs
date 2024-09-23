@@ -6,6 +6,7 @@ use crate::db::model::{PayloadModel, SelectResultModel};
 use crate::query::payload::audio::AudioSearchMetadata;
 use crate::query::payload::image::ImageSearchMetadata;
 use crate::query::payload::raw_text::RawTextSearchMetadata;
+use crate::query::payload::video::VideoSearchMetadata;
 use crate::query::payload::web_page::WebPageSearchMetadata;
 use crate::query::payload::{SearchMetadata, SearchResultData};
 use crate::{
@@ -64,6 +65,7 @@ impl ContentBase {
 
         Ok(deduplicate(tokens))
     }
+    
 
     pub async fn expand_select_result(
         &self,
@@ -89,7 +91,7 @@ impl ContentBase {
                     .audio_frame
                     .iter()
                     .map(|frame| {
-                        SearchMetadata::Audio(AudioSearchMetadata {
+                        SearchMetadata::Video(VideoSearchMetadata {
                             start_timestamp: frame.start_timestamp as i64,
                             end_timestamp: frame.end_timestamp as i64,
                         })
@@ -98,7 +100,12 @@ impl ContentBase {
                 let image_metadata = video
                     .image_frame
                     .iter()
-                    .map(|_| SearchMetadata::Image(ImageSearchMetadata {}))
+                    .map(|frame| {
+                        SearchMetadata::Video(VideoSearchMetadata {
+                            start_timestamp: frame.start_timestamp as i64,
+                            end_timestamp: frame.end_timestamp as i64,
+                        })
+                    })
                     .collect::<Vec<SearchMetadata>>();
 
                 concat_arrays!(audio_metadata, image_metadata).into_vec()
