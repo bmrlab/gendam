@@ -87,7 +87,7 @@ impl DB {
                 anyhow::anyhow!("no relation data under {} table", id.id_with_table())
             })?;
 
-            self.select_payload(vec![relation.in_id()])
+            self.select_payload(vec![relation.out_id()])
                 .await?
                 .pop()
                 .ok_or_else(|| {
@@ -238,8 +238,8 @@ mod test {
         //     .await;
         // println!("res: {:?}", res);
         // assert!(res.is_ok());
-        
-        
+
+
         // TODO: debug
         let res = db
             .select_payload_by_id("video:6tqtjseeuln7l9xus7t2".into())
