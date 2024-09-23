@@ -158,12 +158,7 @@ impl ContentBase {
 
                 Ok(stream::iter(select_result)
                     .then(|((id, result), score)| async move {
-                        let payload = self
-                            .db
-                            .try_read()?
-                            .select_payload_by_id(id.clone())
-                            .await?
-                            .into();
+                        let payload = self.db.try_read()?.select_payload_by_id(id.clone()).await?;
                         debug!("id: {:?}, payload: {payload:?}", id.id_with_table());
                         Ok::<Vec<SearchResultData>, anyhow::Error>(
                             self.expand_select_result(&result, score, &payload).await?,
