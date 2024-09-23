@@ -128,7 +128,8 @@ export const useVideoPlayer = (
     }
 
     const src = currentLibrary.getFileSrc(assetObject.hash)
-    if (assetObject.mimeType?.includes('mp4')) {
+    // TODO: 以下这些文件类型多多少少还是会被浏览器支持，尽量用 video.js 播放，现在 ts 有点慢
+    if (/mp4|quicktime|webm|ogg|x-matroska/.test(assetObject.mimeType ?? '')) {
       player.src({ type: 'video/mp4', src, currentTime: currentTime ? Math.floor(currentTime / 1e3) : void 0 })
     } else {
       loadVideoTS()
