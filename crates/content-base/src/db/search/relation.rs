@@ -1,9 +1,10 @@
+use crate::check_db_error_from_resp;
 use crate::db::entity::SelectResultEntity;
 use crate::db::model::id::ID;
 use crate::db::model::PayloadModel;
 use crate::db::{entity::relation::RelationEntity, model::id::TB, DB};
 use futures::{stream, StreamExt};
-use itertools::Itertools;
+use std::collections::{HashMap, HashSet};
 use tracing::error;
 
 /// audio -> audio_frame -> text
@@ -18,58 +19,54 @@ const HAS_PAYLOAD_LIST: [TB; 6] = [
     TB::Document,
 ];
 
+#[derive(Debug)]
+pub struct BacktrackRelationResult {
+    /// 命中的 id
+    /// 如果 origin_id 没有 relation，则是 origin_id
+    /// 如果 origin_id 有 relation
+    ///     - video 类型，则是 audio_frame、image_frame
+    ///     - web 类型，则是 page
+    ///     - document 类型，则是 page
+    pub hit_id: Vec<ID>,
+    pub result: RelationEntity,
+}
+
 // 数据查询
 impl DB {
-    /// 检查 id 是否存在 contain 关系
+    /// 检查 ids 是否存在 contain 关系
     /// 如果是多层 contain，则返回最顶层的 id
     /// page、audio_frame、image_frame 都是中间层，还需要向上查询
-    pub async fn select_relation_by_out(
+    /// 返回值：(中间层被匹配到的 id, RelationEntity)
+    pub async fn backtrack_relation(
         &self,
         ids: Vec<impl AsRef<str>>,
-    ) -> anyhow::Result<Vec<RelationEntity>> {
-        let futures = stream::iter(ids)
-            .then(|id| async move {
-                Ok::<_, anyhow::Error>(
-                    self.client
-                        .query(format!(
-                            "SELECT * from contains where out = {};",
-                            id.as_ref()
-                        ))
-                        .await?
-                        .take::<Vec<RelationEntity>>(0)?,
-                )
-            })
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .filter_map(Result::ok)
-            .flatten()
-            .map(|r| async move {
-                match r.in_table() {
-                    // 可以确定在 MIDDLE_LAYER_LIST 表中的还有一层 contain 关系
-                    tb if MIDDLE_LAYER_LIST.contains(&tb) => Ok::<_, anyhow::Error>(
-                        self.client
-                            .query(format!("SELECT * from contains where out = {};", r.in_id()))
-                            .await?
-                            .take::<Vec<RelationEntity>>(0)?,
-                    ),
-                    _ => Ok::<_, anyhow::Error>(vec![r]),
+    ) -> anyhow::Result<Vec<BacktrackRelationResult>> {
+        let mut relation_map: HashMap<RelationEntity, HashSet<ID>> = HashMap::new();
+        for id in ids {
+            let relations = self.select_contains_relation_by_out(id.as_ref()).await?;
+            for relation in relations {
+                if MIDDLE_LAYER_LIST.contains(&relation.in_table()) {
+                    let nested_relations = self
+                        .select_contains_relation_by_out(relation.in_id().as_str())
+                        .await?;
+                    for nested_relation in nested_relations {
+                        relation_map
+                            .entry(nested_relation.clone())
+                            .or_default()
+                            .insert(ID::from(nested_relation.in_id().as_str()));
+                    }
+                } else {
+                    relation_map.entry(relation.clone()).or_default();
                 }
+            }
+        }
+        Ok(relation_map
+            .into_iter()
+            .map(|(result, hit_ids)| BacktrackRelationResult {
+                hit_id: hit_ids.into_iter().collect(),
+                result,
             })
-            .collect::<Vec<_>>();
-
-        let futures_result: Vec<Vec<RelationEntity>> = stream::iter(futures)
-            .buffered(1)
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .filter(Result::is_ok)
-            .try_collect()?;
-
-        Ok(futures_result
-            .into_iter()
-            .flatten()
-            .collect::<Vec<RelationEntity>>())
+            .collect())
     }
 
     pub async fn select_payload_by_ids(&self, id: Vec<ID>) -> anyhow::Result<Vec<PayloadModel>> {
@@ -85,9 +82,13 @@ impl DB {
     /// `with` payload only has one
     pub async fn select_payload_by_id(&self, id: ID) -> anyhow::Result<PayloadModel> {
         if HAS_PAYLOAD_LIST.contains(&id.tb()) {
-            let relation = self.select_with_relation(&id).await?.pop().ok_or_else(|| {
-                anyhow::anyhow!("no relation data under {} table", id.id_with_table())
-            })?;
+            let relation = self
+                .select_with_relation_by_in(&id)
+                .await?
+                .pop()
+                .ok_or_else(|| {
+                    anyhow::anyhow!("no relation data under {} table", id.id_with_table())
+                })?;
 
             self.select_payload(vec![relation.out_id()])
                 .await?
@@ -105,15 +106,39 @@ impl DB {
     }
 
     /// only in HAS_PAYLOAD_LIST table has payload
-    async fn select_with_relation(&self, id: &ID) -> anyhow::Result<Vec<RelationEntity>> {
-        self.client
+    async fn select_with_relation_by_in(&self, id: &ID) -> anyhow::Result<Vec<RelationEntity>> {
+        let mut resp = self
+            .client
             .query(format!(
                 "SELECT * from with where in = {};",
                 id.id_with_table()
             ))
-            .await?
-            .take::<Vec<RelationEntity>>(0)
-            .map_err(Into::into)
+            .await?;
+        check_db_error_from_resp!(resp)
+            .map_err(|e| anyhow::anyhow!("select_with_relation_by_in error: {:?}", e))?;
+        resp.take::<Vec<RelationEntity>>(0).map_err(Into::into)
+    }
+
+    pub async fn has_contains_relation(&self, id: &ID) -> anyhow::Result<bool> {
+        self.select_contains_relation_by_out(id.id_with_table())
+            .await
+            .map(|res| !res.is_empty())
+    }
+
+    async fn select_contains_relation_by_out(
+        &self,
+        id: impl AsRef<str>,
+    ) -> anyhow::Result<Vec<RelationEntity>> {
+        let mut resp = self
+            .client
+            .query(format!(
+                "SELECT * from contains where out = {};",
+                id.as_ref()
+            ))
+            .await?;
+        check_db_error_from_resp!(resp)
+            .map_err(|e| anyhow::anyhow!("select_contains_relation_by_out error: {:?}", e))?;
+        resp.take::<Vec<RelationEntity>>(0).map_err(Into::into)
     }
 
     pub async fn select_entity_by_relation(
@@ -189,19 +214,19 @@ mod test {
     use test_log::test;
 
     #[test(tokio::test)]
-    async fn test_select_relation_by_out() {
+    async fn test_backtrack_relation() {
         let db = setup().await;
         // Document data needs to be inserted in advance
         // can insert data by running the test in `create/mod`
         let document_res = db
-            .select_relation_by_out(vec!["image:5it65bxgm0u603livkv8"])
+            .backtrack_relation(vec!["image:5it65bxgm0u603livkv8"])
             .await
             .unwrap();
         // the desired result is document
         println!("document_res: {:?}", document_res);
         // Video data needs to be inserted in advance
         let video_res = db
-            .select_relation_by_out(vec!["text:vu3lb2verv2h36hti5im"])
+            .backtrack_relation(vec!["text:vu3lb2verv2h36hti5im"])
             .await
             .unwrap();
         // the desired result is video
@@ -209,7 +234,7 @@ mod test {
         // Text data needs to be inserted in advance
         // no relation data
         let text_res = db
-            .select_relation_by_out(vec!["text:qtx3nucfeo7rzm3mun5b"])
+            .backtrack_relation(vec!["text:qtx3nucfeo7rzm3mun5b"])
             .await
             .unwrap();
         // the desired result is empty
@@ -217,7 +242,7 @@ mod test {
         // Combine data needs to be inserted in advance
         // audio and no relation data
         let combine_res = db
-            .select_relation_by_out(vec![
+            .backtrack_relation(vec![
                 "text:hkot8rlbc8ogoiwoxnms",
                 "text:qtx3nucfeo7rzm3mun5b",
             ])

@@ -84,6 +84,10 @@ DEFINE INDEX IF NOT EXISTS idx_image_vector_hnsw_d512 ON image FIELDS vector HNS
 
 -- 定义分词器
 -- https://github.com/surrealdb/surrealdb/issues/2850
+-- 可定义的分词器
+-- https://surrealdb.com/docs/surrealql/statements/define/analyzer
+-- 如需高亮，需要指定特定的过滤器
+-- https://surrealdb.com/docs/surrealql/functions/database/search#searchhighlight
 DEFINE ANALYZER IF NOT EXISTS mixed_analyzer TOKENIZERS blank, class, punct FILTERS lowercase, ascii, snowball(english);
 
 -- 定义索引
