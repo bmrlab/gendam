@@ -30,6 +30,7 @@ futures = { workspace = true }
 futures-util = "0.3.30"
 regex = "1.10.6"
 itertools = "0.13.0"
+fake = { version = "2.9.2", features = ["derive"] }
 
 # for test, remove it in production
 dotenvy = { workspace = true }
