@@ -224,6 +224,19 @@ impl DB {
             None => Err(anyhow::anyhow!("Failed to insert document")),
         }
     }
+
+    /// use for test
+    pub async fn upsert(&self, id: &ID, set_clause: &str) -> anyhow::Result<()> {
+        let mut resp = self
+            .client
+            .query(format!("UPSERT {} SET {};", id.id_with_table(), set_clause))
+            .await?;
+        check_db_error_from_resp!(resp).map_err(|errors_map| {
+            error!("upsert errors: {:?}", errors_map);
+            anyhow::anyhow!("Failed to upsert, errors: {:?}", errors_map)
+        })?;
+        Ok(())
+    }
 }
 
 /// inner functions
@@ -470,7 +483,9 @@ impl DB {
 
 #[allow(unused_imports, dead_code)]
 mod test {
-    use crate::db::model::id::TB;
+    use crate::check_db_error_from_resp;
+    use crate::db::entity::TextEntity;
+    use crate::db::model::id::{ID, TB};
     use crate::db::model::{ImageModel, TextModel};
     use crate::db::shared::test::{gen_vector, setup};
     use crate::db::DB;
@@ -488,7 +503,9 @@ mod test {
     use content_base_task::web_page::transform::WebPageTransformTask;
     use content_base_task::web_page::WebPageTaskType;
     use content_base_task::ContentTaskType;
+    use itertools::Itertools;
     use rand::Rng;
+    use std::process::id;
     use test_log::test;
 
     #[test(tokio::test)]
@@ -822,5 +839,38 @@ mod test {
             .await
             .unwrap();
         assert_eq!(id.tb(), &TB::Document);
+    }
+
+    #[test(tokio::test)]
+    async fn test_upsert() {
+        let db = setup().await;
+        db.upsert(
+            &ID::from("text:11232131"),
+            format!(
+                "data = 't-1', vector = [{}], en_data = 't-1', en_vector = [{}]",
+                gen_vector(1024)
+                    .into_iter()
+                    .map(|v| v.to_string())
+                    .join(","),
+                gen_vector(1024)
+                    .into_iter()
+                    .map(|v| v.to_string())
+                    .join(",")
+            )
+            .as_str(),
+        )
+        .await
+        .unwrap();
+
+        let mut resp = db
+            .client
+            .query(format!("SELECT * FROM {};", "text:11232131"))
+            .await
+            .unwrap();
+        check_db_error_from_resp!(resp)
+            .map_err(|errors_map| anyhow::anyhow!("select text error: {:?}", errors_map))
+            .unwrap();
+        let result = resp.take::<Vec<TextEntity>>(0).unwrap();
+        assert_eq!(result.len(), 1);
     }
 }
