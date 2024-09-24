@@ -131,21 +131,15 @@ impl ContentBase {
 
                 // (search_id, select_result)
                 // 回传 search_id 是为了匹配 rank 中的分数
-                let select_by_id_result = self.db.try_read()?.select_by_ids(search_ids).await?;
-                debug!(
-                    "select by id result: {:?}",
-                    select_by_id_result
-                        .iter()
-                        .map(|x| (x.0.id_with_table(), x.1.id().id_with_table()))
-                        .collect::<Vec<_>>(),
-                );
+                let select_by_id_result = self.db.try_read()?.backtrace_by_ids(search_ids).await?;
+                debug!("select by id result: {select_by_id_result:?}");
                 let select_result = select_by_id_result
                     .into_iter()
-                    .filter_map(|(id, s)| {
+                    .filter_map(|backtrack| {
                         rank_result
                             .iter()
-                            .find(|r| r.id.eq(&id))
-                            .map(|r| ((s.id(), s.into()), r.score))
+                            .find(|r| r.id.eq(&backtrack.origin_id))
+                            .map(|r| ((backtrack.origin_id, backtrack.result), r.score))
                     })
                     .collect::<Vec<((ID, SelectResultModel), f32)>>();
                 debug!(

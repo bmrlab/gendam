@@ -3,14 +3,13 @@ use futures::future::join_all;
 use tracing::{debug, error};
 
 use super::{constant::MAX_FULLTEXT_TOKEN, entity::vector::VectorSearchEntity, DB};
-use crate::db::entity::relation::RelationEntity;
 use crate::db::entity::{
     AudioEntity, DocumentEntity, ImageEntity, PayloadEntity, SelectResultEntity, TextEntity,
     VideoEntity, WebPageEntity,
 };
 use crate::db::model::id::{ID, TB};
+use crate::db::model::SelectResultModel;
 use crate::query::model::vector::VectorSearchTable;
-use crate::utils::deduplicate;
 use crate::{
     check_db_error_from_resp,
     db::{constant::SELEC_LIMIT, entity::full_text::FullTextSearchEntity},
@@ -160,80 +159,93 @@ impl DB {
     }
 }
 
+#[derive(Debug)]
+pub struct BacktraceResult {
+    /// 只包含 text 和 image 表的 ID
+    pub origin_id: ID,
+    /// 命中的 id
+    /// 如果 origin_id 没有 relation，则是 origin_id
+    /// 如果 origin_id 有 relation
+    ///     - video 类型，则是 audio_frame、image_frame
+    ///     - web 类型，则是 page
+    ///     - document 类型，则是 page
+    pub hit_id: Vec<ID>,
+    pub result: SelectResultModel,
+}
+
 impl DB {
     /// ids: 只包含 text 和 image 表的 ID
     /// ids 是去重的
     /// 查询出的结果顺序是和 ids 一致的
-    pub async fn select_by_ids(
-        &self,
-        ids: Vec<ID>,
-    ) -> anyhow::Result<Vec<(ID, SelectResultEntity)>> {
+    pub async fn backtrace_by_ids(&self, ids: Vec<ID>) -> anyhow::Result<Vec<BacktraceResult>> {
         let backtrack = stream::iter(ids)
             .then(|id| async move {
-                let mut res: Vec<Vec<(ID, SelectResultEntity)>> = vec![];
-                let relation_by_out = self
-                    .select_relation_by_out(vec![id.id_with_table()])
-                    .await?;
-                let relation = relation_by_out
-                    .iter()
-                    .map(|r| r.in_id())
-                    .collect::<Vec<_>>();
-                if !relation.is_empty() {
-                    let relation = deduplicate(relation)
-                        .into_iter()
-                        .filter_map(|id| relation_by_out.iter().find(|r| r.in_id() == id))
-                        .collect::<Vec<&RelationEntity>>();
+                let mut res: Vec<BacktraceResult> = vec![];
+                let has_relation = self.has_contains_relation(&id).await?;
+                if has_relation {
+                    let backtrack_relation =
+                        self.backtrack_relation(vec![id.id_with_table()]).await?;
 
-                    stream::iter(relation)
-                        .then(|r| self.select_entity_by_relation(r))
-                        .collect::<Vec<_>>()
-                        .await
-                        .into_iter()
-                        .for_each(|select_entity| match select_entity {
-                            Ok(s) => {
-                                res.push(s.into_iter().map(|s| (id.clone(), s)).collect());
-                            }
-                            _ => {}
-                        });
+                    for br in backtrack_relation {
+                        let entity = self.select_entity_by_relation(&br.result).await?;
+                        for select_entity in entity {
+                            res.push(BacktraceResult {
+                                origin_id: id.clone(),
+                                hit_id: br.hit_id.clone(),
+                                result: select_entity.into(),
+                            });
+                        }
+                    }
                 } else {
                     // 没有 contain 关系的情况
                     match id.tb() {
                         TB::Text => {
-                            let text = self.select_text(vec![id.id_with_table()]).await?;
-                            res.push(
-                                text.into_iter()
-                                    .map(|t| (id.clone(), SelectResultEntity::Text(t)))
-                                    .collect::<Vec<(ID, SelectResultEntity)>>(),
-                            );
+                            let text = self
+                                .select_text(vec![id.id_with_table()])
+                                .await?
+                                .into_iter()
+                                .map(SelectResultEntity::Text)
+                                .collect::<Vec<SelectResultEntity>>()
+                                .pop();
+                            if let Some(text) = text {
+                                res.push(BacktraceResult {
+                                    origin_id: id.clone(),
+                                    hit_id: vec![id.clone()],
+                                    result: text.into(),
+                                });
+                            }
                         }
                         TB::Image => {
-                            let image = self.select_image(vec![id.id_with_table()]).await?;
-                            res.push(
-                                image
-                                    .into_iter()
-                                    .map(|i| (id.clone(), SelectResultEntity::Image(i)))
-                                    .collect::<Vec<(ID, SelectResultEntity)>>(),
-                            );
+                            let image = self
+                                .select_image(vec![id.id_with_table()])
+                                .await?
+                                .into_iter()
+                                .map(SelectResultEntity::Image)
+                                .collect::<Vec<SelectResultEntity>>()
+                                .pop();
+                            if let Some(image) = image {
+                                res.push(BacktraceResult {
+                                    origin_id: id.clone(),
+                                    hit_id: vec![id.clone()],
+                                    result: image.into(),
+                                });
+                            }
                         }
                         _ => {
                             error!("should not be here: {:?}", id);
                         }
                     }
                 }
-                Ok::<Vec<(ID, SelectResultEntity)>, anyhow::Error>(
-                    res.into_iter().flatten().collect(),
-                )
+                Ok::<Vec<BacktraceResult>, anyhow::Error>(res)
             })
             .collect::<Vec<_>>()
             .await
             .into_iter()
             .filter_map(Result::ok)
-            .collect::<Vec<Vec<(ID, SelectResultEntity)>>>();
-
-        Ok(backtrack
-            .into_iter()
             .flatten()
-            .collect::<Vec<(ID, SelectResultEntity)>>())
+            .collect::<Vec<BacktraceResult>>();
+
+        Ok(backtrack)
     }
 
     async fn select_text(&self, ids: Vec<impl AsRef<str>>) -> anyhow::Result<Vec<TextEntity>> {
@@ -356,10 +368,10 @@ mod test {
     }
 
     #[test(tokio::test)]
-    async fn test_select_by_ids() {
+    async fn test_backtrace_by_ids() {
         let db = setup().await;
         let res = db
-            .select_by_ids(vec![
+            .backtrace_by_ids(vec![
                 "text:0k611fzdax6vdqexqv82".into(),
                 "text:1xv13ncm0i0h3ykhv1t2".into(),
                 "text:2uftzfxknwiu0iasroxw".into(),
@@ -368,6 +380,11 @@ mod test {
             ])
             .await
             .unwrap();
-        println!("res: {:?}", res.into_iter().map(|r| r.0).collect_vec());
+        println!(
+            "res: {:?}",
+            res.into_iter()
+                .map(|r| (r.origin_id, r.hit_id, r.result))
+                .collect_vec()
+        );
     }
 }
