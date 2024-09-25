@@ -2,7 +2,6 @@ use crate::db::model::id::ID;
 use crate::db::model::TextModel;
 
 #[derive(Debug)]
-
 pub struct AudioFrameModel {
     pub id: Option<ID>,
     pub data: Vec<TextModel>,

@@ -3,6 +3,7 @@ use futures::future::join_all;
 use tracing::{debug, error};
 
 use super::{constant::MAX_FULLTEXT_TOKEN, entity::vector::VectorSearchEntity, DB};
+use crate::db::entity::relation::RelationEntity;
 use crate::db::entity::{
     AudioEntity, DocumentEntity, ImageEntity, PayloadEntity, SelectResultEntity, TextEntity,
     VideoEntity, WebPageEntity,
@@ -186,6 +187,14 @@ impl DB {
                     let backtrack_relation =
                         self.backtrack_relation(vec![id.id_with_table()]).await?;
 
+                    debug!(
+                        "backtrack_relation: {:?}",
+                        backtrack_relation
+                            .iter()
+                            .map(|r| (r.hit_id.clone(), r.result.clone()))
+                            .collect::<Vec<(Vec<ID>, RelationEntity)>>()
+                    );
+
                     for br in backtrack_relation {
                         let entity = self.select_entity_by_relation(&br.result).await?;
                         for select_entity in entity {
@@ -198,42 +207,32 @@ impl DB {
                     }
                 } else {
                     // 没有 contain 关系的情况
-                    match id.tb() {
-                        TB::Text => {
-                            let text = self
-                                .select_text(vec![id.id_with_table()])
-                                .await?
-                                .into_iter()
-                                .map(SelectResultEntity::Text)
-                                .collect::<Vec<SelectResultEntity>>()
-                                .pop();
-                            if let Some(text) = text {
-                                res.push(BacktraceResult {
-                                    origin_id: id.clone(),
-                                    hit_id: vec![id.clone()],
-                                    result: text.into(),
-                                });
-                            }
-                        }
-                        TB::Image => {
-                            let image = self
-                                .select_image(vec![id.id_with_table()])
-                                .await?
-                                .into_iter()
-                                .map(SelectResultEntity::Image)
-                                .collect::<Vec<SelectResultEntity>>()
-                                .pop();
-                            if let Some(image) = image {
-                                res.push(BacktraceResult {
-                                    origin_id: id.clone(),
-                                    hit_id: vec![id.clone()],
-                                    result: image.into(),
-                                });
-                            }
-                        }
+                    let data = match id.tb() {
+                        TB::Text => self
+                            .select_text(vec![id.id_with_table()])
+                            .await?
+                            .into_iter()
+                            .map(SelectResultEntity::Text)
+                            .collect::<Vec<SelectResultEntity>>()
+                            .pop(),
+                        TB::Image => self
+                            .select_image(vec![id.id_with_table()])
+                            .await?
+                            .into_iter()
+                            .map(SelectResultEntity::Image)
+                            .collect::<Vec<SelectResultEntity>>()
+                            .pop(),
                         _ => {
                             error!("should not be here: {:?}", id);
+                            None
                         }
+                    };
+                    if let Some(entity) = data {
+                        res.push(BacktraceResult {
+                            origin_id: id.clone(),
+                            hit_id: vec![id.clone()],
+                            result: entity.into(),
+                        });
                     }
                 }
                 Ok::<Vec<BacktraceResult>, anyhow::Error>(res)
@@ -303,13 +302,17 @@ impl DB {
 
 #[allow(unused_imports)]
 mod test {
+    use crate::db::model::id::ID;
     use crate::db::model::video::VideoModel;
-    use crate::db::shared::test::{fake_video_model, fake_video_payload, setup};
+    use crate::db::shared::test::{
+        fake_upsert_text_clause, fake_video_model, fake_video_payload, gen_vector, setup,
+    };
     use crate::query::payload::video::VideoSearchMetadata;
     use crate::query::payload::{SearchMetadata, SearchPayload};
     use content_base_task::video::VideoTaskType;
     use content_base_task::ContentTaskType;
     use itertools::Itertools;
+    use std::process::id;
     use test_log::test;
 
     #[test(tokio::test)]
@@ -375,36 +378,46 @@ mod test {
     #[test(tokio::test)]
     async fn test_backtrace_by_ids() {
         let db = setup().await;
+        let single_text_id = ID::from("text:11232131");
+        db.upsert(&single_text_id, fake_upsert_text_clause().as_str())
+            .await
+            .unwrap();
+
         let video_id = db
             .insert_video(fake_video_model(), fake_video_payload())
             .await
             .unwrap();
 
-        let video: VideoModel = db
+        let mut video: VideoModel = db
             .select_video(vec![video_id.id_with_table()])
             .await
             .unwrap()
             .pop()
             .unwrap()
             .into();
-        
-        let text_id = video.audio_frame[0].data[0].data.clone();
+
+        println!("video: {video:?}");
+
+        if video.audio_frame.is_empty() {
+            println!("audio_frame is empty skip");
+            return;
+        }
+
+        let mut audio_frame = video.audio_frame.pop().unwrap();
+        println!("audio_frame: {:?}", audio_frame.id);
+
+        let text = audio_frame.data.pop().unwrap();
+        println!("text: {:?}", text);
 
         let res = db
-            .backtrace_by_ids(vec![
-                "text:0k611fzdax6vdqexqv82".into(),
-                "text:1xv13ncm0i0h3ykhv1t2".into(),
-                "text:2uftzfxknwiu0iasroxw".into(),
-                "text:7r2g1vj5ennxtbi0hp5a".into(),
-                "text:aw2cyxkvukk6gvy20x4r".into(),
-            ])
+            .backtrace_by_ids(vec![text.id.unwrap(), single_text_id.clone()])
             .await
             .unwrap();
-        println!(
-            "res: {:?}",
-            res.into_iter()
-                .map(|r| (r.origin_id, r.hit_id, r.result))
-                .collect_vec()
-        );
+        println!("res: {:?}", res[0]);
+        println!("single_res: {:?}", res[1]);
+        assert_eq!(res.len(), 2);
+        assert!(res[0].hit_id.len() > 0);
+        assert_eq!(res[1].hit_id.len(), 1);
+        assert_eq!(res[1].hit_id[0], single_text_id);
     }
 }

@@ -53,7 +53,7 @@ impl DB {
                         relation_map
                             .entry(nested_relation.clone())
                             .or_default()
-                            .insert(ID::from(nested_relation.in_id().as_str()));
+                            .insert(ID::from(relation.in_id().as_str()));
                     }
                 } else {
                     relation_map.entry(relation.clone()).or_default();

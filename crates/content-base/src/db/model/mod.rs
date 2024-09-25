@@ -1,9 +1,10 @@
-use serde::Serialize;
 use crate::db::model::audio::AudioModel;
 use crate::db::model::document::DocumentModel;
 use crate::db::model::id::ID;
 use crate::db::model::video::VideoModel;
 use crate::db::model::web::WebPageModel;
+use educe::Educe;
+use serde::Serialize;
 
 pub mod audio;
 pub mod document;
@@ -12,20 +13,30 @@ pub mod payload;
 pub mod video;
 pub mod web;
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Educe)]
+#[educe(Debug)]
 pub struct ImageModel {
     pub id: Option<ID>,
     pub prompt: String,
+    
+    #[educe(Debug(ignore))]
     pub vector: Vec<f32>,
+
+    #[educe(Debug(ignore))]
     pub prompt_vector: Vec<f32>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize, Educe)]
+#[educe(Debug)]
 pub struct TextModel {
     pub id: Option<ID>,
     pub data: String,
+
+    #[educe(Debug(ignore))]
     pub vector: Vec<f32>,
     pub en_data: String,
+
+    #[educe(Debug(ignore))]
     pub en_vector: Vec<f32>,
 }
 
@@ -71,4 +82,19 @@ pub enum SelectResultModel {
     WebPage(WebPageModel),
     Document(DocumentModel),
     Payload(PayloadModel),
+}
+
+impl SelectResultModel {
+    pub fn id(&self) -> Option<ID> {
+        match self {
+            SelectResultModel::Text(data) => data.id.clone(),
+            SelectResultModel::Image(data) => data.id.clone(),
+            SelectResultModel::Item(data) => data.id.clone(),
+            SelectResultModel::Audio(data) => data.id.clone(),
+            SelectResultModel::Video(data) => data.id.clone(),
+            SelectResultModel::WebPage(data) => data.id.clone(),
+            SelectResultModel::Document(data) => data.id.clone(),
+            SelectResultModel::Payload(data) => data.id.clone(),
+        }
+    }
 }
