@@ -15,6 +15,7 @@ pub struct PageEntity {
 impl From<PageEntity> for PageModel {
     fn from(value: PageEntity) -> Self {
         Self {
+            id: Some(value.id.into()),
             text: value.text.into_iter().map(TextModel::from).collect(),
             image: value.image.into_iter().map(ImageModel::from).collect(),
             start_index: value.start_index as i32,

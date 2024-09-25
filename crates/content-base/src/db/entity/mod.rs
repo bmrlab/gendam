@@ -33,6 +33,7 @@ pub struct TextEntity {
 impl From<TextEntity> for TextModel {
     fn from(value: TextEntity) -> Self {
         Self {
+            id: Some(ID::from(&value.id)),
             data: value.data,
             vector: value.vector,
             en_data: value.en_data,
@@ -52,6 +53,7 @@ pub struct ImageEntity {
 impl From<ImageEntity> for ImageModel {
     fn from(value: ImageEntity) -> Self {
         Self {
+            id: Some(ID::from(&value.id)),
             prompt: value.prompt,
             vector: value.vector,
             prompt_vector: value.prompt_vector,
@@ -82,6 +84,7 @@ pub struct VideoEntity {
 impl From<VideoEntity> for VideoModel {
     fn from(value: VideoEntity) -> Self {
         Self {
+            id: Some(ID::from(&value.id)),
             image_frame: value
                 .image_frame
                 .into_iter()
@@ -105,6 +108,7 @@ pub struct WebPageEntity {
 impl From<WebPageEntity> for WebPageModel {
     fn from(value: WebPageEntity) -> Self {
         Self {
+            id: Some(ID::from(&value.id)),
             page: value.page.into_iter().map(PageModel::from).collect(),
         }
     }
@@ -119,6 +123,7 @@ pub struct DocumentEntity {
 impl From<DocumentEntity> for DocumentModel {
     fn from(value: DocumentEntity) -> Self {
         Self {
+            id: Some(ID::from(&value.id)),
             page: value.page.into_iter().map(PageModel::from).collect(),
         }
     }
@@ -134,6 +139,7 @@ pub struct PayloadEntity {
 impl From<PayloadEntity> for PayloadModel {
     fn from(value: PayloadEntity) -> Self {
         Self {
+            id: Some(ID::from(&value.id)),
             file_identifier: value.file_identifier,
             url: value.url,
         }
@@ -167,6 +173,7 @@ impl From<SelectResultEntity> for SelectResultModel {
             SelectResultEntity::Text(text) => SelectResultModel::Text(TextModel::from(text)),
             SelectResultEntity::Image(image) => SelectResultModel::Image(ImageModel::from(image)),
             SelectResultEntity::Audio(audio) => SelectResultModel::Audio(AudioModel {
+                id: Some(ID::from(&audio.id)),
                 audio_frame: audio.frame.into_iter().map(AudioFrameModel::from).collect(),
             }),
             SelectResultEntity::Video(video) => SelectResultModel::Video(VideoModel::from(video)),

@@ -1,7 +1,8 @@
 use std::collections::HashMap;
+use serde::Serialize;
 use surrealdb::sql::Thing;
 
-#[derive(Debug, Clone, Eq, PartialEq, Copy, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Copy, Hash, Serialize)]
 pub enum TB {
     Text,
     Image,
@@ -40,7 +41,7 @@ impl From<&str> for TB {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize)]
 pub struct ID {
     id: String,
     tb: TB,
