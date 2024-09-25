@@ -1,6 +1,9 @@
 use crate::{error::sql_error, routes::assets::types::FilePathWithAssetObjectData};
 use content_base::{
-    query::{payload::SearchResult, QueryPayload},
+    query::{
+        payload::{ContentIndexMetadata, RetrievalResultData, SearchResultData},
+        QueryPayload,
+    },
     ContentBase,
 };
 use content_library::Library;
@@ -134,13 +137,45 @@ pub async fn search_all(
     Ok(result)
 }
 
+/// 以下是 search 和 rag 共用的辅助函数，实现一个 trait 用于统一处理两种类型的搜索结果
+#[allow(dead_code)]
+pub(super) trait ContentQueryResultTrait: std::fmt::Debug {
+    fn file_identifier(&self) -> &str;
+    fn metadata(&self) -> &ContentIndexMetadata;
+    fn score(&self) -> f32;
+}
+
+impl ContentQueryResultTrait for SearchResultData {
+    fn file_identifier(&self) -> &str {
+        &self.file_identifier
+    }
+    fn metadata(&self) -> &ContentIndexMetadata {
+        &self.metadata
+    }
+    fn score(&self) -> f32 {
+        self.score
+    }
+}
+
+impl ContentQueryResultTrait for RetrievalResultData {
+    fn file_identifier(&self) -> &str {
+        &self.file_identifier
+    }
+    fn metadata(&self) -> &ContentIndexMetadata {
+        &self.metadata
+    }
+    fn score(&self) -> f32 {
+        self.score
+    }
+}
+
 pub async fn retrieve_assets_for_search<TOriginal, TTarget, TFnConvert>(
     library: &Library,
     search_results: &[TOriginal],
     convert: TFnConvert,
 ) -> Result<Vec<TTarget>, rspc::Error>
 where
-    TOriginal: SearchResult,
+    TOriginal: ContentQueryResultTrait,
     TFnConvert: Fn(&TOriginal, &prisma_lib::file_path::Data) -> TTarget,
 {
     let file_identifiers = search_results
