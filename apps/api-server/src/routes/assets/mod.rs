@@ -56,6 +56,7 @@ where
                 struct AssetObjectCreatePayload {
                     #[serde(deserialize_with = "validators::materialized_path_string")]
                     materialized_path: String,
+                    #[serde(deserialize_with = "validators::path_name_string")]
                     name: String,
                     local_full_path: String,
                     // TODO: 加一个参数，指定是否需要删除源文件，对于客户端临时上传的文件，可以考虑删除
