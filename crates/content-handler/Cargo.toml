@@ -22,6 +22,9 @@ image = { workspace = true }
 phf = { workspace = true, features = ["macros"] }
 chromiumoxide = { git = "https://github.com/mattsse/chromiumoxide", features = [
   "tokio-runtime",
-], default-features = false, branch = "main" }
+], default-features = false, branch = "main", optional = true }
 futures = { workspace = true }
 htmd = { version = "0.1.6" }
+
+[features]
+webpage = ["dep:chromiumoxide"]
