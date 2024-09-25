@@ -79,40 +79,6 @@ pub struct RetrievalResultData {
     pub metadata: ContentIndexMetadata,
 }
 
-pub trait SearchResult {
-    fn file_identifier(&self) -> &str;
-    fn metadata(&self) -> &ContentIndexMetadata;
-    fn score(&self) -> f32;
-}
-
-impl SearchResult for SearchResultData {
-    fn file_identifier(&self) -> &str {
-        &self.file_identifier
-    }
-
-    fn metadata(&self) -> &ContentIndexMetadata {
-        &self.metadata
-    }
-
-    fn score(&self) -> f32 {
-        self.score
-    }
-}
-
-impl SearchResult for RetrievalResultData {
-    fn file_identifier(&self) -> &str {
-        &self.file_identifier
-    }
-
-    fn metadata(&self) -> &ContentIndexMetadata {
-        &self.metadata
-    }
-
-    fn score(&self) -> f32 {
-        self.score
-    }
-}
-
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct SearchRequest {
     pub text: String,
