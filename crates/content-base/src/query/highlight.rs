@@ -1,10 +1,13 @@
 use super::payload::ContentIndexMetadata;
 use content_base_context::ContentBaseCtx;
 use content_base_task::{
-    audio::trans_chunk_sum::{AudioTransChunkSumTask, AudioTransChunkSumTrait},
+    audio::trans_chunk::{AudioTransChunkTask, AudioTranscriptChunkTrait},
     image::description::ImageDescriptionTask,
-    raw_text::chunk::{DocumentChunkTrait, RawTextChunkTask},
-    video::trans_chunk_sum::VideoTransChunkSumTask,
+    raw_text::{
+        chunk::DocumentChunkTrait,
+        chunk_sum::{DocumentChunkSumTrait, RawTextChunkSumTask},
+    },
+    video::trans_chunk::VideoTransChunkTask,
     web_page::chunk::WebPageChunkTask,
     FileInfo,
 };
@@ -27,47 +30,54 @@ pub(super) async fn retrieve_highlight(
     // let task_record = TaskRecord::from_content_base(file_info.file_identifier.as_str(), ctx).await;
     match metadata {
         ContentIndexMetadata::Video(video_metadata) => {
-            let chunk_sum_task = VideoTransChunkSumTask;
-            chunk_sum_task
-                .sum_content(
-                    &file_info,
-                    ctx,
-                    video_metadata.start_timestamp,
-                    video_metadata.end_timestamp,
-                )
-                .await
-                .ok()
-            // let chunk_task = VideoTransChunkTask;
-            // let chunks = chunk_task.chunk_content(file_info, ctx).await?;
-            // let matching_chunks = chunks
-            //     .iter()
-            //     .filter(|chunk| {
-            //         chunk.start_timestamp <= video_metadata.start_timestamp
-            //             && chunk.end_timestamp >= video_metadata.end_timestamp
-            //     })
-            //     .collect::<Vec<&Transcription>>();
-            // tracing::info!("Matching chunks: {:?}", &matching_chunks);
-            // let matching_chunk = matching_chunks.first();
-            // if let Some(chunk) = matching_chunk {
-            //     tracing::info!("Matching chunk: {:?}", &chunk.text);
-            //     // Process the matching chunk hereq
-            //     Ok(chunk.text.clone())
-            // } else {
-            //     tracing::warn!("No matching chunk found for the given metadata");
-            //     Ok("".to_string())
-            // }
+            // 这里不好用 VideoTransChunkSumTask 而要用 VideoTransChunkTask
+            // sum_content 方法会精确寻找 {start_timestamp} - {end_timestamp} 的片段，但是这里的 metadata 是 merge 过的
+            // 会导致找不到对应的片段
+            // let chunk_sum_task = VideoTransChunkSumTask;
+            // chunk_sum_task.sum_content(&file_info, ctx, video_metadata.start_timestamp, video_metadata.end_timestamp).await.ok()
+            let chunk_task = VideoTransChunkTask;
+            match chunk_task.chunk_content(&file_info, ctx).await {
+                Ok(chunks) => {
+                    let matching_chunks = chunks
+                        .iter()
+                        .filter(|chunk| {
+                            chunk.start_timestamp >= video_metadata.start_timestamp
+                                && chunk.end_timestamp <= video_metadata.end_timestamp
+                        })
+                        .map(|chunk| chunk.text.clone())
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    Some(matching_chunks)
+                }
+                Err(e) => {
+                    tracing::error!("Failed to retrieve video chunks: {:?}", e);
+                    None
+                }
+            }
         }
         ContentIndexMetadata::Audio(audio_metadata) => {
-            let chunk_sum_task = AudioTransChunkSumTask;
-            chunk_sum_task
-                .sum_content(
-                    &file_info,
-                    ctx,
-                    audio_metadata.start_timestamp,
-                    audio_metadata.end_timestamp,
-                )
-                .await
-                .ok()
+            // 同 Video，要用 AudioTransChunkTask
+            // let chunk_sum_task = AudioTransChunkSumTask;
+            // chunk_sum_task.sum_content(&file_info, ctx, audio_metadata.start_timestamp, audio_metadata.end_timestamp).await.ok()
+            let chunk_task = AudioTransChunkTask;
+            match chunk_task.chunk_content(&file_info, ctx).await {
+                Ok(chunks) => {
+                    let matching_chunks = chunks
+                        .iter()
+                        .filter(|chunk| {
+                            chunk.start_timestamp >= audio_metadata.start_timestamp
+                                && chunk.end_timestamp <= audio_metadata.end_timestamp
+                        })
+                        .map(|chunk| chunk.text.clone())
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    Some(matching_chunks)
+                }
+                Err(e) => {
+                    tracing::error!("Failed to retrieve video chunks: {:?}", e);
+                    None
+                }
+            }
         }
         ContentIndexMetadata::Image(_) => {
             let chunk_sum_task = ImageDescriptionTask;
@@ -77,20 +87,21 @@ pub(super) async fn retrieve_highlight(
                 .ok()
         }
         ContentIndexMetadata::RawText(text_metadata) => {
-            let chunk_task = RawTextChunkTask;
-            match chunk_task.chunk_content(&file_info, ctx).await {
-                Ok(chunks) => {
-                    let content = chunks
-                        .iter()
-                        .skip(text_metadata.start_index)
-                        .take(text_metadata.end_index - text_metadata.start_index + 1)
-                        .map(|chunk| chunk.to_owned())
-                        .collect::<Vec<String>>()
-                        .join(" ");
-                    Some(content)
-                }
-                Err(_) => None,
-            }
+            // 这里不能用 RawTextChunkTask 要用 RawTextChunkSumTask
+            // 每个 summary 使用了 chunk 的前后片段，有时候 start_index - end_index 可能是空的，但 summary 不一定是空的
+            // let chunk_task = RawTextChunkTask;
+            // match chunk_task.chunk_content(&file_info, ctx).await {
+            //     Ok(chunks) => {
+            //         let content = chunks.iter()
+            //             .skip(text_metadata.start_index)
+            //             .take(text_metadata.end_index - text_metadata.start_index + 1)
+            //             .map(|chunk| chunk.to_owned()).collect::<Vec<String>>().join(" ");
+            // TODO: 一种更好的实现还是用 RawTextChunkTask，但是要多取 start_index 之前的一个片段和 end_index 之后的一个片段
+            let chunk_sum_task = RawTextChunkSumTask;
+            chunk_sum_task
+                .sum_content(&file_info, ctx, text_metadata.start_index)
+                .await
+                .ok()
         }
         ContentIndexMetadata::WebPage(webpage_metadata) => {
             let chunk_task = WebPageChunkTask;
