@@ -1,3 +1,4 @@
+use super::highlight::retrieve_highlight;
 use super::payload::{
     audio::AudioIndexMetadata,
     raw_text::RawTextIndexMetadata,
@@ -5,11 +6,14 @@ use super::payload::{
     web_page::WebPageIndexMetadata,
     ContentIndexMetadata, ContentIndexPayload, SearchResultData,
 };
+use content_base_context::ContentBaseCtx;
 use qdrant_client::qdrant::ScoredPoint;
 use serde_json::json;
 use std::collections::HashMap;
 
-pub(super) fn group_results_by_asset(
+/// groups `ScoredPoint` by their file identifier.
+/// Each group contains a tuple: `ContentIndexPayload` and its score.
+pub(super) fn group_content_index_by_file_identifier(
     scored_points: &[ScoredPoint],
     retrieval_results: &mut HashMap<String, Vec<(ContentIndexPayload, f32)>>,
 ) {
@@ -23,12 +27,15 @@ pub(super) fn group_results_by_asset(
     });
 }
 
-pub(super) fn reorder_final_results(
-    retrieval_results: &mut HashMap<String, Vec<(ContentIndexPayload, f32)>>,
+/// Transforms tuple (`ContentIndexPayload`, score) into `SearchResultData` with **merged score**.
+/// Then reorder the results.
+pub(super) async fn reorder_final_results(
+    ctx: &ContentBaseCtx,
+    retrieval_results: &HashMap<String, Vec<(ContentIndexPayload, f32)>>,
 ) -> anyhow::Result<Vec<SearchResultData>> {
     let mut reordered_results = vec![];
 
-    retrieval_results.iter().for_each(|(file_id, results)| {
+    for (file_id, results) in retrieval_results {
         let result = &results.first().expect("results should not be empty").0;
         // 同一个文件对应的 SearchPayload 应该都是同样的类型
         match result.metadata {
@@ -66,14 +73,17 @@ pub(super) fn reorder_final_results(
                     |current, last| current.start_timestamp - last.end_timestamp > 1000,
                 );
 
-                results.into_iter().for_each(|(metadata, score)| {
+                for (metadata, score) in results {
+                    let file_identifier = file_id.to_string();
+                    let metadata: ContentIndexMetadata = metadata.into();
+                    let highlight = retrieve_highlight(ctx, &file_identifier, &metadata).await;
                     reordered_results.push(SearchResultData {
-                        file_identifier: file_id.clone(),
+                        file_identifier,
                         score,
-                        metadata: metadata.into(),
-                        highlight: None,
-                    })
-                });
+                        metadata,
+                        highlight,
+                    });
+                }
             }
             ContentIndexMetadata::Audio(_) => {
                 let mut results: Vec<(AudioIndexMetadata, f32)> = results
@@ -109,24 +119,30 @@ pub(super) fn reorder_final_results(
                     |current, last| current.start_timestamp - last.end_timestamp > 1000,
                 );
 
-                results.into_iter().for_each(|(metadata, score)| {
+                for (metadata, score) in results {
+                    let file_identifier = file_id.to_string();
+                    let metadata: ContentIndexMetadata = metadata.into();
+                    let highlight = retrieve_highlight(ctx, &file_identifier, &metadata).await;
                     reordered_results.push(SearchResultData {
-                        file_identifier: file_id.clone(),
+                        file_identifier,
                         score,
-                        metadata: metadata.into(),
-                        highlight: None,
-                    })
-                });
+                        metadata,
+                        highlight,
+                    });
+                }
             }
             ContentIndexMetadata::Image(_) => {
-                results.iter().for_each(|(payload, score)| {
+                for (payload, score) in results {
+                    let file_identifier = file_id.to_string();
+                    let metadata: ContentIndexMetadata = payload.metadata.clone().into();
+                    let highlight = retrieve_highlight(ctx, &file_identifier, &metadata).await;
                     reordered_results.push(SearchResultData {
-                        file_identifier: file_id.clone(),
+                        file_identifier,
                         score: *score,
-                        metadata: payload.metadata.clone(),
-                        highlight: None,
-                    })
-                });
+                        metadata,
+                        highlight,
+                    });
+                }
             }
             ContentIndexMetadata::RawText(_) => {
                 let mut results: Vec<(RawTextIndexMetadata, f32)> = results
@@ -162,14 +178,17 @@ pub(super) fn reorder_final_results(
                     |current, last| current.start_index - last.end_index > 1,
                 );
 
-                results.into_iter().for_each(|(metadata, score)| {
+                for (metadata, score) in results {
+                    let file_identifier = file_id.to_string();
+                    let metadata: ContentIndexMetadata = metadata.into();
+                    let highlight = retrieve_highlight(ctx, &file_identifier, &metadata).await;
                     reordered_results.push(SearchResultData {
-                        file_identifier: file_id.clone(),
+                        file_identifier,
                         score,
-                        metadata: metadata.into(),
-                        highlight: None,
-                    })
-                });
+                        metadata,
+                        highlight,
+                    });
+                }
             }
             ContentIndexMetadata::WebPage(_) => {
                 let mut results: Vec<(WebPageIndexMetadata, f32)> = results
@@ -205,17 +224,20 @@ pub(super) fn reorder_final_results(
                     |current, last| current.start_index - last.end_index > 1,
                 );
 
-                results.into_iter().for_each(|(metadata, score)| {
+                for (metadata, score) in results {
+                    let file_identifier = file_id.to_string();
+                    let metadata: ContentIndexMetadata = metadata.into();
+                    let highlight = retrieve_highlight(ctx, &file_identifier, &metadata).await;
                     reordered_results.push(SearchResultData {
-                        file_identifier: file_id.clone(),
+                        file_identifier,
                         score,
-                        metadata: metadata.into(),
-                        highlight: None,
-                    })
-                });
+                        metadata,
+                        highlight,
+                    });
+                }
             }
         }
-    });
+    }
 
     reordered_results.sort_by(|a, b| b.score.total_cmp(&a.score));
 
