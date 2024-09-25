@@ -1,7 +1,7 @@
 use crate::{
     query::payload::{
-        audio::AudioSearchMetadata, image::ImageSearchMetadata, raw_text::RawTextSearchMetadata,
-        video::VideoSearchMetadata, web_page::WebPageSearchMetadata, ContentIndexMetadata,
+        audio::AudioIndexMetadata, image::ImageIndexMetadata, raw_text::RawTextIndexMetadata,
+        video::VideoIndexMetadata, web_page::WebPageIndexMetadata, ContentIndexMetadata,
         ContentIndexPayload,
     },
     ContentBase,
@@ -178,7 +178,7 @@ async fn task_post_process(
                 file_info,
                 VideoTransChunkTask,
                 VideoTransChunkSumEmbedTask,
-                |start, end| VideoSearchMetadata::new(start, end),
+                |start, end| VideoIndexMetadata::new(start, end),
             )
             .await;
         }
@@ -190,7 +190,7 @@ async fn task_post_process(
                 file_info,
                 AudioTransChunkTask,
                 AudioTransChunkSumEmbedTask,
-                |start, end| AudioSearchMetadata::new(start, end),
+                |start, end| AudioIndexMetadata::new(start, end),
             )
             .await;
         }
@@ -199,7 +199,7 @@ async fn task_post_process(
                 let payload = ContentIndexPayload {
                     file_identifier: file_info.file_identifier.clone(),
                     task_type: task_type.clone().into(),
-                    metadata: ContentIndexMetadata::Image(ImageSearchMetadata {}),
+                    metadata: ContentIndexMetadata::Image(ImageIndexMetadata {}),
                 };
 
                 let point = PointStruct::new(payload.uuid().to_string(), embedding, payload);
@@ -221,7 +221,7 @@ async fn task_post_process(
                         let payload = ContentIndexPayload {
                             file_identifier: file_info.file_identifier.clone(),
                             task_type: task_type.clone().into(),
-                            metadata: RawTextSearchMetadata {
+                            metadata: RawTextIndexMetadata {
                                 start_index: i,
                                 end_index: i,
                             }
@@ -250,7 +250,7 @@ async fn task_post_process(
                         let payload = ContentIndexPayload {
                             file_identifier: file_info.file_identifier.clone(),
                             task_type: task_type.clone().into(),
-                            metadata: WebPageSearchMetadata {
+                            metadata: WebPageIndexMetadata {
                                 start_index: i,
                                 end_index: i,
                             }

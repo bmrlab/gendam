@@ -9,7 +9,7 @@ use content_base_task::{
     FileInfo,
 };
 
-/// Retrieves highlight text using metadata on the index
+/// Retrieves highlight text using metadata of content's index in vector store
 /// - Video: Summarized video content for the given timestamp range.
 /// - Audio: Summarized audio content for the given timestamp range.
 /// - Image: Retrieves the image description.
