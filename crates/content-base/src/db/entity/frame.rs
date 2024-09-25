@@ -16,6 +16,7 @@ pub struct AudioFrameEntity {
 impl From<AudioFrameEntity> for AudioFrameModel {
     fn from(value: AudioFrameEntity) -> Self {
         Self {
+            id: Some(value.id.into()),
             data: value.data.into_iter().map(TextModel::from).collect(),
             start_timestamp: value.start_timestamp as f32,
             end_timestamp: value.end_timestamp as f32,
@@ -34,6 +35,7 @@ pub struct ImageFrameEntity {
 impl From<ImageFrameEntity> for ImageFrameModel {
     fn from(value: ImageFrameEntity) -> Self {
         Self {
+            id: Some(value.id.into()),
             data: value.data.into_iter().map(ImageModel::from).collect(),
             start_timestamp: value.start_timestamp as f32,
             end_timestamp: value.end_timestamp as f32,

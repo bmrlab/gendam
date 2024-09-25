@@ -174,7 +174,9 @@ macro_rules! chunk_to_page {
             .map(|(i, chunk)| async move {
                 let embedding = $task_type.embed_content($file_info, $ctx, i).await?;
                 anyhow::Result::<PageModel>::Ok(PageModel {
+                    id: None,
                     text: vec![TextModel {
+                        id: None,
                         data: chunk.clone(),
                         vector: embedding.clone(),
                         en_data: "".to_string(),
@@ -207,7 +209,9 @@ async fn task_post_process(
                         .await?;
                     debug!("chunk: {chunk:?}, embedding: {:?}", embedding.len());
                     anyhow::Result::<AudioFrameModel>::Ok(AudioFrameModel {
+                        id: None,
                         data: vec![TextModel {
+                            id: None,
                             data: chunk.text.clone(),
                             vector: embedding.clone(),
                             // TODO: 是否需要英文
@@ -223,6 +227,7 @@ async fn task_post_process(
             db.try_read()?
                 .insert_video(
                     VideoModel {
+                        id: None,
                         audio_frame,
                         image_frame: vec![],
                     },
@@ -247,7 +252,9 @@ async fn task_post_process(
                         .embed_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
                         .await?;
                     anyhow::Result::<AudioFrameModel>::Ok(AudioFrameModel {
+                        id: None,
                         data: vec![TextModel {
+                            id: None,
                             data: chunk.text.clone(),
                             vector: embedding.clone(),
                             // TODO: 是否需要英文
@@ -262,6 +269,7 @@ async fn task_post_process(
             let audio_frame: anyhow::Result<Vec<AudioFrameModel>> = collect_async_results!(future);
             db.try_read()?.insert_audio(
                 AudioModel {
+                    id: None,
                     audio_frame: audio_frame?,
                 },
                 SearchPayload {
@@ -280,6 +288,7 @@ async fn task_post_process(
             let embedding = task_type.embed_content(file_info, ctx).await?;
             db.try_read()?.insert_image(
                 ImageModel {
+                    id: None,
                     prompt: "".to_string(),
                     vector: embedding.clone(),
                     prompt_vector: vec![],
