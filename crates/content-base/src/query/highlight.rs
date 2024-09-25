@@ -1,4 +1,4 @@
-use super::payload::SearchMetadata;
+use super::payload::ContentIndexMetadata;
 use content_base_context::ContentBaseCtx;
 use content_base_task::{
     audio::trans_chunk_sum::{AudioTransChunkSumTask, AudioTransChunkSumTrait},
@@ -18,11 +18,11 @@ use content_base_task::{
 pub async fn retrieve_highlight_text_with_metadata(
     ctx: &ContentBaseCtx,
     file_info: &FileInfo,
-    metadata: &SearchMetadata,
+    metadata: &ContentIndexMetadata,
 ) -> anyhow::Result<String> {
     // let task_record = TaskRecord::from_content_base(file_info.file_identifier.as_str(), ctx).await;
     match metadata {
-        SearchMetadata::Video(video_metadata) => {
+        ContentIndexMetadata::Video(video_metadata) => {
             let chunk_sum_task = VideoTransChunkSumTask;
             chunk_sum_task
                 .sum_content(
@@ -52,7 +52,7 @@ pub async fn retrieve_highlight_text_with_metadata(
             //     Ok("".to_string())
             // }
         }
-        SearchMetadata::Audio(audio_metadata) => {
+        ContentIndexMetadata::Audio(audio_metadata) => {
             let chunk_sum_task = AudioTransChunkSumTask;
             chunk_sum_task
                 .sum_content(
@@ -63,11 +63,11 @@ pub async fn retrieve_highlight_text_with_metadata(
                 )
                 .await
         }
-        SearchMetadata::Image(_) => {
+        ContentIndexMetadata::Image(_) => {
             let chunk_sum_task = ImageDescriptionTask;
             chunk_sum_task.description_content(file_info, ctx).await
         }
-        SearchMetadata::RawText(text_metadata) => {
+        ContentIndexMetadata::RawText(text_metadata) => {
             let chunk_task = RawTextChunkTask;
             let chunks = chunk_task.chunk_content(file_info, ctx).await?;
             let content = chunks
@@ -79,7 +79,7 @@ pub async fn retrieve_highlight_text_with_metadata(
                 .join(" ");
             Ok(content)
         }
-        SearchMetadata::WebPage(webpage_metadata) => {
+        ContentIndexMetadata::WebPage(webpage_metadata) => {
             let chunk_task = WebPageChunkTask;
             let chunks = chunk_task.chunk_content(file_info, ctx).await?;
             let content = chunks

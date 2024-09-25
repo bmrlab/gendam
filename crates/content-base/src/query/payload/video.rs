@@ -1,4 +1,4 @@
-use super::SearchMetadata;
+use super::ContentIndexMetadata;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -16,20 +16,20 @@ impl VideoSearchMetadata {
     }
 }
 
-impl TryFrom<SearchMetadata> for VideoSearchMetadata {
+impl TryFrom<ContentIndexMetadata> for VideoSearchMetadata {
     type Error = anyhow::Error;
 
-    fn try_from(metadata: SearchMetadata) -> Result<Self, Self::Error> {
+    fn try_from(metadata: ContentIndexMetadata) -> Result<Self, Self::Error> {
         match metadata {
-            SearchMetadata::Video(metadata) => Ok(metadata),
+            ContentIndexMetadata::Video(metadata) => Ok(metadata),
             _ => anyhow::bail!("metadata is not from video"),
         }
     }
 }
 
-impl From<VideoSearchMetadata> for SearchMetadata {
+impl From<VideoSearchMetadata> for ContentIndexMetadata {
     fn from(metadata: VideoSearchMetadata) -> Self {
-        SearchMetadata::Video(metadata)
+        ContentIndexMetadata::Video(metadata)
     }
 }
 

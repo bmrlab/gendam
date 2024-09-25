@@ -1,4 +1,4 @@
-use super::SearchMetadata;
+use super::ContentIndexMetadata;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -16,20 +16,20 @@ impl AudioSearchMetadata {
     }
 }
 
-impl TryFrom<SearchMetadata> for AudioSearchMetadata {
+impl TryFrom<ContentIndexMetadata> for AudioSearchMetadata {
     type Error = anyhow::Error;
 
-    fn try_from(metadata: SearchMetadata) -> Result<Self, Self::Error> {
+    fn try_from(metadata: ContentIndexMetadata) -> Result<Self, Self::Error> {
         match metadata {
-            SearchMetadata::Audio(metadata) => Ok(metadata),
+            ContentIndexMetadata::Audio(metadata) => Ok(metadata),
             _ => anyhow::bail!("metadata is not from audio"),
         }
     }
 }
 
-impl From<AudioSearchMetadata> for SearchMetadata {
+impl From<AudioSearchMetadata> for ContentIndexMetadata {
     fn from(metadata: AudioSearchMetadata) -> Self {
-        SearchMetadata::Audio(metadata)
+        ContentIndexMetadata::Audio(metadata)
     }
 }
 

@@ -1,4 +1,4 @@
-use super::SearchMetadata;
+use super::ContentIndexMetadata;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -7,20 +7,20 @@ pub struct WebPageSearchMetadata {
     pub end_index: usize,
 }
 
-impl TryFrom<SearchMetadata> for WebPageSearchMetadata {
+impl TryFrom<ContentIndexMetadata> for WebPageSearchMetadata {
     type Error = anyhow::Error;
 
-    fn try_from(metadata: SearchMetadata) -> Result<Self, Self::Error> {
+    fn try_from(metadata: ContentIndexMetadata) -> Result<Self, Self::Error> {
         match metadata {
-            SearchMetadata::WebPage(metadata) => Ok(metadata),
+            ContentIndexMetadata::WebPage(metadata) => Ok(metadata),
             _ => anyhow::bail!("metadata is not from raw text"),
         }
     }
 }
 
-impl From<WebPageSearchMetadata> for SearchMetadata {
+impl From<WebPageSearchMetadata> for ContentIndexMetadata {
     fn from(metadata: WebPageSearchMetadata) -> Self {
-        SearchMetadata::WebPage(metadata)
+        ContentIndexMetadata::WebPage(metadata)
     }
 }
 
