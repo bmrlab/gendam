@@ -1,11 +1,10 @@
 'use client'
-
-import SearchResultItem from '@/components/FileContent/Search'
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks'
 import classNames from 'classnames'
 import { useCallback, useMemo } from 'react'
+import SearchResultItem from './SearchResultItem'
 import { type ItemWithSize } from './SearchResults'
 
 const SearchItem: React.FC<ItemWithSize> = ({ data, width, height }) => {
