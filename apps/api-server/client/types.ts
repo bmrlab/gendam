@@ -113,7 +113,7 @@ export type S3Config = { bucket: string; endpoint: string; accessKeyId: string; 
 
 export type RAGRequestPayload = { query: string }
 
-export type SearchResultPayload = { filePath: FilePathWithAssetObjectData; metadata: SearchResultMetadata; score: number }
+export type SearchResultPayload = { filePath: FilePathWithAssetObjectData; metadata: SearchResultMetadata; score: number; highlight: string | null }
 
 export type FilePathCreatePayload = { materializedPath: string; name: string }
 

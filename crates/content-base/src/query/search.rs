@@ -1,9 +1,10 @@
 use super::payload::{
-    audio::AudioSearchMetadata, raw_text::RawTextSearchMetadata,
-    video::merge_results_with_time_duration, web_page::WebPageSearchMetadata, SearchPayload,
-    SearchResultData,
+    audio::AudioSearchMetadata,
+    raw_text::RawTextSearchMetadata,
+    video::{merge_results_with_time_duration, VideoSearchMetadata},
+    web_page::WebPageSearchMetadata,
+    SearchMetadata, SearchPayload, SearchResultData,
 };
-use crate::query::payload::{video::VideoSearchMetadata, SearchMetadata};
 use qdrant_client::qdrant::ScoredPoint;
 use serde_json::json;
 use std::collections::HashMap;
@@ -70,6 +71,7 @@ pub fn reorder_final_results(
                         file_identifier: file_id.clone(),
                         score: v.1,
                         metadata: v.0.into(),
+                        highlight: None,
                     })
                 });
             }
@@ -112,6 +114,7 @@ pub fn reorder_final_results(
                         file_identifier: file_id.clone(),
                         score: v.1,
                         metadata: v.0.into(),
+                        highlight: None,
                     })
                 });
             }
@@ -121,6 +124,7 @@ pub fn reorder_final_results(
                         file_identifier: file_id.clone(),
                         score: v.1,
                         metadata: v.0.metadata.clone(),
+                        highlight: None,
                     })
                 });
             }
@@ -163,6 +167,7 @@ pub fn reorder_final_results(
                         file_identifier: file_id.clone(),
                         score: v.1,
                         metadata: v.0.into(),
+                        highlight: None,
                     })
                 });
             }
@@ -205,6 +210,7 @@ pub fn reorder_final_results(
                         file_identifier: file_id.clone(),
                         score: v.1,
                         metadata: v.0.into(),
+                        highlight: None,
                     })
                 });
             }

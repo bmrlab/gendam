@@ -1,13 +1,16 @@
 use crate::ContentBase;
 use ai::TextEmbeddingModel;
+use content_base_task::FileInfo;
+use highlight::retrieve_highlight_text_with_metadata;
 use payload::{RetrievalResultData, SearchPayload, SearchResultData};
 use qdrant_client::qdrant::SearchPointsBuilder;
 use search::{group_results_by_asset, reorder_final_results};
 use serde_json::json;
 use std::collections::HashMap;
 
+mod highlight;
 pub mod payload;
-pub mod search;
+mod search;
 
 const RETRIEVAL_COUNT: u64 = 20;
 
@@ -92,7 +95,27 @@ impl ContentBase {
             .collect();
         group_results_by_asset(&vision_points, &mut retrieval_results);
 
-        Ok(reorder_final_results(&mut retrieval_results)?)
+        let mut reordered_results = reorder_final_results(&mut retrieval_results)?;
+
+        for result in reordered_results.iter_mut() {
+            let file_info = FileInfo {
+                file_identifier: result.file_identifier.clone(),
+                file_path: "/-/invalid/-/".to_string().into(),
+            };
+            if let Ok(artifact_payload) =
+                retrieve_highlight_text_with_metadata(&self.ctx, &file_info, &result.metadata).await
+            {
+                tracing::debug!(
+                    file_info = file_info.file_identifier.as_str(),
+                    metadata = format!("{:?}", result.metadata),
+                    "Highlight: {}",
+                    &artifact_payload
+                );
+                result.highlight = Some(artifact_payload);
+            }
+        }
+
+        Ok(reordered_results)
     }
 
     /// 实现基于文本特征的基础召回
@@ -104,12 +127,9 @@ impl ContentBase {
         let language_collection_name = self.language_collection_name.as_str();
         let text_model_embedding = text_embedding.process_single(payload.query.clone()).await?;
 
-        let payload = SearchPointsBuilder::new(
-            language_collection_name,
-            text_model_embedding.clone(),
-            5,
-        )
-        .with_payload(true);
+        let payload =
+            SearchPointsBuilder::new(language_collection_name, text_model_embedding.clone(), 5)
+                .with_payload(true);
 
         let response = self.qdrant.search_points(payload).await?;
 
