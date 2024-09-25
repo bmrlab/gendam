@@ -3,7 +3,7 @@ use super::payload::{
     raw_text::RawTextSearchMetadata,
     video::{merge_results_with_time_duration, VideoSearchMetadata},
     web_page::WebPageSearchMetadata,
-    SearchMetadata, SearchPayload, SearchResultData,
+    ContentIndexMetadata, ContentIndexPayload, SearchResultData,
 };
 use qdrant_client::qdrant::ScoredPoint;
 use serde_json::json;
@@ -11,10 +11,10 @@ use std::collections::HashMap;
 
 pub fn group_results_by_asset(
     scored_points: &[ScoredPoint],
-    retrieval_results: &mut HashMap<String, Vec<(SearchPayload, f32)>>,
+    retrieval_results: &mut HashMap<String, Vec<(ContentIndexPayload, f32)>>,
 ) {
     scored_points.iter().for_each(|v| {
-        if let Ok(payload) = serde_json::from_value::<SearchPayload>(json!(v.payload)) {
+        if let Ok(payload) = serde_json::from_value::<ContentIndexPayload>(json!(v.payload)) {
             let target_file_results = retrieval_results
                 .entry(payload.file_identifier().to_string())
                 .or_insert(vec![]);
@@ -24,7 +24,7 @@ pub fn group_results_by_asset(
 }
 
 pub fn reorder_final_results(
-    retrieval_results: &mut HashMap<String, Vec<(SearchPayload, f32)>>,
+    retrieval_results: &mut HashMap<String, Vec<(ContentIndexPayload, f32)>>,
 ) -> anyhow::Result<Vec<SearchResultData>> {
     let mut reordered_results = vec![];
 
@@ -32,7 +32,7 @@ pub fn reorder_final_results(
         let result = &results.first().expect("results should not be empty").0;
         // 同一个文件对应的 SearchPayload 应该都是同样的类型
         match result.metadata {
-            SearchMetadata::Video(_) => {
+            ContentIndexMetadata::Video(_) => {
                 let mut results: Vec<(VideoSearchMetadata, f32)> = results
                     .iter()
                     .filter_map(|v| {
@@ -75,7 +75,7 @@ pub fn reorder_final_results(
                     })
                 });
             }
-            SearchMetadata::Audio(_) => {
+            ContentIndexMetadata::Audio(_) => {
                 let mut results: Vec<(AudioSearchMetadata, f32)> = results
                     .iter()
                     .filter_map(|v| {
@@ -118,7 +118,7 @@ pub fn reorder_final_results(
                     })
                 });
             }
-            SearchMetadata::Image(_) => {
+            ContentIndexMetadata::Image(_) => {
                 results.iter().for_each(|v| {
                     reordered_results.push(SearchResultData {
                         file_identifier: file_id.clone(),
@@ -128,7 +128,7 @@ pub fn reorder_final_results(
                     })
                 });
             }
-            SearchMetadata::RawText(_) => {
+            ContentIndexMetadata::RawText(_) => {
                 let mut results: Vec<(RawTextSearchMetadata, f32)> = results
                     .iter()
                     .filter_map(|v| {
@@ -171,7 +171,7 @@ pub fn reorder_final_results(
                     })
                 });
             }
-            SearchMetadata::WebPage(_) => {
+            ContentIndexMetadata::WebPage(_) => {
                 let mut results: Vec<(WebPageSearchMetadata, f32)> = results
                     .iter()
                     .filter_map(|v| {

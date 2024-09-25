@@ -9,7 +9,7 @@ use content_base::{
         transcript::{AudioTranscriptTask, AudioTranscriptTrait},
         AudioTaskType,
     },
-    query::{payload::SearchMetadata, QueryPayload},
+    query::{payload::ContentIndexMetadata, QueryPayload},
     raw_text::{
         chunk::{DocumentChunkTrait, RawTextChunkTask},
         RawTextTaskType,
@@ -76,7 +76,7 @@ pub async fn rag(
     for ref_item in retrieval_results.iter() {
         match (&ref_item.metadata, &ref_item.task_type) {
             (
-                SearchMetadata::Video(metadata),
+                ContentIndexMetadata::Video(metadata),
                 ContentTaskType::Video(VideoTaskType::TransChunkSumEmbed(_)),
             ) => {
                 match VideoTranscriptTask
@@ -109,7 +109,7 @@ pub async fn rag(
                 }
             }
             (
-                SearchMetadata::Audio(metadata),
+                ContentIndexMetadata::Audio(metadata),
                 ContentTaskType::Audio(AudioTaskType::TransChunkSumEmbed(_)),
             ) => {
                 match AudioTranscriptTask
@@ -142,7 +142,7 @@ pub async fn rag(
                 }
             }
             (
-                SearchMetadata::RawText(metadata),
+                ContentIndexMetadata::RawText(metadata),
                 ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(_)),
             ) => {
                 match RawTextChunkTask

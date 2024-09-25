@@ -2,7 +2,7 @@ use crate::ContentBase;
 use ai::TextEmbeddingModel;
 use content_base_task::FileInfo;
 use highlight::retrieve_highlight_text_with_metadata;
-use payload::{RetrievalResultData, SearchPayload, SearchResultData};
+use payload::{ContentIndexPayload, RetrievalResultData, SearchResultData};
 use qdrant_client::qdrant::SearchPointsBuilder;
 use search::{group_results_by_asset, reorder_final_results};
 use serde_json::json;
@@ -137,7 +137,8 @@ impl ContentBase {
             .result
             .into_iter()
             .filter_map(|v| {
-                if let Ok(payload) = serde_json::from_value::<SearchPayload>(json!(v.payload)) {
+                if let Ok(payload) = serde_json::from_value::<ContentIndexPayload>(json!(v.payload))
+                {
                     Some(RetrievalResultData {
                         score: v.score,
                         file_identifier: payload.file_identifier,

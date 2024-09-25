@@ -1,7 +1,8 @@
 use crate::{
     query::payload::{
         audio::AudioSearchMetadata, image::ImageSearchMetadata, raw_text::RawTextSearchMetadata,
-        video::VideoSearchMetadata, web_page::WebPageSearchMetadata, SearchMetadata, SearchPayload,
+        video::VideoSearchMetadata, web_page::WebPageSearchMetadata, ContentIndexMetadata,
+        ContentIndexPayload,
     },
     ContentBase,
 };
@@ -195,10 +196,10 @@ async fn task_post_process(
         }
         ContentTaskType::Image(ImageTaskType::DescEmbed(task_type)) => {
             if let Ok(embedding) = task_type.embed_content(file_info, ctx).await {
-                let payload = SearchPayload {
+                let payload = ContentIndexPayload {
                     file_identifier: file_info.file_identifier.clone(),
                     task_type: task_type.clone().into(),
-                    metadata: SearchMetadata::Image(ImageSearchMetadata {}),
+                    metadata: ContentIndexMetadata::Image(ImageSearchMetadata {}),
                 };
 
                 let point = PointStruct::new(payload.uuid().to_string(), embedding, payload);
@@ -217,7 +218,7 @@ async fn task_post_process(
             if let Ok(chunks) = RawTextChunkTask.chunk_content(file_info, ctx).await {
                 for i in 0..chunks.len() {
                     if let Ok(embedding) = task_type.embed_content(file_info, ctx, i).await {
-                        let payload = SearchPayload {
+                        let payload = ContentIndexPayload {
                             file_identifier: file_info.file_identifier.clone(),
                             task_type: task_type.clone().into(),
                             metadata: RawTextSearchMetadata {
@@ -246,7 +247,7 @@ async fn task_post_process(
             if let Ok(chunks) = WebPageChunkTask.chunk_content(file_info, ctx).await {
                 for i in 0..chunks.len() {
                     if let Ok(embedding) = task_type.embed_content(file_info, ctx, i).await {
-                        let payload = SearchPayload {
+                        let payload = ContentIndexPayload {
                             file_identifier: file_info.file_identifier.clone(),
                             task_type: task_type.clone().into(),
                             metadata: WebPageSearchMetadata {
@@ -286,14 +287,14 @@ async fn transcript_sum_embed_post_process<T, TFn>(
     fn_search_metadata: TFn,
 ) -> anyhow::Result<()>
 where
-    T: Into<SearchMetadata>,
+    T: Into<ContentIndexMetadata>,
     TFn: Fn(i64, i64) -> T,
 {
     let chunks = chunk_task.chunk_content(file_info, ctx).await?;
 
     for chunk in chunks.iter() {
         let metadata = fn_search_metadata(chunk.start_timestamp, chunk.end_timestamp);
-        let payload = SearchPayload {
+        let payload = ContentIndexPayload {
             file_identifier: file_info.file_identifier.clone(),
             task_type: embed_task.clone().into(),
             metadata: metadata.into(),
