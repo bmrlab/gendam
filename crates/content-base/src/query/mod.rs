@@ -1,5 +1,6 @@
 use crate::db::model::id::ID;
-use crate::db::model::SelectResultModel;
+use crate::db::model::{PayloadModel, SelectResultModel};
+use crate::db::search::BacktrackResult;
 use crate::query::rank::Rank;
 use crate::ContentBase;
 use futures_util::{stream, StreamExt};
@@ -29,6 +30,15 @@ impl QueryPayload {
             query: query.to_string(),
         }
     }
+}
+
+#[derive(Debug)]
+pub struct HitResult {
+    pub origin_id: ID,
+    pub score: f32,
+    pub hit_id: Vec<ID>,
+    pub payload: PayloadModel,
+    pub result: SelectResultModel,
 }
 
 impl ContentBase {
@@ -139,31 +149,39 @@ impl ContentBase {
                         rank_result
                             .iter()
                             .find(|r| r.id.eq(&backtrack.origin_id))
-                            .map(|r| ((backtrack.origin_id, backtrack.result), r.score))
+                            .map(|r| (backtrack, r.score))
                     })
-                    .collect::<Vec<((ID, SelectResultModel), f32)>>();
-                debug!(
-                    "select result: {:?}",
-                    select_result
-                        .iter()
-                        .map(|(s, score)| (s.0.clone(), score))
-                        .collect::<Vec<_>>()
-                );
+                    .collect::<Vec<(BacktrackResult, f32)>>();
+                debug!("select result: {:?}", select_result);
 
-                Ok(stream::iter(select_result)
-                    .then(|((id, result), score)| async move {
-                        let payload = self.db.try_read()?.select_payload_by_id(id.clone()).await?;
-                        debug!("id: {:?}, payload: {payload:?}", id.id_with_table());
-                        Ok::<Vec<SearchResultData>, anyhow::Error>(
-                            self.expand_select_result(&result, score, &payload).await?,
-                        )
+                let hit_result = stream::iter(select_result)
+                    .then(|(bt, score)| async move {
+                        let payload = self
+                            .db
+                            .try_read()?
+                            .select_payload_by_id(bt.result.id().expect("id not found"))
+                            .await?;
+                        Ok::<_, anyhow::Error>(HitResult {
+                            origin_id: bt.origin_id,
+                            score,
+                            hit_id: bt.hit_id,
+                            payload,
+                            result: bt.result,
+                        })
                     })
                     .collect::<Vec<_>>()
                     .await
                     .into_iter()
                     .filter_map(Result::ok)
+                    .collect::<Vec<HitResult>>();
+                debug!("hit result: {hit_result:?}");
+
+                Ok(hit_result
+                    .into_iter()
+                    .map(|hit| self.expand_hit_result(hit))
+                    .filter_map(Result::ok)
                     .flatten()
-                    .collect())
+                    .collect::<Vec<SearchResultData>>())
             }
             SearchModel::Image(_) => Ok(vec![]),
         }

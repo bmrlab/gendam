@@ -1,8 +1,8 @@
 use ai::TextEmbeddingModel;
 use regex::Regex;
 
-use super::{model::SearchModel, QueryPayload};
-use crate::db::model::{PayloadModel, SelectResultModel};
+use super::{model::SearchModel, HitResult, QueryPayload};
+use crate::db::model::SelectResultModel;
 use crate::query::payload::audio::AudioSearchMetadata;
 use crate::query::payload::image::ImageSearchMetadata;
 use crate::query::payload::raw_text::RawTextSearchMetadata;
@@ -65,16 +65,13 @@ impl ContentBase {
 
         Ok(deduplicate(tokens))
     }
-    
 
-    pub async fn expand_select_result(
+    pub fn expand_hit_result(
         &self,
-        select_result: &SelectResultModel,
-        score: f32,
-        payload: &PayloadModel,
+        hit_result: HitResult,
     ) -> anyhow::Result<Vec<SearchResultData>> {
-        let file_identifier = payload.file_identifier();
-        let metadata = match select_result {
+        let file_identifier = hit_result.payload.file_identifier();
+        let metadata = match hit_result.result {
             SelectResultModel::Image(_) => vec![SearchMetadata::Image(ImageSearchMetadata {})],
             SelectResultModel::Audio(audio) => audio
                 .audio_frame
@@ -138,7 +135,7 @@ impl ContentBase {
             .into_iter()
             .map(|metadata| SearchResultData {
                 file_identifier: file_identifier.clone(),
-                score,
+                score: hit_result.score,
                 metadata,
             })
             .collect())

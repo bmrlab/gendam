@@ -11,7 +11,7 @@ mod constant;
 mod create;
 pub mod entity;
 pub mod model;
-mod search;
+pub mod search;
 mod shared;
 mod sql;
 pub mod utils;
