@@ -21,6 +21,7 @@ use content_base_task::ContentTaskType;
 use fake::faker::internet::en::Username;
 use fake::faker::lorem::en::Sentence;
 use fake::Fake;
+use itertools::Itertools;
 use rand::Rng;
 
 pub async fn setup() -> DB {
@@ -34,9 +35,17 @@ pub fn gen_vector(size: usize) -> Vec<f32> {
         .collect()
 }
 
+pub fn gen_text_vector() -> Vec<f32> {
+    gen_vector(1024)
+}
+
+pub fn gen_image_vector() -> Vec<f32> {
+    gen_vector(512)
+}
+
 pub fn fake_text_model() -> TextModel {
     let data: String = Username().fake();
-    let vector = gen_vector(1024);
+    let vector = gen_text_vector();
     TextModel {
         id: None,
         data: data.clone(),
@@ -50,8 +59,8 @@ pub fn fake_image_model() -> ImageModel {
     ImageModel {
         id: None,
         prompt: Sentence(5..10).fake(),
-        vector: gen_vector(512),
-        prompt_vector: gen_vector(1024),
+        vector: gen_image_vector(),
+        prompt_vector: gen_text_vector(),
     }
 }
 
@@ -166,4 +175,21 @@ pub fn fake_document_payload() -> SearchPayload {
             end_index: (30..100).fake(),
         }),
     }
+}
+
+pub fn fake_upsert_text_clause() -> String {
+    let fake_data = (4..8).fake::<String>();
+    format!(
+        "data = '{}', vector = [{}], en_data = '{}', en_vector = [{}]",
+        fake_data,
+        gen_text_vector()
+            .into_iter()
+            .map(|v| v.to_string())
+            .join(","),
+        fake_data,
+        gen_text_vector()
+            .into_iter()
+            .map(|v| v.to_string())
+            .join(",")
+    )
 }
