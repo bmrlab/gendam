@@ -1,9 +1,12 @@
-use chromiumoxide::{page::ScreenshotParams, Browser, BrowserConfig};
-use futures::StreamExt;
 use htmd::HtmlToMarkdown;
 use std::{io::Read, path::Path};
-use tracing::debug;
 
+#[cfg(feature = "webpage")]
+use chromiumoxide::{page::ScreenshotParams, Browser, BrowserConfig};
+#[cfg(feature = "webpage")]
+use futures::StreamExt;
+
+#[cfg(feature = "webpage")]
 pub async fn fetch_url(url: &str) -> anyhow::Result<(Option<String>, String, Vec<u8>)> {
     let (mut browser, mut handler) = Browser::launch(
         BrowserConfig::builder()
@@ -17,7 +20,7 @@ pub async fn fetch_url(url: &str) -> anyhow::Result<(Option<String>, String, Vec
     let handle = tokio::spawn(async move {
         while let Some(h) = handler.next().await {
             if h.is_err() {
-                debug!("error: {:?}", h);
+                tracing::debug!("error: {:?}", h);
                 break;
             }
         }

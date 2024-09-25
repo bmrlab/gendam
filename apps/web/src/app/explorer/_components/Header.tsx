@@ -15,11 +15,11 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef } from 'react'
 import SearchForm, { type SearchFormRef } from '../../search/SearchForm' // TODO: 这样不大好，应该是一个公共组件
 import TitleDialog, { useTitleDialog } from './TitleDialog'
-import UrlImportDialog, { useUrlImportDialog } from './UrlImportDialog'
+// import UrlImportDialog, { useUrlImportDialog } from './UrlImportDialog'
 
 export default function Header() {
   const titleDialog = useTitleDialog()
-  const urlImportDialog = useUrlImportDialog()
+  // const urlImportDialog = useUrlImportDialog()
   const router = useRouter()
   const explorer = useExplorerContext()
 
@@ -117,14 +117,14 @@ export default function Header() {
               <Icon.Upload className="size-4" />
             </UploadButton>
           </Button>
-          <Button
+          {/* <Button
             variant="ghost"
             size="sm"
             className="h-7 w-7 p-1 transition-none"
             onClick={() => urlImportDialog.setOpen(true)}
           >
             <Icon.Link2 className="size-4" />
-          </Button>
+          </Button> */}
 
           <div className="bg-toolbar-line mx-1 h-4 w-px"></div>
 
@@ -179,7 +179,7 @@ export default function Header() {
         </div>
       </Viewport.Toolbar>
       <TitleDialog />
-      <UrlImportDialog />
+      {/* <UrlImportDialog /> */}
     </>
   )
 }

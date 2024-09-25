@@ -21,7 +21,6 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::path::PathBuf;
 use tokio::{fs::OpenOptions, io::AsyncWriteExt};
-use tracing::debug;
 use tracing::info;
 use types::FilePathRequestPayload;
 use types::FilePathWithAssetObjectData;
@@ -387,7 +386,7 @@ where
             }
             t({
                 |ctx: TCtx, payload: WebPageCreatePayload| async move {
-                    debug!("create_web_page_object: {:?}", payload);
+                    tracing::debug!("create_web_page_object: {:?}", payload);
                     let library = ctx.library()?;
 
                     let (file_path_data, asset_object_data, asset_object_existed) =
