@@ -1,14 +1,27 @@
-use fake::faker::internet::en::Username;
-use fake::faker::lorem::en::Sentence;
-use fake::Fake;
-use rand::Rng;
-
 use crate::db::model::audio::{AudioFrameModel, AudioModel};
 use crate::db::model::document::DocumentModel;
 use crate::db::model::video::{ImageFrameModel, VideoModel};
 use crate::db::model::web::WebPageModel;
 use crate::db::model::{ImageModel, TextModel};
 use crate::db::DB;
+use crate::query::payload::image::ImageSearchMetadata;
+use crate::query::payload::raw_text::RawTextSearchMetadata;
+use crate::query::payload::video::VideoSearchMetadata;
+use crate::query::payload::{SearchMetadata, SearchPayload};
+use content_base_task::audio::trans_chunk::AudioTransChunkTask;
+use content_base_task::image::desc_embed::ImageDescEmbedTask;
+use content_base_task::image::ImageTaskType;
+use content_base_task::raw_text::chunk_sum_embed::RawTextChunkSumEmbedTask;
+use content_base_task::raw_text::RawTextTaskType;
+use content_base_task::video::trans_chunk::VideoTransChunkTask;
+use content_base_task::video::VideoTaskType;
+use content_base_task::web_page::transform::WebPageTransformTask;
+use content_base_task::web_page::WebPageTaskType;
+use content_base_task::ContentTaskType;
+use fake::faker::internet::en::Username;
+use fake::faker::lorem::en::Sentence;
+use fake::Fake;
+use rand::Rng;
 
 pub async fn setup() -> DB {
     dotenvy::dotenv().ok();
@@ -25,6 +38,7 @@ pub fn fake_text_model() -> TextModel {
     let data: String = Username().fake();
     let vector = gen_vector(1024);
     TextModel {
+        id: None,
         data: data.clone(),
         vector: vector.clone(),
         en_data: data,
@@ -34,6 +48,7 @@ pub fn fake_text_model() -> TextModel {
 
 pub fn fake_image_model() -> ImageModel {
     ImageModel {
+        id: None,
         prompt: Sentence(5..10).fake(),
         vector: gen_vector(512),
         prompt_vector: gen_vector(1024),
@@ -42,6 +57,7 @@ pub fn fake_image_model() -> ImageModel {
 
 pub fn fake_audio_frame_model() -> AudioFrameModel {
     AudioFrameModel {
+        id: None,
         data: vec![fake_text_model()],
         start_timestamp: (1..10).fake::<u32>() as f32,
         end_timestamp: (10..20).fake::<u32>() as f32,
@@ -50,12 +66,14 @@ pub fn fake_audio_frame_model() -> AudioFrameModel {
 
 pub fn fake_audio_model() -> AudioModel {
     AudioModel {
+        id: None,
         audio_frame: (1..10).map(|_| fake_audio_frame_model()).collect(),
     }
 }
 
 pub fn fake_image_frame_model() -> ImageFrameModel {
     ImageFrameModel {
+        id: None,
         data: vec![fake_image_model()],
         start_timestamp: (1..10).fake::<u32>() as f32,
         end_timestamp: (10..20).fake::<u32>() as f32,
@@ -64,6 +82,7 @@ pub fn fake_image_frame_model() -> ImageFrameModel {
 
 pub fn fake_page_model() -> crate::db::model::PageModel {
     crate::db::model::PageModel {
+        id: None,
         text: vec![fake_text_model()],
         image: vec![fake_image_model()],
         start_index: (1..10).fake(),
@@ -73,12 +92,14 @@ pub fn fake_page_model() -> crate::db::model::PageModel {
 
 pub fn fake_web_page_model() -> WebPageModel {
     WebPageModel {
+        id: None,
         page: (1..10).map(|_| fake_page_model()).collect(),
     }
 }
 
 pub fn fake_video_model() -> VideoModel {
     VideoModel {
+        id: None,
         image_frame: (1..10).map(|_| fake_image_frame_model()).collect(),
         audio_frame: (1..10).map(|_| fake_audio_frame_model()).collect(),
     }
@@ -86,6 +107,63 @@ pub fn fake_video_model() -> VideoModel {
 
 pub fn fake_document() -> DocumentModel {
     DocumentModel {
+        id: None,
         page: (1..10).map(|_| fake_page_model()).collect(),
+    }
+}
+
+pub fn fake_video_payload() -> SearchPayload {
+    SearchPayload {
+        file_identifier: (4..8).fake::<String>(),
+        task_type: ContentTaskType::Video(VideoTaskType::TransChunk(VideoTransChunkTask {})),
+        metadata: SearchMetadata::Video(VideoSearchMetadata {
+            start_timestamp: (1..20).fake(),
+            end_timestamp: (30..100).fake(),
+        }),
+    }
+}
+
+pub fn fake_image_payload() -> SearchPayload {
+    SearchPayload {
+        file_identifier: (4..8).fake::<String>(),
+        task_type: ContentTaskType::Image(ImageTaskType::DescEmbed(ImageDescEmbedTask {})),
+        metadata: SearchMetadata::Image(ImageSearchMetadata {}),
+    }
+}
+
+pub fn fake_audio_payload() -> SearchPayload {
+    SearchPayload {
+        file_identifier: (4..8).fake::<String>(),
+        task_type: ContentTaskType::Audio(crate::audio::AudioTaskType::TransChunk(
+            AudioTransChunkTask {},
+        )),
+        metadata: SearchMetadata::Audio(crate::query::payload::audio::AudioSearchMetadata {
+            start_timestamp: (1..20).fake(),
+            end_timestamp: (30..100).fake(),
+        }),
+    }
+}
+
+pub fn fake_web_page_payload() -> SearchPayload {
+    SearchPayload {
+        file_identifier: (4..8).fake::<String>(),
+        task_type: ContentTaskType::WebPage(WebPageTaskType::Transform(WebPageTransformTask {})),
+        metadata: SearchMetadata::WebPage(crate::query::payload::web_page::WebPageSearchMetadata {
+            start_index: (1..20).fake(),
+            end_index: (30..100).fake(),
+        }),
+    }
+}
+
+pub fn fake_document_payload() -> SearchPayload {
+    SearchPayload {
+        file_identifier: (4..8).fake::<String>(),
+        task_type: ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(
+            RawTextChunkSumEmbedTask {},
+        )),
+        metadata: SearchMetadata::RawText(RawTextSearchMetadata {
+            start_index: (1..20).fake(),
+            end_index: (30..100).fake(),
+        }),
     }
 }

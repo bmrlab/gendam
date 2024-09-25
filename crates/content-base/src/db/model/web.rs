@@ -1,12 +1,14 @@
+use crate::db::model::id::ID;
 use crate::db::model::PageModel;
 
 #[derive(Debug)]
 pub struct WebPageModel {
+    pub id: Option<ID>,
     pub page: Vec<PageModel>,
 }
 
 impl WebPageModel {
     pub fn new(page: Vec<PageModel>) -> Self {
-        Self { page }
+        Self { id: None, page }
     }
 }

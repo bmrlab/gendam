@@ -303,7 +303,12 @@ impl DB {
 
 #[allow(unused_imports)]
 mod test {
-    use crate::db::shared::test::setup;
+    use crate::db::model::video::VideoModel;
+    use crate::db::shared::test::{fake_video_model, fake_video_payload, setup};
+    use crate::query::payload::video::VideoSearchMetadata;
+    use crate::query::payload::{SearchMetadata, SearchPayload};
+    use content_base_task::video::VideoTaskType;
+    use content_base_task::ContentTaskType;
     use itertools::Itertools;
     use test_log::test;
 
@@ -370,6 +375,21 @@ mod test {
     #[test(tokio::test)]
     async fn test_backtrace_by_ids() {
         let db = setup().await;
+        let video_id = db
+            .insert_video(fake_video_model(), fake_video_payload())
+            .await
+            .unwrap();
+
+        let video: VideoModel = db
+            .select_video(vec![video_id.id_with_table()])
+            .await
+            .unwrap()
+            .pop()
+            .unwrap()
+            .into();
+        
+        let text_id = video.audio_frame[0].data[0].data.clone();
+
         let res = db
             .backtrace_by_ids(vec![
                 "text:0k611fzdax6vdqexqv82".into(),

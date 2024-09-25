@@ -487,7 +487,11 @@ mod test {
     use crate::db::entity::TextEntity;
     use crate::db::model::id::{ID, TB};
     use crate::db::model::{ImageModel, TextModel};
-    use crate::db::shared::test::{gen_vector, setup};
+    use crate::db::shared::test::{
+        fake_audio_model, fake_audio_payload, fake_document, fake_document_payload,
+        fake_image_model, fake_image_payload, fake_page_model, fake_video_model,
+        fake_video_payload, fake_web_page_model, fake_web_page_payload, gen_vector, setup,
+    };
     use crate::db::DB;
     use crate::query::payload::image::ImageSearchMetadata;
     use crate::query::payload::raw_text::RawTextSearchMetadata;
@@ -513,6 +517,7 @@ mod test {
         let id = setup()
             .await
             .insert_text(TextModel {
+                id: None,
                 data: "data".to_string(),
                 vector: gen_vector(1024),
                 en_data: "en_data".to_string(),
@@ -528,20 +533,7 @@ mod test {
     async fn test_insert_image() {
         let db = setup().await;
         let _ = db
-            .insert_image(
-                ImageModel {
-                    prompt: "p3".to_string(),
-                    vector: gen_vector(512),
-                    prompt_vector: gen_vector(1024),
-                },
-                Some(SearchPayload {
-                    file_identifier: "file_identifier".to_string(),
-                    task_type: ContentTaskType::Image(ImageTaskType::DescEmbed(
-                        ImageDescEmbedTask {},
-                    )),
-                    metadata: SearchMetadata::Image(ImageSearchMetadata {}),
-                }),
-            )
+            .insert_image(fake_image_model(), Some(fake_image_payload()))
             .await;
     }
 
@@ -549,40 +541,7 @@ mod test {
     async fn test_insert_audio() {
         let db = setup().await;
         let id = db
-            .insert_audio(
-                crate::db::model::audio::AudioModel {
-                    audio_frame: vec![crate::db::model::audio::AudioFrameModel {
-                        data: vec![
-                            TextModel {
-                                data: "data".to_string(),
-                                vector: gen_vector(1024),
-                                en_data: "en_data".to_string(),
-                                en_vector: gen_vector(1024),
-                            },
-                            TextModel {
-                                data: "data2".to_string(),
-                                vector: gen_vector(1024),
-                                en_data: "en_data2".to_string(),
-                                en_vector: gen_vector(1024),
-                            },
-                        ],
-                        start_timestamp: 0.0,
-                        end_timestamp: 1.0,
-                    }],
-                },
-                SearchPayload {
-                    file_identifier: "file_identifier_audio".to_string(),
-                    task_type: ContentTaskType::Audio(crate::audio::AudioTaskType::TransChunk(
-                        AudioTransChunkTask {},
-                    )),
-                    metadata: SearchMetadata::Audio(
-                        crate::query::payload::audio::AudioSearchMetadata {
-                            start_timestamp: 0,
-                            end_timestamp: 1,
-                        },
-                    ),
-                },
-            )
+            .insert_audio(fake_audio_model(), fake_audio_payload())
             .await
             .unwrap();
         assert_eq!(id.tb(), &TB::Audio);
@@ -592,39 +551,7 @@ mod test {
     async fn test_insert_video() {
         let db = setup().await;
         let id = db
-            .insert_video(
-                crate::db::model::video::VideoModel {
-                    image_frame: vec![],
-                    audio_frame: vec![crate::db::model::audio::AudioFrameModel {
-                        data: vec![
-                            TextModel {
-                                data: "data".to_string(),
-                                vector: gen_vector(1024),
-                                en_data: "en_data".to_string(),
-                                en_vector: gen_vector(1024),
-                            },
-                            TextModel {
-                                data: "data2".to_string(),
-                                vector: gen_vector(1024),
-                                en_data: "en_data2".to_string(),
-                                en_vector: gen_vector(1024),
-                            },
-                        ],
-                        start_timestamp: 0.0,
-                        end_timestamp: 1.0,
-                    }],
-                },
-                SearchPayload {
-                    file_identifier: "file_identifier_video".to_string(),
-                    task_type: ContentTaskType::Video(VideoTaskType::TransChunk(
-                        VideoTransChunkTask {},
-                    )),
-                    metadata: SearchMetadata::Video(VideoSearchMetadata {
-                        start_timestamp: 0,
-                        end_timestamp: 1,
-                    }),
-                },
-            )
+            .insert_video(fake_video_model(), fake_video_payload())
             .await
             .unwrap();
         assert_eq!(id.tb(), &TB::Video);
@@ -633,39 +560,7 @@ mod test {
     #[test(tokio::test)]
     async fn test_insert_page() {
         let db = setup().await;
-        let id = db
-            .insert_page(crate::db::model::PageModel {
-                text: vec![
-                    TextModel {
-                        data: "data".to_string(),
-                        vector: gen_vector(1024),
-                        en_data: "en_data".to_string(),
-                        en_vector: gen_vector(1024),
-                    },
-                    TextModel {
-                        data: "data2".to_string(),
-                        vector: gen_vector(1024),
-                        en_data: "en_data2".to_string(),
-                        en_vector: gen_vector(1024),
-                    },
-                ],
-                image: vec![
-                    ImageModel {
-                        prompt: "p3".to_string(),
-                        vector: gen_vector(512),
-                        prompt_vector: gen_vector(1024),
-                    },
-                    ImageModel {
-                        prompt: "p4".to_string(),
-                        vector: gen_vector(512),
-                        prompt_vector: gen_vector(1024),
-                    },
-                ],
-                start_index: 0,
-                end_index: 1,
-            })
-            .await
-            .unwrap();
+        let id = db.insert_page(fake_page_model()).await.unwrap();
         assert_eq!(id.tb(), &TB::Page);
     }
 
@@ -673,84 +568,7 @@ mod test {
     async fn test_insert_web_page() {
         let db = setup().await;
         let id = db
-            .insert_web_page(
-                crate::db::model::web::WebPageModel {
-                    page: vec![
-                        crate::db::model::PageModel {
-                            text: vec![
-                                TextModel {
-                                    data: "data".to_string(),
-                                    vector: gen_vector(1024),
-                                    en_data: "en_data".to_string(),
-                                    en_vector: gen_vector(1024),
-                                },
-                                TextModel {
-                                    data: "data2".to_string(),
-                                    vector: gen_vector(1024),
-                                    en_data: "en_data2".to_string(),
-                                    en_vector: gen_vector(1024),
-                                },
-                            ],
-                            image: vec![
-                                ImageModel {
-                                    prompt: "p3".to_string(),
-                                    vector: gen_vector(512),
-                                    prompt_vector: gen_vector(1024),
-                                },
-                                ImageModel {
-                                    prompt: "p4".to_string(),
-                                    vector: gen_vector(512),
-                                    prompt_vector: gen_vector(1024),
-                                },
-                            ],
-                            start_index: 0,
-                            end_index: 1,
-                        },
-                        crate::db::model::PageModel {
-                            text: vec![
-                                TextModel {
-                                    data: "data".to_string(),
-                                    vector: gen_vector(1024),
-                                    en_data: "en_data".to_string(),
-                                    en_vector: gen_vector(1024),
-                                },
-                                TextModel {
-                                    data: "data2".to_string(),
-                                    vector: gen_vector(1024),
-                                    en_data: "en_data2".to_string(),
-                                    en_vector: gen_vector(1024),
-                                },
-                            ],
-                            image: vec![
-                                ImageModel {
-                                    prompt: "p3".to_string(),
-                                    vector: gen_vector(512),
-                                    prompt_vector: gen_vector(1024),
-                                },
-                                ImageModel {
-                                    prompt: "p4".to_string(),
-                                    vector: gen_vector(512),
-                                    prompt_vector: gen_vector(1024),
-                                },
-                            ],
-                            start_index: 0,
-                            end_index: 1,
-                        },
-                    ],
-                },
-                SearchPayload {
-                    file_identifier: "file_identifier_web_page".to_string(),
-                    task_type: ContentTaskType::WebPage(WebPageTaskType::Transform(
-                        WebPageTransformTask {},
-                    )),
-                    metadata: SearchMetadata::WebPage(
-                        crate::query::payload::web_page::WebPageSearchMetadata {
-                            start_index: 0,
-                            end_index: 1,
-                        },
-                    ),
-                },
-            )
+            .insert_web_page(fake_web_page_model(), fake_web_page_payload())
             .await
             .unwrap();
         assert_eq!(id.tb(), &TB::Web);
@@ -760,82 +578,7 @@ mod test {
     async fn test_insert_document() {
         let db = setup().await;
         let id = db
-            .insert_document(
-                crate::db::model::document::DocumentModel {
-                    page: vec![
-                        crate::db::model::PageModel {
-                            text: vec![
-                                TextModel {
-                                    data: "data".to_string(),
-                                    vector: gen_vector(1024),
-                                    en_data: "en_data".to_string(),
-                                    en_vector: gen_vector(1024),
-                                },
-                                TextModel {
-                                    data: "data2".to_string(),
-                                    vector: gen_vector(1024),
-                                    en_data: "en_data2".to_string(),
-                                    en_vector: gen_vector(1024),
-                                },
-                            ],
-                            image: vec![
-                                ImageModel {
-                                    prompt: "p3".to_string(),
-                                    vector: gen_vector(512),
-                                    prompt_vector: gen_vector(1024),
-                                },
-                                ImageModel {
-                                    prompt: "p4".to_string(),
-                                    vector: gen_vector(512),
-                                    prompt_vector: gen_vector(1024),
-                                },
-                            ],
-                            start_index: 0,
-                            end_index: 1,
-                        },
-                        crate::db::model::PageModel {
-                            text: vec![
-                                TextModel {
-                                    data: "data".to_string(),
-                                    vector: gen_vector(1024),
-                                    en_data: "en_data".to_string(),
-                                    en_vector: gen_vector(1024),
-                                },
-                                TextModel {
-                                    data: "data2".to_string(),
-                                    vector: gen_vector(1024),
-                                    en_data: "en_data2".to_string(),
-                                    en_vector: gen_vector(1024),
-                                },
-                            ],
-                            image: vec![
-                                ImageModel {
-                                    prompt: "p3".to_string(),
-                                    vector: gen_vector(512),
-                                    prompt_vector: gen_vector(1024),
-                                },
-                                ImageModel {
-                                    prompt: "p4".to_string(),
-                                    vector: gen_vector(512),
-                                    prompt_vector: gen_vector(1024),
-                                },
-                            ],
-                            start_index: 0,
-                            end_index: 1,
-                        },
-                    ],
-                },
-                SearchPayload {
-                    file_identifier: "file_identifier_document".to_string(),
-                    task_type: ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(
-                        RawTextChunkSumEmbedTask {},
-                    )),
-                    metadata: SearchMetadata::RawText(RawTextSearchMetadata {
-                        start_index: 0,
-                        end_index: 1,
-                    }),
-                },
-            )
+            .insert_document(fake_document(), fake_document_payload())
             .await
             .unwrap();
         assert_eq!(id.tb(), &TB::Document);
