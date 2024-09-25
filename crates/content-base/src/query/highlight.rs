@@ -15,23 +15,28 @@ use content_base_task::{
 /// - Image: Retrieves the image description.
 /// - RawText: Extracts text content for the given index range.
 /// - WebPage: Extracts webpage content for the given index range.
-pub async fn retrieve_highlight_text_with_metadata(
+pub(super) async fn retrieve_highlight(
     ctx: &ContentBaseCtx,
-    file_info: &FileInfo,
+    file_identifier: &str,
     metadata: &ContentIndexMetadata,
-) -> anyhow::Result<String> {
+) -> Option<String> {
+    let file_info = FileInfo {
+        file_identifier: file_identifier.to_string(),
+        file_path: "/-/invalid/-/".to_string().into(),
+    };
     // let task_record = TaskRecord::from_content_base(file_info.file_identifier.as_str(), ctx).await;
     match metadata {
         ContentIndexMetadata::Video(video_metadata) => {
             let chunk_sum_task = VideoTransChunkSumTask;
             chunk_sum_task
                 .sum_content(
-                    file_info,
+                    &file_info,
                     ctx,
                     video_metadata.start_timestamp,
                     video_metadata.end_timestamp,
                 )
                 .await
+                .ok()
             // let chunk_task = VideoTransChunkTask;
             // let chunks = chunk_task.chunk_content(file_info, ctx).await?;
             // let matching_chunks = chunks
@@ -56,40 +61,52 @@ pub async fn retrieve_highlight_text_with_metadata(
             let chunk_sum_task = AudioTransChunkSumTask;
             chunk_sum_task
                 .sum_content(
-                    file_info,
+                    &file_info,
                     ctx,
                     audio_metadata.start_timestamp,
                     audio_metadata.end_timestamp,
                 )
                 .await
+                .ok()
         }
         ContentIndexMetadata::Image(_) => {
             let chunk_sum_task = ImageDescriptionTask;
-            chunk_sum_task.description_content(file_info, ctx).await
+            chunk_sum_task
+                .description_content(&file_info, ctx)
+                .await
+                .ok()
         }
         ContentIndexMetadata::RawText(text_metadata) => {
             let chunk_task = RawTextChunkTask;
-            let chunks = chunk_task.chunk_content(file_info, ctx).await?;
-            let content = chunks
-                .iter()
-                .skip(text_metadata.start_index)
-                .take(text_metadata.end_index - text_metadata.start_index + 1)
-                .map(|chunk| chunk.to_owned())
-                .collect::<Vec<String>>()
-                .join(" ");
-            Ok(content)
+            match chunk_task.chunk_content(&file_info, ctx).await {
+                Ok(chunks) => {
+                    let content = chunks
+                        .iter()
+                        .skip(text_metadata.start_index)
+                        .take(text_metadata.end_index - text_metadata.start_index + 1)
+                        .map(|chunk| chunk.to_owned())
+                        .collect::<Vec<String>>()
+                        .join(" ");
+                    Some(content)
+                }
+                Err(_) => None,
+            }
         }
         ContentIndexMetadata::WebPage(webpage_metadata) => {
             let chunk_task = WebPageChunkTask;
-            let chunks = chunk_task.chunk_content(file_info, ctx).await?;
-            let content = chunks
-                .iter()
-                .skip(webpage_metadata.start_index)
-                .take(webpage_metadata.end_index - webpage_metadata.start_index + 1)
-                .map(|chunk| chunk.to_owned())
-                .collect::<Vec<String>>()
-                .join(" ");
-            Ok(content)
+            match chunk_task.chunk_content(&file_info, ctx).await {
+                Ok(chunks) => {
+                    let content = chunks
+                        .iter()
+                        .skip(webpage_metadata.start_index)
+                        .take(webpage_metadata.end_index - webpage_metadata.start_index + 1)
+                        .map(|chunk| chunk.to_owned())
+                        .collect::<Vec<String>>()
+                        .join(" ");
+                    Some(content)
+                }
+                Err(_) => None,
+            }
         } // Add cases for other content types
           // _ => anyhow::bail!("Unsupported content type"),
     }

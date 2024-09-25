@@ -1,10 +1,8 @@
 use crate::ContentBase;
 use ai::TextEmbeddingModel;
-use content_base_task::FileInfo;
-use highlight::retrieve_highlight_text_with_metadata;
 use payload::{ContentIndexPayload, RetrievalResultData, SearchResultData};
 use qdrant_client::qdrant::SearchPointsBuilder;
-use search::{group_results_by_asset, reorder_final_results};
+use search::{group_content_index_by_file_identifier, reorder_final_results};
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -82,7 +80,7 @@ impl ContentBase {
         let (text_result, vision_result) = tokio::join!(text_search, vision_search);
 
         let text_response = text_result?;
-        group_results_by_asset(&text_response.result, &mut retrieval_results);
+        group_content_index_by_file_identifier(&text_response.result, &mut retrieval_results);
 
         let vision_response = vision_result?;
         let vision_points: Vec<_> = vision_response
@@ -93,27 +91,9 @@ impl ContentBase {
                 v
             })
             .collect();
-        group_results_by_asset(&vision_points, &mut retrieval_results);
+        group_content_index_by_file_identifier(&vision_points, &mut retrieval_results);
 
-        let mut reordered_results = reorder_final_results(&mut retrieval_results)?;
-
-        for result in reordered_results.iter_mut() {
-            let file_info = FileInfo {
-                file_identifier: result.file_identifier.clone(),
-                file_path: "/-/invalid/-/".to_string().into(),
-            };
-            if let Ok(artifact_payload) =
-                retrieve_highlight_text_with_metadata(&self.ctx, &file_info, &result.metadata).await
-            {
-                tracing::debug!(
-                    file_info = file_info.file_identifier.as_str(),
-                    metadata = format!("{:?}", result.metadata),
-                    "Highlight: {}",
-                    &artifact_payload
-                );
-                result.highlight = Some(artifact_payload);
-            }
-        }
+        let reordered_results = reorder_final_results(&self.ctx, &retrieval_results).await?;
 
         Ok(reordered_results)
     }
