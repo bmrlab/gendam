@@ -34,3 +34,9 @@ pub enum SearchResult {
     Vector(VectorSearchResult),
     FullText(FullTextSearchResult),
 }
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum SearchType {
+    Vector,
+    FullText,
+}

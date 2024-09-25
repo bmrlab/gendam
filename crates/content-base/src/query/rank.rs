@@ -2,6 +2,7 @@ use crate::concat_arrays;
 use crate::db::model::id::ID;
 use crate::query::model::full_text::FullTextSearchResult;
 use crate::query::model::vector::VectorSearchResult;
+use crate::query::model::SearchType;
 use std::collections::{HashMap, HashSet};
 use tracing::info;
 
@@ -12,6 +13,7 @@ pub struct RankResult {
     pub id: ID,
     /// 并不是真正的得分，而是排序的依据
     pub score: f32,
+    pub search_type: SearchType,
 }
 
 pub enum ScoreType {
@@ -48,6 +50,7 @@ impl Rank {
             .map(|x| RankResult {
                 id: x.id.clone(),
                 score: Self::calculate_score(x.score.iter().map(|x| x.1).collect(), &score_type),
+                search_type: SearchType::FullText,
             })
             .collect())
     }
@@ -71,6 +74,7 @@ impl Rank {
             .map(|x| RankResult {
                 id: x.id.clone(),
                 score: if x.distance < 0.0 { 0.0 } else { x.distance },
+                search_type: SearchType::Vector,
             })
             .collect())
     }
@@ -89,16 +93,15 @@ impl Rank {
         let concat_arrays = concat_arrays!(full_text_rank.clone(), vector_rank.clone()).into_vec();
         let mut rank_result: Vec<RankResult> = Rank::rrf(vec![full_text_rank, vector_rank], None)
             .into_iter()
-            .map(|x| RankResult {
-                id: ID::from(x.as_str()),
-                score: concat_arrays
+            .filter_map(|x| {
+                concat_arrays
                     .iter()
                     .find(|y| y.id.id_with_table() == x)
-                    .unwrap_or(&RankResult {
+                    .map(|r| RankResult {
                         id: ID::from(x.as_str()),
-                        score: 0.0,
+                        score: r.score,
+                        search_type: r.search_type.clone(),
                     })
-                    .score,
             })
             .collect();
 
