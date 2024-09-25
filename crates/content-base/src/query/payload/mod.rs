@@ -5,8 +5,8 @@ pub mod video;
 pub mod web_page;
 
 use self::{
-    audio::AudioSearchMetadata, image::ImageSearchMetadata, raw_text::RawTextSearchMetadata,
-    video::VideoSearchMetadata, web_page::WebPageSearchMetadata,
+    audio::AudioIndexMetadata, image::ImageIndexMetadata, raw_text::RawTextIndexMetadata,
+    video::VideoIndexMetadata, web_page::WebPageIndexMetadata,
 };
 use content_base_task::ContentTaskType;
 use qdrant_client::Payload;
@@ -17,11 +17,11 @@ use uuid::Uuid;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "content_type")]
 pub enum ContentIndexMetadata {
-    Video(VideoSearchMetadata),
-    Audio(AudioSearchMetadata),
-    Image(ImageSearchMetadata),
-    RawText(RawTextSearchMetadata),
-    WebPage(WebPageSearchMetadata),
+    Video(VideoIndexMetadata),
+    Audio(AudioIndexMetadata),
+    Image(ImageIndexMetadata),
+    RawText(RawTextIndexMetadata),
+    WebPage(WebPageIndexMetadata),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -63,7 +63,7 @@ impl Into<Payload> for ContentIndexPayload {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SearchResultData {
     pub file_identifier: String,
     pub score: f32,
@@ -71,7 +71,7 @@ pub struct SearchResultData {
     pub highlight: Option<String>,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RetrievalResultData {
     pub file_identifier: String,
     pub task_type: ContentTaskType,
@@ -79,7 +79,7 @@ pub struct RetrievalResultData {
     pub metadata: ContentIndexMetadata,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SearchRequest {
     pub text: String,
 }

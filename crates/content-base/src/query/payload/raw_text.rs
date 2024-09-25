@@ -2,12 +2,12 @@ use super::ContentIndexMetadata;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct RawTextSearchMetadata {
+pub struct RawTextIndexMetadata {
     pub start_index: usize,
     pub end_index: usize,
 }
 
-impl TryFrom<ContentIndexMetadata> for RawTextSearchMetadata {
+impl TryFrom<ContentIndexMetadata> for RawTextIndexMetadata {
     type Error = anyhow::Error;
 
     fn try_from(metadata: ContentIndexMetadata) -> Result<Self, Self::Error> {
@@ -18,21 +18,21 @@ impl TryFrom<ContentIndexMetadata> for RawTextSearchMetadata {
     }
 }
 
-impl From<RawTextSearchMetadata> for ContentIndexMetadata {
-    fn from(metadata: RawTextSearchMetadata) -> Self {
+impl From<RawTextIndexMetadata> for ContentIndexMetadata {
+    fn from(metadata: RawTextIndexMetadata) -> Self {
         ContentIndexMetadata::RawText(metadata)
     }
 }
 
-impl PartialEq for RawTextSearchMetadata {
+impl PartialEq for RawTextIndexMetadata {
     fn eq(&self, other: &Self) -> bool {
         self.start_index == other.start_index && self.end_index == other.end_index
     }
 }
 
-impl Eq for RawTextSearchMetadata {}
+impl Eq for RawTextIndexMetadata {}
 
-impl PartialOrd for RawTextSearchMetadata {
+impl PartialOrd for RawTextIndexMetadata {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         match self.start_index.partial_cmp(&other.start_index) {
             Some(std::cmp::Ordering::Equal) => self.end_index.partial_cmp(&other.end_index),
@@ -41,7 +41,7 @@ impl PartialOrd for RawTextSearchMetadata {
     }
 }
 
-impl Ord for RawTextSearchMetadata {
+impl Ord for RawTextIndexMetadata {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.partial_cmp(other).unwrap()
     }
