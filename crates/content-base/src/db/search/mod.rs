@@ -161,7 +161,7 @@ impl DB {
 }
 
 #[derive(Debug)]
-pub struct BacktraceResult {
+pub struct BacktrackResult {
     /// 只包含 text 和 image 表的 ID
     pub origin_id: ID,
     /// 命中的 id
@@ -178,10 +178,10 @@ impl DB {
     /// ids: 只包含 text 和 image 表的 ID
     /// ids 是去重的
     /// 查询出的结果顺序是和 ids 一致的
-    pub async fn backtrace_by_ids(&self, ids: Vec<ID>) -> anyhow::Result<Vec<BacktraceResult>> {
+    pub async fn backtrace_by_ids(&self, ids: Vec<ID>) -> anyhow::Result<Vec<BacktrackResult>> {
         let backtrack = stream::iter(ids)
             .then(|id| async move {
-                let mut res: Vec<BacktraceResult> = vec![];
+                let mut res: Vec<BacktrackResult> = vec![];
                 let has_relation = self.has_contains_relation(&id).await?;
                 if has_relation {
                     let backtrack_relation =
@@ -198,7 +198,7 @@ impl DB {
                     for br in backtrack_relation {
                         let entity = self.select_entity_by_relation(&br.result).await?;
                         for select_entity in entity {
-                            res.push(BacktraceResult {
+                            res.push(BacktrackResult {
                                 origin_id: id.clone(),
                                 hit_id: br.hit_id.clone(),
                                 result: select_entity.into(),
@@ -228,21 +228,21 @@ impl DB {
                         }
                     };
                     if let Some(entity) = data {
-                        res.push(BacktraceResult {
+                        res.push(BacktrackResult {
                             origin_id: id.clone(),
                             hit_id: vec![id.clone()],
                             result: entity.into(),
                         });
                     }
                 }
-                Ok::<Vec<BacktraceResult>, anyhow::Error>(res)
+                Ok::<Vec<BacktrackResult>, anyhow::Error>(res)
             })
             .collect::<Vec<_>>()
             .await
             .into_iter()
             .filter_map(Result::ok)
             .flatten()
-            .collect::<Vec<BacktraceResult>>();
+            .collect::<Vec<BacktrackResult>>();
 
         Ok(backtrack)
     }
