@@ -508,7 +508,6 @@ mod test {
     use content_base_task::web_page::WebPageTaskType;
     use content_base_task::ContentTaskType;
     use itertools::Itertools;
-    use rand::Rng;
     use std::process::id;
     use test_log::test;
 

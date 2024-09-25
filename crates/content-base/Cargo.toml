@@ -35,3 +35,9 @@ fake = { version = "2.9.2", features = ["derive"] }
 # for test, remove it in production
 dotenvy = { workspace = true }
 rand = "0.8.5"
+
+[dependencies.educe]
+version = "0.6"
+features = ["Debug"]
+default-features = false
+
