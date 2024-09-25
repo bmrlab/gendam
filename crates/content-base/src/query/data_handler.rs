@@ -1,11 +1,7 @@
-use ai::TextEmbeddingModel;
-use regex::Regex;
-
 use super::{model::SearchModel, HitResult, QueryPayload};
 use crate::db::model::SelectResultModel;
 use crate::query::payload::audio::AudioSearchMetadata;
 use crate::query::payload::image::ImageSearchMetadata;
-use crate::query::payload::raw_text::RawTextSearchMetadata;
 use crate::query::payload::video::VideoSearchMetadata;
 use crate::query::payload::web_page::WebPageSearchMetadata;
 use crate::query::payload::{SearchMetadata, SearchResultData};
@@ -16,6 +12,8 @@ use crate::{
     utils::deduplicate,
     ContentBase,
 };
+use ai::TextEmbeddingModel;
+use regex::Regex;
 
 impl ContentBase {
     /// 构造内部查询模型 SearchModel
@@ -76,10 +74,16 @@ impl ContentBase {
             SelectResultModel::Audio(audio) => audio
                 .audio_frame
                 .iter()
-                .map(|frame| {
-                    SearchMetadata::Audio(AudioSearchMetadata {
-                        start_timestamp: frame.start_timestamp as i64,
-                        end_timestamp: frame.end_timestamp as i64,
+                .filter_map(|frame| {
+                    frame.id.as_ref().and_then(|frame_id| {
+                        if hit_result.hit_id.contains(frame_id) {
+                            Some(SearchMetadata::Audio(AudioSearchMetadata {
+                                start_timestamp: frame.start_timestamp as i64,
+                                end_timestamp: frame.end_timestamp as i64,
+                            }))
+                        } else {
+                            None
+                        }
                     })
                 })
                 .collect(),
@@ -87,20 +91,32 @@ impl ContentBase {
                 let audio_metadata = video
                     .audio_frame
                     .iter()
-                    .map(|frame| {
-                        SearchMetadata::Video(VideoSearchMetadata {
-                            start_timestamp: frame.start_timestamp as i64,
-                            end_timestamp: frame.end_timestamp as i64,
+                    .filter_map(|frame| {
+                        frame.id.as_ref().and_then(|frame_id| {
+                            if hit_result.hit_id.contains(frame_id) {
+                                Some(SearchMetadata::Video(VideoSearchMetadata {
+                                    start_timestamp: frame.start_timestamp as i64,
+                                    end_timestamp: frame.end_timestamp as i64,
+                                }))
+                            } else {
+                                None
+                            }
                         })
                     })
                     .collect::<Vec<SearchMetadata>>();
                 let image_metadata = video
                     .image_frame
                     .iter()
-                    .map(|frame| {
-                        SearchMetadata::Video(VideoSearchMetadata {
-                            start_timestamp: frame.start_timestamp as i64,
-                            end_timestamp: frame.end_timestamp as i64,
+                    .filter_map(|frame| {
+                        frame.id.as_ref().and_then(|frame_id| {
+                            if hit_result.hit_id.contains(frame_id) {
+                                Some(SearchMetadata::Video(VideoSearchMetadata {
+                                    start_timestamp: frame.start_timestamp as i64,
+                                    end_timestamp: frame.end_timestamp as i64,
+                                }))
+                            } else {
+                                None
+                            }
                         })
                     })
                     .collect::<Vec<SearchMetadata>>();
@@ -110,20 +126,32 @@ impl ContentBase {
             SelectResultModel::WebPage(web_page) => web_page
                 .page
                 .iter()
-                .map(|page| {
-                    SearchMetadata::WebPage(WebPageSearchMetadata {
-                        start_index: page.start_index as usize,
-                        end_index: page.end_index as usize,
+                .filter_map(|page| {
+                    page.id.as_ref().and_then(|page_id| {
+                        if hit_result.hit_id.contains(page_id) {
+                            Some(SearchMetadata::WebPage(WebPageSearchMetadata {
+                                start_index: page.start_index as usize,
+                                end_index: page.end_index as usize,
+                            }))
+                        } else {
+                            None
+                        }
                     })
                 })
                 .collect(),
             SelectResultModel::Document(document) => document
                 .page
                 .iter()
-                .map(|page| {
-                    SearchMetadata::RawText(RawTextSearchMetadata {
-                        start_index: page.start_index as usize,
-                        end_index: page.end_index as usize,
+                .filter_map(|page| {
+                    page.id.as_ref().and_then(|page_id| {
+                        if hit_result.hit_id.contains(page_id) {
+                            Some(SearchMetadata::WebPage(WebPageSearchMetadata {
+                                start_index: page.start_index as usize,
+                                end_index: page.end_index as usize,
+                            }))
+                        } else {
+                            None
+                        }
                     })
                 })
                 .collect(),

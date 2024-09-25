@@ -134,7 +134,6 @@ impl ContentBase {
 
                 let rank_result =
                     Rank::rank((full_text_result, vector_result), Some(true), Some(10))?;
-                debug!("rank result: {rank_result:?}");
                 let search_ids: Vec<ID> =
                     rank_result.iter().map(|x| x.id.clone()).unique().collect();
                 debug!("search ids: {search_ids:?}");
@@ -142,7 +141,7 @@ impl ContentBase {
                 // (search_id, select_result)
                 // 回传 search_id 是为了匹配 rank 中的分数
                 let select_by_id_result = self.db.try_read()?.backtrace_by_ids(search_ids).await?;
-                debug!("select by id result: {select_by_id_result:?}");
+                debug!("select by id result: {select_by_id_result:#?}");
                 let select_result = select_by_id_result
                     .into_iter()
                     .filter_map(|backtrack| {
@@ -152,7 +151,7 @@ impl ContentBase {
                             .map(|r| (backtrack, r.score))
                     })
                     .collect::<Vec<(BacktrackResult, f32)>>();
-                debug!("select result: {:?}", select_result);
+                debug!("select result: {:#?}", select_result);
 
                 let hit_result = stream::iter(select_result)
                     .then(|(bt, score)| async move {
@@ -174,7 +173,7 @@ impl ContentBase {
                     .into_iter()
                     .filter_map(Result::ok)
                     .collect::<Vec<HitResult>>();
-                debug!("hit result: {hit_result:?}");
+                debug!("hit result: {:#?}", hit_result);
 
                 Ok(hit_result
                     .into_iter()
