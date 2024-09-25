@@ -97,6 +97,7 @@ pub struct SearchResultPayload {
     pub file_path: FilePathWithAssetObjectData,
     pub metadata: SearchResultMetadata,
     pub score: f32,
+    pub highlight: Option<String>,
 }
 
 pub async fn search_all(
@@ -126,6 +127,7 @@ pub async fn search_all(
             file_path: file_path.clone().into(),
             metadata: SearchResultMetadata::from(&item.metadata),
             score: item.score,
+            highlight: item.highlight.clone(),
         }
     })
     .await?;

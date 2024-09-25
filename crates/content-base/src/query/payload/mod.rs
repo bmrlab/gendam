@@ -55,6 +55,7 @@ pub struct SearchResultData {
     pub file_identifier: String,
     pub score: f32,
     pub metadata: SearchMetadata,
+    pub highlight: Option<String>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
