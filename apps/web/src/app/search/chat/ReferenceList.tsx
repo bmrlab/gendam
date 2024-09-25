@@ -1,9 +1,9 @@
 'use client'
 
-import RetrievalResultItem, { RetrievalResultItemPreview } from '@/components/FileContent/RAG'
 import { ExtractExplorerItem, uniqueId } from '@/Explorer/types'
 import { Button } from '@gendam/ui/v2/button'
 import { useState } from 'react'
+import RetrievalResultItem, { RetrievalResultItemPreview } from './RAGRetrievalResultItem'
 
 interface RAGReferenceListProps {
   items: ExtractExplorerItem<'RetrievalResult'>[]
