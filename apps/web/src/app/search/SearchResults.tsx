@@ -4,7 +4,7 @@ import { uniqueId, type ExtractExplorerItem } from '@/Explorer/types'
 import useDebouncedCallback from '@/hooks/useDebouncedCallback'
 import type { SearchResultPayload } from '@/lib/bindings'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import SearchItem from './SearchItem'
+import SearchViewItem from './SearchViewItem'
 
 export type ItemWithSize = {
   data: ExtractExplorerItem<'SearchResult'>
@@ -104,7 +104,7 @@ export default function SearchResults() {
       style={{ columnGap: `${gap}px`, rowGap: '30px' }}
     >
       {itemsWithSize.map((item: ItemWithSize, index: number) => (
-        <SearchItem key={uniqueId(item.data)} {...item}></SearchItem>
+        <SearchViewItem key={uniqueId(item.data)} {...item}></SearchViewItem>
       ))}
     </div>
   )
