@@ -11,7 +11,7 @@ const Content = React.forwardRef<
     ref={ref}
     sideOffset={sideOffset}
     className={cn(
-      'z-50 bg-app-overlay text-ink overflow-hidden rounded-md px-3 py-1.5 text-xs',
+      'bg-app-overlay text-ink z-50 rounded-md px-3 py-1.5 text-xs',
       'animate-in data-[state=closed]:animate-out',
       'fade-in-0 data-[state=closed]:fade-out-0',
       'zoom-in-95 data-[state=closed]:zoom-out-95',
@@ -26,16 +26,32 @@ const Content = React.forwardRef<
 ))
 Content.displayName = TooltipPrimitive.Content.displayName
 
+const Arrow = React.forwardRef<
+  React.ElementRef<typeof TooltipPrimitive.Arrow>,
+  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Arrow>
+>(({ className, ...props }, ref) => (
+  <TooltipPrimitive.Arrow
+    ref={ref}
+    className={cn(
+      'fill-app-overlay', // same background color 'app-overlay' with Content, but svg use fill instead of bg
+      // 'data-[side=top]:rotate-180',
+      // 'data-[side=bottom]:rotate-0',
+      // 'data-[side=left]:rotate-90',
+      // 'data-[side=right]:rotate-90',
+      className,
+    )}
+    {...props}
+  />
+))
+Arrow.displayName = TooltipPrimitive.Arrow.displayName
 
 const Tooltip = {
   Provider: TooltipPrimitive.Provider,
   Root: TooltipPrimitive.Root,
   Trigger: TooltipPrimitive.Trigger,
   Portal: TooltipPrimitive.Portal,
+  Arrow,
   Content,
 }
 
-export {
-  TooltipPrimitive,
-  Tooltip
-}
+export { Tooltip, TooltipPrimitive }

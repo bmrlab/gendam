@@ -2,16 +2,18 @@
 import { useQuickViewStore } from '@/components/Shared/QuickView/store'
 import ViewItem from '@/Explorer/components/View/ViewItem'
 import { useExplorerContext } from '@/Explorer/hooks'
+import Icon from '@gendam/ui/icons'
+import { Tooltip } from '@gendam/ui/v2/tooltip'
 import classNames from 'classnames'
 import { useCallback, useMemo } from 'react'
 import SearchResultItem from './SearchResultItem'
 import { type ItemWithSize } from './SearchResults'
 
-const SearchItem: React.FC<ItemWithSize> = ({ data, width, height }) => {
+const SearchViewItem: React.FC<ItemWithSize> = ({ data, width, height }) => {
   const explorer = useExplorerContext()
   const quickViewStore = useQuickViewStore()
 
-  const highlight = useMemo(() => {
+  const isSelected = useMemo(() => {
     return explorer.isItemSelected(data)
   }, [data, explorer])
 
@@ -40,16 +42,35 @@ const SearchItem: React.FC<ItemWithSize> = ({ data, width, height }) => {
     <ViewItem data={data} onClick={onSelect} onDoubleClick={() => quickview()} isDraggable={false}>
       <div
         className={classNames(
-          'group relative overflow-hidden rounded-xl border-4',
+          'overflow-hidden rounded-xl border-2',
+          'flex flex-col items-stretch justify-stretch',
           // 'transition-all duration-200 ease-in-out',
-          highlight ? 'border-accent' : 'border-app-line/75',
+          isSelected ? 'border-accent' : 'border-app-line/75',
         )}
         style={{ width: `${width}px`, height: `${height}px` }}
       >
-        <SearchResultItem data={data} />
+        <div className="w-full flex-1 overflow-hidden">
+          <SearchResultItem data={data} />
+        </div>
+        <Tooltip.Provider delayDuration={200}>
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
+              <div className="bg-app-line/75 text-ink/60 flex w-full items-center justify-start gap-1 px-1 py-1 text-xs">
+                <Icon.File className="h-4 w-4" />
+                <div className="flex-1 origin-left scale-90 truncate">{data.highlight}</div>
+              </div>
+            </Tooltip.Trigger>
+            <Tooltip.Portal>
+              <Tooltip.Content sideOffset={5}>
+                <div className="max-h-64 max-w-80 overflow-auto whitespace-pre-line break-words">{data.highlight}</div>
+                <Tooltip.Arrow />
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip.Root>
+        </Tooltip.Provider>
       </div>
     </ViewItem>
   )
 }
 
-export default SearchItem
+export default SearchViewItem
