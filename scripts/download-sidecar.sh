@@ -15,16 +15,20 @@ if [ ! -f "${sidecar_dir}/qdrant-${triple}" ]; then
 fi
 chmod +x "${sidecar_dir}/qdrant-${triple}"
 
-ffmpeg_version=6.1.1
+# ffmpeg_version=6.1.1
+ffmpeg_version=7.0.0
 if [ ! -f "${sidecar_dir}/ffmpeg-${triple}" ]; then
-  curl -L "https://evermeet.cx/ffmpeg/ffmpeg-${ffmpeg_version}.zip" | tar xz -C "${sidecar_dir}/"
+  # curl -L "https://evermeet.cx/ffmpeg/ffmpeg-${ffmpeg_version}.zip" | tar xz -C "${sidecar_dir}/"
+  curl -L "https://gendam.s3.us-west-1.amazonaws.com/binaries/ffmpeg-${ffmpeg_version}-${triple}.zip" | tar xz -C "${sidecar_dir}/"
   mv "${sidecar_dir}/ffmpeg" "${sidecar_dir}/ffmpeg-${triple}"
 fi
 chmod +x "${sidecar_dir}/ffmpeg-${triple}"
 
-ffprobe_version=6.1.1
+# ffprobe_version=6.1.1
+ffprobe_version=7.0.0
 if [ ! -f "${sidecar_dir}/ffprobe-${triple}" ]; then
-  curl -L "https://evermeet.cx/ffmpeg/ffprobe-${ffprobe_version}.zip" | tar xz -C "${sidecar_dir}/"
+  # curl -L "https://evermeet.cx/ffmpeg/ffprobe-${ffprobe_version}.zip" | tar xz -C "${sidecar_dir}/"
+  curl -L "https://gendam.s3.us-west-1.amazonaws.com/binaries/ffprobe-${ffprobe_version}-${triple}.zip" | tar xz -C "${sidecar_dir}/"
   mv "${sidecar_dir}/ffprobe" "${sidecar_dir}/ffprobe-${triple}"
 fi
 chmod +x "${sidecar_dir}/ffprobe-${triple}"
