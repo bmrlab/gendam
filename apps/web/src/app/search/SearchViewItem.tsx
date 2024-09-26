@@ -42,14 +42,14 @@ const SearchViewItem: React.FC<ItemWithSize> = ({ data, width, height }) => {
     <ViewItem data={data} onClick={onSelect} onDoubleClick={() => quickview()} isDraggable={false}>
       <div
         className={classNames(
-          'overflow-hidden rounded-xl border-2',
+          'overflow-hidden rounded-lg border-2',
           'flex flex-col items-stretch justify-stretch',
-          // 'transition-all duration-200 ease-in-out',
+          'transition-colors duration-200 ease-in-out',
           isSelected ? 'border-accent' : 'border-app-line/75',
         )}
         style={{ width: `${width}px`, height: `${height}px` }}
       >
-        <div className="w-full flex-1 overflow-hidden">
+        <div className="group relative w-full flex-1 overflow-hidden">
           <SearchResultItem data={data} />
         </div>
         <Tooltip.Provider delayDuration={200}>
