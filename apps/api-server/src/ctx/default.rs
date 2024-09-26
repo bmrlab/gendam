@@ -341,7 +341,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
+    #[tracing::instrument(level = "info", skip(self))] // create a span for better tracking
     async fn load_library(&self, library_id: &str) -> Result<Library, rspc::Error> {
         {
             let mut is_busy = self.is_busy.lock().unwrap();
@@ -361,6 +361,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
         if let Some(library) = self.current_library.lock().unwrap().as_ref() {
             if library.id == library_id {
+                tracing::info!("Library with id {} is already loaded", library_id);
                 return Ok(library.clone());
             } else {
                 return Err(rspc::Error::new(

@@ -46,30 +46,27 @@ export default function ClientLayout({
     }
   }, [librarySettings?.appearanceTheme])
 
-  const loadLibrary = useCallback(
-    async (libraryId: string) => {
-      try {
-        const library = await client.mutation(['libraries.load_library', libraryId])
-        setLibrary(library)
-      } catch (error: any) {
-        if (error?.code === 409 && error?.message === 'App is busy') {
-          return { isBusy: true }
-        } else {
-          toast.error('Failed to load library', { description: error?.message || error })
-          throw error
-        }
-      }
-      try {
-        const librarySettings = await client.query(['libraries.get_library_settings'])
-        setLibrarySettings(librarySettings)
-      } catch (error: any) {
-        toast.error('Failed to get library settings', { description: error?.message || error })
+  const loadLibrary = useCallback(async (libraryId: string) => {
+    try {
+      const library = await client.mutation(['libraries.load_library', libraryId])
+      setLibrary(library)
+    } catch (error: any) {
+      if (error?.code === 409 && error?.message === 'App is busy') {
+        return { isBusy: true }
+      } else {
+        toast.error('Failed to load library', { description: error?.message || error })
         throw error
       }
-      return {}
-    },
-    [setLibrary, setLibrarySettings],
-  )
+    }
+    try {
+      const librarySettings = await client.query(['libraries.get_library_settings'])
+      setLibrarySettings(librarySettings)
+    } catch (error: any) {
+      toast.error('Failed to get library settings', { description: error?.message || error })
+      throw error
+    }
+    return {}
+  }, [])
 
   const unloadLibrary = useCallback(async () => {
     try {
@@ -85,7 +82,7 @@ export default function ClientLayout({
     setLibrary(null)
     setLibrarySettings(null)
     return {}
-  }, [setLibrary, setLibrarySettings])
+  }, [])
 
   const listenToCmdQ = useCallback(() => {
     document.addEventListener('keydown', async (event) => {
@@ -115,6 +112,7 @@ export default function ClientLayout({
     setPending(true)
     Promise.all([client.query(['users.get']), client.query(['libraries.status'])])
       .then(async ([auth, { id, loaded, isBusy }]) => {
+        console.log(id, loaded, isBusy)
         setAuth(auth)
         if (!id) {
           setPending(false)
@@ -158,7 +156,7 @@ export default function ClientLayout({
         window.removeEventListener('contextmenu', disableContextMenu)
       }
     }
-  }, [loadLibrary, unloadLibrary, listenToCmdQ, setPending])
+  }, [loadLibrary, unloadLibrary, listenToCmdQ])
 
   const switchCurrentLibraryById = useCallback(
     async (libraryId: string) => {
@@ -175,7 +173,7 @@ export default function ClientLayout({
         console.error(error)
       }
     },
-    [loadLibrary, unloadLibrary, library?.id, setPending],
+    [loadLibrary, unloadLibrary, library?.id],
   )
 
   const updateLibrarySettings = useCallback(

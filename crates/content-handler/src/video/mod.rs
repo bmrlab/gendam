@@ -68,10 +68,11 @@ pub struct VideoDecoder {
 
 impl VideoDecoder {
     pub fn new(filename: impl AsRef<Path>) -> anyhow::Result<Self> {
-        let current_exe_path = std::env::current_exe().expect("failed to get current executable");
+        let current_exe_path = std::env::current_exe()
+            .map_err(|e| anyhow::anyhow!("Failed to get current executable: {e}"))?;
         let current_dir = current_exe_path
             .parent()
-            .expect("failed to get parent directory");
+            .ok_or_else(|| anyhow::anyhow!("Failed to get parent directory"))?;
         let binary_file_path = current_dir.join("ffmpeg");
         let ffprobe_file_path = current_dir.join("ffprobe");
 
@@ -94,7 +95,7 @@ impl VideoDecoder {
                 "json",
                 self.video_file_path
                     .to_str()
-                    .expect("invalid video file path"),
+                    .ok_or_else(|| anyhow::anyhow!("Invalid video file path"))?,
             ])
             .output()
         {
@@ -154,7 +155,7 @@ impl VideoDecoder {
                 "-i",
                 self.video_file_path
                     .to_str()
-                    .expect("invalid video file path"),
+                    .ok_or_else(|| anyhow::anyhow!("Invalid video file path"))?,
                 "-ss",
                 &seconds_string,
                 "-vf",
@@ -198,7 +199,7 @@ impl VideoDecoder {
                 "-i",
                 self.video_file_path
                     .to_str()
-                    .expect("invalid video file path"),
+                    .ok_or_else(|| anyhow::anyhow!("Invalid video file path"))?,
                 "-vf",
                 "scale='if(gte(iw,ih)*sar,768,-1)':'if(gte(iw,ih)*sar, -1, 768)',select=eq(n\\,0)",
                 "-vsync",
@@ -233,7 +234,7 @@ impl VideoDecoder {
                 "-i",
                 self.video_file_path
                     .to_str()
-                    .expect("invalid video file path"),
+                    .ok_or_else(|| anyhow::anyhow!("Invalid video file path"))?,
                 "-vf",
                 "scale='if(gte(iw,ih)*sar,768,-1)':'if(gte(iw,ih)*sar, -1, 768)', fps=1",
                 "-vsync",
@@ -243,8 +244,10 @@ impl VideoDecoder {
                 actual_frame_dir
                     .join(format!("%d000-tmp.{}", FRAME_FILE_EXTENSION))
                     .to_str()
-                    .expect("invalid frames dir path"),
+                    .ok_or_else(|| anyhow::anyhow!("Invalid frames dir path"))?,
             ])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .output()
         {
             Ok(output) => {
@@ -295,14 +298,16 @@ impl VideoDecoder {
                 "-i",
                 self.video_file_path
                     .to_str()
-                    .expect("invalid video file path"),
+                    .ok_or_else(|| anyhow::anyhow!("Invalid video file path"))?,
                 "-vn",
                 "-ar",
                 // the rate must be 16KHz to fit whisper.cpp
                 "16000",
                 "-ac",
                 "1",
-                tmp_path.to_str().expect("invalid audio path"),
+                tmp_path
+                    .to_str()
+                    .ok_or_else(|| anyhow::anyhow!("invalid audio path"))?,
             ])
             .output()
         {
@@ -370,7 +375,7 @@ impl VideoDecoder {
                 "-i",
                 self.video_file_path
                     .to_str()
-                    .expect("invalid video file path"),
+                    .ok_or_else(|| anyhow::anyhow!("Invalid video file path"))?,
                 "-ss",
                 &seconds_string_from,
                 "-to",
@@ -402,7 +407,7 @@ impl VideoDecoder {
                 "-i",
                 self.video_file_path
                     .to_str()
-                    .expect("invalid video file path"),
+                    .ok_or_else(|| anyhow::anyhow!("Invalid video file path"))?,
                 "-c:v",
                 "libx264",
                 "-c:a",
