@@ -1,8 +1,10 @@
 use anyhow::bail;
 use futures::future::join_all;
+use std::convert::Into;
 use tracing::{debug, error};
 
 use super::{constant::MAX_FULLTEXT_TOKEN, entity::vector::VectorSearchEntity, DB};
+use crate::db::entity::full_text::FullTextWithHighlightSearchEntity;
 use crate::db::entity::relation::RelationEntity;
 use crate::db::entity::{
     AudioEntity, DocumentEntity, ImageEntity, PayloadEntity, SelectResultEntity, TextEntity,
@@ -56,8 +58,24 @@ macro_rules! select_some_macro {
 
 // search
 impl DB {
-    /// 🔍 full text search
     pub async fn full_text_search(
+        &self,
+        data: Vec<String>,
+        with_highlight: bool,
+    ) -> anyhow::Result<Vec<FullTextSearchResult>> {
+        let a = if with_highlight {
+            self.full_text_search_with_highlight(data).await?
+        } else {
+            self._full_text_search(data).await?
+        };
+        Ok(a)
+    }
+
+    /// 🔍 full text search
+    /// 对每个分词进行全文搜索
+    /// 分词之间使用 OR 连接
+    /// 缺点是高亮结果是分散的
+    async fn _full_text_search(
         &self,
         data: Vec<String>,
     ) -> anyhow::Result<Vec<FullTextSearchResult>> {
@@ -100,6 +118,58 @@ impl DB {
                     text.iter()
                         .map(|t| t.convert_to_result(&data))
                         .collect::<Vec<_>>(),
+                )
+            }
+        });
+
+        let res: Vec<FullTextSearchResult> = join_all(futures)
+            .await
+            .into_iter()
+            .collect::<anyhow::Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect();
+
+        Ok(res)
+    }
+
+    /// 全文搜索并高亮
+    /// 将整个搜索结果丢进去，然后返回高亮结果
+    /// 分词之间的结果是 AND 连接
+    /// 缺点是无法直接确定命中了哪个分词
+    ///    - 可以通过正则 <b></b> 来确定关键词
+    async fn full_text_search_with_highlight(
+        &self,
+        data: Vec<String>,
+    ) -> anyhow::Result<Vec<FullTextSearchResult>> {
+        if data.is_empty() {
+            return Ok(vec![]);
+        }
+        let data = data.join(" ");
+
+        let futures = FULL_TEXT_SEARCH_TABLE.iter().map(|table| {
+            let sql = format!(
+                "SELECT id, search::score(0) as score, search::highlight('<b>', '</b>', 0) AS highlight FROM {} WHERE {} LIMIT {};",
+                table.table_name(),
+                format!("{} @0@ '{}'", table.column_name(), data),
+                SELEC_LIMIT
+            );
+            debug!(
+                "full-text search with highlight on table {}: {sql}",
+                table.table_name()
+            );
+
+            async move {
+                let mut resp = self.client.query(&sql).await?;
+                check_db_error_from_resp!(resp).map_err(|errors_map| {
+                    error!("full_text_search_with_highlight errors: {errors_map:?}");
+                    anyhow::anyhow!("Failed to full_text_search_with_highlight")
+                })?;
+                let text: Vec<FullTextWithHighlightSearchEntity> = resp.take(0)?;
+                Ok::<_, anyhow::Error>(
+                    text.into_iter()
+                        .map(Into::into)
+                        .collect::<Vec<FullTextSearchResult>>(),
                 )
             }
         });
@@ -419,5 +489,15 @@ mod test {
         assert!(res[0].hit_id.len() > 0);
         assert_eq!(res[1].hit_id.len(), 1);
         assert_eq!(res[1].hit_id[0], single_text_id);
+    }
+
+    #[test(tokio::test)]
+    async fn test_full_text_search_with_highlight() {
+        let db = setup().await;
+        let res = db
+            .full_text_search_with_highlight(vec!["LVL小河板".to_string()])
+            .await
+            .unwrap();
+        println!("res: {res:#?}");
     }
 }

@@ -1,6 +1,7 @@
 use crate::db::model::id::ID;
 use crate::db::model::{PayloadModel, SelectResultModel};
 use crate::db::search::BacktrackResult;
+use crate::query::model::SearchType;
 use crate::query::rank::Rank;
 use crate::ContentBase;
 use futures_util::{stream, StreamExt};
@@ -38,6 +39,7 @@ pub struct HitResult {
     pub score: f32,
     pub hit_id: Vec<ID>,
     pub payload: PayloadModel,
+    pub search_type: SearchType,
     pub result: SelectResultModel,
 }
 
@@ -120,11 +122,16 @@ impl ContentBase {
     ///     3. 对上述 rank 的结果进行向上回溯
     ///     4. 填充 payload 信息
     pub async fn query(&self, payload: QueryPayload) -> anyhow::Result<Vec<SearchResultData>> {
+        let with_highlight = true;
         // 目前 QueryPayload 只是文本
         match self.query_payload_to_model(payload).await? {
             SearchModel::Text(text) => {
                 debug!("search tokens: {:?}", text.tokens.0);
-                let full_text_result = self.db.try_read()?.full_text_search(text.tokens.0).await?;
+
+                let db = self.db.try_read()?;
+
+                let full_text_result = db.full_text_search(text.tokens.0, with_highlight).await?;
+
                 debug!("full text result: {full_text_result:?}",);
                 let vector_result = self
                     .db
@@ -132,29 +139,31 @@ impl ContentBase {
                     .vector_search(text.text_vector, text.vision_vector, None)
                     .await?;
 
-                let rank_result =
-                    Rank::rank((full_text_result, vector_result), Some(true), Some(10))?;
+                let rank_result = Rank::rank(
+                    (full_text_result.clone(), vector_result),
+                    Some(true),
+                    Some(10),
+                )?;
+                debug!("rank result: {rank_result:?}");
                 let search_ids: Vec<ID> =
                     rank_result.iter().map(|x| x.id.clone()).unique().collect();
                 debug!("search ids: {search_ids:?}");
 
-                // (search_id, select_result)
-                // 回传 search_id 是为了匹配 rank 中的分数
                 let select_by_id_result = self.db.try_read()?.backtrace_by_ids(search_ids).await?;
-                debug!("select by id result: {select_by_id_result:#?}");
+                debug!("select by id result: {select_by_id_result:?}");
                 let select_result = select_by_id_result
                     .into_iter()
                     .filter_map(|backtrack| {
                         rank_result
                             .iter()
                             .find(|r| r.id.eq(&backtrack.origin_id))
-                            .map(|r| (backtrack, r.score))
+                            .map(|r| (backtrack, r.score, r.search_type.clone()))
                     })
-                    .collect::<Vec<(BacktrackResult, f32)>>();
-                debug!("select result: {:#?}", select_result);
+                    .collect::<Vec<(BacktrackResult, f32, SearchType)>>();
+                debug!("select result: {:?}", select_result);
 
                 let hit_result = stream::iter(select_result)
-                    .then(|(bt, score)| async move {
+                    .then(|(bt, score, search_type)| async move {
                         let payload = self
                             .db
                             .try_read()?
@@ -166,6 +175,7 @@ impl ContentBase {
                             hit_id: bt.hit_id,
                             payload,
                             result: bt.result,
+                            search_type,
                         })
                     })
                     .collect::<Vec<_>>()
@@ -173,6 +183,7 @@ impl ContentBase {
                     .into_iter()
                     .filter_map(Result::ok)
                     .collect::<Vec<HitResult>>();
+                let hit_result = Self::replace_with_highlight(full_text_result, hit_result);
                 debug!("hit result: {:#?}", hit_result);
 
                 Ok(hit_result

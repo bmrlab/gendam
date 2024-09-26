@@ -34,6 +34,7 @@ pub struct TextModel {
 
     #[educe(Debug(ignore))]
     pub vector: Vec<f32>,
+    #[educe(Debug(ignore))]
     pub en_data: String,
 
     #[educe(Debug(ignore))]
