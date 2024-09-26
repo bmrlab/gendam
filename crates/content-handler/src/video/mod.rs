@@ -62,7 +62,7 @@ impl From<&RawProbeStreamOutput> for AudioMetadata {
 #[derive(Storage)]
 pub struct VideoDecoder {
     video_file_path: std::path::PathBuf,
-    binary_file_path: std::path::PathBuf,
+    ffmpeg_file_path: std::path::PathBuf,
     ffprobe_file_path: std::path::PathBuf,
 }
 
@@ -73,12 +73,12 @@ impl VideoDecoder {
         let current_dir = current_exe_path
             .parent()
             .ok_or_else(|| anyhow::anyhow!("Failed to get parent directory"))?;
-        let binary_file_path = current_dir.join("ffmpeg");
+        let ffmpeg_file_path = current_dir.join("ffmpeg");
         let ffprobe_file_path = current_dir.join("ffprobe");
 
         Ok(Self {
             video_file_path: filename.as_ref().to_path_buf(),
-            binary_file_path,
+            ffmpeg_file_path,
             ffprobe_file_path,
         })
     }
@@ -150,7 +150,7 @@ impl VideoDecoder {
             format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
         };
 
-        match std::process::Command::new(&self.binary_file_path)
+        match std::process::Command::new(&self.ffmpeg_file_path)
             .args([
                 "-i",
                 self.video_file_path
@@ -194,7 +194,7 @@ impl VideoDecoder {
         let frame_0_path = frames_dir
             .as_ref()
             .join(format!("0.{}", FRAME_FILE_EXTENSION));
-        match std::process::Command::new(&self.binary_file_path)
+        match std::process::Command::new(&self.ffmpeg_file_path)
             .args([
                 "-i",
                 self.video_file_path
@@ -229,7 +229,7 @@ impl VideoDecoder {
         }
 
         let actual_frame_dir = self.get_actual_path(frames_dir.as_ref().to_path_buf())?;
-        match std::process::Command::new(&self.binary_file_path)
+        match std::process::Command::new(&self.ffmpeg_file_path)
             .args([
                 "-i",
                 self.video_file_path
@@ -293,7 +293,7 @@ impl VideoDecoder {
         let actual_path = self.get_actual_path(audio_path.as_ref().to_path_buf())?;
         let tmp_path = add_tmp_suffix_to_path!(&actual_path);
         tracing::debug!("tmp_path: {:?}", tmp_path);
-        match std::process::Command::new(&self.binary_file_path)
+        match std::process::Command::new(&self.ffmpeg_file_path)
             .args([
                 "-i",
                 self.video_file_path
@@ -370,7 +370,7 @@ impl VideoDecoder {
             "{} [{},{}]{}",
             file_name_wo_ext, milliseconds_from, milliseconds_to, file_ext
         ));
-        match std::process::Command::new(&self.binary_file_path)
+        match std::process::Command::new(&self.ffmpeg_file_path)
             .args([
                 "-i",
                 self.video_file_path
@@ -402,7 +402,7 @@ impl VideoDecoder {
     }
 
     pub async fn generate_ts(&self, ts_index: u32, ts_size: u32) -> anyhow::Result<Vec<u8>> {
-        let output = Command::new(&self.binary_file_path)
+        let output = Command::new(&self.ffmpeg_file_path)
             .args(&[
                 "-i",
                 self.video_file_path
