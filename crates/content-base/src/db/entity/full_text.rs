@@ -32,3 +32,19 @@ impl FullTextSearchEntity {
         }
     }
 }
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct FullTextWithHighlightSearchEntity {
+    id: Thing,
+    score: f32,
+    highlight: String,
+}
+
+impl From<FullTextWithHighlightSearchEntity> for FullTextSearchResult {
+    fn from(value: FullTextWithHighlightSearchEntity) -> Self {
+        FullTextSearchResult {
+            id: value.id.clone().into(),
+            score: vec![(value.highlight, value.score)],
+        }
+    }
+}

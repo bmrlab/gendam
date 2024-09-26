@@ -1,9 +1,10 @@
 use crate::db::model::id::ID;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FullTextSearchResult {
     pub id: ID,
-    // 分词，分数
+    /// 分词，分数
+    /// 如果是 with highlight，则 score 只有一个元素
     pub score: Vec<(String, f32)>,
 }
 
