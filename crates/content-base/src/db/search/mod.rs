@@ -14,7 +14,7 @@ use crate::db::model::id::{ID, TB};
 use crate::db::model::SelectResultModel;
 use crate::query::model::vector::VectorSearchTable;
 use crate::{
-    check_db_error_from_resp,
+    check_db_error_from_resp, collect_ordered_async_results,
     db::{constant::SELEC_LIMIT, entity::full_text::FullTextSearchEntity},
     query::model::{
         full_text::{FullTextSearchResult, FULL_TEXT_SEARCH_TABLE},
@@ -63,12 +63,11 @@ impl DB {
         data: Vec<String>,
         with_highlight: bool,
     ) -> anyhow::Result<Vec<FullTextSearchResult>> {
-        let a = if with_highlight {
+        Ok(if with_highlight {
             self.full_text_search_with_highlight(data).await?
         } else {
             self._full_text_search(data).await?
-        };
-        Ok(a)
+        })
     }
 
     /// 🔍 full text search
@@ -122,15 +121,12 @@ impl DB {
             }
         });
 
-        let res: Vec<FullTextSearchResult> = join_all(futures)
-            .await
-            .into_iter()
-            .collect::<anyhow::Result<Vec<_>>>()?
-            .into_iter()
-            .flatten()
-            .collect();
-
-        Ok(res)
+        Ok(
+            collect_ordered_async_results!(futures, Vec<Vec<FullTextSearchResult>>)
+                .into_iter()
+                .flatten()
+                .collect(),
+        )
     }
 
     /// 全文搜索并高亮
@@ -249,23 +245,23 @@ impl DB {
     /// ids 是去重的
     /// 查询出的结果顺序是和 ids 一致的
     pub async fn backtrace_by_ids(&self, ids: Vec<ID>) -> anyhow::Result<Vec<BacktrackResult>> {
-        let backtrack = stream::iter(ids)
+        let backtrace = stream::iter(ids)
             .then(|id| async move {
                 let mut res: Vec<BacktrackResult> = vec![];
                 let has_relation = self.has_contains_relation(&id).await?;
                 if has_relation {
-                    let backtrack_relation =
-                        self.backtrack_relation(vec![id.id_with_table()]).await?;
+                    let backtrace_relation =
+                        self.backtrace_relation(vec![id.id_with_table()]).await?;
 
                     debug!(
-                        "backtrack_relation: {:?}",
-                        backtrack_relation
+                        "backtrace_relation: {:?}",
+                        backtrace_relation
                             .iter()
                             .map(|r| (r.hit_id.clone(), r.result.clone()))
                             .collect::<Vec<(Vec<ID>, RelationEntity)>>()
                     );
 
-                    for br in backtrack_relation {
+                    for br in backtrace_relation {
                         let entity = self.select_entity_by_relation(&br.result).await?;
                         for select_entity in entity {
                             res.push(BacktrackResult {
@@ -314,7 +310,7 @@ impl DB {
             .flatten()
             .collect::<Vec<BacktrackResult>>();
 
-        Ok(backtrack)
+        Ok(backtrace)
     }
 
     async fn select_text(&self, ids: Vec<impl AsRef<str>>) -> anyhow::Result<Vec<TextEntity>> {
