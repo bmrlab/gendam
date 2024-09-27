@@ -48,6 +48,21 @@ impl LLMOutput {
 }
 
 impl LLMModel {
+    /// This function takes a prompt string and returns an `ImageCaptionModel` that can be used
+    /// to generate captions for images.
+    ///
+    /// # Arguments
+    /// * `prompt` - A string slice that contains the prompt to be used for image captioning.
+    ///              This parameter is necessary because different LLM models may require different
+    ///              prompts to effectively generate image captions. There isn't a one-size-fits-all
+    ///              default prompt that works optimally for all LLM models.
+    ///
+    /// # Returns
+    /// An `ImageCaptionModel` that can be used to generate captions for images.
+    ///
+    /// # Note
+    /// The prompt provided should be tailored to the specific LLM model being used to ensure
+    /// the best possible image captioning results.
     pub fn create_image_caption_ref(self, prompt: &str) -> ImageCaptionModel {
         let prompt = prompt.to_string();
 
