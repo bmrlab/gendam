@@ -71,9 +71,9 @@ impl DB {
     }
 
     /// 🔍 full text search
-    /// 对每个分词进行全文搜索
-    /// 分词之间使用 OR 连接
-    /// 缺点是高亮结果是分散的
+    /// - 对每个分词进行全文搜索
+    /// - 分词之间使用 OR 连接
+    /// - 缺点是高亮结果是分散的
     async fn _full_text_search(
         &self,
         data: Vec<String>,
@@ -131,9 +131,9 @@ impl DB {
     }
 
     /// 全文搜索并高亮
-    /// 将整个搜索结果丢进去，然后返回高亮结果
-    /// 分词之间的结果是 AND 连接
-    /// 缺点是无法直接确定命中了哪个分词
+    /// - 将整个搜索结果丢进去，然后返回高亮结果
+    /// - 分词之间的结果是 AND 连接
+    /// - 缺点是无法直接确定命中了哪个分词
     ///    - 可以通过正则 <b></b> 来确定关键词
     async fn full_text_search_with_highlight(
         &self,
@@ -181,6 +181,7 @@ impl DB {
     }
 
     /// 🔍 vector search
+    /// 
     /// if not vision_vector, please input text_vector
     pub async fn vector_search(
         &self,
@@ -231,8 +232,8 @@ pub struct BacktrackResult {
     /// 只包含 text 和 image 表的 ID
     pub origin_id: ID,
     /// 命中的 id
-    /// 如果 origin_id 没有 relation，则是 origin_id
-    /// 如果 origin_id 有 relation
+    /// - 如果 origin_id 没有 relation，则是 origin_id
+    /// - 如果 origin_id 有 relation
     ///     - video 类型，则是 audio_frame、image_frame
     ///     - web 类型，则是 page
     ///     - document 类型，则是 page

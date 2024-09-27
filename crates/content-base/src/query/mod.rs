@@ -101,10 +101,7 @@ impl ContentBase {
     //         .collect();
     //     group_results_by_asset(&vision_points, &mut retrieval_results);
 
-    //     Ok(reorder_final_results(&mut retrieval_results)?)
-    // }
-
-    /// 首先将入参转换为内部查询参数
+    //     Ok(reorder_final_results(/// - 首先将入参转换为内部查询参数
     /// - 文本搜索流程
     ///     1. 获取全文搜索和向量搜索的结果（全文搜索和向量搜索只会搜索文本和图片）
     ///     2. 将上述结果进行 rank
