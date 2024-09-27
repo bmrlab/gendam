@@ -1,10 +1,9 @@
 use crate::db::model::id::ID;
-use crate::db::model::{PayloadModel, SelectResultModel};
 use crate::db::search::BacktrackResult;
+use crate::query::model::hit_result::HitResult;
 use crate::query::model::SearchType;
 use crate::query::rank::Rank;
-use crate::ContentBase;
-use futures_util::{stream, StreamExt};
+use crate::{collect_ordered_async_results, ContentBase};
 use itertools::Itertools;
 use model::SearchModel;
 use payload::{RetrievalResultData, SearchPayload, SearchResultData};
@@ -31,16 +30,6 @@ impl QueryPayload {
             query: query.to_string(),
         }
     }
-}
-
-#[derive(Debug)]
-pub struct HitResult {
-    pub origin_id: ID,
-    pub score: f32,
-    pub hit_id: Vec<ID>,
-    pub payload: PayloadModel,
-    pub search_type: SearchType,
-    pub result: SelectResultModel,
 }
 
 impl ContentBase {
@@ -128,11 +117,13 @@ impl ContentBase {
             SearchModel::Text(text) => {
                 debug!("search tokens: {:?}", text.tokens.0);
 
-                let db = self.db.try_read()?;
+                let full_text_result = self
+                    .db
+                    .try_read()?
+                    .full_text_search(text.tokens.0, with_highlight)
+                    .await?;
 
-                let full_text_result = db.full_text_search(text.tokens.0, with_highlight).await?;
-
-                debug!("full text result: {full_text_result:?}",);
+                debug!("full text result: {full_text_result:?}");
                 let vector_result = self
                     .db
                     .try_read()?
@@ -151,45 +142,37 @@ impl ContentBase {
 
                 let select_by_id_result = self.db.try_read()?.backtrace_by_ids(search_ids).await?;
                 debug!("select by id result: {select_by_id_result:?}");
-                let select_result = select_by_id_result
+                let hit_result_futures = select_by_id_result
                     .into_iter()
-                    .filter_map(|backtrack| {
+                    .filter_map(|backtrace| {
                         rank_result
                             .iter()
-                            .find(|r| r.id.eq(&backtrack.origin_id))
-                            .map(|r| (backtrack, r.score, r.search_type.clone()))
+                            .find(|r| r.id.eq(&backtrace.origin_id))
+                            .map(|r| (backtrace, r.score, r.search_type.clone()))
                     })
-                    .collect::<Vec<(BacktrackResult, f32, SearchType)>>();
-                debug!("select result: {:?}", select_result);
-
-                let hit_result = stream::iter(select_result)
-                    .then(|(bt, score, search_type)| async move {
+                    .collect::<Vec<(BacktrackResult, f32, SearchType)>>()
+                    .into_iter()
+                    .map(|(bt, score, search_type)| async move {
                         let payload = self
                             .db
                             .try_read()?
                             .select_payload_by_id(bt.result.id().expect("id not found"))
                             .await?;
-                        Ok::<_, anyhow::Error>(HitResult {
-                            origin_id: bt.origin_id,
-                            score,
-                            hit_id: bt.hit_id,
-                            payload,
-                            result: bt.result,
-                            search_type,
-                        })
+                        Ok::<_, anyhow::Error>((bt, score, search_type, payload).into())
                     })
-                    .collect::<Vec<_>>()
-                    .await
-                    .into_iter()
-                    .filter_map(Result::ok)
-                    .collect::<Vec<HitResult>>();
-                let hit_result = Self::replace_with_highlight(full_text_result, hit_result);
+                    .collect::<Vec<_>>();
+
+                let mut hit_result =
+                    collect_ordered_async_results!(hit_result_futures, Vec<HitResult>);
+
+                if with_highlight {
+                    hit_result = Self::replace_with_highlight(full_text_result, hit_result);
+                }
                 debug!("hit result: {:#?}", hit_result);
 
                 Ok(hit_result
                     .into_iter()
-                    .map(|hit| self.expand_hit_result(hit))
-                    .filter_map(Result::ok)
+                    .filter_map(|hit| self.expand_hit_result(hit).ok())
                     .flatten()
                     .collect::<Vec<SearchResultData>>())
             }
