@@ -5,7 +5,6 @@ use tracing::{debug, error};
 
 use super::{constant::MAX_FULLTEXT_TOKEN, entity::vector::VectorSearchEntity, DB};
 use crate::db::entity::full_text::FullTextWithHighlightSearchEntity;
-use crate::db::entity::relation::RelationEntity;
 use crate::db::entity::{
     AudioEntity, DocumentEntity, ImageEntity, PayloadEntity, SelectResultEntity, TextEntity,
     VideoEntity, WebPageEntity,
@@ -253,14 +252,6 @@ impl DB {
                 if has_relation {
                     let backtrace_relation =
                         self.backtrace_relation(vec![id.id_with_table()]).await?;
-
-                    debug!(
-                        "backtrace_relation: {:?}",
-                        backtrace_relation
-                            .iter()
-                            .map(|r| (r.hit_id.clone(), r.result.clone()))
-                            .collect::<Vec<(Vec<ID>, RelationEntity)>>()
-                    );
 
                     for br in backtrace_relation {
                         let entity = self.select_entity_by_relation(&br.result).await?;
