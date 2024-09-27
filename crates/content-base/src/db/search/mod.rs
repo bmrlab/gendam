@@ -14,7 +14,7 @@ use crate::db::model::id::{ID, TB};
 use crate::db::model::SelectResultModel;
 use crate::query::model::vector::VectorSearchTable;
 use crate::{
-    check_db_error_from_resp, collect_ordered_async_results,
+    check_db_error_from_resp,
     db::{constant::SELEC_LIMIT, entity::full_text::FullTextSearchEntity},
     query::model::{
         full_text::{FullTextSearchResult, FULL_TEXT_SEARCH_TABLE},
@@ -121,12 +121,13 @@ impl DB {
             }
         });
 
-        Ok(
-            collect_ordered_async_results!(futures, Vec<Vec<FullTextSearchResult>>)
-                .into_iter()
-                .flatten()
-                .collect(),
-        )
+        Ok(join_all(futures)
+            .await
+            .into_iter()
+            .collect::<anyhow::Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect())
     }
 
     /// 全文搜索并高亮
@@ -170,14 +171,13 @@ impl DB {
             }
         });
 
-        let res: Vec<FullTextSearchResult> = join_all(futures)
+        Ok(join_all(futures)
             .await
             .into_iter()
             .collect::<anyhow::Result<Vec<_>>>()?
             .into_iter()
             .flatten()
-            .collect();
-        Ok(res)
+            .collect())
     }
 
     /// 🔍 vector search
