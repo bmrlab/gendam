@@ -37,6 +37,8 @@ impl LLMOutput {
 
     pub async fn to_string(&mut self) -> anyhow::Result<String> {
         let mut output = String::new();
+        // LLMOutput 是 LLMModel::get_completion 返回的结果
+        // 这里会消费 async_stream::stream! 生成的流并且取 yield 的结果
         while let Some(item) = self.next().await {
             let item = item?;
             if let Some(item) = item {
@@ -93,7 +95,11 @@ impl LLMModel {
                     result
                 }
             },
-            |mut v| async move { v.to_string().await },
+            |mut v| async move {
+                // 这个 convert_output 方法在 AIModel::create_reference 里调用,
+                // LLMOutput 是一个异步闭包，调用 convert_output 的时候才会执行 to_string() 并获取 LLM 服务返回的结果
+                v.to_string().await
+            },
         )
     }
 }

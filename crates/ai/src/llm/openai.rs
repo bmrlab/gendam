@@ -56,7 +56,7 @@ impl LLMModel for OpenAI {
         let mut url = url.join("chat/completions")?;
         url.set_query(query);
 
-        let (tx, mut rx) = mpsc::channel(512);
+        let (tx, mut rx) = mpsc::channel::<anyhow::Result<Option<String>>>(512);
 
         tracing::debug!("openai url: {:?}", url);
 
@@ -201,15 +201,37 @@ impl LLMModel for OpenAI {
                     }
                     Err(e) => {
                         tracing::error!("failed to handle event source: {}", e);
-                        break;
+                        // break;  // 不能 break，原因见下面的注释
+                        if let Err(e) = tx.send(Err(e.into())).await {
+                            tracing::error!("failed to send error: {}", e);
+                        }
                     }
                 }
             }
         });
 
         let stream = async_stream::stream! {
-            while let Some(result) = rx.recv().await {
-                yield result;
+            // while let Some(result) = rx.recv().await {
+            //     yield result;
+            // }
+            // 当所有 tx 都被 drop 的时候，rx.recv() 会收到一次 None
+            // 比如前面如果请求失败 (failed to handle event source) 以后 break 的结果是 rx.recv() 收到 None
+            // 这样不大好，这就区分不出来是请求失败还是所有 stream 请求都结束了
+            // 应该在请求失败的时候 tx.send 一个 Err
+            loop {
+                match rx.recv().await {
+                    Some(Ok(result)) => {
+                        yield Ok(result);
+                    }
+                    Some(Err(e)) => {
+                        // yield Ok(Some(format!("error {:}", e)));
+                        yield Err(e);
+                    }
+                    None => {
+                        // yield Ok(None);
+                        break;
+                    }
+                }
             }
         };
 
