@@ -49,7 +49,7 @@ impl LLMOutput {
 
 impl LLMModel {
     /// This function takes a prompt string and returns an `ImageCaptionModel` that can be used
-    /// to generate captions for images.
+    /// to generate captions for images. This method also defines how the input image is processed.
     ///
     /// # Arguments
     /// * `prompt` - A string slice that contains the prompt to be used for image captioning.
@@ -59,10 +59,6 @@ impl LLMModel {
     ///
     /// # Returns
     /// An `ImageCaptionModel` that can be used to generate captions for images.
-    ///
-    /// # Note
-    /// The prompt provided should be tailored to the specific LLM model being used to ensure
-    /// the best possible image captioning results.
     pub fn create_image_caption_ref(self, prompt: &str) -> ImageCaptionModel {
         let prompt = prompt.to_string();
 
@@ -83,10 +79,13 @@ impl LLMModel {
                         let base64 = base64::engine::general_purpose::STANDARD.encode(&buf);
 
                         Ok((
-                            vec![LLMMessage::new_user_with_image(
-                                prompt.clone().as_str(),
-                                format!("data:image/png;base64,{}", base64).as_str(),
-                            )],
+                            vec![
+                                // LLMMessage::new_system(),
+                                LLMMessage::new_user_with_image(
+                                    prompt.clone().as_str(),
+                                    format!("data:image/png;base64,{}", base64).as_str(),
+                                ),
+                            ],
                             LLMInferenceParams::default(),
                         ))
                     };
