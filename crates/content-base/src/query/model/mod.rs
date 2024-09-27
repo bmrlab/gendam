@@ -3,6 +3,7 @@ use vector::VectorSearchResult;
 
 pub mod full_text;
 pub mod vector;
+pub mod hit_result;
 
 pub struct TextToken(pub Vec<String>);
 

@@ -37,7 +37,7 @@ impl DB {
     /// 如果是多层 contain，则返回最顶层的 id
     /// page、audio_frame、image_frame 都是中间层，还需要向上查询
     /// 返回值：(中间层被匹配到的 id, RelationEntity)
-    pub async fn backtrack_relation(
+    pub async fn backtrace_relation(
         &self,
         ids: Vec<impl AsRef<str>>,
     ) -> anyhow::Result<Vec<BacktrackRelationResult>> {
@@ -214,19 +214,19 @@ mod test {
     use test_log::test;
 
     #[test(tokio::test)]
-    async fn test_backtrack_relation() {
+    async fn test_backtrace_relation() {
         let db = setup().await;
         // Document data needs to be inserted in advance
         // can insert data by running the test in `create/mod`
         let document_res = db
-            .backtrack_relation(vec!["image:5it65bxgm0u603livkv8"])
+            .backtrace_relation(vec!["image:5it65bxgm0u603livkv8"])
             .await
             .unwrap();
         // the desired result is document
         println!("document_res: {:?}", document_res);
         // Video data needs to be inserted in advance
         let video_res = db
-            .backtrack_relation(vec!["text:vu3lb2verv2h36hti5im"])
+            .backtrace_relation(vec!["text:vu3lb2verv2h36hti5im"])
             .await
             .unwrap();
         // the desired result is video
@@ -234,7 +234,7 @@ mod test {
         // Text data needs to be inserted in advance
         // no relation data
         let text_res = db
-            .backtrack_relation(vec!["text:qtx3nucfeo7rzm3mun5b"])
+            .backtrace_relation(vec!["text:qtx3nucfeo7rzm3mun5b"])
             .await
             .unwrap();
         // the desired result is empty
@@ -242,7 +242,7 @@ mod test {
         // Combine data needs to be inserted in advance
         // audio and no relation data
         let combine_res = db
-            .backtrack_relation(vec![
+            .backtrace_relation(vec![
                 "text:hkot8rlbc8ogoiwoxnms",
                 "text:qtx3nucfeo7rzm3mun5b",
             ])

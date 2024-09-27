@@ -1,3 +1,4 @@
+use futures_util::StreamExt;
 use regex::Regex;
 use std::collections::HashSet;
 
@@ -12,6 +13,21 @@ macro_rules! collect_async_results {
             .await
             .into_iter()
             .collect()
+    }};
+}
+
+#[macro_export]
+macro_rules! collect_ordered_async_results {
+    ($futures:expr, $ty:ty) => {{
+        use futures::{stream, StreamExt};
+
+        stream::iter($futures)
+            .buffered(1)
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .filter_map(Result::ok)
+            .collect::<$ty>()
     }};
 }
 
