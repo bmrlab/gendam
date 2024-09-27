@@ -48,11 +48,9 @@ pub trait AudioTransChunkSumTrait: Into<ContentTaskType> + Clone + Storage {
                 "Previous content:\n{}\n\nCurrent transcript:\n{}",
                 previous_content, chunk.text
             );
-
-            let mut response = llm
-                .process_single((
-                    vec![
-                        LLMMessage::new_system(format!(r#"You are an assistant skilled in video transcript summarization.
+            let system_prompt = format!(
+                r#"
+You are an assistant skilled in video transcript summarization.
 You should try to summarize user input's transcript into a very short sentence.
 
 Guidelines:
@@ -77,7 +75,15 @@ Additional Rules:
 - Content: just response with the short sentence only, do not start with hint or prompt, do not contain anything else, e.g., "The speaker is talking about his childhood."
 - Focus: do not summarize the content in the previous video, focus on current piece of video transcript
 - Word count: aim for a summarization with no more than 30 words.
-- Language: summarization should be in the same language with input, which is {language}"#, language = transcript.language.as_ref()).as_str()),
+- Language: summarization should be in the same language with input, which is {language}
+"#,
+                language = transcript.language.as_ref()
+            );
+
+            let mut response = llm
+                .process_single((
+                    vec![
+                        LLMMessage::new_system(&system_prompt),
                         LLMMessage::new_user(&user_prompt),
                     ],
                     LLMInferenceParams::default(),
