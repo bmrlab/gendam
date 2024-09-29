@@ -1,3 +1,5 @@
+pub const HIGHLIGHT_MARK: (&str, &str) = ("<b>", "</b>");
+
 pub const STOP_WORDS: [&str; 182] = [
     "i",
     "me",

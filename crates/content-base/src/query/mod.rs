@@ -3,6 +3,7 @@ use crate::db::search::BacktrackResult;
 use crate::query::model::hit_result::HitResult;
 use crate::query::model::SearchType;
 use crate::query::rank::Rank;
+use crate::utils::extract_highlighted_content;
 use crate::{collect_ordered_async_results, ContentBase};
 use itertools::Itertools;
 use model::SearchModel;
@@ -121,6 +122,15 @@ impl ContentBase {
                     .await?;
 
                 debug!("full text result: {full_text_result:?}");
+
+                let hit_fields = full_text_result
+                    .iter()
+                    .map(|x| extract_highlighted_content(&x.score[0].0))
+                    .flatten()
+                    .collect::<Vec<String>>();
+
+                debug!("hit fields: {hit_fields:?}");
+
                 let vector_result = self
                     .db
                     .try_read()?
