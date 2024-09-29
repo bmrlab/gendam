@@ -228,7 +228,9 @@ mod test {
         let content_base = ContentBase::new(
             &ctx,
             Arc::new(qdrant),
-            Arc::new(RwLock::new(DB::new().await)),
+            Arc::new(RwLock::new(
+                DB::new(env::current_exe().unwrap().parent().unwrap()).await,
+            )),
             "content-base-language",
             "content-base-vision",
         )

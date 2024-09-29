@@ -14,13 +14,14 @@ use crate::db::model::SelectResultModel;
 use crate::query::model::vector::VectorSearchTable;
 use crate::{
     check_db_error_from_resp,
-    db::{constant::SELEC_LIMIT, entity::full_text::FullTextSearchEntity},
+    db::{constant::SELECT_LIMIT, entity::full_text::FullTextSearchEntity},
     query::model::{
         full_text::{FullTextSearchResult, FULL_TEXT_SEARCH_TABLE},
         vector::{VectorSearchResult, VECTOR_SEARCH_TABLE},
     },
 };
 use futures::{stream, StreamExt};
+use crate::constant::HIGHLIGHT_MARK;
 
 mod relation;
 
@@ -102,7 +103,7 @@ impl DB {
                 search_scores.join(", "),
                 table.table_name(),
                 where_clauses.join(" OR "),
-                SELEC_LIMIT
+                SELECT_LIMIT
             );
             debug!(
                 "full-text search sql on table {}: {sql}",
@@ -145,10 +146,12 @@ impl DB {
 
         let futures = FULL_TEXT_SEARCH_TABLE.iter().map(|table| {
             let sql = format!(
-                "SELECT id, search::score(0) as score, search::highlight('<b>', '</b>', 0) AS highlight FROM {} WHERE {} LIMIT {};",
+                "SELECT id, search::score(0) as score, search::highlight('{}', '{}', 0) AS highlight FROM {} WHERE {} LIMIT {};",
+                HIGHLIGHT_MARK.0,
+                HIGHLIGHT_MARK.1,
                 table.table_name(),
                 format!("{} @0@ '{}'", table.column_name(), data),
-                SELEC_LIMIT
+                SELECT_LIMIT
             );
             debug!(
                 "full-text search with highlight on table {}: {sql}",
@@ -180,7 +183,7 @@ impl DB {
     }
 
     /// 🔍 vector search
-    /// 
+    ///
     /// if not vision_vector, please input text_vector
     pub async fn vector_search(
         &self,
@@ -202,7 +205,7 @@ impl DB {
             async move {
                 let mut res = self
                     .client
-                    .query(format!("SELECT id, vector::distance::knn() AS distance FROM {} WHERE {} {} $vector ORDER BY distance LIMIT {};", v.table_name(), v.column_name(), range, SELEC_LIMIT))
+                    .query(format!("SELECT id, vector::distance::knn() AS distance FROM {} WHERE {} {} $vector ORDER BY distance LIMIT {};", v.table_name(), v.column_name(), range, SELECT_LIMIT))
                     .bind(("vector", data))
                     .await?;
                 let res: Vec<VectorSearchEntity> = res.take(0)?;
