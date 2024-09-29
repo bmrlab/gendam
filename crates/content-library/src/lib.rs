@@ -1,3 +1,4 @@
+use content_base::db::DB;
 use global_variable::set_current;
 use prisma_lib::PrismaClient;
 use qdrant::create_qdrant_server;
@@ -7,6 +8,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use tokio::sync::RwLock;
 use vector_db::QdrantServer;
 
 pub mod bundle;
@@ -22,11 +24,16 @@ pub struct Library {
     pub artifacts_dir: PathBuf,
     prisma_client: Arc<PrismaClient>,
     qdrant_server: Arc<QdrantServer>,
+    db: Arc<RwLock<DB>>,
 }
 
 impl Library {
     pub fn prisma_client(&self) -> Arc<PrismaClient> {
         Arc::clone(&self.prisma_client)
+    }
+    
+    pub fn db(&self) -> Arc<RwLock<DB>> {
+        Arc::clone(&self.db)
     }
 
     pub fn qdrant_client(&self) -> Arc<Qdrant> {
@@ -100,6 +107,7 @@ pub async fn load_library(
     let artifacts_dir = library_dir.join("artifacts");
     let files_dir = library_dir.join("files");
     let qdrant_dir = library_dir.join("qdrant");
+    let surreal_dir = library_dir.join("surreal");
 
     let client = database::migrate_library(&db_dir).await?;
 
@@ -118,6 +126,7 @@ pub async fn load_library(
         artifacts_dir,
         prisma_client,
         qdrant_server: Arc::new(qdrant_server),
+        db: Arc::new(RwLock::new(DB::new(surreal_dir).await)),
     };
 
     Ok(library)

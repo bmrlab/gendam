@@ -507,7 +507,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             let cb = ContentBase::new(
                 &cb_ctx,
                 library.qdrant_client(),
-                Arc::new(RwLock::new(content_base::db::DB::new().await)),
+                library.db(),
                 &qdrant_info.language_collection.name,
                 &qdrant_info.vision_collection.name,
             )
