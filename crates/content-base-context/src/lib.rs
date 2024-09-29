@@ -2,7 +2,7 @@ pub mod artifacts;
 
 use ai::{
     tokenizers::Tokenizer, AudioTranscriptModel, ImageCaptionModel, LLMModel,
-    MultiModalEmbeddingModel, TextEmbeddingModel, TextEmbeddingOutput,
+    MultiModalEmbeddingModel, TextEmbeddingModel,
 };
 use anyhow::bail;
 use std::{
@@ -138,11 +138,18 @@ impl ContentBaseCtx {
         }
     }
 
+    /// Generate text embedding and save it to `path`.
+    /// Empty string will be ignored and no error will be raised.
     pub async fn save_text_embedding(
         &self,
         text: &str,
         path: impl AsRef<Path>,
-    ) -> anyhow::Result<TextEmbeddingOutput> {
+    ) -> anyhow::Result<()> {
+        // generate embedding for empty string will cause strange search results, see https://github.com/bmrlab/gendam/issues/90
+        if text.is_empty() {
+            return Ok(());
+        }
+
         let text_embedding = self.text_embedding()?.0;
         let embedding = text_embedding.process_single(text.to_string()).await?;
         self.write(
@@ -150,6 +157,7 @@ impl ContentBaseCtx {
             serde_json::to_string(&embedding)?.into(),
         )
         .await?;
-        Ok(embedding)
+
+        Ok(())
     }
 }
