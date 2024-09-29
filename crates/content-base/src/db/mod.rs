@@ -1,10 +1,9 @@
-use crate::db::constant::{
-    DATABASE_HOST, DATABASE_NAME, DATABASE_NS, DATABASE_PASSWORD, DATABASE_PORT, DATABASE_USER,
-};
+use crate::db::constant::{DATABASE_NAME, DATABASE_NS};
 use crate::db::sql::CREATE_TABLE;
 use std::env;
-use surrealdb::engine::remote::ws::{Client, Ws};
-use surrealdb::opt::auth::Root;
+use std::path::Path;
+use surrealdb::engine::local::{Db, RocksDb};
+use surrealdb::opt::Config;
 use surrealdb::Surreal;
 
 mod constant;
@@ -16,32 +15,25 @@ mod shared;
 mod sql;
 pub mod utils;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DB {
-    pub client: Surreal<Client>,
+    pub client: Surreal<Db>,
 }
 
 /// init db
 impl DB {
-    pub async fn new() -> Self {
+    pub async fn new(path: impl AsRef<Path>) -> Self {
         Self {
-            client: DB::init_db().await.expect("Failed to initialize database"),
+            client: DB::init_db(path)
+                .await
+                .expect("Failed to initialize database"),
         }
     }
 
     // TODO: read from local, and later change to embedded database.
-    async fn init_db() -> anyhow::Result<Surreal<Client>> {
-        let db = Surreal::new::<Ws>(format!(
-            "{}:{}",
-            env::var(DATABASE_HOST)?,
-            env::var(DATABASE_PORT)?
-        ))
-        .await?;
-        db.signin(Root {
-            username: &env::var(DATABASE_USER)?,
-            password: &env::var(DATABASE_PASSWORD)?,
-        })
-        .await?;
+    async fn init_db(path: impl AsRef<Path>) -> anyhow::Result<Surreal<Db>> {
+        let config = Config::default();
+        let db = Surreal::new::<RocksDb>((path.as_ref(), config)).await?;
         db.use_ns(env::var(DATABASE_NS)?)
             .use_db(env::var(DATABASE_NAME)?)
             .await?;
@@ -49,7 +41,7 @@ impl DB {
         Ok(db)
     }
 
-    async fn init_table(db: &Surreal<Client>) -> anyhow::Result<()> {
+    async fn init_table(db: &Surreal<Db>) -> anyhow::Result<()> {
         db.query(CREATE_TABLE).await?;
         Ok(())
     }
