@@ -23,10 +23,11 @@ use fake::faker::lorem::en::Sentence;
 use fake::Fake;
 use itertools::Itertools;
 use rand::Rng;
+use std::env;
 
 pub async fn setup() -> DB {
     dotenvy::dotenv().ok();
-    DB::new().await
+    DB::new(env::current_exe().unwrap().parent().unwrap()).await
 }
 
 pub fn gen_vector(size: usize) -> Vec<f32> {
