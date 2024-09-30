@@ -123,13 +123,11 @@ impl ContentBase {
                 let _ = notification_tx.send(notification).await;
                 // 对完成的任务进行后处理
                 if let TaskStatus::Finished = task_status {
-                    task_post_process(
+                    let  _ = task_post_process(
                         &ctx,
                         &file_info_clone,
                         &task_type,
                         db.clone(),
-                        qdrant.clone(),
-                        language_collection_name.as_str(),
                         vision_collection_name.as_str(),
                     )
                     .await;
@@ -231,11 +229,11 @@ async fn task_post_process(
                         audio_frame,
                         image_frame: vec![],
                     },
-                    SearchPayload {
+                    ContentIndexPayload {
                         file_identifier: file_info.file_identifier.clone(),
                         // 下面两个字段不会使用
                         task_type: VideoTransChunkSumEmbedTask.clone().into(),
-                        metadata: SearchMetadata::Video(VideoSearchMetadata {
+                        metadata: ContentIndexMetadata::Video(VideoIndexMetadata {
                             start_timestamp: 0,
                             end_timestamp: 0,
                         }),
@@ -267,39 +265,41 @@ async fn task_post_process(
                 })
                 .collect::<Vec<_>>();
             let audio_frame: anyhow::Result<Vec<AudioFrameModel>> = collect_async_results!(future);
-            db.try_read()?.insert_audio(
-                AudioModel {
-                    id: None,
-                    audio_frame: audio_frame?,
-                },
-                SearchPayload {
-                    file_identifier: file_info.file_identifier.clone(),
-                    // 下面两个字段不会使用
-                    task_type: AudioTransChunkSumEmbedTask.clone().into(),
-                    metadata: SearchMetadata::Audio(AudioSearchMetadata {
-                        start_timestamp: 0,
-                        end_timestamp: 0,
-                    }),
-                },
-            )
-            .await?;
+            db.try_read()?
+                .insert_audio(
+                    AudioModel {
+                        id: None,
+                        audio_frame: audio_frame?,
+                    },
+                    ContentIndexPayload {
+                        file_identifier: file_info.file_identifier.clone(),
+                        // 下面两个字段不会使用
+                        task_type: AudioTransChunkSumEmbedTask.clone().into(),
+                        metadata: ContentIndexMetadata::Audio(AudioIndexMetadata {
+                            start_timestamp: 0,
+                            end_timestamp: 0,
+                        }),
+                    },
+                )
+                .await?;
         }
         ContentTaskType::Image(ImageTaskType::DescEmbed(task_type)) => {
             let embedding = task_type.embed_content(file_info, ctx).await?;
-            db.try_read()?.insert_image(
-                ImageModel {
-                    id: None,
-                    prompt: "".to_string(),
-                    vector: embedding.clone(),
-                    prompt_vector: vec![],
-                },
-                Some(SearchPayload {
-                    file_identifier: file_info.file_identifier.clone(),
-                    task_type: task_type.clone().into(),
-                    metadata: SearchMetadata::Image(ImageSearchMetadata {}),
-                }),
-            )
-            .await?;
+            db.try_read()?
+                .insert_image(
+                    ImageModel {
+                        id: None,
+                        prompt: "".to_string(),
+                        vector: embedding.clone(),
+                        prompt_vector: vec![],
+                    },
+                    Some(ContentIndexPayload {
+                        file_identifier: file_info.file_identifier.clone(),
+                        task_type: task_type.clone().into(),
+                        metadata: ContentIndexMetadata::Image(ImageIndexMetadata {}),
+                    }),
+                )
+                .await?;
         }
         ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(task_type)) => {
             let pages: anyhow::Result<Vec<PageModel>> = chunk_to_page!(
@@ -309,19 +309,20 @@ async fn task_post_process(
                 RawTextChunkTask.chunk_content(file_info, ctx).await?
             );
             debug!("pages: {pages:?}");
-            db.try_read()?.insert_document(
-                DocumentModel::new(pages?),
-                SearchPayload {
-                    file_identifier: file_info.file_identifier.clone(),
-                    task_type: task_type.clone().into(),
-                    metadata: RawTextSearchMetadata {
-                        start_index: 0,
-                        end_index: 0,
-                    }
-                    .into(),
-                },
-            )
-            .await?;
+            db.try_read()?
+                .insert_document(
+                    DocumentModel::new(pages?),
+                    ContentIndexPayload {
+                        file_identifier: file_info.file_identifier.clone(),
+                        task_type: task_type.clone().into(),
+                        metadata: RawTextIndexMetadata {
+                            start_index: 0,
+                            end_index: 0,
+                        }
+                        .into(),
+                    },
+                )
+                .await?;
         }
         ContentTaskType::WebPage(WebPageTaskType::ChunkSumEmbed(task_type)) => {
             let pages: anyhow::Result<Vec<PageModel>> = chunk_to_page!(
@@ -331,19 +332,20 @@ async fn task_post_process(
                 WebPageChunkTask.chunk_content(file_info, ctx).await?
             );
             debug!("pages: {pages:?}");
-            db.try_read()?.insert_web_page(
-                WebPageModel::new(pages?),
-                SearchPayload {
-                    file_identifier: file_info.file_identifier.clone(),
-                    task_type: task_type.clone().into(),
-                    metadata: WebPageSearchMetadata {
-                        start_index: 0,
-                        end_index: 0,
-                    }
-                    .into(),
-                },
-            )
-            .await?;
+            db.try_read()?
+                .insert_web_page(
+                    WebPageModel::new(pages?),
+                    ContentIndexPayload {
+                        file_identifier: file_info.file_identifier.clone(),
+                        task_type: task_type.clone().into(),
+                        metadata: WebPageIndexMetadata {
+                            start_index: 0,
+                            end_index: 0,
+                        }
+                        .into(),
+                    },
+                )
+                .await?;
         }
         _ => {}
     }

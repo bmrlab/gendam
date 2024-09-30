@@ -20,7 +20,6 @@ use std::{
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc, Mutex},
 };
-use tokio::sync::RwLock;
 use vector_db::{get_language_collection_name, get_vision_collection_name, kill_qdrant_server};
 
 /**

@@ -1,5 +1,4 @@
 use crate::constant::HIGHLIGHT_MARK;
-use futures_util::{StreamExt, TryFutureExt};
 use regex::Regex;
 use std::collections::HashSet;
 
