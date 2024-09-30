@@ -1,11 +1,11 @@
 use super::{model::SearchModel, HitResult, QueryPayload};
 use crate::db::model::SelectResultModel;
 use crate::query::model::full_text::FullTextSearchResult;
-use crate::query::payload::audio::AudioSearchMetadata;
-use crate::query::payload::image::ImageSearchMetadata;
-use crate::query::payload::video::VideoSearchMetadata;
-use crate::query::payload::web_page::WebPageSearchMetadata;
-use crate::query::payload::{SearchMetadata, SearchResultData};
+use crate::query::payload::audio::AudioIndexMetadata;
+use crate::query::payload::image::ImageIndexMetadata;
+use crate::query::payload::video::VideoIndexMetadata;
+use crate::query::payload::web_page::WebPageIndexMetadata;
+use crate::query::payload::{ContentIndexMetadata, SearchResultData};
 use crate::{
     concat_arrays,
     constant::STOP_WORDS,
@@ -101,15 +101,15 @@ impl ContentBase {
         hit_result: HitResult,
     ) -> anyhow::Result<Vec<SearchResultData>> {
         let file_identifier = hit_result.payload.file_identifier();
-        let metadata = match hit_result.result {
-            SelectResultModel::Image(_) => vec![SearchMetadata::Image(ImageSearchMetadata {})],
-            SelectResultModel::Audio(audio) => audio
+        let metadata = match hit_result.result.clone() {
+            SelectResultModel::Image(_) => vec![ContentIndexMetadata::Image(ImageIndexMetadata {})],
+            SelectResultModel::Audio(ref audio) => audio
                 .audio_frame
                 .iter()
                 .filter_map(|frame| {
                     frame.id.as_ref().and_then(|frame_id| {
                         if hit_result.hit_id.contains(frame_id) {
-                            Some(SearchMetadata::Audio(AudioSearchMetadata {
+                            Some(ContentIndexMetadata::Audio(AudioIndexMetadata {
                                 start_timestamp: frame.start_timestamp as i64,
                                 end_timestamp: frame.end_timestamp as i64,
                             }))
@@ -126,7 +126,7 @@ impl ContentBase {
                     .filter_map(|frame| {
                         frame.id.as_ref().and_then(|frame_id| {
                             if hit_result.hit_id.contains(frame_id) {
-                                Some(SearchMetadata::Video(VideoSearchMetadata {
+                                Some(ContentIndexMetadata::Video(VideoIndexMetadata {
                                     start_timestamp: frame.start_timestamp as i64,
                                     end_timestamp: frame.end_timestamp as i64,
                                 }))
@@ -135,14 +135,14 @@ impl ContentBase {
                             }
                         })
                     })
-                    .collect::<Vec<SearchMetadata>>();
+                    .collect::<Vec<ContentIndexMetadata>>();
                 let image_metadata = video
                     .image_frame
                     .iter()
                     .filter_map(|frame| {
                         frame.id.as_ref().and_then(|frame_id| {
                             if hit_result.hit_id.contains(frame_id) {
-                                Some(SearchMetadata::Video(VideoSearchMetadata {
+                                Some(ContentIndexMetadata::Video(VideoIndexMetadata {
                                     start_timestamp: frame.start_timestamp as i64,
                                     end_timestamp: frame.end_timestamp as i64,
                                 }))
@@ -151,7 +151,7 @@ impl ContentBase {
                             }
                         })
                     })
-                    .collect::<Vec<SearchMetadata>>();
+                    .collect::<Vec<ContentIndexMetadata>>();
 
                 concat_arrays!(audio_metadata, image_metadata).into_vec()
             }
@@ -161,7 +161,7 @@ impl ContentBase {
                 .filter_map(|page| {
                     page.id.as_ref().and_then(|page_id| {
                         if hit_result.hit_id.contains(page_id) {
-                            Some(SearchMetadata::WebPage(WebPageSearchMetadata {
+                            Some(ContentIndexMetadata::WebPage(WebPageIndexMetadata {
                                 start_index: page.start_index as usize,
                                 end_index: page.end_index as usize,
                             }))
@@ -177,7 +177,7 @@ impl ContentBase {
                 .filter_map(|page| {
                     page.id.as_ref().and_then(|page_id| {
                         if hit_result.hit_id.contains(page_id) {
-                            Some(SearchMetadata::WebPage(WebPageSearchMetadata {
+                            Some(ContentIndexMetadata::WebPage(WebPageIndexMetadata {
                                 start_index: page.start_index as usize,
                                 end_index: page.end_index as usize,
                             }))
@@ -197,6 +197,7 @@ impl ContentBase {
                 file_identifier: file_identifier.clone(),
                 score: hit_result.score,
                 metadata,
+                highlight: hit_result.hit_text(),
             })
             .collect())
     }

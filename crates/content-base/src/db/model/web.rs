@@ -1,7 +1,7 @@
 use crate::db::model::id::ID;
 use crate::db::model::PageModel;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WebPageModel {
     pub id: Option<ID>,
     pub page: Vec<PageModel>,

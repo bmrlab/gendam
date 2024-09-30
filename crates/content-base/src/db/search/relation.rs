@@ -204,7 +204,7 @@ mod test {
             model::{id::TB, ImageModel, TextModel},
             shared::test::{gen_vector, setup},
         },
-        query::payload::{SearchMetadata, SearchPayload},
+        query::payload::{ContentIndexPayload},
     };
     use content_base_task::{
         web_page::{transform::WebPageTransformTask, WebPageTaskType},

@@ -4,10 +4,10 @@ use crate::db::model::video::{ImageFrameModel, VideoModel};
 use crate::db::model::web::WebPageModel;
 use crate::db::model::{ImageModel, TextModel};
 use crate::db::DB;
-use crate::query::payload::image::ImageSearchMetadata;
-use crate::query::payload::raw_text::RawTextSearchMetadata;
-use crate::query::payload::video::VideoSearchMetadata;
-use crate::query::payload::{SearchMetadata, SearchPayload};
+use crate::query::payload::image::ImageIndexMetadata;
+use crate::query::payload::raw_text::RawTextIndexMetadata;
+use crate::query::payload::video::VideoIndexMetadata;
+use crate::query::payload::{ContentIndexMetadata, ContentIndexPayload};
 use content_base_task::audio::trans_chunk::AudioTransChunkTask;
 use content_base_task::image::desc_embed::ImageDescEmbedTask;
 use content_base_task::image::ImageTaskType;
@@ -122,56 +122,58 @@ pub fn fake_document() -> DocumentModel {
     }
 }
 
-pub fn fake_video_payload() -> SearchPayload {
-    SearchPayload {
+pub fn fake_video_payload() -> ContentIndexPayload {
+    ContentIndexPayload {
         file_identifier: (4..8).fake::<String>(),
         task_type: ContentTaskType::Video(VideoTaskType::TransChunk(VideoTransChunkTask {})),
-        metadata: SearchMetadata::Video(VideoSearchMetadata {
+        metadata: ContentIndexMetadata::Video(VideoIndexMetadata {
             start_timestamp: (1..20).fake(),
             end_timestamp: (30..100).fake(),
         }),
     }
 }
 
-pub fn fake_image_payload() -> SearchPayload {
-    SearchPayload {
+pub fn fake_image_payload() -> ContentIndexPayload {
+    ContentIndexPayload {
         file_identifier: (4..8).fake::<String>(),
         task_type: ContentTaskType::Image(ImageTaskType::DescEmbed(ImageDescEmbedTask {})),
-        metadata: SearchMetadata::Image(ImageSearchMetadata {}),
+        metadata: ContentIndexMetadata::Image(ImageIndexMetadata {}),
     }
 }
 
-pub fn fake_audio_payload() -> SearchPayload {
-    SearchPayload {
+pub fn fake_audio_payload() -> ContentIndexPayload {
+    ContentIndexPayload {
         file_identifier: (4..8).fake::<String>(),
         task_type: ContentTaskType::Audio(crate::audio::AudioTaskType::TransChunk(
             AudioTransChunkTask {},
         )),
-        metadata: SearchMetadata::Audio(crate::query::payload::audio::AudioSearchMetadata {
+        metadata: ContentIndexMetadata::Audio(crate::query::payload::audio::AudioIndexMetadata {
             start_timestamp: (1..20).fake(),
             end_timestamp: (30..100).fake(),
         }),
     }
 }
 
-pub fn fake_web_page_payload() -> SearchPayload {
-    SearchPayload {
+pub fn fake_web_page_payload() -> ContentIndexPayload {
+    ContentIndexPayload {
         file_identifier: (4..8).fake::<String>(),
         task_type: ContentTaskType::WebPage(WebPageTaskType::Transform(WebPageTransformTask {})),
-        metadata: SearchMetadata::WebPage(crate::query::payload::web_page::WebPageSearchMetadata {
-            start_index: (1..20).fake(),
-            end_index: (30..100).fake(),
-        }),
+        metadata: ContentIndexMetadata::WebPage(
+            crate::query::payload::web_page::WebPageIndexMetadata {
+                start_index: (1..20).fake(),
+                end_index: (30..100).fake(),
+            },
+        ),
     }
 }
 
-pub fn fake_document_payload() -> SearchPayload {
-    SearchPayload {
+pub fn fake_document_payload() -> ContentIndexPayload {
+    ContentIndexPayload {
         file_identifier: (4..8).fake::<String>(),
         task_type: ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(
             RawTextChunkSumEmbedTask {},
         )),
-        metadata: SearchMetadata::RawText(RawTextSearchMetadata {
+        metadata: ContentIndexMetadata::RawText(RawTextIndexMetadata {
             start_index: (1..20).fake(),
             end_index: (30..100).fake(),
         }),

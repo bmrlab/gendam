@@ -13,12 +13,12 @@ pub mod payload;
 pub mod video;
 pub mod web;
 
-#[derive(Serialize, Educe)]
+#[derive(Serialize, Educe, Clone)]
 #[educe(Debug)]
 pub struct ImageModel {
     pub id: Option<ID>,
     pub prompt: String,
-    
+
     #[educe(Debug(ignore))]
     pub vector: Vec<f32>,
 
@@ -26,7 +26,7 @@ pub struct ImageModel {
     pub prompt_vector: Vec<f32>,
 }
 
-#[derive(Serialize, Educe)]
+#[derive(Serialize, Educe, Clone)]
 #[educe(Debug)]
 pub struct TextModel {
     pub id: Option<ID>,
@@ -41,7 +41,7 @@ pub struct TextModel {
     pub en_vector: Vec<f32>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PageModel {
     pub id: Option<ID>,
     pub text: Vec<TextModel>,
@@ -50,14 +50,14 @@ pub struct PageModel {
     pub end_index: i32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ItemModel {
     pub id: Option<ID>,
     text: Vec<TextModel>,
     image: Vec<ImageModel>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PayloadModel {
     pub id: Option<ID>,
     pub file_identifier: Option<String>,
@@ -73,7 +73,7 @@ impl PayloadModel {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SelectResultModel {
     Text(TextModel),
     Image(ImageModel),
@@ -96,6 +96,63 @@ impl SelectResultModel {
             SelectResultModel::WebPage(data) => data.id.clone(),
             SelectResultModel::Document(data) => data.id.clone(),
             SelectResultModel::Payload(data) => data.id.clone(),
+        }
+    }
+
+    pub fn hit_text(&self) -> Option<String> {
+        match self {
+            SelectResultModel::Text(text) => Some(text.data.clone()),
+            SelectResultModel::Image(image) => Some(image.prompt.clone()),
+            SelectResultModel::Audio(audio) => {
+                let mut text = vec![];
+                for frame in &audio.audio_frame {
+                    for data in &frame.data {
+                        text.push(data.data.clone());
+                    }
+                }
+                Some(text.join("\n"))
+            }
+            SelectResultModel::Video(video) => {
+                let mut text = vec![];
+                for frame in &video.audio_frame {
+                    for data in &frame.data {
+                        text.push(data.data.clone());
+                    }
+                }
+                for frame in &video.image_frame {
+                    for data in &frame.data {
+                        text.push(data.prompt.clone());
+                    }
+                }
+                Some(text.join("\n"))
+            }
+            SelectResultModel::WebPage(web) => {
+                let mut text = vec![];
+                for data in &web.page {
+                    text.push(
+                        data.text
+                            .iter()
+                            .map(|x| x.data.clone())
+                            .collect::<Vec<String>>()
+                            .join("\n"),
+                    );
+                }
+                Some(text.join("\n"))
+            }
+            SelectResultModel::Document(document) => {
+                let mut text = vec![];
+                for data in &document.page {
+                    text.push(
+                        data.text
+                            .iter()
+                            .map(|x| x.data.clone())
+                            .collect::<Vec<String>>()
+                            .join("\n"),
+                    );
+                }
+                Some(text.join("\n"))
+            }
+            _ => None,
         }
     }
 }
