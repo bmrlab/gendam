@@ -109,3 +109,14 @@ impl Hash for ContentTaskType {
         self.to_string().hash(state);
     }
 }
+
+mod test {
+    use crate::ContentTaskType;
+    use crate::video::VideoTaskType;
+    use crate::video::frame::VideoFrameTask;
+
+    #[test]
+    fn test_display() {
+        println!("{}", ContentTaskType::Video(VideoTaskType::Frame(VideoFrameTask {})));
+    }
+}
