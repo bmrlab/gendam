@@ -16,7 +16,7 @@ serde_json = { workspace = true }
 storage = { path = "../storage" }
 storage-macro = { path = "../storage-macro" }
 ai = { path = "../ai" }
-strum = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
 strum_macros = { workspace = true }
 uuid = { workspace = true }
 content-handler = { path = "../content-handler" }

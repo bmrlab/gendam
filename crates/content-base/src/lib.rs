@@ -1,4 +1,5 @@
 mod core;
+mod db;
 pub mod delete;
 pub mod query;
 pub mod task;
