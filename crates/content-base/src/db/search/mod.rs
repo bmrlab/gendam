@@ -368,8 +368,7 @@ mod test {
     use crate::db::shared::test::{
         fake_upsert_text_clause, fake_video_model, fake_video_payload, gen_vector, setup,
     };
-    use crate::query::payload::video::VideoSearchMetadata;
-    use crate::query::payload::{SearchMetadata, SearchPayload};
+    use crate::query::payload::{ContentIndexMetadata, ContentIndexPayload};
     use content_base_task::video::VideoTaskType;
     use content_base_task::ContentTaskType;
     use itertools::Itertools;

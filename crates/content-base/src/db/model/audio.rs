@@ -2,7 +2,7 @@ use crate::db::model::id::ID;
 use crate::db::model::TextModel;
 use educe::Educe;
 
-#[derive(Educe)]
+#[derive(Educe, Clone)]
 #[educe(Debug)]
 pub struct AudioFrameModel {
     pub id: Option<ID>,
@@ -13,7 +13,7 @@ pub struct AudioFrameModel {
     pub end_timestamp: f32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AudioModel {
     pub id: Option<ID>,
     pub audio_frame: Vec<AudioFrameModel>,

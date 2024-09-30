@@ -3,7 +3,7 @@ use crate::db::model::{PayloadModel, SelectResultModel};
 use crate::db::search::BacktrackResult;
 use crate::query::model::SearchType;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HitResult {
     pub origin_id: ID,
     pub score: f32,
@@ -25,5 +25,11 @@ impl From<(BacktrackResult, f32, SearchType, PayloadModel)> for HitResult {
             result: bt.result,
             search_type,
         }
+    }
+}
+
+impl HitResult {
+    pub fn hit_text(&self) -> Option<String> {
+        self.result.hit_text()
     }
 }

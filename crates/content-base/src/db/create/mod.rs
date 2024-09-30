@@ -3,9 +3,8 @@ use surrealdb::sql::Thing;
 use tracing::{debug, error};
 
 use crate::{
-    check_db_error_from_resp, collect_async_results, concat_arrays, query::payload::SearchPayload,
+    check_db_error_from_resp, collect_async_results, concat_arrays, query::payload::ContentIndexPayload,
 };
-
 use super::{
     model::{
         audio::{AudioFrameModel, AudioModel},
@@ -24,7 +23,7 @@ impl DB {
     pub async fn insert_image(
         &self,
         image_model: ImageModel,
-        payload: Option<SearchPayload>,
+        payload: Option<ContentIndexPayload>,
     ) -> anyhow::Result<ID> {
         let mut resp = self
             .client
@@ -63,7 +62,7 @@ impl DB {
     pub async fn insert_audio(
         &self,
         audio: AudioModel,
-        payload: SearchPayload,
+        payload: ContentIndexPayload,
     ) -> anyhow::Result<ID> {
         let ids = self
             .batch_insert_audio_frame(audio.audio_frame)
@@ -99,7 +98,7 @@ impl DB {
     pub async fn insert_video(
         &self,
         video: VideoModel,
-        payload: SearchPayload,
+        payload: ContentIndexPayload,
     ) -> anyhow::Result<ID> {
         let image_frame_ids = self
             .batch_insert_image_frame(video.image_frame)
@@ -158,7 +157,7 @@ impl DB {
     pub async fn insert_web_page(
         &self,
         web_page: WebPageModel,
-        payload: SearchPayload,
+        payload: ContentIndexPayload,
     ) -> anyhow::Result<ID> {
         let page_ids = self
             .batch_insert_page(web_page.page)
@@ -193,7 +192,7 @@ impl DB {
     pub async fn insert_document(
         &self,
         document: DocumentModel,
-        payload: SearchPayload,
+        payload: ContentIndexPayload,
     ) -> anyhow::Result<ID> {
         let page_ids = self
             .batch_insert_page(document.page)
@@ -493,10 +492,7 @@ mod test {
         fake_video_payload, fake_web_page_model, fake_web_page_payload, gen_vector, setup,
     };
     use crate::db::DB;
-    use crate::query::payload::image::ImageSearchMetadata;
-    use crate::query::payload::raw_text::RawTextSearchMetadata;
-    use crate::query::payload::video::VideoSearchMetadata;
-    use crate::query::payload::{SearchMetadata, SearchPayload};
+    use crate::query::payload::{ContentIndexMetadata, ContentIndexPayload};
     use content_base_task::audio::trans_chunk::AudioTransChunkTask;
     use content_base_task::image::desc_embed::ImageDescEmbedTask;
     use content_base_task::image::ImageTaskType;

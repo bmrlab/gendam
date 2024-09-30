@@ -3,7 +3,7 @@ use crate::db::model::audio::AudioFrameModel;
 use crate::db::model::id::ID;
 use crate::db::model::ImageModel;
 
-#[derive(Educe)]
+#[derive(Educe, Clone)]
 #[educe(Debug)]
 pub struct ImageFrameModel {
     pub id: Option<ID>,
@@ -14,7 +14,7 @@ pub struct ImageFrameModel {
     pub end_timestamp: f32,
 }
 
-#[derive(Educe)]
+#[derive(Educe, Clone)]
 #[educe(Debug)]
 pub struct VideoModel {
     pub id: Option<ID>,
