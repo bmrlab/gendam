@@ -6,23 +6,9 @@ use content_base::{
 };
 use content_handler::{file_metadata, video::VideoDecoder};
 use content_library::Library;
-use prisma_client_rust::QueryError;
 use prisma_lib::{asset_object, file_handler_task};
 use std::path::Path;
 use tracing::Instrument;
-
-fn sql_error(e: QueryError) -> rspc::Error {
-    tracing::error!("sql query failed: {e}",);
-    rspc::Error::new(
-        rspc::ErrorCode::InternalServerError,
-        format!("sql query failed: {}", e),
-    )
-}
-
-fn error_404(msg: &str) -> rspc::Error {
-    tracing::error!("{}", msg);
-    rspc::Error::new(rspc::ErrorCode::NotFound, String::from(msg))
-}
 
 #[tracing::instrument(skip(library, ctx, _with_existing_artifacts))]
 pub async fn process_asset(
@@ -38,16 +24,10 @@ pub async fn process_asset(
         .asset_object()
         .find_unique(asset_object::hash::equals(asset_object_hash))
         .exec()
-        .await
-        .map_err(|e| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("failed to find asset_object: {}", e),
-            )
-        })?
+        .await?
         .ok_or_else(|| {
             rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
+                rspc::ErrorCode::NotFound,
                 format!("failed to find asset_object"),
             )
         })?;
@@ -174,6 +154,10 @@ pub async fn generate_thumbnail(
 
     if let Err(e) = thumbnail_handle.await {
         tracing::error!("Failed to create thumbnail: {}", e);
+        return Err(rspc::Error::new(
+            rspc::ErrorCode::InternalServerError,
+            String::from("failed to create thumbnail"),
+        ));
     }
 
     Ok(())
@@ -191,8 +175,7 @@ pub async fn process_asset_metadata(
         .asset_object()
         .find_unique(asset_object::id::equals(asset_object_id))
         .exec()
-        .await
-        .map_err(sql_error)?
+        .await?
     {
         Some(asset_object_data) => asset_object_data,
         None => {
@@ -239,11 +222,8 @@ pub async fn process_asset_metadata(
         generate_thumbnail(library, content_base, &asset_object_data.hash, &metadata);
 
     let results = tokio::join!(prisma_handle, thumbnail_handle);
-
-    results.0.map_err(sql_error)?;
-    if let Err(e) = results.1 {
-        tracing::error!("Failed to create thumbnail: {}", e);
-    }
+    let _ = results.0?;
+    let _ = results.1?;
 
     Ok(())
 }
@@ -258,17 +238,18 @@ pub async fn export_video_segment(
 ) -> Result<(), rspc::Error> {
     tracing::info!("export video segment for asset_object_id: {asset_object_id}");
 
-    let asset_object_data = match library
+    let asset_object_data = library
         .prisma_client()
         .asset_object()
         .find_unique(asset_object::id::equals(asset_object_id))
         .exec()
-        .await
-        .map_err(sql_error)?
-    {
-        Some(asset_object_data) => asset_object_data,
-        None => return Err(error_404("failed to find asset_object")),
-    };
+        .await?
+        .ok_or_else(|| {
+            rspc::Error::new(
+                rspc::ErrorCode::NotFound,
+                format!("failed to find asset_object"),
+            )
+        })?;
     let video_path = library.file_path(&asset_object_data.hash);
 
     let video_decoder = VideoDecoder::new(video_path).map_err(|e| {

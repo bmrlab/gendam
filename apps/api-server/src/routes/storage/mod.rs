@@ -128,16 +128,11 @@ where
                     )
                 });
 
-                library
-                    .prisma_client()
-                    ._batch(batch_statement)
-                    .await
-                    .map_err(|e| {
-                        rspc::Error::new(
-                            rspc::ErrorCode::InternalServerError,
-                            format!("failed to update data location error: {}", e),
-                        )
-                    })?;
+                library.prisma_client()._batch(batch_statement).await?;
+                // rspc::Error::new(
+                //     rspc::ErrorCode::InternalServerError,
+                //     format!("failed to update data location error: {}", e),
+                // )
 
                 // check delete local file or not on settings
                 let delete_local_or_not = library_settings.always_delete_local_file_after_upload;

@@ -43,15 +43,13 @@ where
                     ));
                 };
 
-                let library = ctx.library().expect("failed load library").clone();
+                let library = ctx.library()?;
 
                 let file_id_list = input.file_id_list.clone();
 
-                let file_hashes = find_all::find_all_asset_object_hashes(
-                    file_id_list,
-                    library.clone().prisma_client(),
-                )
-                .await?;
+                let file_hashes =
+                    find_all::find_all_asset_object_hashes(file_id_list, library.prisma_client())
+                        .await?;
 
                 let temp_bundle_path = ctx.get_temp_dir().join(Uuid::new_v4().to_string());
                 tracing::debug!("temp_bundle_path: {temp_bundle_path:?}");

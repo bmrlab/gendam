@@ -1,4 +1,4 @@
-use crate::{error::sql_error, routes::assets::types::FilePathWithAssetObjectData};
+use crate::routes::assets::types::FilePathWithAssetObjectData;
 use content_base::{
     query::{
         payload::{ContentIndexMetadata, RetrievalResultData, SearchResultData},
@@ -202,8 +202,7 @@ where
                 .take(1),
         )
         .exec()
-        .await
-        .map_err(sql_error)?;
+        .await?;
 
     let mut tasks_hash_map =
         std::collections::HashMap::<String, &prisma_lib::asset_object::Data>::new();

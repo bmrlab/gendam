@@ -1,8 +1,6 @@
 pub mod types;
-
 use crate::{routes::assets::process::process_asset, CtxWithLibrary};
 use content_base::{delete::DeletePayload, task::CancelTaskPayload, ContentTaskType};
-use prisma_client_rust::QueryError;
 use prisma_lib::{asset_object, file_handler_task};
 use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
@@ -36,20 +34,6 @@ struct TaskRedoRequestPayload {
     asset_object_id: i32,
 }
 
-fn sql_error(e: QueryError) -> rspc::Error {
-    rspc::Error::new(
-        rspc::ErrorCode::InternalServerError,
-        format!("sql query failed: {}", e),
-    )
-}
-
-fn convert_anyhow_error(e: anyhow::Error) -> rspc::Error {
-    rspc::Error::new(
-        rspc::ErrorCode::InternalServerError,
-        format!("error: {}", e),
-    )
-}
-
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
     TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
@@ -74,8 +58,7 @@ where
                     .file_handler_task()
                     .find_many(whera_params)
                     .exec()
-                    .await
-                    .map_err(sql_error)?;
+                    .await?;
                 Ok(res)
             })
         })
@@ -96,8 +79,7 @@ where
                             .take(1),
                     )
                     .exec()
-                    .await
-                    .map_err(sql_error)?;
+                    .await?;
                 let file_path_data_list = asset_object_data_list
                     .into_iter()
                     .filter_map(|mut asset_object_data| {
@@ -129,10 +111,13 @@ where
                     .asset_object()
                     .find_first(vec![asset_object::id::equals(input.asset_object_id)])
                     .exec()
-                    .await
-                    .map_err(sql_error)?
-                    .ok_or(anyhow::anyhow!("not found"))
-                    .map_err(convert_anyhow_error)?;
+                    .await?
+                    .ok_or_else(|| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::NotFound,
+                            format!("failed to find asset_object"),
+                        )
+                    })?;
 
                 let content_base = ctx.content_base()?;
                 let payload = CancelTaskPayload::new(&asset_object.hash);
@@ -145,10 +130,12 @@ where
                     Some(task_types) => payload.with_tasks(&task_types),
                     None => payload,
                 };
-                content_base
-                    .cancel_task(payload)
-                    .await
-                    .map_err(convert_anyhow_error)?;
+                content_base.cancel_task(payload).await.map_err(|e| {
+                    rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("failed to cancel task: {:?}", e),
+                    )
+                })?;
 
                 Ok(())
             })
@@ -162,8 +149,12 @@ where
                     .find_unique(asset_object::id::equals(input.asset_object_id))
                     .exec()
                     .await?
-                    .ok_or(anyhow::anyhow!("not found"))
-                    .map_err(convert_anyhow_error)?;
+                    .ok_or_else(|| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::NotFound,
+                            format!("failed to find asset_object"),
+                        )
+                    })?;
 
                 library
                     .prisma_client()
@@ -177,10 +168,12 @@ where
                 // delete existed artifacts
                 let content_base = ctx.content_base()?;
                 let payload = DeletePayload::new(&asset_object_data.hash);
-                content_base
-                    .delete(payload)
-                    .await
-                    .map_err(convert_anyhow_error)?;
+                content_base.delete(payload).await.map_err(|e| {
+                    rspc::Error::new(
+                        rspc::ErrorCode::InternalServerError,
+                        format!("failed to delete asset: {:?}", e),
+                    )
+                })?;
 
                 process_asset(&library, &ctx, asset_object_data.hash, None).await?;
 

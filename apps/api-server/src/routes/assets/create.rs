@@ -44,13 +44,9 @@ pub async fn create_dir(
                 file_path::name::equals(dir_name),
             ])
             .exec()
-            .await
-            .map_err(|e| {
-                rspc::Error::new(
-                    rspc::ErrorCode::InternalServerError,
-                    format!("sql error: {}", e),
-                )
-            })?
+            .await?
+            // With the rspc feature in Prisma, QueryError is automatically converted to rspc::Error
+            // So we can directly use the '?' operator without explicit error mapping
             .is_some();
 
         if !dir_exists {
@@ -103,15 +99,11 @@ pub async fn create_dir(
                 )
                 .exec()
                 .await?;
-            Ok(res)
+            Ok(res) as Result<_, QueryError>
         })
-        .await
-        .map_err(|e: QueryError| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("sql error: {}", e),
-            )
-        })?;
+        .await?;
+    // With the rspc feature in Prisma, QueryError is automatically converted to rspc::Error
+    // So we can directly use the '?' operator without explicit error mapping
 
     Ok(res)
 }
@@ -133,13 +125,9 @@ pub async fn create_asset_object(
                 file_path::name::equals(dir_name),
             ])
             .exec()
-            .await
-            .map_err(|e| {
-                rspc::Error::new(
-                    rspc::ErrorCode::InternalServerError,
-                    format!("sql error: {}", e),
-                )
-            })?
+            .await?
+            // With the rspc feature in Prisma, QueryError is automatically converted to rspc::Error
+            // So we can directly use the '?' operator without explicit error mapping
             .is_some();
 
         if !dir_exists {
@@ -279,15 +267,9 @@ pub async fn create_asset_object(
                 )
                 .exec()
                 .await?;
-            Ok((asset_object_data, file_path_data, asset_object_existed))
+            Ok((asset_object_data, file_path_data, asset_object_existed)) as Result<_, QueryError>
         })
-        .await
-        .map_err(|e: QueryError| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("failed to create asset_object: {}", e),
-            )
-        })?;
+        .await?;
 
     Ok((file_path_data, asset_object_data, asset_object_existed))
 }

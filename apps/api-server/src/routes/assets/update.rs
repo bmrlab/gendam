@@ -1,6 +1,6 @@
 use super::types::FilePathRequestPayload;
 use content_library::Library;
-use prisma_client_rust::{raw, PrismaValue, QueryError};
+use prisma_client_rust::{raw, PrismaValue};
 use prisma_lib::file_path;
 
 pub async fn rename_file_path(
@@ -12,7 +12,7 @@ pub async fn rename_file_path(
     new_name: &str,
 ) -> Result<(), rspc::Error> {
     // TODO: 所有 SQL 要放进一个 transaction 里面
-    let file_path_data = library
+    library
         .prisma_client()
         .file_path()
         .find_first(vec![
@@ -22,19 +22,13 @@ pub async fn rename_file_path(
             file_path::name::equals(old_name.to_string()),
         ])
         .exec()
-        .await
-        .map_err(|e| {
+        .await?
+        .ok_or_else(|| {
             rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("failed to find file_path: {}", e),
+                rspc::ErrorCode::NotFound,
+                String::from("file_path not found"),
             )
         })?;
-    if let None = file_path_data {
-        return Err(rspc::Error::new(
-            rspc::ErrorCode::NotFound,
-            String::from("file_path not found"),
-        ));
-    }
 
     library
         .prisma_client()
@@ -100,8 +94,16 @@ pub async fn move_file_path(
     // TODO: 所有 SQL 要放进一个 transaction 里面
 
     if let Some(target) = target.as_ref() {
-        let target_full_path = format!("{}{}/", target.materialized_path.as_str(), target.name.as_str());
-        let active_full_path = format!("{}{}/", active.materialized_path.as_str(), active.name.as_str());
+        let target_full_path = format!(
+            "{}{}/",
+            target.materialized_path.as_str(),
+            target.name.as_str()
+        );
+        let active_full_path = format!(
+            "{}{}/",
+            active.materialized_path.as_str(),
+            active.name.as_str()
+        );
         if target_full_path.starts_with(&active_full_path) {
             return Err(rspc::Error::new(
                 rspc::ErrorCode::BadRequest,
@@ -109,13 +111,6 @@ pub async fn move_file_path(
             ));
         }
     }
-
-    let sql_error = |e: QueryError| {
-        rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("sql query failed: {}", e),
-        )
-    };
 
     let active_file_path_data = library
         .prisma_client()
@@ -127,8 +122,7 @@ pub async fn move_file_path(
             file_path::name::equals(active.name.clone()),
         ])
         .exec()
-        .await
-        .map_err(sql_error)?;
+        .await?;
     let active_file_path_data = match active_file_path_data {
         Some(t) => t,
         None => {
@@ -141,7 +135,7 @@ pub async fn move_file_path(
 
     if let Some(target) = target.as_ref() {
         // TODO: 首先，确保 target.is_dir == true
-        let target_file_path_data = library
+        library
             .prisma_client()
             .file_path()
             .find_first(vec![
@@ -151,21 +145,21 @@ pub async fn move_file_path(
                 file_path::name::equals(target.name.clone()),
             ])
             .exec()
-            .await
-            .map_err(sql_error)?;
-        let _target_file_path_data = match target_file_path_data {
-            Some(t) => t,
-            None => {
-                return Err(rspc::Error::new(
+            .await?
+            .ok_or_else(|| {
+                rspc::Error::new(
                     rspc::ErrorCode::NotFound,
                     String::from("target file_path not found"),
-                ));
-            }
-        };
+                )
+            })?;
     }
 
     let new_materialized_path = match target.as_ref() {
-        Some(target) => format!("{}{}/", target.materialized_path.as_str(), target.name.as_str()),
+        Some(target) => format!(
+            "{}{}/",
+            target.materialized_path.as_str(),
+            target.name.as_str()
+        ),
         None => "/".to_string(),
     };
     // 确保 target 下不存在相同名字的文件，不然移动失败
@@ -177,8 +171,7 @@ pub async fn move_file_path(
             file_path::name::equals(active.name.clone()),
         ])
         .exec()
-        .await
-        .map_err(sql_error)?;
+        .await?;
     if let Some(data) = duplicated_file_path_data {
         return Err(rspc::Error::new(
             rspc::ErrorCode::BadRequest,
@@ -196,8 +189,7 @@ pub async fn move_file_path(
             )],
         )
         .exec()
-        .await
-        .map_err(sql_error)?;
+        .await?;
 
     if !active.is_dir {
         return Ok(());
@@ -224,7 +216,11 @@ pub async fn move_file_path(
         ),
         None => format!("/{}/", active.name.as_str()),
     };
-    let old_materialized_path = format!("{}{}/", active.materialized_path.as_str(), active.name.as_str());
+    let old_materialized_path = format!(
+        "{}{}/",
+        active.materialized_path.as_str(),
+        active.name.as_str()
+    );
     let old_materialized_path_like = format!("{}%", &old_materialized_path);
     library
         .prisma_client()

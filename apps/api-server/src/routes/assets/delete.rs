@@ -45,15 +45,9 @@ pub async fn delete_file_path(
                     e
                 })?;
 
-            Ok(())
+            Ok(()) as Result<(), QueryError>
         })
-        .await
-        .map_err(|e: QueryError| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("failed to delete file_path: {}", e),
-            )
-        })?;
+        .await?;
 
     Ok(())
 }
@@ -158,15 +152,9 @@ pub async fn delete_file_path_and_unlinked_asset_objects(
                 }
             }
 
-            Ok(())
+            Ok(()) as Result<(), QueryError>
         })
-        .await
-        .map_err(|e: QueryError| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("failed to delete file_path: {}", e),
-            )
-        })?;
+        .await?;
 
     let storage = get_current_fs_storage!().map_err(|e| {
         rspc::Error::new(

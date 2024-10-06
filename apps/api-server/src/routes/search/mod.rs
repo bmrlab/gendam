@@ -45,8 +45,7 @@ where
                 //     .asset_object()
                 //     .find_many(vec![])
                 //     .exec()
-                //     .await
-                //     .map_err(sql_error)?;
+                //     .await?;
                 // let captions = asset_object_data_list
                 //     .into_iter()
                 //     .filter_map(|asset_object_data| {

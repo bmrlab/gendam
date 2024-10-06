@@ -27,13 +27,7 @@ pub async fn list_file_path(
         .find_many(where_params)
         .with(file_path::asset_object::fetch())
         .exec()
-        .await
-        .map_err(|e| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("failed to list dirs: {}", e),
-            )
-        })?;
+        .await?;
     Ok(res)
 }
 
@@ -51,18 +45,12 @@ pub async fn get_file_path(
         ))
         .with(file_path::asset_object::fetch())
         .exec()
-        .await
-        .map_err(|e| {
+        .await?
+        .ok_or_else(|| {
             rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("sql query failed: {}", e),
+                rspc::ErrorCode::NotFound,
+                String::from("file_path not found"),
             )
         })?;
-    match res {
-        Some(r) => Ok(r),
-        None => Err(rspc::Error::new(
-            rspc::ErrorCode::NotFound,
-            String::from("file_path not found"),
-        )),
-    }
+    Ok(res)
 }

@@ -547,12 +547,8 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 job_fn: cron::create_job_fn(move || {
                     let library_arc = Arc::new(library_clone.clone());
                     let content_base_arc = Arc::new(content_base.clone());
-                    async move {
-                        delete_unlinked_assets(library_arc, content_base_arc)
-                            .await
-                            .expect("delete_unlinked_assets error")
-                    }
-                    .boxed()
+                    async move { delete_unlinked_assets(library_arc, content_base_arc).await }
+                        .boxed()
                 }),
             };
 
