@@ -23,12 +23,17 @@ const useFoldersTreeStore = create<FoldersTreeState>((set) => ({
   setIsRenaming: (isRenaming) => set({ isRenaming }),
 }))
 
-const FolderItem: React.FC<{ data: ExtractExplorerItem<'FilePathDir'> }> = ({ data }) => {
+const FolderItem: React.FC<{ data: ExtractExplorerItem<'FilePathDir'>; setOpen: (open: boolean) => void }> = ({
+  data,
+  setOpen,
+}) => {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const foldersTreeStore = useFoldersTreeStore()
+
   const { filePath } = data
+
   const highlight = useMemo(() => {
     return pathname === '/explorer' && filePath.materializedPath + filePath.name + '/' === searchParams.get('dir')
   }, [filePath.materializedPath, filePath.name, pathname, searchParams])
@@ -42,34 +47,74 @@ const FolderItem: React.FC<{ data: ExtractExplorerItem<'FilePathDir'> }> = ({ da
     [filePath.materializedPath, filePath.name, router],
   )
 
+  const createDirMut = rspc.useMutation(['assets.create_dir'])
+  const createNewSubFolder = useCallback(async () => {
+    const materializedPath = filePath.materializedPath + filePath.name + '/'
+    try {
+      await createDirMut.mutateAsync({
+        materializedPath: materializedPath,
+        name: 'untitled',
+      })
+    } catch (error) {
+      // error handled in `onError` in rspc.ts
+    }
+    setOpen(true)
+    queryClient.invalidateQueries({
+      queryKey: ['assets.list', { materializedPath }],
+    })
+  }, [createDirMut, filePath.materializedPath, filePath.name, setOpen])
+
+  const deleteMut = rspc.useMutation(['assets.delete_file_path'])
+  const handleDelete = useCallback(async () => {
+    try {
+      await deleteMut.mutateAsync({
+        materializedPath: filePath.materializedPath,
+        name: filePath.name,
+      })
+    } catch (error) {
+      // error handled in `onError` in rspc.ts
+    }
+    queryClient.invalidateQueries({
+      queryKey: ['assets.list', { materializedPath: filePath.materializedPath }],
+    })
+  }, [deleteMut, filePath.materializedPath, filePath.name])
+
+  const menu = (
+    <ContextMenu.Content>
+      <ContextMenu.Item onClick={() => foldersTreeStore.setIsRenaming(filePath)}>Rename</ContextMenu.Item>
+      <ContextMenu.Item onClick={createNewSubFolder}>New Subfolder</ContextMenu.Item>
+      <ContextMenu.Item variant="destructive" onClick={handleDelete}>
+        Delete
+      </ContextMenu.Item>
+    </ContextMenu.Content>
+  )
+
+  const body = (
+    <div
+      className={cn(
+        'my-1 flex items-center justify-start gap-2 overflow-hidden rounded py-1 pl-1 pr-2',
+        // selectionState.id === filePath.id ? "bg-sidebar-hover" : ""
+        highlight ? 'bg-sidebar-hover' : 'hover:bg-sidebar-hover',
+      )}
+      // onDoubleClick={(e) => onDoubleClick(e)}
+      // onClick={(e) => onClick(e)}
+      onClick={(e) => onDoubleClick(e)}
+    >
+      <Image src={Folder_Light} alt="folder" priority className="h-auto w-5"></Image>
+      {foldersTreeStore.isRenaming?.id === filePath.id ? (
+        <RenamableItemText data={data} onClose={() => foldersTreeStore.setIsRenaming(null)} />
+      ) : (
+        <div className="truncate text-xs">{filePath.name}</div>
+      )}
+    </div>
+  )
+
   return (
     <ContextMenu.Root onOpenChange={() => {}}>
       <ContextMenu.Trigger>
-        <ExplorerDroppable droppable={{ data, region: 'Sidebar' }}>
-          <div
-            className={cn(
-              'my-1 flex items-center justify-start gap-2 overflow-hidden rounded py-1 pl-1 pr-2',
-              // selectionState.id === filePath.id ? "bg-sidebar-hover" : ""
-              highlight ? 'bg-sidebar-hover' : 'hover:bg-sidebar-hover',
-            )}
-            // onDoubleClick={(e) => onDoubleClick(e)}
-            // onClick={(e) => onClick(e)}
-            onClick={(e) => onDoubleClick(e)}
-          >
-            <Image src={Folder_Light} alt="folder" priority className="h-auto w-5"></Image>
-            {foldersTreeStore.isRenaming?.id === filePath.id ? (
-              <RenamableItemText data={data} onClose={() => foldersTreeStore.setIsRenaming(null)} />
-            ) : (
-              <div className="truncate text-xs">{filePath.name}</div>
-            )}
-          </div>
-        </ExplorerDroppable>
+        <ExplorerDroppable droppable={{ data, region: 'Sidebar' }}>{body}</ExplorerDroppable>
       </ContextMenu.Trigger>
-      <ContextMenu.Portal>
-        <ContextMenu.Content>
-          <ContextMenu.Item onClick={() => foldersTreeStore.setIsRenaming(filePath)}>Rename</ContextMenu.Item>
-        </ContextMenu.Content>
-      </ContextMenu.Portal>
+      <ContextMenu.Portal>{menu}</ContextMenu.Portal>
     </ContextMenu.Root>
   )
 }
@@ -120,7 +165,7 @@ const FoldersBlock: React.FC<{ data: ExtractExplorerItem<'FilePathDir'> }> = ({ 
           <Icon.ArrowRight className={cn('size-3 transition-all duration-200', open ? 'rotate-90' : 'rotate-0')} />
         </div>
         {/* folder icon and name */}
-        <FolderItem data={data} />
+        <FolderItem data={data} setOpen={setOpen} />
       </div>
       {/* children */}
       {open ? (

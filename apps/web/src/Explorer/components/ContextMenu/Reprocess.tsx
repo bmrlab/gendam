@@ -31,7 +31,7 @@ function withReprocessExplorerItem(BaseComponent: BaseContextMenuItem) {
     )
 
     return (
-      <ContextMenu.Item onSelect={handleReprocess} disabled={explorer.selectedItems.size > 1}>
+      <ContextMenu.Item onSelect={handleReprocess} disabled={explorer.selectedItems.size > validAssetObjects.length}>
         <BaseComponent />
       </ContextMenu.Item>
     )

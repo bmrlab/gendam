@@ -30,7 +30,10 @@ function withProcessMetadataExplorerItem(BaseComponent: BaseContextMenuItem) {
     )
 
     return (
-      <ContextMenu.Item onSelect={handleProcessMetadata} disabled={explorer.selectedItems.size > 1}>
+      <ContextMenu.Item
+        onSelect={handleProcessMetadata}
+        disabled={explorer.selectedItems.size > validAssetObjects.length}
+      >
         <BaseComponent />
       </ContextMenu.Item>
     )
