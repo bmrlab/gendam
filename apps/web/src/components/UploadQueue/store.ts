@@ -3,8 +3,9 @@
 import { type FilePath } from '@/lib/bindings'
 import { create } from 'zustand'
 
-export type FileItem = {
+export type UploadQueuePayload = {
   materializedPath: string
+  //
   name: string
 } & (
   | {
@@ -19,16 +20,16 @@ export type FileItem = {
 
 interface UploadQueue {
   inProcess: FilePath[]
-  completed: (FileItem & FilePath)[]
-  failed: FileItem[]
-  queue: FileItem[]
-  uploading: FileItem | null
+  completed: (UploadQueuePayload & FilePath)[]
+  failed: UploadQueuePayload[]
+  queue: UploadQueuePayload[]
+  uploading: UploadQueuePayload | null
   setInProcessItems: (items: FilePath[]) => void
-  nextUploading: () => FileItem | null
+  nextUploading: () => UploadQueuePayload | null
   completeUploading: (filePathData: FilePath) => void
   failedUploading: () => void
-  retryFailed: (item: FileItem) => void
-  enqueue: (item: FileItem) => void
+  retryFailed: (item: UploadQueuePayload) => void
+  enqueue: (item: UploadQueuePayload) => void
   clear: () => void
 }
 

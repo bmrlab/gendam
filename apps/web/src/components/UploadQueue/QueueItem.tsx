@@ -1,6 +1,6 @@
 'use client'
+import { type UploadQueuePayload } from '@/components/UploadQueue/store'
 import { type FilePath } from '@/lib/bindings'
-import { type FileItem } from '@/components/UploadQueue/store'
 import { Video_File } from '@gendam/assets/images'
 import classNames from 'classnames'
 import Image from 'next/image'
@@ -16,7 +16,7 @@ const QueueItem = ({
   className,
   ...props
 }: PropsWithChildren<{
-  file: FileItem | FilePath
+  file: UploadQueuePayload | FilePath
   icon?: React.ReactNode
   status?: React.ReactNode
 }> &
