@@ -1,16 +1,14 @@
 'use client'
 import { useExplorerContext } from '@/Explorer/hooks'
-import PageNav from '@/components/PageNav'
-import UploadButton from '@/components/UploadButton'
-import Viewport from '@/components/Viewport'
-import { DropdownMenu } from '@gendam/ui/v2/dropdown-menu'
-// import { rspc } from '@/lib/rspc'
 import { useInspector } from '@/components/Inspector'
-import { useUploadQueueStore } from '@/components/UploadQueue/store'
+import PageNav from '@/components/PageNav'
+import UploadButton, { type UploadButtonResult, useFileUploadUtils } from '@/components/UploadButton'
+import Viewport from '@/components/Viewport'
 import { useClipboardPaste } from '@/hooks/useClipboardPaste'
 import { useFileDrop } from '@/hooks/useFileDrop'
 import Icon from '@gendam/ui/icons'
 import { Button } from '@gendam/ui/v2/button'
+import { DropdownMenu } from '@gendam/ui/v2/dropdown-menu'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -23,7 +21,6 @@ export default function Header() {
   // const urlImportDialog = useUrlImportDialog()
   const router = useRouter()
   const explorer = useExplorerContext()
-
   const inspector = useInspector()
 
   const searchFormRef = useRef<SearchFormRef>(null)
@@ -39,64 +36,44 @@ export default function Header() {
     }
   }, [router])
 
-  const uploadQueueStore = useUploadQueueStore()
-  // 只监听 enqueue，监听 uploadQueueStore 数据变化，不然 handleSelectFiles 会一直更新导致后面有个 useEffect 始终被触发
-  const enqueue = uploadQueueStore.enqueue
-  const handleSelectFiles = useCallback(
-    (files: File[]) => {
-      if (explorer.materializedPath && files.length > 0) {
-        for (const file of files) {
-          enqueue({
-            materializedPath: explorer.materializedPath,
-            name: file.name,
-            dataType: 'file',
-            payload: file,
-          })
-        }
-      }
-    },
-    [explorer.materializedPath, enqueue],
-  )
-  const handleSelectFilePaths = useCallback(
-    (fileFullPaths: string[]) => {
-      // TODO 暂时隐藏
-      // const { supportedFiles, unsupportedExtensionsSet } = filterFiles(fileFullPaths)
-      // if (Array.from(unsupportedExtensionsSet).length > 0) {
-      //   toast.error(`Unsupported file types: ${Array.from(unsupportedExtensionsSet).join(',')}`)
-      // }
-      if (explorer.materializedPath && fileFullPaths.length > 0) {
-        for (const fileFullPath of fileFullPaths) {
-          const name = fileFullPath.split('/').slice(-1).join('')
-          enqueue({
-            materializedPath: explorer.materializedPath,
-            name: name,
-            dataType: 'path',
-            payload: fileFullPath,
-          })
-        }
-      }
-    },
-    [explorer.materializedPath, enqueue],
-  )
+  const { handleSelectEventOfUploadButton } = useFileUploadUtils()
 
   const { filesDropped, setFilesDropped } = useFileDrop()
   useEffect(() => {
     if (filesDropped.length > 0) {
-      setFilesDropped([]) // 要立即清空，不然 handleSelectFiles 因为 materializedPath 变化会再次触发同一批文件
-      handleSelectFilePaths(filesDropped)
+      setFilesDropped([]) // 要立即清空，不然 handleSelectEventOfUploadButton 因为 materializedPath 变化会再次触发同一批文件
+      if (explorer.materializedPath && filesDropped.length > 0) {
+        handleSelectEventOfUploadButton(explorer.materializedPath, {
+          items: filesDropped.map((fileSystemPath) => ({ fileSystemPath })),
+          directory: false,
+        })
+      }
     }
-  }, [filesDropped, setFilesDropped, handleSelectFilePaths])
+  }, [explorer.materializedPath, filesDropped, setFilesDropped, handleSelectEventOfUploadButton])
 
   const { filesPasted, setFilesPasted } = useClipboardPaste()
   useEffect(() => {
     if (filesPasted.length > 0) {
-      setFilesPasted([]) // 要立即清空，不然 handleSelectFiles 因为 materializedPath 变化会再次触发同一批文件
-      handleSelectFiles(filesPasted)
+      setFilesPasted([]) // 要立即清空，不然 handleSelectEventOfUploadButton 因为 materializedPath 变化会再次触发同一批文件
+      if (explorer.materializedPath && filesPasted.length > 0) {
+        handleSelectEventOfUploadButton(explorer.materializedPath, {
+          items: filesPasted.map((file) => ({ file })),
+          directory: false,
+        })
+      }
     }
-  }, [filesPasted, setFilesPasted, handleSelectFiles])
+  }, [explorer.materializedPath, filesPasted, setFilesPasted, handleSelectEventOfUploadButton])
 
   const UploadActions = () => {
     const [uploadActionsOpen, setUploadActionsOpen] = useState(false)
+    const onSelect = (result: UploadButtonResult) => {
+      if (explorer.materializedPath) {
+        handleSelectEventOfUploadButton(explorer.materializedPath, result)
+      }
+      // 在 DropdownMenu.Item 上先调用 e.preventDefault() 以防止在选择此项时关闭下拉菜单
+      // 需要选择文件了以后再关闭 menu，不然 input 会被提前 unmount，导致 oninput 无法触发
+      setUploadActionsOpen(false)
+    }
     return (
       <DropdownMenu.Root open={uploadActionsOpen} onOpenChange={setUploadActionsOpen}>
         <DropdownMenu.Trigger asChild>
@@ -111,26 +88,16 @@ export default function Header() {
               <Icon.FolderAdd className="size-4" />
               <span>Create Folder</span>
             </DropdownMenu.Item>
-            <UploadButton
-              onSelectFilePaths={(filePaths: string[]) => {
-                handleSelectFilePaths(filePaths)
-                setUploadActionsOpen(false)
-              }}
-              onSelectFiles={(files: File[]) => {
-                handleSelectFiles(files)
-                setUploadActionsOpen(false)
-              }}
-            >
-              {/* Wrap this menu item in UploadButton to handle file selection */}
-              <DropdownMenu.Item
-                onSelect={(e) => {
-                  // prevent the dropdown menu from closing when selecting this item
-                  // 需要选择文件了以后再关闭 menu，不然 input 会被提前 unmount，导致 oninput 无法触发
-                  e.preventDefault()
-                }}
-              >
+            <UploadButton directory={false} onSelect={onSelect}>
+              <DropdownMenu.Item onSelect={(e) => e.preventDefault()}>
                 <Icon.Upload className="size-4" />
-                <span>Import Medias</span>
+                <span>Import Files</span>
+              </DropdownMenu.Item>
+            </UploadButton>
+            <UploadButton directory={true} onSelect={onSelect}>
+              <DropdownMenu.Item onSelect={(e) => e.preventDefault()}>
+                <Icon.Upload className="size-4" />
+                <span>Import Folder</span>
               </DropdownMenu.Item>
             </UploadButton>
           </DropdownMenu.Content>

@@ -30,5 +30,5 @@ export const SUPPORTED_CONTENT_TYPES = new Set([
   'wav',
   'ogg',
   'flac',
-  "m4a"
+  'm4a',
 ])

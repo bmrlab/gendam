@@ -1,6 +1,7 @@
 // TODO: move this to Shared Folder
-
+import { SUPPORTED_CONTENT_TYPES } from '@/constants'
 import { type FilePath } from '@/lib/bindings'
+import { toast } from 'sonner'
 import { create } from 'zustand'
 
 export type UploadQueuePayload = {
@@ -88,6 +89,11 @@ export const useUploadQueueStore = create<UploadQueue>((set, get) => ({
     }))
   },
   enqueue: (item) => {
+    const extension = item.name.split('.').pop()?.toLowerCase() ?? ''
+    if (!SUPPORTED_CONTENT_TYPES.has(extension)) {
+      toast.error(`Unsupported file type: ${extension} for ${item.name}`)
+      return
+    }
     set((state) => ({
       queue: [...state.queue, item],
     }))
