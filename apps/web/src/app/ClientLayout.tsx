@@ -112,7 +112,7 @@ export default function ClientLayout({
     setPending(true)
     Promise.all([client.query(['users.get']), client.query(['libraries.status'])])
       .then(async ([auth, { id, loaded, isBusy }]) => {
-        console.log(id, loaded, isBusy)
+        // console.log(id, loaded, isBusy)
         setAuth(auth)
         if (!id) {
           setPending(false)

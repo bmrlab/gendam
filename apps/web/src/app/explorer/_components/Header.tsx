@@ -3,6 +3,7 @@ import { useExplorerContext } from '@/Explorer/hooks'
 import PageNav from '@/components/PageNav'
 import UploadButton from '@/components/UploadButton'
 import Viewport from '@/components/Viewport'
+import { DropdownMenu } from '@gendam/ui/v2/dropdown-menu'
 // import { rspc } from '@/lib/rspc'
 import { useInspector } from '@/components/Inspector'
 import { useUploadQueueStore } from '@/components/UploadQueue/store'
@@ -12,7 +13,7 @@ import Icon from '@gendam/ui/icons'
 import { Button } from '@gendam/ui/v2/button'
 import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import SearchForm, { type SearchFormRef } from '../../search/SearchForm' // TODO: 这样不大好，应该是一个公共组件
 import TitleDialog, { useTitleDialog } from './TitleDialog'
 // import UrlImportDialog, { useUrlImportDialog } from './UrlImportDialog'
@@ -94,6 +95,50 @@ export default function Header() {
     }
   }, [filesPasted, setFilesPasted, handleSelectFiles])
 
+  const UploadActions = () => {
+    const [uploadActionsOpen, setUploadActionsOpen] = useState(false)
+    return (
+      <DropdownMenu.Root open={uploadActionsOpen} onOpenChange={setUploadActionsOpen}>
+        <DropdownMenu.Trigger asChild>
+          <Button variant="ghost" className="h-7 w-7 p-1 transition-none">
+            <Icon.Add className="size-4" />
+          </Button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          {/* portals the content part into document.body, to avoid z-index issues */}
+          <DropdownMenu.Content align="end">
+            <DropdownMenu.Item onSelect={() => titleDialog.setOpen(true)}>
+              <Icon.FolderAdd className="size-4" />
+              <span>Create Folder</span>
+            </DropdownMenu.Item>
+            <UploadButton
+              onSelectFilePaths={(filePaths: string[]) => {
+                handleSelectFilePaths(filePaths)
+                setUploadActionsOpen(false)
+              }}
+              onSelectFiles={(files: File[]) => {
+                handleSelectFiles(files)
+                setUploadActionsOpen(false)
+              }}
+            >
+              {/* Wrap this menu item in UploadButton to handle file selection */}
+              <DropdownMenu.Item
+                onSelect={(e) => {
+                  // prevent the dropdown menu from closing when selecting this item
+                  // 需要选择文件了以后再关闭 menu，不然 input 会被提前 unmount，导致 oninput 无法触发
+                  e.preventDefault()
+                }}
+              >
+                <Icon.Upload className="size-4" />
+                <span>Import Medias</span>
+              </DropdownMenu.Item>
+            </UploadButton>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+    )
+  }
+
   return (
     <>
       <Viewport.Toolbar className="relative">
@@ -103,20 +148,15 @@ export default function Header() {
         </div>
         <div className="ml-auto"></div>
         <div className="text-ink/70 flex items-center gap-1 justify-self-end">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-1 transition-none"
-            onClick={() => titleDialog.setOpen(true)}
-          >
-            <Icon.FolderAdd className="size-4" />
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-1 transition-none" asChild>
-            {/* 加上 asChild 不使用 native button, 因为里面是个 form, native button 可能会触发 form submit */}
+          <UploadActions />
+
+          {/* <Button variant="ghost" size="sm" className="h-7 w-7 p-1 transition-none" asChild>
+            加上 asChild 不使用 native button, 因为里面是个 form, native button 可能会触发 form submit
             <UploadButton onSelectFilePaths={handleSelectFilePaths} onSelectFiles={handleSelectFiles}>
               <Icon.Upload className="size-4" />
             </UploadButton>
-          </Button>
+          </Button> */}
+
           {/* <Button
             variant="ghost"
             size="sm"

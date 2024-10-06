@@ -150,11 +150,12 @@ const WebUploadButton: React.FC<PropsWithChildren<Props> & HTMLAttributes<HTMLLa
 export default function UploadButton({
   children,
   onSelectFiles,
+  onSelectFilePaths,
   ...props
 }: PropsWithChildren<Props> & HTMLAttributes<HTMLLabelElement>) {
   if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
     return (
-      <TauriUploadButton onSelectFiles={onSelectFiles} {...props}>
+      <TauriUploadButton onSelectFilePaths={onSelectFilePaths} {...props}>
         {children}
       </TauriUploadButton>
     )
