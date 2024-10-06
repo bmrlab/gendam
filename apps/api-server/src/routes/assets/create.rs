@@ -122,6 +122,34 @@ pub async fn create_asset_object(
     name: &str,
     local_full_path: &str,
 ) -> Result<(file_path::Data, asset_object::Data, bool), rspc::Error> {
+    if let Some((parent_materialized_path, dir_name)) =
+        split_materialized_path(materialized_path).await
+    {
+        let dir_exists = library
+            .prisma_client()
+            .file_path()
+            .find_first(vec![
+                file_path::materialized_path::equals(parent_materialized_path),
+                file_path::name::equals(dir_name),
+            ])
+            .exec()
+            .await
+            .map_err(|e| {
+                rspc::Error::new(
+                    rspc::ErrorCode::InternalServerError,
+                    format!("sql error: {}", e),
+                )
+            })?
+            .is_some();
+
+        if !dir_exists {
+            return Err(rspc::Error::new(
+                rspc::ErrorCode::NotFound,
+                format!("materialized_path not found"),
+            ));
+        }
+    };
+
     let start_time = std::time::Instant::now();
     let fs_metadata = std::fs::metadata(&local_full_path).map_err(|e| {
         rspc::Error::new(

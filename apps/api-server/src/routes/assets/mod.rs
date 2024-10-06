@@ -44,8 +44,9 @@ where
                 }
                 |ctx, input: FilePathCreatePayload| async move {
                     let library = ctx.library()?;
-                    create_dir(&library, &input.materialized_path, &input.name).await?;
-                    Ok(())
+                    let file_path =
+                        create_dir(&library, &input.materialized_path, &input.name).await?;
+                    Ok(file_path)
                 }
             })
         })
