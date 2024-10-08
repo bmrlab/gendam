@@ -111,7 +111,7 @@ pub async fn search_all(
     let text = input.text.clone();
 
     let payload = QueryPayload::new(&text);
-    let res = content_base.query(payload).await;
+    let res = content_base.query(payload, None).await;
     tracing::debug!("search result: {:?}", res);
 
     let search_results = match res {

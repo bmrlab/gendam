@@ -19,6 +19,7 @@ mod rank;
 pub mod search;
 
 const RETRIEVAL_COUNT: u64 = 20;
+const MAX_RANK_COUNT: usize = 10;
 
 pub struct QueryPayload {
     query: String,
@@ -38,7 +39,12 @@ impl ContentBase {
     ///     2. 将上述结果进行 rank
     ///     3. 对上述 rank 的结果进行向上回溯
     ///     4. 填充 payload 信息
-    pub async fn query(&self, payload: QueryPayload) -> anyhow::Result<Vec<SearchResultData>> {
+    pub async fn query(
+        &self,
+        payload: QueryPayload,
+        max_count: Option<usize>,
+    ) -> anyhow::Result<Vec<SearchResultData>> {
+        let max_count = max_count.unwrap_or(MAX_RANK_COUNT);
         let with_highlight = true;
         // 目前 QueryPayload 只是文本
         match self.query_payload_to_model(payload).await? {
@@ -70,7 +76,7 @@ impl ContentBase {
                 let rank_result = Rank::rank(
                     (full_text_result.clone(), vector_result),
                     Some(true),
-                    Some(10),
+                    Some(max_count),
                 )?;
                 debug!("rank result: {rank_result:?}");
                 let search_ids: Vec<ID> =
@@ -117,11 +123,15 @@ impl ContentBase {
         }
     }
 
-    /// 实现基于文本特征的基础召回
     pub async fn retrieve(
         &self,
         payload: QueryPayload,
     ) -> anyhow::Result<Vec<RetrievalResultData>> {
-        Ok(Vec::new())
+        Ok(self
+            .query(payload, Some(RETRIEVAL_COUNT as usize))
+            .await?
+            .into_iter()
+            .map(|data| data.into())
+            .collect::<Vec<RetrievalResultData>>())
     }
 }
