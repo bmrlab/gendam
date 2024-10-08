@@ -6,14 +6,12 @@ edition = { workspace = true }
 [dependencies]
 prisma-client-rust = { workspace = true }
 prisma-lib = { path = "../prisma" }
-vector-db = { path = "../vector-db", features = ["qdrant"] }
 storage = { path = "../storage" }
 global-variable = { path = "../global-variable" }
 p2p = { path = "../p2p" }
 tokio = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }
-qdrant-client = { workspace = true }
 anyhow = { workspace = true }
 serde_json = { workspace = true }
 walkdir = "2.5.0"
