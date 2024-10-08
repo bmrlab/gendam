@@ -29,7 +29,7 @@ impl From<(BacktrackResult, f32, SearchType, PayloadModel)> for HitResult {
 }
 
 impl HitResult {
-    pub fn hit_text(&self) -> Option<String> {
-        self.result.hit_text()
+    pub fn hit_text(&self, range: Option<(usize, usize)>) -> Option<String> {
+        self.result.hit_text(range)
     }
 }

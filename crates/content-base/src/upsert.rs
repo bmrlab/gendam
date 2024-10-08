@@ -123,7 +123,7 @@ impl ContentBase {
                 let _ = notification_tx.send(notification).await;
                 // 对完成的任务进行后处理
                 if let TaskStatus::Finished = task_status {
-                    let  _ = task_post_process(
+                    let _ = task_post_process(
                         &ctx,
                         &file_info_clone,
                         &task_type,
@@ -199,6 +199,7 @@ async fn task_post_process(
     match task_type {
         ContentTaskType::Video(VideoTaskType::TransChunkSumEmbed(_)) => {
             let chunks = VideoTransChunkTask.chunk_content(file_info, ctx).await?;
+            debug!("video chunks: {chunks:?}");
             let future = chunks
                 .into_iter()
                 .map(|chunk| async move {
@@ -206,7 +207,7 @@ async fn task_post_process(
                         .embed_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
                         .await?;
                     debug!("chunk: {chunk:?}, embedding: {:?}", embedding.len());
-                    anyhow::Result::<AudioFrameModel>::Ok(AudioFrameModel {
+                    Result::<AudioFrameModel, anyhow::Error>::Ok(AudioFrameModel {
                         id: None,
                         data: vec![TextModel {
                             id: None,
@@ -249,7 +250,7 @@ async fn task_post_process(
                     let embedding = AudioTransChunkSumEmbedTask
                         .embed_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
                         .await?;
-                    anyhow::Result::<AudioFrameModel>::Ok(AudioFrameModel {
+                    Result::<AudioFrameModel, anyhow::Error>::Ok(AudioFrameModel {
                         id: None,
                         data: vec![TextModel {
                             id: None,
