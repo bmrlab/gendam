@@ -15,6 +15,22 @@ use anyhow::bail;
 use serde_json::Value;
 use std::{fmt, time::Duration};
 
+/// AIHandler manages different AI models used in the application.
+///
+/// The default model selections for each category are defined in the `impl Default for LibraryModels`,
+/// located in `apps/api-server/src/library.rs`.
+///
+/// These defaults can be overridden by user settings in the library settings file,
+/// found at `<library_dir>/settings.json`.
+///
+/// Available models and their configurations are defined in the `model_list.json` file
+/// located in the resources directory.
+///
+/// The actual model selection and instantiation occurs in the corresponding `get_*` methods
+/// (e.g., `get_image_caption`, `get_multi_modal_embedding`, etc.) based on the following priority:
+/// 1. User-specified settings in the library settings file
+/// 2. Default values from `impl Default for LibraryModels`
+/// 3. Model configurations from `model_list.json`
 #[derive(Clone)]
 pub struct AIHandler {
     pub multi_modal_embedding: (MultiModalEmbeddingModel, String),
@@ -84,6 +100,9 @@ impl AIHandler {
             )
             .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
 
+            // 这里是使用 LLM 进行 image caption 的系统提示词
+            // const LLM_IMAGE_CAPTION_SYSTEM_PROMPT: &'static str = r#"Describe People (including famous individuals), Actions, Objects, Animals or pets, Nature, Sounds (excluding human speech) in the image."#;
+            // handler.create_image_caption_ref(LLM_IMAGE_CAPTION_SYSTEM_PROMPT)
             handler.create_image_caption_ref("Please describe the image.")
         } else {
             let handler = AIModel::new(

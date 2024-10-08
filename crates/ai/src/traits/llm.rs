@@ -37,6 +37,8 @@ impl LLMOutput {
 
     pub async fn to_string(&mut self) -> anyhow::Result<String> {
         let mut output = String::new();
+        // LLMOutput 是 LLMModel::get_completion 返回的结果
+        // 这里会消费 async_stream::stream! 生成的流并且取 yield 的结果
         while let Some(item) = self.next().await {
             let item = item?;
             if let Some(item) = item {
@@ -48,6 +50,17 @@ impl LLMOutput {
 }
 
 impl LLMModel {
+    /// This function takes a prompt string and returns an `ImageCaptionModel` that can be used
+    /// to generate captions for images. This method also defines how the input image is processed.
+    ///
+    /// # Arguments
+    /// * `prompt` - A string slice that contains the prompt to be used for image captioning.
+    ///              This parameter is necessary because different LLM models may require different
+    ///              prompts to effectively generate image captions. There isn't a one-size-fits-all
+    ///              default prompt that works optimally for all LLM models.
+    ///
+    /// # Returns
+    /// An `ImageCaptionModel` that can be used to generate captions for images.
     pub fn create_image_caption_ref(self, prompt: &str) -> ImageCaptionModel {
         let prompt = prompt.to_string();
 
@@ -68,10 +81,13 @@ impl LLMModel {
                         let base64 = base64::engine::general_purpose::STANDARD.encode(&buf);
 
                         Ok((
-                            vec![LLMMessage::new_user_with_image(
-                                prompt.clone().as_str(),
-                                format!("data:image/png;base64,{}", base64).as_str(),
-                            )],
+                            vec![
+                                // LLMMessage::new_system(),
+                                LLMMessage::new_user_with_image(
+                                    prompt.clone().as_str(),
+                                    format!("data:image/png;base64,{}", base64).as_str(),
+                                ),
+                            ],
                             LLMInferenceParams::default(),
                         ))
                     };
@@ -79,7 +95,11 @@ impl LLMModel {
                     result
                 }
             },
-            |mut v| async move { v.to_string().await },
+            |mut v| async move {
+                // 这个 convert_output 方法在 AIModel::create_reference 里调用,
+                // LLMOutput 是一个异步闭包，调用 convert_output 的时候才会执行 to_string() 并获取 LLM 服务返回的结果
+                v.to_string().await
+            },
         )
     }
 }
