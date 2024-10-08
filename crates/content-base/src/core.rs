@@ -11,7 +11,6 @@ use content_base_task::{
     ContentTaskType,
 };
 use content_metadata::ContentMetadata;
-use qdrant_client::Qdrant;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -20,19 +19,13 @@ impl ContentBase {
     /// so if need to modify context, a new ContentBase should be created.
     pub fn new(
         ctx: &ContentBaseCtx,
-        qdrant_client: Arc<Qdrant>,
         db: Arc<RwLock<DB>>,
-        language_collection_name: &str,
-        vision_collection_name: &str,
     ) -> anyhow::Result<Self> {
         let task_pool = TaskPool::new(ctx, None)?;
         Ok(Self {
             ctx: ctx.clone(),
             task_pool,
-            qdrant: qdrant_client,
             db,
-            language_collection_name: language_collection_name.to_string(),
-            vision_collection_name: vision_collection_name.to_string(),
         })
     }
 

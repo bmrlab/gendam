@@ -5,7 +5,6 @@ use dotenvy::dotenv;
 use global_variable::init_global_variables;
 use std::sync::{Arc, Mutex};
 use tauri::{http::Request, Manager};
-use vector_db::kill_qdrant_server;
 mod storage;
 mod store;
 
@@ -138,8 +137,6 @@ async fn main() {
                 tracing::info!("window destroyed");
                 if let Ok(library) = ctx.library() {
                     // drop(library);
-                    let pid = library.qdrant_server_info();
-                    let _ = kill_qdrant_server(pid);
                 }
                 // tokio::runtime::Runtime::new().unwrap().block_on(async {
                 //     let _ = ctx.unload_library().await;

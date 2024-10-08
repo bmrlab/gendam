@@ -7,25 +7,23 @@ use super::payload::{
     ContentIndexMetadata, ContentIndexPayload, SearchResultData,
 };
 use content_base_context::ContentBaseCtx;
-use qdrant_client::qdrant::ScoredPoint;
-use serde_json::json;
 use std::collections::HashMap;
 
 /// groups `ScoredPoint` by their file identifier.
 /// Each group contains a tuple: `ContentIndexPayload` and its score.
-pub(super) fn group_content_index_by_file_identifier(
-    scored_points: &[ScoredPoint],
-    retrieval_results: &mut HashMap<String, Vec<(ContentIndexPayload, f32)>>,
-) {
-    scored_points.iter().for_each(|v| {
-        if let Ok(payload) = serde_json::from_value::<ContentIndexPayload>(json!(v.payload)) {
-            let target_file_results = retrieval_results
-                .entry(payload.file_identifier().to_string())
-                .or_insert(vec![]);
-            target_file_results.push((payload, v.score))
-        }
-    });
-}
+// pub(super) fn group_content_index_by_file_identifier(
+//     scored_points: &[ScoredPoint],
+//     retrieval_results: &mut HashMap<String, Vec<(ContentIndexPayload, f32)>>,
+// ) {
+//     scored_points.iter().for_each(|v| {
+//         if let Ok(payload) = serde_json::from_value::<ContentIndexPayload>(json!(v.payload)) {
+//             let target_file_results = retrieval_results
+//                 .entry(payload.file_identifier().to_string())
+//                 .or_insert(vec![]);
+//             target_file_results.push((payload, v.score))
+//         }
+//     });
+// }
 
 /// Transforms tuple (`ContentIndexPayload`, score) into `SearchResultData` with **merged score**.
 /// Then reorder the results.

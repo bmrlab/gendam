@@ -114,7 +114,6 @@ impl ContentBase {
         // 对 task notification 做进一步处理
         let ctx = self.ctx.clone();
         let db = self.db.clone();
-        let vision_collection_name = self.vision_collection_name.clone();
         tokio::spawn(async move {
             while let Some(notification) = inner_rx.recv().await {
                 let task_type = notification.task_type.clone();
@@ -128,7 +127,6 @@ impl ContentBase {
                         &file_info_clone,
                         &task_type,
                         db.clone(),
-                        vision_collection_name.as_str(),
                     )
                     .await;
                 }
@@ -194,7 +192,6 @@ async fn task_post_process(
     file_info: &FileInfo,
     task_type: &ContentTaskType,
     db: Arc<RwLock<DB>>,
-    _vision_collection_name: &str,
 ) -> anyhow::Result<()> {
     match task_type {
         ContentTaskType::Video(VideoTaskType::TransChunkSumEmbed(_)) => {

@@ -15,7 +15,6 @@ use content_base_pool::TaskPool;
 pub use content_base_pool::{TaskNotification, TaskStatus};
 pub use content_base_task::*;
 pub use content_metadata::ContentMetadata;
-use qdrant_client::Qdrant;
 use tokio::sync::RwLock;
 
 pub mod metadata {
@@ -26,10 +25,7 @@ pub mod metadata {
 pub struct ContentBase {
     ctx: ContentBaseCtx,
     task_pool: TaskPool,
-    pub qdrant: Arc<Qdrant>,
     pub db: Arc<RwLock<DB>>,
-    pub language_collection_name: String,
-    pub vision_collection_name: String,
 }
 
 #[cfg(test)]
@@ -56,7 +52,6 @@ mod test {
     use content_handler::{file_metadata, video::VideoDecoder};
     use content_metadata::ContentMetadata;
     use global_variable::{init_global_variables, set_current};
-    use qdrant_client::Qdrant;
     use std::path::Path;
     use std::{env, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
     use tokio::sync::RwLock;
@@ -183,10 +178,6 @@ mod test {
         // set storage root path
         set_current!("abcdefg".into(), "/Users/zhuo/Desktop".into());
 
-        let qdrant = Qdrant::from_url("http://localhost:6334")
-            .build()
-            .expect("qdrant build");
-
         // the artifacts_dir is relative to the storage root
         let ctx = ContentBaseCtx::new("gendam-test-artifacts", "");
 
@@ -227,12 +218,9 @@ mod test {
 
         let content_base = ContentBase::new(
             &ctx,
-            Arc::new(qdrant),
             Arc::new(RwLock::new(
                 DB::new(env::current_exe().unwrap().parent().unwrap()).await,
             )),
-            "content-base-language",
-            "content-base-vision",
         )
         .expect("content base created");
 

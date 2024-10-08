@@ -9,7 +9,6 @@ use self::{
     video::VideoIndexMetadata, web_page::WebPageIndexMetadata,
 };
 use content_base_task::ContentTaskType;
-use qdrant_client::Payload;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
@@ -52,14 +51,6 @@ impl ContentIndexPayload {
 
     pub fn file_identifier(&self) -> &str {
         &self.file_identifier
-    }
-}
-
-impl Into<Payload> for ContentIndexPayload {
-    fn into(self) -> Payload {
-        json!(self)
-            .try_into()
-            .expect("json should be valid payload")
     }
 }
 

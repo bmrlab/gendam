@@ -7,7 +7,6 @@ edition = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 async-trait = { workspace = true }
 anyhow = { workspace = true }
-qdrant-client = { workspace = true }
 tracing = { workspace = true }
 test-log = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

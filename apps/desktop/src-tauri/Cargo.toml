@@ -48,7 +48,6 @@ prisma-lib = { path = "../../../crates/prisma" }
 file-downloader = { path = "../../../crates/file-downloader" }
 content-library = { path = "../../../crates/content-library" }
 api-server = { path = "../../api-server" }
-vector-db = { path = "../../../crates/vector-db", features = ["qdrant"] }
 analytics-tracing = { path = "../../../crates/analytics-tracing" }
 p2p = { path = "../../../crates/p2p" }
 storage = { path = "../../../crates/storage" }
