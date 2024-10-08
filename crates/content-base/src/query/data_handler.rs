@@ -193,11 +193,29 @@ impl ContentBase {
         };
         Ok(metadata
             .into_iter()
-            .map(|metadata| SearchResultData {
-                file_identifier: file_identifier.clone(),
-                score: hit_result.score,
-                metadata,
-                highlight: hit_result.hit_text(),
+            .map(|metadata| {
+                let range: Option<(usize, usize)> = match &metadata {
+                    ContentIndexMetadata::Video(video) => {
+                        Some((video.start_timestamp as usize, video.end_timestamp as usize))
+                    }
+                    ContentIndexMetadata::Audio(audio) => {
+                        Some((audio.start_timestamp as usize, audio.end_timestamp as usize))
+                    }
+                    ContentIndexMetadata::Image(_) => None,
+                    ContentIndexMetadata::RawText(raw_text) => {
+                        Some((raw_text.start_index, raw_text.end_index))
+                    }
+                    ContentIndexMetadata::WebPage(web_page) => {
+                        Some((web_page.start_index, web_page.end_index))
+                    }
+                };
+
+                SearchResultData {
+                    file_identifier: file_identifier.clone(),
+                    score: hit_result.score,
+                    metadata,
+                    highlight: hit_result.hit_text(range),
+                }
             })
             .collect())
     }
