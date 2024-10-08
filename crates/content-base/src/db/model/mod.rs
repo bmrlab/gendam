@@ -1,4 +1,4 @@
-use crate::db::model::audio::AudioModel;
+use crate::db::model::audio::{AudioFrameModel, AudioModel};
 use crate::db::model::document::DocumentModel;
 use crate::db::model::id::ID;
 use crate::db::model::video::VideoModel;
@@ -99,58 +99,79 @@ impl SelectResultModel {
         }
     }
 
-    pub fn hit_text(&self) -> Option<String> {
+    fn is_within_range<T>(start: T, end: T, range: (T, T)) -> bool
+    where
+        T: PartialOrd + Copy,
+    {
+        start >= range.0 && end <= range.1
+    }
+
+    fn collect_hit_text_from_audio_frame(
+        frame: &Vec<AudioFrameModel>,
+        range: (usize, usize),
+    ) -> Vec<String> {
+        let mut text = vec![];
+        for frame in frame {
+            if Self::is_within_range(
+                frame.start_timestamp as usize,
+                frame.end_timestamp as usize,
+                range,
+            ) {
+                for data in &frame.data {
+                    text.push(data.data.clone());
+                }
+            }
+        }
+        text
+    }
+
+    fn collect_hit_text_from_page(page: &Vec<PageModel>, range: (usize, usize)) -> Vec<String> {
+        let mut text = vec![];
+        for data in page {
+            if Self::is_within_range(data.start_index as usize, data.end_index as usize, range) {
+                text.extend(
+                    data.text
+                        .iter()
+                        .map(|x| x.data.clone())
+                        .collect::<Vec<String>>(),
+                );
+            }
+        }
+        text
+    }
+
+    pub fn hit_text(&self, range: Option<(usize, usize)>) -> Option<String> {
+        let range = range.unwrap_or((0, u128::MAX as usize));
         match self {
             SelectResultModel::Text(text) => Some(text.data.clone()),
             SelectResultModel::Image(image) => Some(image.prompt.clone()),
             SelectResultModel::Audio(audio) => {
-                let mut text = vec![];
-                for frame in &audio.audio_frame {
-                    for data in &frame.data {
-                        text.push(data.data.clone());
-                    }
-                }
-                Some(text.join("\n"))
+                Some(Self::collect_hit_text_from_audio_frame(&audio.audio_frame, range).join("\n"))
             }
             SelectResultModel::Video(video) => {
                 let mut text = vec![];
-                for frame in &video.audio_frame {
-                    for data in &frame.data {
-                        text.push(data.data.clone());
-                    }
-                }
+                text.extend(Self::collect_hit_text_from_audio_frame(
+                    &video.audio_frame,
+                    range,
+                ));
                 for frame in &video.image_frame {
-                    for data in &frame.data {
-                        text.push(data.prompt.clone());
+                    if Self::is_within_range(
+                        frame.start_timestamp as usize,
+                        frame.end_timestamp as usize,
+                        range,
+                    ) {
+                        for data in &frame.data {
+                            text.push(data.prompt.clone());
+                        }
                     }
                 }
                 Some(text.join("\n"))
             }
             SelectResultModel::WebPage(web) => {
-                let mut text = vec![];
-                for data in &web.page {
-                    text.push(
-                        data.text
-                            .iter()
-                            .map(|x| x.data.clone())
-                            .collect::<Vec<String>>()
-                            .join("\n"),
-                    );
-                }
-                Some(text.join("\n"))
+                Some(Self::collect_hit_text_from_page(&web.page, range).join("\n"))
             }
             SelectResultModel::Document(document) => {
-                let mut text = vec![];
-                for data in &document.page {
-                    text.push(
-                        data.text
-                            .iter()
-                            .map(|x| x.data.clone())
-                            .collect::<Vec<String>>()
-                            .join("\n"),
-                    );
-                }
-                Some(text.join("\n"))
+                Some(Self::collect_hit_text_from_page(&document.page, range).join("\n"))
             }
             _ => None,
         }
