@@ -328,7 +328,6 @@ dependencies = [
  "priority-queue",
  "prisma-client-rust",
  "prisma-lib",
- "qdrant-client",
  "quick-protobuf",
  "quick-protobuf-codec 0.3.1",
  "rand 0.8.5",
@@ -350,7 +349,6 @@ dependencies = [
  "tower-http",
  "tracing",
  "uuid",
- "vector-db",
 ]
 
 [[package]]
@@ -1954,7 +1952,6 @@ dependencies = [
  "futures-util",
  "global-variable",
  "itertools 0.13.0",
- "qdrant-client",
  "rand 0.8.5",
  "regex",
  "serde",
@@ -1978,7 +1975,6 @@ dependencies = [
  "anyhow",
  "async-trait",
  "global-variable",
- "qdrant-client",
  "serde",
  "serde_json",
  "storage",
@@ -2026,7 +2022,6 @@ dependencies = [
  "content-metadata",
  "global-variable",
  "image 0.25.2",
- "qdrant-client",
  "serde",
  "serde_json",
  "storage",
@@ -2074,13 +2069,11 @@ dependencies = [
  "p2p",
  "prisma-client-rust",
  "prisma-lib",
- "qdrant-client",
  "serde_json",
  "storage",
  "tokio",
  "tracing",
  "uuid",
- "vector-db",
  "walkdir",
  "zip 2.2.0",
 ]
@@ -3555,7 +3548,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f2f12607f92c69b12ed746fabf9ca4f5c482cba46679c1a75b874ed7c26adb"
 dependencies = [
  "futures-io",
- "rustls 0.23.13",
+ "rustls",
  "rustls-pki-types",
 ]
 
@@ -3858,7 +3851,6 @@ dependencies = [
  "tokio-util",
  "tracing",
  "url",
- "vector-db",
 ]
 
 [[package]]
@@ -4587,10 +4579,10 @@ dependencies = [
  "http 1.1.0",
  "hyper 1.4.1",
  "hyper-util",
- "rustls 0.23.13",
+ "rustls",
  "rustls-pki-types",
  "tokio",
- "tokio-rustls 0.26.0",
+ "tokio-rustls",
  "tower-service",
  "webpki-roots",
 ]
@@ -5592,7 +5584,7 @@ dependencies = [
  "quinn",
  "rand 0.8.5",
  "ring 0.17.8",
- "rustls 0.23.13",
+ "rustls",
  "socket2 0.5.7",
  "thiserror",
  "tokio",
@@ -5724,7 +5716,7 @@ dependencies = [
  "libp2p-identity",
  "rcgen",
  "ring 0.17.8",
- "rustls 0.23.13",
+ "rustls",
  "rustls-webpki 0.101.7",
  "thiserror",
  "x509-parser",
@@ -8202,15 +8194,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "prost-types"
-version = "0.12.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9091c90b0a32608e984ff2fa4091273cbdd755d54935c51d520887f4a1dbd5b0"
-dependencies = [
- "prost",
-]
-
-[[package]]
 name = "psl"
 version = "0.1.0"
 source = "git+https://github.com/Brendonovich/prisma-engines?tag=pcr-0.6.10#c4aeef82dbae310e974d6122160c7e3b5fb6df53"
@@ -8287,24 +8270,6 @@ dependencies = [
  "libm",
  "num-complex",
  "reborrow",
-]
-
-[[package]]
-name = "qdrant-client"
-version = "1.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb7527de5e2ea7a239d3bc1da8b2d6db5652322daa1cbf4b3a55ad670f3891ed"
-dependencies = [
- "anyhow",
- "derive_builder",
- "futures-util",
- "prost",
- "prost-types",
- "reqwest 0.12.7",
- "serde",
- "serde_json",
- "thiserror",
- "tonic",
 ]
 
 [[package]]
@@ -8540,7 +8505,7 @@ dependencies = [
  "quinn-proto",
  "quinn-udp",
  "rustc-hash",
- "rustls 0.23.13",
+ "rustls",
  "thiserror",
  "tokio",
  "tracing",
@@ -8556,7 +8521,7 @@ dependencies = [
  "rand 0.8.5",
  "ring 0.17.8",
  "rustc-hash",
- "rustls 0.23.13",
+ "rustls",
  "slab",
  "thiserror",
  "tinyvec",
@@ -9097,7 +9062,7 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "quinn",
- "rustls 0.23.13",
+ "rustls",
  "rustls-pemfile 2.1.2",
  "rustls-pki-types",
  "serde",
@@ -9107,7 +9072,7 @@ dependencies = [
  "system-configuration 0.6.1",
  "tokio",
  "tokio-native-tls",
- "tokio-rustls 0.26.0",
+ "tokio-rustls",
  "tokio-util",
  "tower-service",
  "url",
@@ -9499,20 +9464,6 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.22.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf4ef73721ac7bcd79b2b315da7779d8fc09718c6b3d2d1b2d94850eb8c18432"
-dependencies = [
- "log",
- "ring 0.17.8",
- "rustls-pki-types",
- "rustls-webpki 0.102.8",
- "subtle",
- "zeroize",
-]
-
-[[package]]
-name = "rustls"
 version = "0.23.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2dabaac7466917e566adb06783a81ca48944c6898a1b08b9374106dd671f4c8"
@@ -9524,19 +9475,6 @@ dependencies = [
  "rustls-webpki 0.102.8",
  "subtle",
  "zeroize",
-]
-
-[[package]]
-name = "rustls-native-certs"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a88d6d420651b496bdd98684116959239430022a115c1240e6c3993be0b15fba"
-dependencies = [
- "openssl-probe",
- "rustls-pemfile 2.1.2",
- "rustls-pki-types",
- "schannel",
- "security-framework",
 ]
 
 [[package]]
@@ -10582,7 +10520,7 @@ dependencies = [
  "revision",
  "ring 0.17.8",
  "rust_decimal",
- "rustls 0.23.13",
+ "rustls",
  "rustls-pki-types",
  "semver",
  "serde",
@@ -11470,22 +11408,11 @@ dependencies = [
 
 [[package]]
 name = "tokio-rustls"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "775e0c0f0adb3a2f22a00c4745d728b479985fc15ee7ca6a2608388c5569860f"
-dependencies = [
- "rustls 0.22.4",
- "rustls-pki-types",
- "tokio",
-]
-
-[[package]]
-name = "tokio-rustls"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c7bc40d0e5a97695bb96e27995cd3a08538541b0a846f65bba7a359f36700d4"
 dependencies = [
- "rustls 0.23.13",
+ "rustls",
  "rustls-pki-types",
  "tokio",
 ]
@@ -11521,10 +11448,10 @@ checksum = "c6989540ced10490aaf14e6bad2e3d33728a2813310a0c71d1574304c49631cd"
 dependencies = [
  "futures-util",
  "log",
- "rustls 0.23.13",
+ "rustls",
  "rustls-pki-types",
  "tokio",
- "tokio-rustls 0.26.0",
+ "tokio-rustls",
  "tungstenite 0.23.0",
  "webpki-roots",
 ]
@@ -11636,7 +11563,6 @@ dependencies = [
  "axum 0.6.20",
  "base64 0.21.7",
  "bytes",
- "flate2",
  "h2 0.3.26",
  "http 0.2.12",
  "http-body 0.4.6",
@@ -11645,11 +11571,7 @@ dependencies = [
  "percent-encoding",
  "pin-project",
  "prost",
- "rustls-native-certs",
- "rustls-pemfile 2.1.2",
- "rustls-pki-types",
  "tokio",
- "tokio-rustls 0.25.0",
  "tokio-stream",
  "tower",
  "tower-layer",
@@ -11924,7 +11846,7 @@ dependencies = [
  "httparse",
  "log",
  "rand 0.8.5",
- "rustls 0.23.13",
+ "rustls",
  "rustls-pki-types",
  "sha1",
  "thiserror",
@@ -12103,7 +12025,7 @@ dependencies = [
  "base64 0.22.1",
  "log",
  "once_cell",
- "rustls 0.23.13",
+ "rustls",
  "rustls-pki-types",
  "socks",
  "url",
@@ -12213,7 +12135,6 @@ dependencies = [
  "faiss",
  "file-downloader",
  "ndarray",
- "qdrant-client",
  "reqwest 0.12.7",
  "sysinfo",
  "test-log",

@@ -60,31 +60,31 @@ pub enum SearchResultMetadata {
     WebPage(WebPageSearchResultMetadata),
 }
 
-impl From<&content_base::query::payload::ContentIndexMetadata> for SearchResultMetadata {
-    fn from(metadata: &content_base::query::payload::ContentIndexMetadata) -> Self {
+impl From<&ContentIndexMetadata> for SearchResultMetadata {
+    fn from(metadata: &ContentIndexMetadata) -> Self {
         match metadata {
-            content_base::query::payload::ContentIndexMetadata::Video(item) => {
+            ContentIndexMetadata::Video(item) => {
                 SearchResultMetadata::Video(VideoSearchResultMetadata {
                     start_time: item.start_timestamp as i32,
                     end_time: item.end_timestamp as i32,
                 })
             }
-            content_base::query::payload::ContentIndexMetadata::Audio(item) => {
+            ContentIndexMetadata::Audio(item) => {
                 SearchResultMetadata::Audio(AudioSearchResultMetadata {
                     start_time: item.start_timestamp as i32,
                     end_time: item.end_timestamp as i32,
                 })
             }
-            content_base::query::payload::ContentIndexMetadata::Image(_) => {
+            ContentIndexMetadata::Image(_) => {
                 SearchResultMetadata::Image(ImageSearchResultMetadata { data: 0 })
             }
-            content_base::query::payload::ContentIndexMetadata::RawText(item) => {
+            ContentIndexMetadata::RawText(item) => {
                 SearchResultMetadata::RawText(RawTextSearchResultMetadata {
                     start_index: item.start_index as u32,
                     end_index: item.end_index as u32,
                 })
             }
-            content_base::query::payload::ContentIndexMetadata::WebPage(item) => {
+            ContentIndexMetadata::WebPage(item) => {
                 SearchResultMetadata::WebPage(WebPageSearchResultMetadata {
                     start_index: item.start_index as u32,
                     end_index: item.end_index as u32,

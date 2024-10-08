@@ -2,16 +2,13 @@
 use super::traits::{CtxStore, CtxWithAI, CtxWithDownload, CtxWithLibrary, CtxWithP2P, StoreError};
 use crate::cron_jobs::delete_unlinked_assets;
 use crate::{
-    ai::{models::get_model_info_by_id, AIHandler},
+    ai::AIHandler,
     download::{DownloadHub, DownloadReporter, DownloadStatus},
-    library::get_library_settings,
     routes::p2p::ShareInfo,
 };
 use async_trait::async_trait;
 use content_base::{ContentBase, ContentBaseCtx};
-use content_library::{
-    load_library, make_sure_collection_created, Library, QdrantCollectionInfo, QdrantServerInfo,
-};
+use content_library::{load_library, Library};
 use futures::FutureExt;
 use p2p::Node;
 use std::{
@@ -20,7 +17,6 @@ use std::{
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc, Mutex},
 };
-use vector_db::{get_language_collection_name, get_vision_collection_name, kill_qdrant_server};
 
 /**
  * default impl of a store for rspc Ctx
@@ -281,22 +277,6 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             tracing::info!(task = "update content base", "Success");
         }
 
-        /* kill qdrant */
-        {
-            let store = self.store.lock().map_err(unexpected_err)?;
-            let pid_in_store = store.get("current-qdrant-pid").unwrap_or("".to_string());
-            if let Ok(pid) = pid_in_store.parse() {
-                kill_qdrant_server(pid).map_err(|e| {
-                    tracing::error!(task = "kill qdrant", "Failed: {}", e);
-                    rspc::Error::new(
-                        rspc::ErrorCode::InternalServerError,
-                        format!("Failed to kill qdrant: {}", e),
-                    )
-                })?;
-                tracing::info!(task = "kill qdrant", "Success");
-            }
-        }
-
         /* shutdown ai handler */
         let current_ai_handler = {
             let ai_handler = self.ai_handler.lock().map_err(unexpected_err)?;
@@ -401,8 +381,6 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         {
             let mut store = self.store.lock().map_err(unexpected_err)?;
             let _ = store.insert("current-library-id", library_id);
-            let pid = library.qdrant_server_info();
-            let _ = store.insert("current-qdrant-pid", &pid.to_string());
             if let Err(e) = store.save() {
                 tracing::warn!(task = "update store", "Failed: {:?}", e);
                 // this issue can be safely ignored
@@ -410,46 +388,6 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 tracing::info!(task = "update store", "Success");
             }
         }
-
-        /* check qdrant */
-        let qdrant_info = {
-            let qdrant_client = library.qdrant_client();
-            // make sure qdrant collections are created
-            let qdrant_info = self.qdrant_info()?;
-            make_sure_collection_created(
-                qdrant_client.clone(),
-                &qdrant_info.language_collection.name,
-                qdrant_info.language_collection.dim as u64,
-            )
-            .await
-            .map_err(|e| {
-                tracing::error!(task = "check qdrant", "Language collection error: {}", e);
-                rspc::Error::new(
-                    rspc::ErrorCode::InternalServerError,
-                    format!("Language collection error: {}", e),
-                )
-            })?;
-            make_sure_collection_created(
-                qdrant_client.clone(),
-                &qdrant_info.vision_collection.name,
-                qdrant_info.vision_collection.dim as u64,
-            )
-            .await
-            .map_err(|e| {
-                tracing::error!(task = "check qdrant", "Vision collection error: {}", e);
-                rspc::Error::new(
-                    rspc::ErrorCode::InternalServerError,
-                    format!("Vision collection error: {}", e),
-                )
-            })?;
-            tracing::info!(
-                task = "check qdrant",
-                language_collection = qdrant_info.language_collection.name,
-                vision_collection = qdrant_info.vision_collection.name,
-                "Success"
-            );
-            qdrant_info
-        };
 
         // init download hub
         {
@@ -503,14 +441,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                     Arc::new(ai_handler.image_caption.0.clone()),
                     &ai_handler.image_caption.1,
                 );
-            let cb = ContentBase::new(
-                &cb_ctx,
-                library.qdrant_client(),
-                library.db(),
-                &qdrant_info.language_collection.name,
-                &qdrant_info.vision_collection.name,
-            )
-            .map_err(|e| {
+            let cb = ContentBase::new(&cb_ctx, library.db()).map_err(|e| {
                 tracing::error!(task = "init content base", "Failed: {}", e);
                 rspc::Error::new(
                     rspc::ErrorCode::InternalServerError,
@@ -567,34 +498,6 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 String::from("No content base is set"),
             )),
         }
-    }
-
-    fn qdrant_info(&self) -> Result<QdrantServerInfo, rspc::Error> {
-        let library = self.library()?;
-
-        let settings = get_library_settings(&library.dir);
-        let language_model = get_model_info_by_id(self, &settings.models.text_embedding)?;
-        let vision_model = get_model_info_by_id(self, &settings.models.multi_modal_embedding)?;
-
-        let language_dim = language_model.dim.ok_or(rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            String::from("Language model do not have dim"),
-        ))?;
-        let vision_dim = vision_model.dim.ok_or(rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            String::from("Vision model do not have dim"),
-        ))?;
-
-        Ok(QdrantServerInfo {
-            language_collection: QdrantCollectionInfo {
-                name: get_language_collection_name(&settings.models.text_embedding),
-                dim: language_dim,
-            },
-            vision_collection: QdrantCollectionInfo {
-                name: get_vision_collection_name(&settings.models.multi_modal_embedding),
-                dim: vision_dim,
-            },
-        })
     }
 
     async fn add_task(&self, task: cron::Task) -> Result<(), rspc::Error> {

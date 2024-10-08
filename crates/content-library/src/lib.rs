@@ -1,20 +1,15 @@
 use content_base::db::DB;
 use global_variable::set_current;
 use prisma_lib::PrismaClient;
-use qdrant::create_qdrant_server;
-pub use qdrant::{make_sure_collection_created, QdrantCollectionInfo, QdrantServerInfo};
-use qdrant_client::Qdrant;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
 use tokio::sync::RwLock;
-use vector_db::QdrantServer;
 
 pub mod bundle;
 mod database;
 mod port;
-mod qdrant;
 
 #[derive(Clone, Debug)]
 pub struct Library {
@@ -23,7 +18,6 @@ pub struct Library {
     files_dir: PathBuf, // for content files
     pub artifacts_dir: PathBuf,
     prisma_client: Arc<PrismaClient>,
-    qdrant_server: Arc<QdrantServer>,
     db: Arc<RwLock<DB>>,
 }
 
@@ -31,17 +25,9 @@ impl Library {
     pub fn prisma_client(&self) -> Arc<PrismaClient> {
         Arc::clone(&self.prisma_client)
     }
-    
+
     pub fn db(&self) -> Arc<RwLock<DB>> {
         Arc::clone(&self.db)
-    }
-
-    pub fn qdrant_client(&self) -> Arc<Qdrant> {
-        self.qdrant_server.get_client().clone()
-    }
-
-    pub fn qdrant_server_info(&self) -> u32 {
-        self.qdrant_server.get_pid()
     }
 
     /// Get the artifact directory for a given file hash.
@@ -106,14 +92,11 @@ pub async fn load_library(
     let db_dir = library_dir.join("databases");
     let artifacts_dir = library_dir.join("artifacts");
     let files_dir = library_dir.join("files");
-    let qdrant_dir = library_dir.join("qdrant");
     let surreal_dir = library_dir.join("surreal");
 
     let client = database::migrate_library(&db_dir).await?;
 
     let prisma_client = Arc::new(client);
-
-    let qdrant_server = create_qdrant_server(qdrant_dir).await?;
 
     let dir = library_dir.to_str().ok_or(())?.to_string();
 
@@ -125,7 +108,6 @@ pub async fn load_library(
         files_dir,
         artifacts_dir,
         prisma_client,
-        qdrant_server: Arc::new(qdrant_server),
         db: Arc::new(RwLock::new(DB::new(surreal_dir).await)),
     };
 
