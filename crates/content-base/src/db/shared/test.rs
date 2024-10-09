@@ -24,10 +24,11 @@ use fake::Fake;
 use itertools::Itertools;
 use rand::Rng;
 use std::env;
+use std::path::Path;
 
-pub async fn setup() -> DB {
+pub async fn setup(path: Option<&Path>) -> DB {
     dotenvy::dotenv().ok();
-    DB::new(env::current_exe().unwrap().parent().unwrap()).await
+    DB::new(path.unwrap_or(env::current_exe().unwrap().parent().unwrap())).await
 }
 
 pub fn gen_vector(size: usize) -> Vec<f32> {

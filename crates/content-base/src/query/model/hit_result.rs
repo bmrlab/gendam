@@ -1,5 +1,6 @@
 use crate::db::model::id::ID;
-use crate::db::model::{PayloadModel, SelectResultModel};
+use crate::db::model::payload::PayloadModel;
+use crate::db::model::SelectResultModel;
 use crate::db::search::BacktrackResult;
 use crate::query::model::SearchType;
 
