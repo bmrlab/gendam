@@ -1,6 +1,7 @@
 use crate::db::model::audio::{AudioFrameModel, AudioModel};
 use crate::db::model::document::DocumentModel;
 use crate::db::model::id::ID;
+use crate::db::model::payload::PayloadModel;
 use crate::db::model::video::VideoModel;
 use crate::db::model::web::WebPageModel;
 use educe::Educe;
@@ -55,22 +56,6 @@ pub struct ItemModel {
     pub id: Option<ID>,
     text: Vec<TextModel>,
     image: Vec<ImageModel>,
-}
-
-#[derive(Debug, Clone)]
-pub struct PayloadModel {
-    pub id: Option<ID>,
-    pub file_identifier: Option<String>,
-    pub url: Option<String>,
-}
-
-impl PayloadModel {
-    pub fn url(&self) -> String {
-        self.url.clone().unwrap_or_default()
-    }
-    pub fn file_identifier(&self) -> String {
-        self.file_identifier.clone().unwrap_or_default()
-    }
 }
 
 #[derive(Debug, Clone)]
