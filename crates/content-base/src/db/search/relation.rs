@@ -1,11 +1,11 @@
 use crate::check_db_error_from_resp;
 use crate::db::entity::SelectResultEntity;
 use crate::db::model::id::ID;
-use crate::db::model::PayloadModel;
 use crate::db::{entity::relation::RelationEntity, model::id::TB, DB};
 use futures::{stream, StreamExt};
 use std::collections::{HashMap, HashSet};
 use tracing::error;
+use crate::db::model::payload::PayloadModel;
 
 /// audio -> audio_frame -> text
 /// 当 TB 在 MIDDLE_LAYER_LIST 中时，需要继续向上查询一层，才是最终的结果
@@ -195,6 +195,24 @@ impl DB {
             }
         })
     }
+
+    /// 通过 payload 中的 file_identifier 查询 with relation
+    pub async fn select_with_relation_by_file_identifier(
+        &self,
+        file_identifier: &str,
+    ) -> anyhow::Result<Vec<RelationEntity>> {
+        let mut resp = self
+            .client
+            .query(format!(
+                "SELECT * FROM with where out=(SELECT VALUE id from ONLY payload where file_identifier = '{}' LIMIT 1);",
+                file_identifier
+            ))
+            .await?;
+        check_db_error_from_resp!(resp).map_err(|e| {
+            anyhow::anyhow!("select_with_relation_by_file_identifier error: {:?}", e)
+        })?;
+        resp.take::<Vec<RelationEntity>>(0).map_err(Into::into)
+    }
 }
 
 #[allow(unused_imports)]
@@ -204,7 +222,7 @@ mod test {
             model::{id::TB, ImageModel, TextModel},
             shared::test::{gen_vector, setup},
         },
-        query::payload::{ContentIndexPayload},
+        query::payload::ContentIndexPayload,
     };
     use content_base_task::{
         web_page::{transform::WebPageTransformTask, WebPageTaskType},
@@ -215,7 +233,7 @@ mod test {
 
     #[test(tokio::test)]
     async fn test_backtrace_relation() {
-        let db = setup().await;
+        let db = setup(None).await;
         // Document data needs to be inserted in advance
         // can insert data by running the test in `create/mod`
         let document_res = db
@@ -254,7 +272,7 @@ mod test {
 
     #[test(tokio::test)]
     async fn test_select_payload_by_id() {
-        let db = setup().await;
+        let db = setup(None).await;
         // let res = db
         //     .select_payload_by_id("text:vu3lb2verv2h36hti5im".into())
         //     .await;
@@ -273,5 +291,15 @@ mod test {
             .await;
         println!("res: {:?}", res);
         assert!(res.is_ok())
+    }
+
+    #[test(tokio::test)]
+    async fn test_select_with_relation_by_file_identifier() {
+        let db = setup(Some(r#"/Users/zingerbee/Library/Application Support/ai.gendam.desktop/libraries/185e94cf-5e4b-4723-94a4-238068edd50a/surreal"#.as_ref())).await;
+        let res = db
+            .select_with_relation_by_file_identifier("a396c03537d27080")
+            .await;
+        println!("res: {:?}", res);
+        assert!(res.is_ok());
     }
 }
