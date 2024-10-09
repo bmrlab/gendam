@@ -7,13 +7,13 @@ use surrealdb::opt::Config;
 use surrealdb::Surreal;
 
 mod constant;
-mod create;
 pub mod entity;
 pub mod model;
 pub mod search;
 mod shared;
 mod sql;
 pub mod utils;
+mod op;
 
 #[derive(Clone, Debug)]
 pub struct DB {
@@ -54,7 +54,7 @@ mod test {
 
     #[test(tokio::test)]
     async fn test_init_db() {
-        let db = setup().await;
+        let db = setup(None).await;
         println!("{:?}", db.client.query("INFO FOR DB;").await.unwrap());
     }
 }

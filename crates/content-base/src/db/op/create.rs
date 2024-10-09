@@ -2,21 +2,18 @@ use anyhow::bail;
 use surrealdb::sql::Thing;
 use tracing::{debug, error};
 
+use crate::db::model::audio::{AudioFrameModel, AudioModel};
+use crate::db::model::document::DocumentModel;
+use crate::db::model::id::ID;
+use crate::db::model::video::{ImageFrameModel, VideoModel};
+use crate::db::model::web::WebPageModel;
+use crate::db::model::{ImageModel, PageModel, TextModel};
+use crate::db::DB;
 use crate::{
-    check_db_error_from_resp, collect_async_results, concat_arrays, query::payload::ContentIndexPayload,
+    check_db_error_from_resp, collect_async_results, concat_arrays,
+    query::payload::ContentIndexPayload,
 };
-use super::{
-    model::{
-        audio::{AudioFrameModel, AudioModel},
-        document::DocumentModel,
-        id::ID,
-        payload::PayloadModel,
-        video::{ImageFrameModel, VideoModel},
-        web::WebPageModel,
-        ImageModel, PageModel, TextModel,
-    },
-    DB,
-};
+use crate::db::model::payload::PayloadModel;
 
 /// insert api
 impl DB {
@@ -509,7 +506,7 @@ mod test {
 
     #[test(tokio::test)]
     async fn test_insert_text() {
-        let id = setup()
+        let id = setup(None)
             .await
             .insert_text(TextModel {
                 id: None,
@@ -526,7 +523,7 @@ mod test {
 
     #[test(tokio::test)]
     async fn test_insert_image() {
-        let db = setup().await;
+        let db = setup(None).await;
         let _ = db
             .insert_image(fake_image_model(), Some(fake_image_payload()))
             .await;
@@ -534,7 +531,7 @@ mod test {
 
     #[test(tokio::test)]
     async fn test_insert_audio() {
-        let db = setup().await;
+        let db = setup(None).await;
         let id = db
             .insert_audio(fake_audio_model(), fake_audio_payload())
             .await
@@ -544,7 +541,7 @@ mod test {
 
     #[test(tokio::test)]
     async fn test_insert_video() {
-        let db = setup().await;
+        let db = setup(None).await;
         let id = db
             .insert_video(fake_video_model(), fake_video_payload())
             .await
@@ -554,14 +551,14 @@ mod test {
 
     #[test(tokio::test)]
     async fn test_insert_page() {
-        let db = setup().await;
+        let db = setup(None).await;
         let id = db.insert_page(fake_page_model()).await.unwrap();
         assert_eq!(id.tb(), &TB::Page);
     }
 
     #[test(tokio::test)]
     async fn test_insert_web_page() {
-        let db = setup().await;
+        let db = setup(None).await;
         let id = db
             .insert_web_page(fake_web_page_model(), fake_web_page_payload())
             .await
@@ -571,7 +568,7 @@ mod test {
 
     #[test(tokio::test)]
     async fn test_insert_document() {
-        let db = setup().await;
+        let db = setup(None).await;
         let id = db
             .insert_document(fake_document(), fake_document_payload())
             .await
@@ -581,7 +578,7 @@ mod test {
 
     #[test(tokio::test)]
     async fn test_upsert() {
-        let db = setup().await;
+        let db = setup(None).await;
         db.upsert(
             &ID::from("text:11232131"),
             format!(

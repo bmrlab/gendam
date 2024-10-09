@@ -3,11 +3,12 @@ use crate::db::model::audio::{AudioFrameModel, AudioModel};
 use crate::db::model::document::DocumentModel;
 use crate::db::model::video::{ImageFrameModel, VideoModel};
 use crate::db::model::web::WebPageModel;
-use crate::db::model::{ImageModel, PageModel, PayloadModel, SelectResultModel, TextModel};
+use crate::db::model::{ImageModel, PageModel, SelectResultModel, TextModel};
 use frame::{AudioFrameEntity, ImageFrameEntity};
 use page::PageEntity;
 use serde::Deserialize;
 use surrealdb::sql::Thing;
+use crate::db::model::payload::PayloadModel;
 
 pub(crate) mod frame;
 pub(crate) mod full_text;
