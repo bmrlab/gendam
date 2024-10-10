@@ -1,4 +1,3 @@
-use crate::db::DB;
 use crate::ContentBase;
 use content_base_context::ContentBaseCtx;
 use content_base_pool::{TaskPool, TaskPriority};
@@ -13,6 +12,7 @@ use content_base_task::{
 use content_metadata::ContentMetadata;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use crate::db::DB;
 
 impl ContentBase {
     /// Create a new ContentBase with Context. The context will be cloned,

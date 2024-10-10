@@ -8,11 +8,11 @@ use crate::db::model::id::ID;
 use crate::db::model::video::{ImageFrameModel, VideoModel};
 use crate::db::model::web::WebPageModel;
 use crate::db::model::{ImageModel, PageModel, TextModel};
-use crate::db::DB;
 use crate::{
     check_db_error_from_resp, collect_async_results, concat_arrays,
     query::payload::ContentIndexPayload,
 };
+use crate::db::DB;
 use crate::db::model::payload::PayloadModel;
 
 /// insert api
