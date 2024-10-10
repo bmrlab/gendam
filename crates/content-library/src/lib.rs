@@ -118,11 +118,9 @@ pub async fn create_library(local_data_root: impl AsRef<Path>) -> PathBuf {
     let library_id = uuid::Uuid::new_v4().to_string();
     let library_dir = local_data_root.as_ref().join("libraries").join(&library_id);
     let db_dir = library_dir.join("databases");
-    let qdrant_dir = library_dir.join("qdrant");
     let artifacts_dir = library_dir.join("artifacts");
     let files_dir = library_dir.join("files");
     std::fs::create_dir_all(&db_dir).unwrap();
-    std::fs::create_dir_all(&qdrant_dir).unwrap();
     std::fs::create_dir_all(&artifacts_dir).unwrap();
     std::fs::create_dir_all(&files_dir).unwrap();
     library_dir
