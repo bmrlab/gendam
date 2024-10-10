@@ -43,8 +43,7 @@ impl DB {
     }
 
     /// - `with` 关系会被删除
-    ///     - 如果有 `with` 关系，对应的 payload 也会被删除，payload 关系是一对一的
-    ///
+    ///     - 如果有 `with` 关系，对应的 payload 也会被删除（payload 关系是一对一的）
     /// - `contain` 关系会被删除，并且子元素也将被递归删除（如果子元素有 `contain` 也会被删除）
     async fn delete_text(&self, id: &ID) -> anyhow::Result<()> {
         self.delete_with_relation_and_payload_by_id(id).await?;
@@ -246,7 +245,7 @@ mod test {
     use crate::db::DB;
 
     async fn local_db() -> DB {
-        setup(Some(r#"/Users/zingerbee/Library/Application Support/ai.gendam.desktop/libraries/185e94cf-5e4b-4723-94a4-238068edd50a/surreal"#.as_ref())).await
+        setup(Some(r#"/Users/zingerbee/Library/Application Support/ai.gendam.desktop/libraries/9058216e-7361-48eb-9385-fd5b2f9d044a/surreal"#.as_ref())).await
     }
 
     #[tokio::test]
@@ -261,5 +260,13 @@ mod test {
         let db = local_db().await;
         let res = db.delete_contain_relation("x7bb2jx7oqw6aj7fbpm2").await;
         assert!(res.is_ok())
+    }
+
+    #[tokio::test]
+    async fn test_delete_video() {
+        let db = local_db().await;
+        db.delete(&ID::from("video:8dn8191rssjx72mw54y0"))
+            .await
+            .unwrap();
     }
 }
