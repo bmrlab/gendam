@@ -28,7 +28,14 @@ use std::path::Path;
 
 pub async fn setup(path: Option<&Path>) -> DB {
     dotenvy::dotenv().ok();
-    DB::new(path.unwrap_or(env::current_exe().unwrap().parent().unwrap())).await
+
+    #[cfg(feature = "embedded-db")]
+    let db = DB::new(path.unwrap_or(env::current_exe().unwrap().parent().unwrap())).await;
+
+    #[cfg(not(feature = "embedded-db"))]
+    let db = DB::new().await;
+
+    db
 }
 
 pub fn gen_vector(size: usize) -> Vec<f32> {
