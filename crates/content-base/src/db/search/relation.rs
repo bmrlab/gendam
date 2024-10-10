@@ -106,7 +106,7 @@ impl DB {
     }
 
     /// only in HAS_PAYLOAD_LIST table has payload
-    async fn select_with_relation_by_in(&self, id: &ID) -> anyhow::Result<Vec<RelationEntity>> {
+    pub async fn select_with_relation_by_in(&self, id: &ID) -> anyhow::Result<Vec<RelationEntity>> {
         let mut resp = self
             .client
             .query(format!(
@@ -125,6 +125,7 @@ impl DB {
             .map(|res| !res.is_empty())
     }
 
+    /// 子查父
     async fn select_contains_relation_by_out(
         &self,
         id: impl AsRef<str>,
@@ -138,6 +139,20 @@ impl DB {
             .await?;
         check_db_error_from_resp!(resp)
             .map_err(|e| anyhow::anyhow!("select_contains_relation_by_out error: {:?}", e))?;
+        resp.take::<Vec<RelationEntity>>(0).map_err(Into::into)
+    }
+
+    /// 父查子
+    pub async fn select_contains_relation_by_in(&self, id: &ID) -> anyhow::Result<Vec<RelationEntity>> {
+        let mut resp = self
+            .client
+            .query(format!(
+                "SELECT * from contains where in = {};",
+                id.id_with_table()
+            ))
+            .await?;
+        check_db_error_from_resp!(resp)
+            .map_err(|e| anyhow::anyhow!("select_contains_relation_by_in error: {:?}", e))?;
         resp.take::<Vec<RelationEntity>>(0).map_err(Into::into)
     }
 
