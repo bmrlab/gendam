@@ -85,7 +85,7 @@ impl DB {
     }
 
     async fn delete_audio(&self, id: &ID) -> anyhow::Result<()> {
-        self.delete_with_relation_and_payload_by_id(id).await?;
+        self.delete_contain_relation_and_subrecord_by_id(id).await?;
         self.client
             .delete::<Option<AudioEntity>>((id.table_name(), id.id()))
             .await?;
@@ -93,15 +93,16 @@ impl DB {
     }
 
     async fn delete_video(&self, id: &ID) -> anyhow::Result<()> {
-        self.delete_with_relation_and_payload_by_id(id).await?;
+        self.delete_contain_relation_and_subrecord_by_id(id).await?;
         self.client
             .delete::<Option<VideoEntity>>((id.table_name(), id.id()))
             .await?;
         Ok(())
     }
 
+    #[async_recursion]
     async fn delete_page(&self, id: &ID) -> anyhow::Result<()> {
-        self.delete_with_relation_and_payload_by_id(id).await?;
+        self.delete_contain_relation_and_subrecord_by_id(id).await?;
         self.client
             .delete::<Option<PageEntity>>((id.table_name(), id.id()))
             .await?;
@@ -109,7 +110,7 @@ impl DB {
     }
 
     async fn delete_web(&self, id: &ID) -> anyhow::Result<()> {
-        self.delete_with_relation_and_payload_by_id(id).await?;
+        self.delete_contain_relation_and_subrecord_by_id(id).await?;
         self.client
             .delete::<Option<WebPageEntity>>((id.table_name(), id.id()))
             .await?;
@@ -117,7 +118,7 @@ impl DB {
     }
 
     async fn delete_document(&self, id: &ID) -> anyhow::Result<()> {
-        self.delete_with_relation_and_payload_by_id(id).await?;
+        self.delete_contain_relation_and_subrecord_by_id(id).await?;
         self.client
             .delete::<Option<DocumentEntity>>((id.table_name(), id.id()))
             .await?;
