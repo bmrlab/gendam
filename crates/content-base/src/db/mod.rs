@@ -6,7 +6,7 @@ pub mod entity;
 pub mod model;
 mod op;
 pub mod search;
-mod shared;
+pub mod shared;
 mod sql;
 pub mod utils;
 
