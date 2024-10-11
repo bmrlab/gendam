@@ -6,7 +6,7 @@ edition = { workspace = true }
 [dependencies]
 prisma-lib = { path = "../../crates/prisma" }
 content-library = { path = "../../crates/content-library" }
-content-base = { path = "../../crates/content-base" }
+content-base = { path = "../../crates/content-base", features = ["embedded-db"] }
 content-handler = { path = "../../crates/content-handler" }
 analytics-tracing = { path = "../../crates/analytics-tracing" }
 ai = { path = "../../crates/ai" }

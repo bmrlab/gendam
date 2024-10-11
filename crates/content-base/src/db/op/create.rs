@@ -237,7 +237,7 @@ impl DB {
 
 /// inner functions
 impl DB {
-    async fn insert_text(&self, text: TextModel) -> anyhow::Result<ID> {
+    pub(crate) async fn insert_text(&self, text: TextModel) -> anyhow::Result<ID> {
         let mut resp = self
             .client
             .query(

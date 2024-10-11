@@ -25,4 +25,4 @@ zip = { version = "2.2.0", default-features = false, features = [
     "zstd",
 ] } # 这些 features 就是默认的，除了 bzip2，bzip2 在我的电脑上 build 不过
 
-content-base = { path = "../content-base" }
+content-base = { path = "../content-base", features = ["embedded-db"] }
