@@ -15,10 +15,6 @@ impl RelationEntity {
         ID::from(self.id.clone()).id_with_table()
     }
     
-    pub fn id_without_table(&self) -> String {
-        ID::from(self.id.clone()).id()
-    }
-
     pub fn in_table(&self) -> TB {
         self.r#in.tb.as_str().into()
     }

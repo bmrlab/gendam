@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use serde::Serialize;
+use std::collections::HashMap;
 use surrealdb::sql::Thing;
 
 #[derive(Debug, Clone, Eq, PartialEq, Copy, Hash, Serialize)]
@@ -15,6 +15,9 @@ pub enum TB {
     Web,
     Document,
     Payload,
+    // relation
+    With,
+    Contains,
 }
 
 impl TB {
@@ -31,6 +34,8 @@ impl TB {
         mapping.insert("web", TB::Web);
         mapping.insert("document", TB::Document);
         mapping.insert("payload", TB::Payload);
+        mapping.insert("with", TB::With);
+        mapping.insert("contains", TB::Contains);
         mapping
     }
 }
@@ -74,7 +79,7 @@ impl ID {
         TB::mapping()
             .iter()
             .find_map(|(&key, &value)| if value == self.tb { Some(key) } else { None })
-            .unwrap_or("text")
+            .expect("table name not found")
     }
 
     pub fn id(&self) -> String {
