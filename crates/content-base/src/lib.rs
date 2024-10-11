@@ -30,6 +30,7 @@ pub struct ContentBase {
 
 #[cfg(test)]
 mod test {
+    use crate::db::shared::test::setup;
     use crate::db::DB;
     use crate::{upsert::UpsertPayload, ContentBase};
     use ai::{
@@ -216,13 +217,10 @@ mod test {
         let file_path = PathBuf::from_str("/Users/zhuo/Desktop/测试视频/4月1日.mp4")
             .expect("str should be valid path");
 
-        let content_base = ContentBase::new(
-            &ctx,
-            Arc::new(RwLock::new(
-                DB::new(env::current_exe().unwrap().parent().unwrap()).await,
-            )),
-        )
-        .expect("content base created");
+        let db = setup(Some(env::current_exe().unwrap().parent().unwrap())).await;
+
+        let content_base =
+            ContentBase::new(&ctx, Arc::new(RwLock::new(db))).expect("content base created");
 
         let (metadata, _) = file_metadata(&file_path, Some("mp4"));
 

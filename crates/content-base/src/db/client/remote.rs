@@ -1,16 +1,21 @@
-use crate::db::constant::{DATABASE_HOST, DATABASE_NAME, DATABASE_NS, DATABASE_PORT};
+use crate::db::constant::{
+    DATABASE_HOST, DATABASE_NAME, DATABASE_NS, DATABASE_PASSWORD, DATABASE_PORT, DATABASE_USER,
+};
 use crate::db::sql::CREATE_TABLE;
 use crate::db::DB;
 use std::env;
 use std::path::Path;
 use surrealdb::engine::remote::ws::{Client, Ws};
+use surrealdb::opt::auth::Root;
 use surrealdb::opt::Config;
 use surrealdb::Surreal;
 
 impl DB {
     pub async fn new() -> Self {
         Self {
-            client: DB::init_db().await.expect("Failed to initialize database"),
+            client: Self::init_db()
+                .await
+                .expect("Failed to initialize database"),
         }
     }
 
@@ -21,10 +26,16 @@ impl DB {
             env::var(DATABASE_PORT)?
         ))
         .await?;
+        db.signin(Root {
+            username: env::var(DATABASE_USER)?.as_str(),
+            password: env::var(DATABASE_PASSWORD)?.as_str(),
+        })
+        .await?;
+
         db.use_ns(env::var(DATABASE_NS)?)
             .use_db(env::var(DATABASE_NAME)?)
             .await?;
-        DB::init_table(&db).await?;
+        Self::init_table(&db).await?;
         Ok(db)
     }
 
