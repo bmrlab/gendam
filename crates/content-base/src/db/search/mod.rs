@@ -4,6 +4,7 @@ use std::convert::Into;
 use tracing::{debug, error};
 
 use super::{constant::MAX_FULLTEXT_TOKEN, entity::vector::VectorSearchEntity, DB};
+use crate::constant::HIGHLIGHT_MARK;
 use crate::db::entity::full_text::FullTextWithHighlightSearchEntity;
 use crate::db::entity::{
     AudioEntity, DocumentEntity, ImageEntity, PayloadEntity, SelectResultEntity, TextEntity,
@@ -21,7 +22,6 @@ use crate::{
     },
 };
 use futures::{stream, StreamExt};
-use crate::constant::HIGHLIGHT_MARK;
 
 mod relation;
 
@@ -308,19 +308,31 @@ impl DB {
         Ok(backtrace)
     }
 
-    async fn select_text(&self, ids: Vec<impl AsRef<str>>) -> anyhow::Result<Vec<TextEntity>> {
+    pub(crate) async fn select_text(
+        &self,
+        ids: Vec<impl AsRef<str>>,
+    ) -> anyhow::Result<Vec<TextEntity>> {
         select_some_macro!("", self.client, ids, TextEntity)
     }
 
-    async fn select_image(&self, ids: Vec<impl AsRef<str>>) -> anyhow::Result<Vec<ImageEntity>> {
+    pub(crate) async fn select_image(
+        &self,
+        ids: Vec<impl AsRef<str>>,
+    ) -> anyhow::Result<Vec<ImageEntity>> {
         select_some_macro!("", self.client, ids, ImageEntity)
     }
 
-    async fn select_audio(&self, ids: Vec<impl AsRef<str>>) -> anyhow::Result<Vec<AudioEntity>> {
+    pub(crate) async fn select_audio(
+        &self,
+        ids: Vec<impl AsRef<str>>,
+    ) -> anyhow::Result<Vec<AudioEntity>> {
         select_some_macro!("FETCH frame, frame.data", self.client, ids, AudioEntity)
     }
 
-    async fn select_video(&self, ids: Vec<impl AsRef<str>>) -> anyhow::Result<Vec<VideoEntity>> {
+    pub(crate) async fn select_video(
+        &self,
+        ids: Vec<impl AsRef<str>>,
+    ) -> anyhow::Result<Vec<VideoEntity>> {
         select_some_macro!(
             "FETCH image_frame, audio_frame, image_frame.data, audio_frame.data",
             self.client,
@@ -329,7 +341,7 @@ impl DB {
         )
     }
 
-    async fn select_web_page(
+    pub(crate) async fn select_web_page(
         &self,
         ids: Vec<impl AsRef<str>>,
     ) -> anyhow::Result<Vec<WebPageEntity>> {
@@ -341,7 +353,7 @@ impl DB {
         )
     }
 
-    async fn select_document(
+    pub(crate) async fn select_document(
         &self,
         ids: Vec<impl AsRef<str>>,
     ) -> anyhow::Result<Vec<DocumentEntity>> {
@@ -353,7 +365,7 @@ impl DB {
         )
     }
 
-    async fn select_payload(
+    pub(crate) async fn select_payload(
         &self,
         ids: Vec<impl AsRef<str>>,
     ) -> anyhow::Result<Vec<PayloadEntity>> {
