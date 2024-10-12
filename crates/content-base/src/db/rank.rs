@@ -168,9 +168,9 @@ impl Rank {
 #[cfg(test)]
 mod test {
     use crate::db::model::id::ID;
+    use crate::db::rank::{Rank, Rankable, ScoreType};
     use crate::query::model::full_text::FullTextSearchResult;
     use crate::query::model::vector::VectorSearchResult;
-    use crate::query::rank::{Rank, Rankable};
 
     #[test]
     fn test_vector_rank() {
@@ -216,7 +216,7 @@ mod test {
                 score: vec![("e".to_string(), 0.3), ("f".to_string(), 0.4)],
             },
         ];
-        let res = Rank::full_text_rank(data, crate::query::rank::ScoreType::Average, None);
+        let res = Rank::full_text_rank(data, ScoreType::Average, None);
         assert_eq!(res.is_ok(), true);
         let res = res.unwrap();
         assert_eq!(res.len(), 3);
@@ -243,7 +243,7 @@ mod test {
                 score: vec![("e".to_string(), 0.5), ("f".to_string(), 0.4)],
             },
         ];
-        let res = Rank::full_text_rank(data, crate::query::rank::ScoreType::Maximum, None);
+        let res = Rank::full_text_rank(data, ScoreType::Maximum, None);
         assert_eq!(res.is_ok(), true);
         let res = res.unwrap();
         assert_eq!(res[0].id.id_with_table(), "text:2");
