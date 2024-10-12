@@ -1,8 +1,12 @@
 use surrealdb::Surreal;
 
 pub mod client;
+
+#[allow(dead_code)]
 mod constant;
+#[allow(dead_code)]
 pub mod entity;
+#[allow(dead_code)]
 pub mod model;
 mod op;
 pub mod search;
