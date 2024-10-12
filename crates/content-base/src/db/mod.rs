@@ -9,6 +9,7 @@ pub mod entity;
 #[allow(dead_code)]
 pub mod model;
 mod op;
+mod rank;
 pub mod search;
 pub mod shared;
 mod sql;
