@@ -12,9 +12,14 @@ use crate::db::entity::{
 };
 use crate::db::model::id::{ID, TB};
 use crate::db::model::SelectResultModel;
+use crate::db::rank::Rank;
+use crate::db::utils::replace_with_highlight;
+use crate::query::model::hit_result::HitResult;
 use crate::query::model::vector::VectorSearchTable;
+use crate::query::model::{SearchModel, SearchType};
+use crate::utils::extract_highlighted_content;
 use crate::{
-    check_db_error_from_resp,
+    check_db_error_from_resp, collect_ordered_async_results,
     db::{constant::SELECT_LIMIT, entity::full_text::FullTextSearchEntity},
     query::model::{
         full_text::{FullTextSearchResult, FULL_TEXT_SEARCH_TABLE},
@@ -22,6 +27,7 @@ use crate::{
     },
 };
 use futures::{stream, StreamExt};
+use itertools::Itertools;
 
 mod relation;
 
@@ -54,6 +60,87 @@ macro_rules! select_some_macro {
             });
         Ok(result.into_iter().flatten().collect())
     }};
+}
+
+impl DB {
+    pub async fn search(
+        &self,
+        data: SearchModel,
+        with_highlight: bool,
+        max_count: usize,
+    ) -> anyhow::Result<Vec<HitResult>> {
+        match data {
+            SearchModel::Text(text) => {
+                debug!("search tokens: {:?}", text.tokens.0);
+                let full_text_result = self.full_text_search(text.tokens.0, with_highlight).await?;
+                debug!(
+                    "full text result: {full_text_result:?} with len {}",
+                    full_text_result.len()
+                );
+                let hit_fields = full_text_result
+                    .iter()
+                    .map(|x| extract_highlighted_content(&x.score[0].0))
+                    .flatten()
+                    .collect::<Vec<String>>();
+                debug!("hit fields: {hit_fields:?} with len {}", hit_fields.len());
+
+                let vector_result = self
+                    .vector_search(text.text_vector, text.vision_vector, None)
+                    .await?;
+
+                debug!(
+                    "vector result: {vector_result:?} with len {}",
+                    vector_result.len()
+                );
+
+                let rank_result = Rank::rank(
+                    (full_text_result.clone(), vector_result),
+                    Some(true),
+                    Some(max_count),
+                )?;
+                debug!(
+                    "rank result: {rank_result:?} with len {}",
+                    rank_result.len()
+                );
+                let search_ids: Vec<ID> =
+                    rank_result.iter().map(|x| x.id.clone()).unique().collect();
+                debug!("search ids: {search_ids:?} with len {}", search_ids.len());
+
+                let select_by_id_result = self.backtrace_by_ids(search_ids).await?;
+                debug!(
+                    "select by id result: {select_by_id_result:?} with len {}",
+                    select_by_id_result.len()
+                );
+                let hit_result_futures = select_by_id_result
+                    .into_iter()
+                    .filter_map(|backtrace| {
+                        rank_result
+                            .iter()
+                            .find(|r| r.id.eq(&backtrace.origin_id))
+                            .map(|r| (backtrace, r.score, r.search_type.clone()))
+                    })
+                    .collect::<Vec<(BacktrackResult, f32, SearchType)>>()
+                    .into_iter()
+                    .map(|(bt, score, search_type)| async move {
+                        let payload = self
+                            .select_payload_by_id(bt.result.id().expect("id not found"))
+                            .await?;
+                        Ok::<_, anyhow::Error>((bt, score, search_type, payload).into())
+                    })
+                    .collect::<Vec<_>>();
+
+                let mut hit_result =
+                    collect_ordered_async_results!(hit_result_futures, Vec<HitResult>);
+
+                if with_highlight {
+                    hit_result = replace_with_highlight(full_text_result, hit_result);
+                }
+                debug!("hit result: {hit_result:?} with len {}", hit_result.len());
+                Ok(hit_result)
+            }
+            _ => unimplemented!(),
+        }
+    }
 }
 
 // search
