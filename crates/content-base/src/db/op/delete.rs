@@ -7,6 +7,16 @@ use async_recursion::async_recursion;
 use tracing::error;
 
 impl DB {
+    pub async fn delete_by_file_identifier(&self, file_identifier: &str) -> anyhow::Result<()> {
+        let records = self
+            .select_record_by_file_identifier(file_identifier)
+            .await?;
+        for record in records {
+            self.delete(&record).await?;
+        }
+        Ok(())
+    }
+
     /// - 传入顶层元素，比如 video，则会递归删除子元素
     ///
     /// - 如果传入底层元素，比如 text，则不会向上删除，只会删除 text 本身

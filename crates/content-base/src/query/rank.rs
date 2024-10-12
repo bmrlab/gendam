@@ -16,6 +16,7 @@ pub struct RankResult {
     pub search_type: SearchType,
 }
 
+#[allow(dead_code)]
 pub enum ScoreType {
     Average,
     Maximum,
