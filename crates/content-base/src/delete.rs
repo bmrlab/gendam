@@ -3,6 +3,7 @@ use async_recursion::async_recursion;
 use content_base_context::ContentBaseCtx;
 use content_base_task::{ContentTask, ContentTaskType, FileInfo, TaskRecord};
 use std::path::PathBuf;
+use tracing::info;
 
 pub struct DeletePayload {
     file_identifier: String,
@@ -18,7 +19,15 @@ impl DeletePayload {
 
 impl ContentBase {
     pub async fn delete(&self, payload: DeletePayload) -> anyhow::Result<()> {
-        // TODO: delete records in vector
+        // delete records in vector
+        self.db
+            .try_write()?
+            .delete_by_file_identifier(&payload.file_identifier)
+            .await?;
+        info!(
+            "delete file_identifier: {} in vector done",
+            payload.file_identifier
+        );
 
         let task_record = TaskRecord::from_content_base(&payload.file_identifier, &self.ctx).await;
 

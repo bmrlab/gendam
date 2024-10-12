@@ -143,7 +143,10 @@ impl DB {
     }
 
     /// 父查子
-    pub async fn select_contains_relation_by_in(&self, id: &ID) -> anyhow::Result<Vec<RelationEntity>> {
+    pub async fn select_contains_relation_by_in(
+        &self,
+        id: &ID,
+    ) -> anyhow::Result<Vec<RelationEntity>> {
         let mut resp = self
             .client
             .query(format!(
@@ -212,7 +215,7 @@ impl DB {
     }
 
     /// 通过 payload 中的 file_identifier 查询 with relation
-    pub async fn select_with_relation_by_file_identifier(
+    async fn select_with_relation_by_file_identifier(
         &self,
         file_identifier: &str,
     ) -> anyhow::Result<Vec<RelationEntity>> {
@@ -227,6 +230,19 @@ impl DB {
             anyhow::anyhow!("select_with_relation_by_file_identifier error: {:?}", e)
         })?;
         resp.take::<Vec<RelationEntity>>(0).map_err(Into::into)
+    }
+
+    pub(crate) async fn select_record_by_file_identifier(
+        &self,
+        file_identifier: &str,
+    ) -> anyhow::Result<Vec<ID>> {
+        let relations = self
+            .select_with_relation_by_file_identifier(file_identifier)
+            .await?;
+        Ok(relations
+            .into_iter()
+            .map(|r| ID::from(r.in_id().as_str()))
+            .collect())
     }
 }
 

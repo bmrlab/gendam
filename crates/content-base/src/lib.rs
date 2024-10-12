@@ -31,7 +31,6 @@ pub struct ContentBase {
 #[cfg(test)]
 mod test {
     use crate::db::shared::test::setup;
-    use crate::db::DB;
     use crate::{upsert::UpsertPayload, ContentBase};
     use ai::{
         llm::{openai::OpenAI, LLM},

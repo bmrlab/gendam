@@ -42,6 +42,7 @@ macro_rules! concat_arrays {
     }};
 }
 
+#[allow(dead_code)]
 pub fn escape_single_quotes(input: &str) -> String {
     let re = Regex::new(r"'").unwrap();
     re.replace_all(input, "\\'").to_string()
