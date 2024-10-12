@@ -57,7 +57,7 @@ impl ContentBase {
                     .full_text_search(text.tokens.0, with_highlight)
                     .await?;
 
-                debug!("full text result: {full_text_result:?}");
+                debug!("full text result: {full_text_result:?} with len {}", full_text_result.len());
 
                 let hit_fields = full_text_result
                     .iter()
@@ -65,26 +65,28 @@ impl ContentBase {
                     .flatten()
                     .collect::<Vec<String>>();
 
-                debug!("hit fields: {hit_fields:?}");
+                debug!("hit fields: {hit_fields:?} with len {}", hit_fields.len());
 
                 let vector_result = self
                     .db
                     .try_read()?
                     .vector_search(text.text_vector, text.vision_vector, None)
                     .await?;
+                
+                debug!("vector result: {vector_result:?} with len {}", vector_result.len());
 
                 let rank_result = Rank::rank(
                     (full_text_result.clone(), vector_result),
                     Some(true),
                     Some(max_count),
                 )?;
-                debug!("rank result: {rank_result:?}");
+                debug!("rank result: {rank_result:?} with len {}", rank_result.len());
                 let search_ids: Vec<ID> =
                     rank_result.iter().map(|x| x.id.clone()).unique().collect();
-                debug!("search ids: {search_ids:?}");
+                debug!("search ids: {search_ids:?} with len {}", search_ids.len());
 
                 let select_by_id_result = self.db.try_read()?.backtrace_by_ids(search_ids).await?;
-                debug!("select by id result: {select_by_id_result:?}");
+                debug!("select by id result: {select_by_id_result:?} with len {}", select_by_id_result.len());
                 let hit_result_futures = select_by_id_result
                     .into_iter()
                     .filter_map(|backtrace| {
@@ -111,7 +113,7 @@ impl ContentBase {
                 if with_highlight {
                     hit_result = Self::replace_with_highlight(full_text_result, hit_result);
                 }
-                debug!("hit result: {:#?}", hit_result);
+                debug!("hit result: {hit_result:?} with len {}", hit_result.len());
 
                 Ok(hit_result
                     .into_iter()
