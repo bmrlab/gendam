@@ -57,8 +57,6 @@ export type Procedures = {
         { key: "search.rag", input: RAGRequestPayload, result: RAGResult }
 };
 
-export type SetModelPayload = { category: AIModelCategory; modelId: string }
-
 export type TaskRedoRequestPayload = { assetObjectId: number }
 
 export type ModelArtifact = { url: string; checksum: string }
@@ -94,6 +92,10 @@ export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPa
 export type FilePathGetPayload = { materializedPath: string; name: string }
 
 export type RecommendRequestPayload = { assetObjectHash: string; timestamp: number }
+
+export type SetModelPayload = { category: AIModelCategory; modelId: string }
+
+export type Result = { category: AIModelCategory; models: AIModelResult[] }
 
 export type AssetObjectWithMediaData = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string; mediaData: ContentMetadataWithType | null }
 
@@ -163,6 +165,8 @@ export type FileChunkUploadResult = { fullPath: string; chunkIndex: number; mess
 
 export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo" | "Qwen2" | "OpenAI" | "AzureOpenAI"
 
+export type DownloadModelPayload = { modelId: string }
+
 export type TranscriptType = "Original" | "Summarization"
 
 export type VideoAvgFrameRate = { numerator: string; denominator: string }
@@ -177,8 +181,6 @@ export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
 
 export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean | null; includeSubDirs?: boolean | null }
 
-export type Result = { category: AIModelCategory; models: AIModelResult[] }
-
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
 
 export type ContentTaskTypeSpecta = { contentType: "video"; taskType: VideoTaskTypeSpecta } | { contentType: "audio"; taskType: AudioTaskTypeSpecta } | { contentType: "image"; taskType: ImageTaskTypeSpecta } | { contentType: "rawText"; taskType: RawTextTaskTypeSpecta } | { contentType: "webPage"; taskType: WebPageTaskTypeSpecta }
@@ -188,8 +190,6 @@ export type UploadPayload = { materializedPaths: string[]; hashes: string[] }
 export type VideoMetadata = { width: string; height: string; duration: number; bit_rate: string; avg_frame_rate: VideoAvgFrameRate; audio: AudioMetadata | null }
 
 export type AssetObjectReceivePayload = { hash: string; materializedPath: string }
-
-export type DownloadModelPayload = { modelId: string }
 
 export type WebPageSearchResultMetadata = { startIndex: number; endIndex: number }
 

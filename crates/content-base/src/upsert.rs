@@ -1,4 +1,11 @@
+use crate::db::model::audio::{AudioFrameModel, AudioModel};
+use crate::db::model::document::DocumentModel;
+use crate::db::model::video::VideoModel;
+use crate::db::model::web::WebPageModel;
+use crate::db::model::{ImageModel, PageModel, TextModel};
+use crate::db::DB;
 use crate::{
+    collect_async_results,
     query::payload::{
         audio::AudioIndexMetadata, image::ImageIndexMetadata, raw_text::RawTextIndexMetadata,
         video::VideoIndexMetadata, web_page::WebPageIndexMetadata, ContentIndexMetadata,
@@ -25,20 +32,18 @@ use content_base_task::{
         VideoTaskType,
     },
     web_page::{chunk::WebPageChunkTask, WebPageTaskType},
-    ContentTask, ContentTaskType, FileInfo, TaskRecord,
+    ContentTaskType, FileInfo, TaskRecord,
 };
 use content_metadata::ContentMetadata;
-use qdrant_client::{
-    qdrant::{PointStruct, UpsertPointsBuilder},
-    Qdrant,
-};
+use futures_util::future::try_join_all;
 use serde::{Deserialize, Serialize};
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
 use tokio::sync::mpsc::{self, Receiver};
-use tracing::warn;
+use tokio::sync::RwLock;
+use tracing::{debug, warn};
 
 #[derive(Serialize, Deserialize)]
 pub struct UpsertPayload {
@@ -108,9 +113,7 @@ impl ContentBase {
 
         // 对 task notification 做进一步处理
         let ctx = self.ctx.clone();
-        let qdrant = self.qdrant.clone();
-        let language_collection_name = self.language_collection_name.clone();
-        let vision_collection_name = self.vision_collection_name.clone();
+        let db = self.db.clone();
         tokio::spawn(async move {
             while let Some(notification) = inner_rx.recv().await {
                 let task_type = notification.task_type.clone();
@@ -119,13 +122,11 @@ impl ContentBase {
                 let _ = notification_tx.send(notification).await;
                 // 对完成的任务进行后处理
                 if let TaskStatus::Finished = task_status {
-                    task_post_process(
+                    let _ = task_post_process(
                         &ctx,
                         &file_info_clone,
                         &task_type,
-                        qdrant.clone(),
-                        language_collection_name.as_str(),
-                        vision_collection_name.as_str(),
+                        db.clone(),
                     )
                     .await;
                 }
@@ -161,158 +162,231 @@ async fn run_task(
     }
 }
 
+macro_rules! chunk_to_page {
+    ($file_info:expr, $ctx:expr, $task_type:expr, $chunks:expr) => {{
+        collect_async_results!($chunks
+            .into_iter()
+            .enumerate()
+            .map(|(i, chunk)| async move {
+                let embedding = $task_type.embed_content($file_info, $ctx, i).await?;
+                anyhow::Result::<PageModel>::Ok(PageModel {
+                    id: None,
+                    text: vec![TextModel {
+                        id: None,
+                        data: chunk.clone(),
+                        vector: embedding.clone(),
+                        en_data: "".to_string(),
+                        en_vector: vec![],
+                    }],
+                    image: vec![],
+                    start_index: i as i32,
+                    end_index: i as i32,
+                })
+            })
+            .collect::<Vec<_>>())
+    }};
+}
+
 async fn task_post_process(
     ctx: &ContentBaseCtx,
     file_info: &FileInfo,
     task_type: &ContentTaskType,
-    qdrant: Arc<Qdrant>,
-    language_collection_name: &str,
-    _vision_collection_name: &str,
-) {
+    db: Arc<RwLock<DB>>,
+) -> anyhow::Result<()> {
     match task_type {
         ContentTaskType::Video(VideoTaskType::TransChunkSumEmbed(_)) => {
-            let _ = transcript_sum_embed_post_process(
-                ctx,
-                qdrant,
-                language_collection_name,
-                file_info,
-                VideoTransChunkTask,
-                VideoTransChunkSumEmbedTask,
-                |start, end| VideoIndexMetadata::new(start, end),
-            )
-            .await;
+            let chunks = VideoTransChunkTask.chunk_content(file_info, ctx).await?;
+            debug!("video chunks: {chunks:?}");
+            let future = chunks
+                .into_iter()
+                .map(|chunk| async move {
+                    let embedding = VideoTransChunkSumEmbedTask
+                        .embed_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
+                        .await?;
+                    debug!("chunk: {chunk:?}, embedding: {:?}", embedding.len());
+                    Result::<AudioFrameModel, anyhow::Error>::Ok(AudioFrameModel {
+                        id: None,
+                        data: vec![TextModel {
+                            id: None,
+                            data: chunk.text.clone(),
+                            vector: embedding.clone(),
+                            // TODO: 是否需要英文
+                            en_data: "".to_string(),
+                            en_vector: vec![],
+                        }],
+                        start_timestamp: chunk.start_timestamp as f32,
+                        end_timestamp: chunk.end_timestamp as f32,
+                    })
+                })
+                .collect::<Vec<_>>();
+            let audio_frame: Vec<AudioFrameModel> = try_join_all(future).await?;
+            db.try_read()?
+                .insert_video(
+                    VideoModel {
+                        id: None,
+                        audio_frame,
+                        image_frame: vec![],
+                    },
+                    ContentIndexPayload {
+                        file_identifier: file_info.file_identifier.clone(),
+                        // 下面两个字段不会使用
+                        task_type: VideoTransChunkSumEmbedTask.clone().into(),
+                        metadata: ContentIndexMetadata::Video(VideoIndexMetadata {
+                            start_timestamp: 0,
+                            end_timestamp: 0,
+                        }),
+                    },
+                )
+                .await?;
         }
         ContentTaskType::Audio(AudioTaskType::TransChunkSumEmbed(_)) => {
-            let _ = transcript_sum_embed_post_process(
-                ctx,
-                qdrant,
-                language_collection_name,
-                file_info,
-                AudioTransChunkTask,
-                AudioTransChunkSumEmbedTask,
-                |start, end| AudioIndexMetadata::new(start, end),
-            )
-            .await;
+            let chunks = AudioTransChunkTask.chunk_content(file_info, ctx).await?;
+            let future = chunks
+                .into_iter()
+                .map(|chunk| async move {
+                    let embedding = AudioTransChunkSumEmbedTask
+                        .embed_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
+                        .await?;
+                    Result::<AudioFrameModel, anyhow::Error>::Ok(AudioFrameModel {
+                        id: None,
+                        data: vec![TextModel {
+                            id: None,
+                            data: chunk.text.clone(),
+                            vector: embedding.clone(),
+                            // TODO: 是否需要英文
+                            en_data: "".to_string(),
+                            en_vector: vec![],
+                        }],
+                        start_timestamp: chunk.start_timestamp as f32,
+                        end_timestamp: chunk.end_timestamp as f32,
+                    })
+                })
+                .collect::<Vec<_>>();
+            let audio_frame: anyhow::Result<Vec<AudioFrameModel>> = collect_async_results!(future);
+            db.try_read()?
+                .insert_audio(
+                    AudioModel {
+                        id: None,
+                        audio_frame: audio_frame?,
+                    },
+                    ContentIndexPayload {
+                        file_identifier: file_info.file_identifier.clone(),
+                        // 下面两个字段不会使用
+                        task_type: AudioTransChunkSumEmbedTask.clone().into(),
+                        metadata: ContentIndexMetadata::Audio(AudioIndexMetadata {
+                            start_timestamp: 0,
+                            end_timestamp: 0,
+                        }),
+                    },
+                )
+                .await?;
         }
         ContentTaskType::Image(ImageTaskType::DescEmbed(task_type)) => {
-            if let Ok(embedding) = task_type.embed_content(file_info, ctx).await {
-                let payload = ContentIndexPayload {
-                    file_identifier: file_info.file_identifier.clone(),
-                    task_type: task_type.clone().into(),
-                    metadata: ContentIndexMetadata::Image(ImageIndexMetadata {}),
-                };
-
-                let point = PointStruct::new(payload.uuid().to_string(), embedding, payload);
-
-                if let Err(e) = qdrant
-                    .upsert_points(
-                        UpsertPointsBuilder::new(language_collection_name, vec![point]).wait(true),
-                    )
-                    .await
-                {
-                    warn!("failed to upsert points: {e:?}");
-                }
-            }
+            let embedding = task_type.embed_content(file_info, ctx).await?;
+            db.try_read()?
+                .insert_image(
+                    ImageModel {
+                        id: None,
+                        prompt: "".to_string(),
+                        vector: embedding.clone(),
+                        prompt_vector: vec![],
+                    },
+                    Some(ContentIndexPayload {
+                        file_identifier: file_info.file_identifier.clone(),
+                        task_type: task_type.clone().into(),
+                        metadata: ContentIndexMetadata::Image(ImageIndexMetadata {}),
+                    }),
+                )
+                .await?;
         }
         ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(task_type)) => {
-            if let Ok(chunks) = RawTextChunkTask.chunk_content(file_info, ctx).await {
-                for i in 0..chunks.len() {
-                    if let Ok(embedding) = task_type.embed_content(file_info, ctx, i).await {
-                        let payload = ContentIndexPayload {
-                            file_identifier: file_info.file_identifier.clone(),
-                            task_type: task_type.clone().into(),
-                            metadata: RawTextIndexMetadata {
-                                start_index: i,
-                                end_index: i,
-                            }
-                            .into(),
-                        };
-                        let point =
-                            PointStruct::new(payload.uuid().to_string(), embedding, payload);
-
-                        if let Err(e) = qdrant
-                            .upsert_points(
-                                UpsertPointsBuilder::new(language_collection_name, vec![point])
-                                    .wait(true),
-                            )
-                            .await
-                        {
-                            warn!("failed to upsert points: {e:?}");
+            let pages: anyhow::Result<Vec<PageModel>> = chunk_to_page!(
+                file_info,
+                ctx,
+                task_type,
+                RawTextChunkTask.chunk_content(file_info, ctx).await?
+            );
+            debug!("pages: {pages:?}");
+            db.try_read()?
+                .insert_document(
+                    DocumentModel::new(pages?),
+                    ContentIndexPayload {
+                        file_identifier: file_info.file_identifier.clone(),
+                        task_type: task_type.clone().into(),
+                        metadata: RawTextIndexMetadata {
+                            start_index: 0,
+                            end_index: 0,
                         }
-                    }
-                }
-            }
+                        .into(),
+                    },
+                )
+                .await?;
         }
         ContentTaskType::WebPage(WebPageTaskType::ChunkSumEmbed(task_type)) => {
-            if let Ok(chunks) = WebPageChunkTask.chunk_content(file_info, ctx).await {
-                for i in 0..chunks.len() {
-                    if let Ok(embedding) = task_type.embed_content(file_info, ctx, i).await {
-                        let payload = ContentIndexPayload {
-                            file_identifier: file_info.file_identifier.clone(),
-                            task_type: task_type.clone().into(),
-                            metadata: WebPageIndexMetadata {
-                                start_index: i,
-                                end_index: i,
-                            }
-                            .into(),
-                        };
-                        let point =
-                            PointStruct::new(payload.uuid().to_string(), embedding, payload);
-
-                        if let Err(e) = qdrant
-                            .upsert_points(
-                                UpsertPointsBuilder::new(language_collection_name, vec![point])
-                                    .wait(true),
-                            )
-                            .await
-                        {
-                            warn!("failed to upsert points: {e:?}");
+            let pages: anyhow::Result<Vec<PageModel>> = chunk_to_page!(
+                file_info,
+                ctx,
+                task_type,
+                WebPageChunkTask.chunk_content(file_info, ctx).await?
+            );
+            debug!("pages: {pages:?}");
+            db.try_read()?
+                .insert_web_page(
+                    WebPageModel::new(pages?),
+                    ContentIndexPayload {
+                        file_identifier: file_info.file_identifier.clone(),
+                        task_type: task_type.clone().into(),
+                        metadata: WebPageIndexMetadata {
+                            start_index: 0,
+                            end_index: 0,
                         }
-                    }
-                }
-            }
+                        .into(),
+                    },
+                )
+                .await?;
         }
         _ => {}
     }
-}
-
-#[tracing::instrument(skip_all)]
-async fn transcript_sum_embed_post_process<T, TFn>(
-    ctx: &ContentBaseCtx,
-    qdrant: Arc<Qdrant>,
-    collection_name: &str,
-    file_info: &FileInfo,
-    chunk_task: impl AudioTranscriptChunkTrait,
-    embed_task: impl AudioTransChunkSumEmbedTrait + ContentTask,
-    fn_search_metadata: TFn,
-) -> anyhow::Result<()>
-where
-    T: Into<ContentIndexMetadata>,
-    TFn: Fn(i64, i64) -> T,
-{
-    let chunks = chunk_task.chunk_content(file_info, ctx).await?;
-
-    for chunk in chunks.iter() {
-        let metadata = fn_search_metadata(chunk.start_timestamp, chunk.end_timestamp);
-        let payload = ContentIndexPayload {
-            file_identifier: file_info.file_identifier.clone(),
-            task_type: embed_task.clone().into(),
-            metadata: metadata.into(),
-        };
-        let embedding = embed_task
-            .embed_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
-            .await?;
-
-        let point = PointStruct::new(payload.uuid().to_string(), embedding, payload);
-
-        // TODO 这里其实可以直接用 upsert_points_chunked，但是似乎有点问题，后续再优化下
-        if let Err(e) = qdrant
-            .upsert_points(UpsertPointsBuilder::new(collection_name, vec![point]).wait(true))
-            .await
-        {
-            warn!("failed to upsert points: {e:?}");
-        }
-    }
-
     Ok(())
 }
+
+// #[tracing::instrument(skip_all)]
+// async fn transcript_sum_embed_post_process<T, TFn>(
+//     ctx: &ContentBaseCtx,
+//     qdrant: Arc<Qdrant>,
+//     collection_name: &str,
+//     file_info: &FileInfo,
+//     chunk_task: impl AudioTranscriptChunkTrait,
+//     embed_task: impl AudioTransChunkSumEmbedTrait + ContentTask,
+//     fn_search_metadata: TFn,
+// ) -> anyhow::Result<()>
+// where
+//     T: Into<SearchMetadata>,
+//     TFn: Fn(i64, i64) -> T,
+// {
+//     let chunks = chunk_task.chunk_content(file_info, ctx).await?;
+//
+//     for chunk in chunks.iter() {
+//         let metadata = fn_search_metadata(chunk.start_timestamp, chunk.end_timestamp);
+//         let payload = SearchPayload {
+//             file_identifier: file_info.file_identifier.clone(),
+//             task_type: embed_task.clone().into(),
+//             metadata: metadata.into(),
+//         };
+//         let embedding = embed_task
+//             .embed_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
+//             .await?;
+//
+//         let point = PointStruct::new(payload.uuid().to_string(), embedding, payload);
+//
+//         // TODO 这里其实可以直接用 upsert_points_chunked，但是似乎有点问题，后续再优化下
+//         if let Err(e) = qdrant
+//             .upsert_points(UpsertPointsBuilder::new(collection_name, vec![point]).wait(true))
+//             .await
+//         {
+//             warn!("failed to upsert points: {e:?}");
+//         }
+//     }
+//
+//     Ok(())
+// }

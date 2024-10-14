@@ -3,12 +3,14 @@ name = "content-base"
 version = "0.1.0"
 edition = { workspace = true }
 
+[features]
+embedded-db = ["surrealdb/kv-rocksdb"]
+
 [dependencies]
 tokio = { workspace = true, features = ["full"] }
 async-trait = { workspace = true }
 async-recursion = { workspace = true }
 anyhow = { workspace = true }
-qdrant-client = { workspace = true }
 tracing = { workspace = true }
 test-log = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -25,3 +27,19 @@ content-metadata = { path = "../content-metadata" }
 uuid = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
+surrealdb = { version = "2.0.2" }
+futures = { workspace = true }
+futures-util = "0.3.30"
+regex = "1.10.6"
+itertools = "0.13.0"
+fake = { version = "2.9.2", features = ["derive"] }
+
+# for test, remove it in production
+dotenvy = { workspace = true }
+rand = "0.8.5"
+
+[dependencies.educe]
+version = "0.6"
+features = ["Debug"]
+default-features = false
+

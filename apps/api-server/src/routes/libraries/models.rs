@@ -1,17 +1,14 @@
 use crate::{
     ai::models::{
-        get_model_info_by_id, get_model_status, load_model_list, trigger_model_download,
-        AIModelCategory, AIModelResult,
+        get_model_status, load_model_list, trigger_model_download, AIModelCategory, AIModelResult,
     },
     library::{get_library_settings, set_library_settings},
     CtxWithLibrary,
 };
-use content_library::make_sure_collection_created;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::thread::sleep;
-use vector_db::{get_language_collection_name, get_vision_collection_name};
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where
@@ -76,47 +73,9 @@ where
                         settings.models.audio_transcript = payload.model_id;
                     }
                     AIModelCategory::TextEmbedding => {
-                        let model_info = get_model_info_by_id(&ctx, &payload.model_id)?;
-                        let dim = model_info.dim.ok_or(rspc::Error::new(
-                            rspc::ErrorCode::InternalServerError,
-                            "invalid model info".into(),
-                        ))?;
-
-                        if let Err(e) = make_sure_collection_created(
-                            library.qdrant_client(),
-                            &get_language_collection_name(&model_info.id),
-                            dim as u64,
-                        )
-                        .await
-                        {
-                            return Err(rspc::Error::new(
-                                rspc::ErrorCode::InternalServerError,
-                                format!("failed to create qdrant collection: {}", e),
-                            ));
-                        }
-
                         settings.models.text_embedding = payload.model_id;
                     }
                     AIModelCategory::MultiModalEmbedding => {
-                        let model_info = get_model_info_by_id(&ctx, &payload.model_id)?;
-                        let dim = model_info.dim.ok_or(rspc::Error::new(
-                            rspc::ErrorCode::InternalServerError,
-                            "invalid model info".into(),
-                        ))?;
-
-                        if let Err(e) = make_sure_collection_created(
-                            library.qdrant_client(),
-                            &get_vision_collection_name(&model_info.id),
-                            dim as u64,
-                        )
-                        .await
-                        {
-                            return Err(rspc::Error::new(
-                                rspc::ErrorCode::InternalServerError,
-                                format!("failed to create qdrant collection: {}", e),
-                            ));
-                        }
-
                         settings.models.multi_modal_embedding = payload.model_id;
                     }
                     _ => {}

@@ -8,8 +8,17 @@ use self::{
     audio::AudioIndexMetadata, image::ImageIndexMetadata, raw_text::RawTextIndexMetadata,
     video::VideoIndexMetadata, web_page::WebPageIndexMetadata,
 };
+use content_base_task::audio::trans_chunk_sum_embed::AudioTransChunkSumEmbedTask;
+use content_base_task::audio::AudioTaskType;
+use content_base_task::image::desc_embed::ImageDescEmbedTask;
+use content_base_task::image::ImageTaskType;
+use content_base_task::raw_text::chunk_sum_embed::RawTextChunkSumEmbedTask;
+use content_base_task::raw_text::RawTextTaskType;
+use content_base_task::video::trans_chunk_sum_embed::VideoTransChunkSumEmbedTask;
+use content_base_task::video::VideoTaskType;
+use content_base_task::web_page::chunk_sum_embed::WebPageChunkSumEmbedTask;
+use content_base_task::web_page::WebPageTaskType;
 use content_base_task::ContentTaskType;
-use qdrant_client::Payload;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
@@ -22,6 +31,28 @@ pub enum ContentIndexMetadata {
     Image(ImageIndexMetadata),
     RawText(RawTextIndexMetadata),
     WebPage(WebPageIndexMetadata),
+}
+
+impl From<&ContentIndexMetadata> for ContentTaskType {
+    fn from(metadata: &ContentIndexMetadata) -> Self {
+        match metadata {
+            ContentIndexMetadata::Video(_) => ContentTaskType::Video(
+                VideoTaskType::TransChunkSumEmbed(VideoTransChunkSumEmbedTask),
+            ),
+            ContentIndexMetadata::Audio(_) => ContentTaskType::Audio(
+                AudioTaskType::TransChunkSumEmbed(AudioTransChunkSumEmbedTask),
+            ),
+            ContentIndexMetadata::Image(_) => {
+                ContentTaskType::Image(ImageTaskType::DescEmbed(ImageDescEmbedTask))
+            }
+            ContentIndexMetadata::RawText(_) => {
+                ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(RawTextChunkSumEmbedTask))
+            }
+            ContentIndexMetadata::WebPage(_) => {
+                ContentTaskType::WebPage(WebPageTaskType::ChunkSumEmbed(WebPageChunkSumEmbedTask))
+            }
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -55,14 +86,6 @@ impl ContentIndexPayload {
     }
 }
 
-impl Into<Payload> for ContentIndexPayload {
-    fn into(self) -> Payload {
-        json!(self)
-            .try_into()
-            .expect("json should be valid payload")
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SearchResultData {
     pub file_identifier: String,
@@ -77,6 +100,17 @@ pub struct RetrievalResultData {
     pub task_type: ContentTaskType,
     pub score: f32,
     pub metadata: ContentIndexMetadata,
+}
+
+impl From<SearchResultData> for RetrievalResultData {
+    fn from(data: SearchResultData) -> Self {
+        Self {
+            file_identifier: data.file_identifier.clone(),
+            task_type: ContentTaskType::from(&data.metadata),
+            score: data.score,
+            metadata: data.metadata.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

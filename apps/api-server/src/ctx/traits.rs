@@ -5,7 +5,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use content_base::ContentBase;
-use content_library::{Library, QdrantServerInfo};
+use content_library::Library;
 use p2p::Node;
 use std::{
     path::PathBuf,
@@ -39,7 +39,6 @@ pub trait CtxWithLibrary: Sync + CtxWithP2P + CtxWithAI + CtxWithDownload {
 
     fn library(&self) -> Result<Library, rspc::Error>;
     fn content_base(&self) -> Result<ContentBase, rspc::Error>;
-    fn qdrant_info(&self) -> Result<QdrantServerInfo, rspc::Error>;
 
     async fn add_task(&self, task: cron::Task) -> Result<(), rspc::Error>;
 }

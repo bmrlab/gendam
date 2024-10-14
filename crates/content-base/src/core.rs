@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::ContentBase;
 use content_base_context::ContentBaseCtx;
 use content_base_pool::{TaskPool, TaskPriority};
@@ -12,24 +10,22 @@ use content_base_task::{
     ContentTaskType,
 };
 use content_metadata::ContentMetadata;
-use qdrant_client::Qdrant;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use crate::db::DB;
 
 impl ContentBase {
     /// Create a new ContentBase with Context. The context will be cloned,
     /// so if need to modify context, a new ContentBase should be created.
     pub fn new(
         ctx: &ContentBaseCtx,
-        qdrant_client: Arc<Qdrant>,
-        language_collection_name: &str,
-        vision_collection_name: &str,
+        db: Arc<RwLock<DB>>,
     ) -> anyhow::Result<Self> {
         let task_pool = TaskPool::new(ctx, None)?;
         Ok(Self {
             ctx: ctx.clone(),
             task_pool,
-            qdrant: qdrant_client,
-            language_collection_name: language_collection_name.to_string(),
-            vision_collection_name: vision_collection_name.to_string(),
+            db,
         })
     }
 
