@@ -63,6 +63,8 @@ export type TaskRedoRequestPayload = { assetObjectId: number }
 
 export type ModelArtifact = { url: string; checksum: string }
 
+export type AIModelResult = { info: AIModel; status: AIModelStatus }
+
 export type RetrievalResultPayload = { filePath: FilePathWithAssetObjectData; metadata: SearchResultMetadata; score: number; taskType: ContentTaskTypeSpecta }
 
 export type Auth = { id: string; name: string }
@@ -131,8 +133,6 @@ export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageC
 
 export type ImageTaskTypeSpecta = "thumbnail" | "description" | "descEmbed"
 
-export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
-
 export type WebPageTaskTypeSpecta = "transform" | "chunk" | "chunkSum" | "chunkSumEmbed"
 
 export type RawTextRequestPayload = { hash: string; index: number }
@@ -143,13 +143,9 @@ export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: strin
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
-export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
-
 export type FilePathDeletePayload = { materializedPath: string; name: string }
 
 export type AcceptShareOutput = { fileList: string[] }
-
-export type AIModelResult = { info: AIModel; status: AIModelStatus }
 
 export type VideoTaskTypeSpecta = "thumbnail" | "frame" | "audio" | "transcript" | "transChunk" | "transChunkSum" | "transChunkSumEmbed"
 
@@ -161,7 +157,9 @@ export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type FileChunkUploadResult = { fullPath: string; chunkIndex: number; message: string }
 
-export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo" | "Qwen2" | "OpenAI" | "AzureOpenAI"
+export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo" | "Qwen2" | "OpenAI" | "AzureOpenAI" | "LLaVAPhi3Mini"
+
+export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
 
 export type TranscriptType = "Original" | "Summarization"
 
@@ -193,8 +191,6 @@ export type DownloadModelPayload = { modelId: string }
 
 export type WebPageSearchResultMetadata = { startIndex: number; endIndex: number }
 
-export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
-
 export type RawTextSearchResultMetadata = { startIndex: number; endIndex: number }
 
 export type WebPageMetadata = { source_url: string }
@@ -205,7 +201,11 @@ export type TaskListRequestPayload = { filter: TaskListRequestFilter }
 
 export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
 
+export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
+
 export type AudioResp = { type: AudioType; content: string }
+
+export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
 
 export type LibrarySettingsExplorer = { layout: LibrarySettingsLayoutEnum; inspectorSize: number; inspectorShow: boolean }
 
