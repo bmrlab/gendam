@@ -57,7 +57,7 @@ impl Default for LibraryModels {
         LibraryModels {
             multi_modal_embedding: "clip-multilingual-v1".to_string(),
             text_embedding: "puff-base-v1".to_string(),
-            image_caption: "ollama-llava-phi3-mini".to_string(),
+            image_caption: "llava-phi3-mini".to_string(),
             audio_transcript: "whisper-small".to_string(),
             llm: "ollama-qwen2-7b-instruct".to_string(),
         }
@@ -125,7 +125,11 @@ impl Default for LibrarySettings {
 }
 
 pub fn get_library_settings(library_dir: &PathBuf) -> LibrarySettings {
-    let settings = match std::fs::File::open(library_dir.join(LIBRARY_SETTINGS_FILE_NAME)) {
+    let p = library_dir.join(LIBRARY_SETTINGS_FILE_NAME);
+    if !p.exists() {
+        return LibrarySettings::default();
+    }
+    let settings = match std::fs::File::open(p) {
         Ok(file) => {
             let reader = std::io::BufReader::new(file);
             match serde_json::from_reader(reader) {

@@ -1,5 +1,6 @@
 pub mod blip;
 pub mod clip;
+pub mod llava_phi3_mini;
 pub mod llm;
 mod loader;
 pub mod moondream;
@@ -9,9 +10,9 @@ mod traits;
 pub mod utils;
 pub mod whisper;
 pub mod yolo;
+pub use tokenizers;
 use tokio::sync::oneshot;
 pub use traits::*;
-pub use tokenizers;
 
 pub type HandlerPayload<TItem, TOutput> = (
     Vec<TItem>,
