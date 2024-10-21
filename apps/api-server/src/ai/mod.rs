@@ -143,14 +143,16 @@ impl AIHandler {
                                 .join(get_str_from_params(&params, "mmproj_model_path")?);
                             let tokenizer_path = resources_dir_clone
                                 .join(get_str_from_params(&params, "tokenizer_path")?);
+                            let preprocessor_config_path = resources_dir_clone
+                                .join(get_str_from_params(&params, "preprocessor_config_path")?);
                             let device = get_str_from_params(&params, "device")?;
                             LLaVAPhi3Mini::new(
                                 device,
                                 model_path,
                                 mmproj_model_path,
                                 tokenizer_path,
+                                preprocessor_config_path,
                             )
-                            .await
                         }
                     },
                     Some(Duration::from_secs(30)),

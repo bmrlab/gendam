@@ -7,4 +7,7 @@ mod image_processor;
 mod quantized_llama;
 
 mod llava;
-pub(super) use llava::{format_prompt, load_image, QLLaVAPhi3};
+pub(super) use {
+    image_processor::{HFPreProcessorConfig, ImageProcessor},
+    llava::{format_prompt, QLLaVAPhi3},
+};
