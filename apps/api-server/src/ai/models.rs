@@ -35,6 +35,7 @@ pub enum ConcreteModelType {
     Qwen2,
     OpenAI,
     AzureOpenAI,
+    LLaVAPhi3Mini,
 }
 
 #[derive(Serialize, Deserialize, Type, Debug, Clone)]

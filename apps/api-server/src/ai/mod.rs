@@ -5,16 +5,33 @@ use crate::{library::get_library_settings, CtxWithLibrary};
 use ai::{
     blip::BLIP,
     clip::{CLIPModel, CLIP},
+    llava_phi3_mini::LLaVAPhi3Mini,
     llm::{openai::OpenAI, qwen2::Qwen2, LLM},
     text_embedding::OrtTextEmbedding,
     whisper::Whisper,
     AIModel, AudioTranscriptModel, ImageCaptionModel, LLMModel, MultiModalEmbeddingModel,
     TextEmbeddingModel,
 };
-use anyhow::bail;
+use anyhow::{anyhow, bail};
 use serde_json::Value;
 use std::{fmt, time::Duration};
 
+/// AIHandler manages different AI models used in the application.
+///
+/// The default model selections for each category are defined in the `impl Default for LibraryModels`,
+/// located in `apps/api-server/src/library.rs`.
+///
+/// These defaults can be overridden by user settings in the library settings file,
+/// found at `<library_dir>/settings.json`.
+///
+/// Available models and their configurations are defined in the `model_list.json` file
+/// located in the resources directory.
+///
+/// The actual model selection and instantiation occurs in the corresponding `get_*` methods
+/// (e.g., `get_image_caption`, `get_multi_modal_embedding`, etc.) based on the following priority:
+/// 1. User-specified settings in the library settings file
+/// 2. Default values from `impl Default for LibraryModels`
+/// 3. Model configurations from `model_list.json`
 #[derive(Clone)]
 pub struct AIHandler {
     pub multi_modal_embedding: (MultiModalEmbeddingModel, String),
@@ -84,38 +101,67 @@ impl AIHandler {
             )
             .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
 
+            // 这里是使用 LLM 进行 image caption 的系统提示词
+            // const LLM_IMAGE_CAPTION_SYSTEM_PROMPT: &'static str = r#"Describe People (including famous individuals), Actions, Objects, Animals or pets, Nature, Sounds (excluding human speech) in the image."#;
+            // handler.create_image_caption_ref(LLM_IMAGE_CAPTION_SYSTEM_PROMPT)
             handler.create_image_caption_ref("Please describe the image.")
         } else {
-            let handler = AIModel::new(
-                move || {
-                    let resources_dir_clone = resources_dir.clone();
-                    let model_clone = model.clone();
-                    async move {
-                        match model_clone.model_type {
-                            ConcreteModelType::BLIP => {
-                                let params = model_clone.params;
-                                let model_path = resources_dir_clone
-                                    .join(get_str_from_params(&params, "model_path")?);
-                                let tokenizer_path = resources_dir_clone
-                                    .join(get_str_from_params(&params, "tokenizer_path")?);
-                                let model_type = get_str_from_params(&params, "model_type")?;
-                                let model_type = match model_type {
-                                    "Large" => ai::blip::BLIPModel::Large,
-                                    _ => ai::blip::BLIPModel::Base,
-                                };
-                                BLIP::new(model_path, tokenizer_path, model_type).await
-                            }
-                            _ => {
-                                bail!(
-                                    "unsupported model {} for image caption",
-                                    model_clone.model_type.as_ref()
-                                )
-                            }
+            // Model trait 的 process 返回的是 impl Future, 导致 Model trait 不是 object safe 的
+            // 这里没法用 Box<dyn Model<Item = ImageCaptionInput, Output = ImageCaptionOutput>> 来接收每个模型的实例
+            // 所以只能把 match 写在外面，把模型实例直接传给 AIModel::new
+            let handler = match model.model_type {
+                ConcreteModelType::BLIP => AIModel::new(
+                    move || {
+                        let resources_dir_clone = resources_dir.clone();
+                        let model_clone = model.clone();
+                        async move {
+                            let params = model_clone.params;
+                            let model_path = resources_dir_clone
+                                .join(get_str_from_params(&params, "model_path")?);
+                            let tokenizer_path = resources_dir_clone
+                                .join(get_str_from_params(&params, "tokenizer_path")?);
+                            let model_type = get_str_from_params(&params, "model_type")?;
+                            let model_type = match model_type {
+                                "Large" => ai::blip::BLIPModel::Large,
+                                _ => ai::blip::BLIPModel::Base,
+                            };
+                            BLIP::new(model_path, tokenizer_path, model_type).await
                         }
-                    }
-                },
-                Some(Duration::from_secs(30)),
-            )
+                    },
+                    Some(Duration::from_secs(30)),
+                ),
+                ConcreteModelType::LLaVAPhi3Mini => AIModel::new(
+                    move || {
+                        let resources_dir_clone = resources_dir.clone();
+                        let model_clone = model.clone();
+                        async move {
+                            // TODO 类型这里可以扩展下，支持 LLaVA 的模型而不只是 LLaVAPhi3Mini，具体实现可以分模型
+                            let params = model_clone.params;
+                            let model_path = resources_dir_clone
+                                .join(get_str_from_params(&params, "model_path")?);
+                            let mmproj_model_path = resources_dir_clone
+                                .join(get_str_from_params(&params, "mmproj_model_path")?);
+                            let tokenizer_path = resources_dir_clone
+                                .join(get_str_from_params(&params, "tokenizer_path")?);
+                            let preprocessor_config_path = resources_dir_clone
+                                .join(get_str_from_params(&params, "preprocessor_config_path")?);
+                            let device = get_str_from_params(&params, "device")?;
+                            LLaVAPhi3Mini::new(
+                                device,
+                                model_path,
+                                mmproj_model_path,
+                                tokenizer_path,
+                                preprocessor_config_path,
+                            )
+                        }
+                    },
+                    Some(Duration::from_secs(30)),
+                ),
+                _ => Err(anyhow!(
+                    "unsupported model {} for image caption",
+                    model.model_type.as_ref(),
+                )),
+            }
             .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
 
             handler
