@@ -1,7 +1,6 @@
 use super::{
     clip::{ClipVisionConfig, ClipVisionTransformer},
     config::LLAVA_PHI3_CONFIG,
-    image_processor::{HFPreProcessorConfig, ImageProcessor},
     linear::QLinear,
     quantized_llama::{self, LlamaTextConfig},
     sequential::{seq, QSequential, QSequentialLayer},
@@ -310,24 +309,6 @@ where
         .collect::<Vec<Vec<T>>>();
     res.pop();
     res
-}
-
-/// Loads and preprocesses an image for the model. Returns a tuple containing:
-/// - The original image dimensions (width, height)
-/// - A preprocessed tensor representation of the image
-pub fn load_image(
-    device: &Device,
-    image_file_path: impl AsRef<Path>,
-    preprocessor_config_file_path: impl AsRef<Path>,
-) -> anyhow::Result<((u32, u32), Tensor)> {
-    let preprocessor_config: HFPreProcessorConfig =
-        serde_json::from_slice(&std::fs::read(preprocessor_config_file_path)?)?;
-    let image_processor = ImageProcessor::from_hf_preprocessor_config(&preprocessor_config);
-    let img = image::ImageReader::open(image_file_path)?.decode()?;
-    let image_tensor = image_processor.preprocess(&img)?.unsqueeze(0)?;
-    // let image_tensor = image_tensor.to_dtype(DType::BF16)?.to_device(&device)?;
-    let image_tensor = image_tensor.to_device(&device)?;
-    Ok(((img.width(), img.height()), image_tensor))
 }
 
 pub fn format_prompt(prompt: &str) -> String {

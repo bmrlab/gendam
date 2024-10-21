@@ -149,6 +149,7 @@
       "model_path": "./llava-phi3-mini/llava-phi-3-mini-int4.gguf",
       "mmproj_model_path": "./llava-phi3-mini/llava-phi-3-mini-mmproj-f16.gguf",
       "tokenizer_path": "./llava-phi3-mini/tokenizer.json",
+      "preprocessor_config_path": "./llava-phi3-mini/preprocessor_config.json",
       "device": "metal"
     }
   },
