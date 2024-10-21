@@ -1,5 +1,6 @@
 mod config;
 mod linear;
+mod sequential;
 
 mod clip;
 mod image_processor;

@@ -4,9 +4,10 @@ use super::{
     image_processor::{HFPreProcessorConfig, ImageProcessor},
     linear::QLinear,
     quantized_llama::{self, LlamaTextConfig},
+    sequential::{seq, QSequential, QSequentialLayer},
 };
 use candle_core::{quantized::gguf_file, Device, IndexOp, Module, Tensor};
-use candle_nn::sequential::{seq, Sequential};
+
 use candle_transformers::quantized_var_builder;
 use std::path::Path;
 use tokenizers::Tokenizer;
@@ -21,7 +22,7 @@ pub struct LLaVAPhi3Config {
 }
 
 struct MMProjector {
-    pub modules: Sequential,
+    pub modules: QSequential,
 }
 
 impl MMProjector {
@@ -33,7 +34,7 @@ impl MMProjector {
         let mm_hidden_size: usize = config.clip_vision_config.hidden_size; // 1024
         let modules = {
             let layer = QLinear::load(mm_hidden_size, text_hidden_size, vb.pp("0"))?;
-            let mut modules = seq().add(layer);
+            let mut modules = seq().add(QSequentialLayer::QLinear(layer));
             let mlp_depth = 2;
             for i in 1..mlp_depth {
                 let layer = QLinear::load(
@@ -41,7 +42,9 @@ impl MMProjector {
                     text_hidden_size,
                     vb.pp(format!("{}", i * 2)),
                 )?;
-                modules = modules.add(candle_nn::Activation::Gelu).add(layer);
+                modules = modules
+                    .add(QSequentialLayer::Activation(candle_nn::Activation::Gelu))
+                    .add(QSequentialLayer::QLinear(layer));
             }
             modules
         };
