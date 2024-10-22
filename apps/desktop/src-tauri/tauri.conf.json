@@ -88,7 +88,7 @@
       }
     },
     "security": {
-      "csp": "default-src 'self' asset: https://asset.localhost blob: data: filesystem: ws: wss: http: https: tauri: 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost storage://*; connect-src 'self' https://gendam.ai https://gendam.app;"
+      "csp": "default-src 'self' asset: storage: https://asset.localhost blob: data: filesystem: ws: wss: http: https: tauri: 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: storage: https://asset.localhost; connect-src 'self' https://gendam.ai https://gendam.app;"
     },
     "updater": {
       "active": true,
