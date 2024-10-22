@@ -5,12 +5,14 @@ use candle_core::{Module, Tensor};
 /// Sequantial 原先使用的是 trait object，这样会让 Sequential 无法实现 Send,
 /// 而 impl Model for LLaVAPhi3Mini 里面的 async fn process(&mut self) 放回一个 Future，所以需要实现 Send
 /// 所以这里将 Sequential 的 layers 从 Vec<Box<dyn Module>> 改为 Vec<QSequentialLayer>
+#[derive(Debug)]
 pub enum QSequentialLayer {
     QLinear(QLinear),
     Activation(candle_nn::Activation),
 }
 
 /// A sequential layer combining multiple other layers.
+#[derive(Debug)]
 pub struct QSequential {
     layers: Vec<QSequentialLayer>,
 }
@@ -21,6 +23,7 @@ pub fn seq() -> QSequential {
 }
 
 impl Module for QSequential {
+    #[tracing::instrument(level = "info", name = "QSequential", skip_all)]
     fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
         let mut xs = xs.clone();
         for layer in self.layers.iter() {

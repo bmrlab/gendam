@@ -9,6 +9,7 @@ pub enum Activation {
 }
 
 impl Module for Activation {
+    #[tracing::instrument(level = "info", name = "Activation", skip_all)]
     fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
         match self {
             Activation::QuickGelu => xs * candle_nn::ops::sigmoid(&(xs * 1.702f64)?),
@@ -105,6 +106,7 @@ impl ClipVisionEmbeddings {
 }
 
 impl Module for ClipVisionEmbeddings {
+    #[tracing::instrument(level = "info", name = "ClipVisionEmbeddings", skip_all)]
     fn forward(&self, pixel_values: &Tensor) -> Result<Tensor> {
         let batch_size = pixel_values.shape().dims();
         let patch_embeds = self
@@ -159,6 +161,7 @@ impl ClipAttention {
             .contiguous()
     }
 
+    #[tracing::instrument(level = "info", name = "ClipAttention", skip_all)]
     fn forward(&self, xs: &Tensor, causal_attention_mask: Option<&Tensor>) -> Result<Tensor> {
         let in_dtype = xs.dtype();
         let (bsz, seq_len, embed_dim) = xs.dims3()?;
@@ -221,6 +224,7 @@ impl ClipMlp {
 }
 
 impl ClipMlp {
+    #[tracing::instrument(level = "info", name = "ClipMlp", skip_all)]
     fn forward(&self, xs: &Tensor) -> Result<Tensor> {
         let xs = self.ffn_down.forward(xs)?;
         self.ffn_up.forward(&self.activation.forward(&xs)?)
@@ -251,6 +255,7 @@ impl ClipEncoderLayer {
         })
     }
 
+    #[tracing::instrument(level = "info", name = "ClipEncoderLayer", skip_all)]
     fn forward(&self, xs: &Tensor, causal_attention_mask: Option<&Tensor>) -> Result<Tensor> {
         let residual = xs;
         let xs = self.layer_norm1.forward(xs)?;
@@ -282,6 +287,7 @@ impl ClipEncoder {
         Ok(ClipEncoder { layers })
     }
 
+    #[tracing::instrument(level = "info", name = "ClipEncoder", skip_all)]
     pub fn forward(&self, xs: &Tensor, causal_attention_mask: Option<&Tensor>) -> Result<Tensor> {
         let mut xs = xs.clone();
         for layer in self.layers.iter() {
@@ -344,6 +350,7 @@ impl ClipVisionTransformer {
 }
 
 impl Module for ClipVisionTransformer {
+    #[tracing::instrument(level = "info", name = "ClipVisionTransformer", skip_all)]
     fn forward(&self, pixel_values: &Tensor) -> Result<Tensor> {
         let hidden_states = pixel_values
             .apply(&self.embeddings)?
