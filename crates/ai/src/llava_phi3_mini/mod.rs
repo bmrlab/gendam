@@ -37,6 +37,7 @@ impl Model for LLaVAPhi3Mini {
     }
 }
 
+#[derive(Debug)]
 pub struct LLaVAPhi3Mini {
     device: Device,
     image_processor: ImageProcessor,
@@ -134,6 +135,7 @@ impl LLaVAPhi3Mini {
         Ok(result)
     }
 
+    #[tracing::instrument(level = "info", skip(self, image_file_path))]
     pub fn get_image_caption(
         &mut self,
         image_file_path: impl AsRef<Path>,

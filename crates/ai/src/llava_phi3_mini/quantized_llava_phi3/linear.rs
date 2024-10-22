@@ -5,7 +5,6 @@ use candle_transformers::quantized_var_builder;
 pub struct QLinear {
     inner: QMatMul,
     bias: Tensor,
-    span: tracing::Span,
 }
 
 impl QLinear {
@@ -18,14 +17,13 @@ impl QLinear {
         let bias = vb.get(out_dim, "bias")?;
         let inner = QMatMul::from_arc(weight)?;
         let bias = bias.dequantize(vb.device())?;
-        let span = tracing::span!(tracing::Level::TRACE, "qmatmul");
-        Ok(Self { inner, bias, span })
+        Ok(Self { inner, bias })
     }
 }
 
 impl Module for QLinear {
+    #[tracing::instrument(level = "info", name="QLinear" skip_all)]
     fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
-        let _enter = self.span.enter();
         self.inner.forward(xs)?.broadcast_add(&self.bias)
     }
 }

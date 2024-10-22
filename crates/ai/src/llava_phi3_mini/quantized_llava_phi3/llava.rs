@@ -20,6 +20,7 @@ pub struct LLaVAPhi3Config {
     pub clip_vision_config: ClipVisionConfig,
 }
 
+#[derive(Debug)]
 struct MMProjector {
     pub modules: QSequential,
 }
@@ -50,11 +51,13 @@ impl MMProjector {
         Ok(Self { modules })
     }
 
+    #[tracing::instrument(level = "info", name = "MMProjector", skip_all)]
     pub fn forward(&self, x: &Tensor) -> candle_core::Result<Tensor> {
         self.modules.forward(x)
     }
 }
 
+#[derive(Debug)]
 struct ClipVisionTower {
     model: ClipVisionTransformer,
     #[allow(dead_code)]
@@ -74,6 +77,7 @@ impl ClipVisionTower {
         })
     }
 
+    #[tracing::instrument(level = "info", name = "ClipVisionTower", skip_all)]
     pub fn forward(&self, x: &Tensor) -> candle_core::Result<Tensor> {
         let result = self.model.output_hidden_states(x)?;
         // llava 模型都默认取的 clip 倒数第二层作为 image 特征
@@ -90,6 +94,7 @@ impl ClipVisionTower {
     }
 }
 
+#[derive(Debug)]
 pub struct QLLaVAPhi3 {
     pub llama: quantized_llama::ModelWeights,
     clip_vision_tower: ClipVisionTower,
@@ -142,6 +147,7 @@ impl QLLaVAPhi3 {
         Ok(image_features)
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn prepare_inputs_labels_for_multimodal(
         &self,
         device: &Device,
