@@ -21,3 +21,7 @@ fi
 if [ ! -d "${resources_dir}/blip-base" ]; then
   curl -L "https://gendam.s3.us-west-1.amazonaws.com/models/blip-base.tar.gz" | tar xz -C "${resources_dir}/"
 fi
+
+if [ ! -d "${resources_dir}/llava-phi3-mini" ]; then
+  curl -L "https://gendam.s3.us-west-1.amazonaws.com/models/llava-phi3-mini.tar.gz" | tar xz -C "${resources_dir}/"
+fi
