@@ -32,6 +32,7 @@ pub enum AudioTaskTypeSpecta {
 #[serde(rename_all = "camelCase")]
 pub enum ImageTaskTypeSpecta {
     Thumbnail,
+    Embedding,
     Description,
     DescEmbed,
 }
@@ -108,6 +109,9 @@ impl From<ContentTaskType> for ContentTaskTypeSpecta {
             ContentTaskType::Image(t) => match t {
                 ImageTaskType::Thumbnail(_) => {
                     ContentTaskTypeSpecta::Image(ImageTaskTypeSpecta::Thumbnail)
+                }
+                ImageTaskType::Embedding(_) => {
+                    ContentTaskTypeSpecta::Image(ImageTaskTypeSpecta::Embedding)
                 }
                 ImageTaskType::Description(_) => {
                     ContentTaskTypeSpecta::Image(ImageTaskTypeSpecta::Description)

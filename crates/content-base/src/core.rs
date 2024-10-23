@@ -5,7 +5,7 @@ use content_base_context::ContentBaseCtx;
 use content_base_pool::{TaskPool, TaskPriority};
 use content_base_task::{
     audio::{trans_chunk_sum_embed::AudioTransChunkSumEmbedTask, waveform::AudioWaveformTask},
-    image::desc_embed::ImageDescEmbedTask,
+    image::{desc_embed::ImageDescEmbedTask, embedding::ImageEmbeddingTask},
     raw_text::chunk_sum_embed::RawTextChunkSumEmbedTask,
     video::{frame::VideoFrameTask, trans_chunk_sum_embed::VideoTransChunkSumEmbedTask},
     web_page::chunk_sum_embed::WebPageChunkSumEmbedTask,
@@ -43,7 +43,6 @@ impl ContentBase {
         match metadata {
             ContentMetadata::Video(metadata) => {
                 tasks.push((VideoFrameTask.into(), TaskPriority::Low));
-
                 if metadata.audio.is_some() {
                     tasks.push((VideoTransChunkSumEmbedTask.into(), TaskPriority::Low));
                 }
@@ -55,7 +54,10 @@ impl ContentBase {
                 ]);
             }
             ContentMetadata::Image(_) => {
-                tasks.push((ImageDescEmbedTask.into(), TaskPriority::Normal));
+                tasks.extend([
+                    (ImageEmbeddingTask.into(), TaskPriority::Normal),
+                    (ImageDescEmbedTask.into(), TaskPriority::Normal),
+                ]);
             }
             ContentMetadata::RawText(_) => {
                 tasks.push((RawTextChunkSumEmbedTask.into(), TaskPriority::Normal));

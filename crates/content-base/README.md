@@ -49,11 +49,13 @@ content_base.delete(delete_payload).await?;
 ## How it works
 
 1. Content Processing:
+
    - When content is upserted, it's broken down into tasks based on its type (video, audio, image, text).
    - Tasks are added to a task pool for processing.
    - Each task may generate embeddings, transcripts, or other derived data.
 
 2. Data Storage:
+
    - Processed data and metadata are stored in Qdrant vector database.
    - Different collections are used for language-based and vision-based data.
 
@@ -67,11 +69,12 @@ content_base.delete(delete_payload).await?;
 1. Content is submitted via `upsert()`.
 2. Metadata is extracted and stored.
 3. Tasks are generated based on content type.
-4. Tasks are processed asynchronously:
+4. Tasks are processed asynchronously.
    - For video: extract frames, audio, generate transcripts, create embeddings.
    - For audio: generate waveform, transcripts, embeddings.
    - For images: generate descriptions, embeddings.
    - For text: chunk content, generate summaries, embeddings.
+   - **The specific tasks for each content type are defined in `ContentBase::tasks` in the `content-base/src/core.rs` file**
 5. Processed data is stored in Qdrant.
 6. Search indexes are updated.
 

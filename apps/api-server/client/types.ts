@@ -89,13 +89,13 @@ export type TranscriptRequestPayload = { hash: string; startTimestamp: number; e
 
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
-export type RawTextTaskTypeSpecta = "chunk" | "chunkSum" | "chunkSumEmbed"
-
 export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPath: string; oldName: string; newName: string }
 
 export type FilePathGetPayload = { materializedPath: string; name: string }
 
 export type RecommendRequestPayload = { assetObjectHash: string; timestamp: number }
+
+export type RawTextTaskTypeSpecta = "chunk" | "chunkSum" | "chunkSumEmbed"
 
 export type AssetObjectWithMediaData = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string; mediaData: ContentMetadataWithType | null }
 
@@ -125,15 +125,15 @@ export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsT
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
+export type WebPageTaskTypeSpecta = "transform" | "chunk" | "chunkSum" | "chunkSumEmbed"
+
 export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
 
 export type VideoPlayerTsResponse = { data: number[] }
 
 export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageCaption" | "AudioTranscript" | "TextEmbedding" | "LLM"
 
-export type ImageTaskTypeSpecta = "thumbnail" | "description" | "descEmbed"
-
-export type WebPageTaskTypeSpecta = "transform" | "chunk" | "chunkSum" | "chunkSumEmbed"
+export type ImageTaskTypeSpecta = "thumbnail" | "embedding" | "description" | "descEmbed"
 
 export type RawTextRequestPayload = { hash: string; index: number }
 
@@ -144,6 +144,8 @@ export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: strin
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
 export type FilePathDeletePayload = { materializedPath: string; name: string }
+
+export type ContentTaskTypeSpecta = { contentType: "video"; taskType: VideoTaskTypeSpecta } | { contentType: "audio"; taskType: AudioTaskTypeSpecta } | { contentType: "image"; taskType: ImageTaskTypeSpecta } | { contentType: "rawText"; taskType: RawTextTaskTypeSpecta } | { contentType: "webPage"; taskType: WebPageTaskTypeSpecta }
 
 export type AcceptShareOutput = { fileList: string[] }
 
@@ -178,8 +180,6 @@ export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean |
 export type Result = { category: AIModelCategory; models: AIModelResult[] }
 
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
-
-export type ContentTaskTypeSpecta = { contentType: "video"; taskType: VideoTaskTypeSpecta } | { contentType: "audio"; taskType: AudioTaskTypeSpecta } | { contentType: "image"; taskType: ImageTaskTypeSpecta } | { contentType: "rawText"; taskType: RawTextTaskTypeSpecta } | { contentType: "webPage"; taskType: WebPageTaskTypeSpecta }
 
 export type UploadPayload = { materializedPaths: string[]; hashes: string[] }
 
