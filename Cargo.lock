@@ -1066,16 +1066,17 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.69.5"
+version = "0.65.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "271383c67ccabffb7381723dea0672a673f292304fcb45c01cc648c7a8d58088"
+checksum = "cfdf7b466f9a4903edc73f95d6d2bcd5baf8ae620638762244d3f60143643cc5"
 dependencies = [
- "bitflags 2.6.0",
+ "bitflags 1.3.2",
  "cexpr",
  "clang-sys",
- "itertools 0.12.1",
  "lazy_static",
  "lazycell",
+ "peeking_take_while",
+ "prettyplease",
  "proc-macro2",
  "quote",
  "regex",
@@ -1392,7 +1393,7 @@ dependencies = [
 [[package]]
 name = "candle-core"
 version = "0.6.0"
-source = "git+https://github.com/huggingface/candle.git#c63048d3748649c6f13148eb01e6d812d897a0d2"
+source = "git+https://github.com/huggingface/candle.git?rev=c63048d3748649c6f13148eb01e6d812d897a0d2#c63048d3748649c6f13148eb01e6d812d897a0d2"
 dependencies = [
  "accelerate-src",
  "byteorder",
@@ -1416,7 +1417,7 @@ dependencies = [
 [[package]]
 name = "candle-metal-kernels"
 version = "0.6.0"
-source = "git+https://github.com/huggingface/candle.git#c63048d3748649c6f13148eb01e6d812d897a0d2"
+source = "git+https://github.com/huggingface/candle.git?rev=c63048d3748649c6f13148eb01e6d812d897a0d2#c63048d3748649c6f13148eb01e6d812d897a0d2"
 dependencies = [
  "metal",
  "once_cell",
@@ -1427,7 +1428,7 @@ dependencies = [
 [[package]]
 name = "candle-nn"
 version = "0.6.0"
-source = "git+https://github.com/huggingface/candle.git#c63048d3748649c6f13148eb01e6d812d897a0d2"
+source = "git+https://github.com/huggingface/candle.git?rev=c63048d3748649c6f13148eb01e6d812d897a0d2#c63048d3748649c6f13148eb01e6d812d897a0d2"
 dependencies = [
  "accelerate-src",
  "candle-core",
@@ -1444,7 +1445,7 @@ dependencies = [
 [[package]]
 name = "candle-transformers"
 version = "0.6.0"
-source = "git+https://github.com/huggingface/candle.git#c63048d3748649c6f13148eb01e6d812d897a0d2"
+source = "git+https://github.com/huggingface/candle.git?rev=c63048d3748649c6f13148eb01e6d812d897a0d2#c63048d3748649c6f13148eb01e6d812d897a0d2"
 dependencies = [
  "accelerate-src",
  "byteorder",
@@ -5765,11 +5766,11 @@ dependencies = [
 
 [[package]]
 name = "librocksdb-sys"
-version = "0.16.0+8.10.0"
+version = "0.11.0+8.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce3d60bc059831dc1c83903fb45c103f75db65c5a7bf22272764d9cc683e348c"
+checksum = "d3386f101bcb4bd252d8e9d2fb41ec3b0862a15a62b478c355b2982efa469e3e"
 dependencies = [
- "bindgen 0.69.5",
+ "bindgen 0.65.1",
  "bzip2-sys",
  "cc",
  "glob",
@@ -7908,6 +7909,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 
 [[package]]
+name = "prettyplease"
+version = "0.2.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "910d41a655dac3b764f1ade94821093d3610248694320cd072303a8eedcf221d"
+dependencies = [
+ "proc-macro2",
+ "syn 2.0.82",
+]
+
+[[package]]
 name = "priority-queue"
 version = "2.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9268,9 +9279,9 @@ checksum = "cbf4a6aa5f6d6888f39e980649f3ad6b666acdce1d78e95b8a2cb076e687ae30"
 
 [[package]]
 name = "rocksdb"
-version = "0.22.0"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6bd13e55d6d7b8cd0ea569161127567cd587676c99f4472f779a0279aa60a7a7"
+checksum = "bb6f170a4041d50a0ce04b0d2e14916d6ca863ea2e422689a5b694395d299ffe"
 dependencies = [
  "libc",
  "librocksdb-sys",
@@ -10490,9 +10501,9 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "surrealdb"
-version = "2.0.4"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "300749e641e2a5546a142333d91b3537969e9c4cbd1fa2d1d10d92f01624d470"
+checksum = "39763f42366823f524ded4e423420fe990352a18665f00151521ea49f590d33e"
 dependencies = [
  "arrayvec",
  "async-channel",
@@ -10531,9 +10542,9 @@ dependencies = [
 
 [[package]]
 name = "surrealdb-core"
-version = "2.0.4"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5795fca60f099754934069dfb3d20824cfec94b4c13c7130d1cd52e0fcadfc42"
+checksum = "12d8339a5d2968dedee86705482becc6a6181a07cc30ed2e674526a81bd7389e"
 dependencies = [
  "addr",
  "ahash 0.8.11",
@@ -12007,9 +12018,9 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "ureq"
-version = "2.10.0"
+version = "2.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72139d247e5f97a3eff96229a7ae85ead5328a39efe76f8bf5a06313d505b6ea"
+checksum = "b74fc6b57825be3373f7054754755f03ac3a8f5d70015ccad699ba2029956f4a"
 dependencies = [
  "base64 0.22.1",
  "log",

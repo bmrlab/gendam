@@ -14,17 +14,17 @@ test-log = { workspace = true }
 ndarray = { version = "0.15.6", features = ["serde"] }
 tokenizers = "0.19.1"
 image = { workspace = true }
-candle-core = { git = "https://github.com/huggingface/candle.git", features = [
-  "accelerate",
-  "metal",
+candle-core = { git = "https://github.com/huggingface/candle.git", rev = "c63048d3748649c6f13148eb01e6d812d897a0d2", default-features = false, features = [
+    "accelerate",
+    "metal",
 ] }
-candle-transformers = { git = "https://github.com/huggingface/candle.git", features = [
-  "accelerate",
-  "metal",
+candle-transformers = { git = "https://github.com/huggingface/candle.git", rev = "c63048d3748649c6f13148eb01e6d812d897a0d2", default-features = false, features = [
+    "accelerate",
+    "metal",
 ] }
-candle-nn = { git = "https://github.com/huggingface/candle.git", features = [
-  "accelerate",
-  "metal",
+candle-nn = { git = "https://github.com/huggingface/candle.git", rev = "c63048d3748649c6f13148eb01e6d812d897a0d2", default-features = false, features = [
+    "accelerate",
+    "metal",
 ] }
 half = "2.3.1"
 accelerate-src = "0.3.2"
