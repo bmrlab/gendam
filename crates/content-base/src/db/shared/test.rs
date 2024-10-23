@@ -35,7 +35,7 @@ pub async fn setup(path: Option<&Path>) -> DB {
         .unwrap();
 
     #[cfg(not(feature = "embedded-db"))]
-    let db = DB::new().await;
+    let db = DB::new().await.unwrap();
 
     db
 }
