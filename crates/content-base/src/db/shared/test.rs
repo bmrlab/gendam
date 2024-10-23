@@ -30,7 +30,9 @@ pub async fn setup(path: Option<&Path>) -> DB {
     dotenvy::dotenv().ok();
 
     #[cfg(feature = "embedded-db")]
-    let db = DB::new(path.unwrap_or(env::current_exe().unwrap().parent().unwrap())).await;
+    let db = DB::new(path.unwrap_or(env::current_exe().unwrap().parent().unwrap()))
+        .await
+        .unwrap();
 
     #[cfg(not(feature = "embedded-db"))]
     let db = DB::new().await;
