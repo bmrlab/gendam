@@ -40,14 +40,14 @@ where
 
                 #[derive(Serialize, Type)]
                 #[serde(rename_all = "camelCase")]
-                struct Result {
+                struct ModelsListResult {
                     category: AIModelCategory,
                     models: Vec<AIModelResult>,
                 }
 
                 Ok(models_by_category
                     .into_iter()
-                    .map(|(category, models)| Result {
+                    .map(|(category, models)| ModelsListResult {
                         category: category.clone(),
                         models,
                     })

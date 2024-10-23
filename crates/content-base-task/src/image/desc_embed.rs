@@ -62,7 +62,7 @@ impl Into<ContentTaskType> for ImageDescEmbedTask {
 }
 
 impl ImageDescEmbedTask {
-    pub async fn embed_content(
+    pub async fn desc_embed_content(
         &self,
         file_info: &FileInfo,
         ctx: &ContentBaseCtx,

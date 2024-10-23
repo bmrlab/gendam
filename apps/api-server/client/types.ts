@@ -12,7 +12,7 @@ export type Procedures = {
         { key: "libraries.get_library_settings", input: never, result: LibrarySettings } |
         { key: "libraries.list", input: never, result: LibrariesListResult[] } |
         { key: "libraries.models.get_model", input: string, result: AIModelResult } |
-        { key: "libraries.models.list", input: never, result: Result[] } |
+        { key: "libraries.models.list", input: never, result: ModelsListResult[] } |
         { key: "libraries.status", input: never, result: LibraryStatusResult } |
         { key: "p2p.state", input: never, result: any } |
         { key: "search.all", input: SearchRequestPayload, result: SearchResultPayload[] } |
@@ -93,11 +93,9 @@ export type FilePathGetPayload = { materializedPath: string; name: string }
 
 export type RecommendRequestPayload = { assetObjectHash: string; timestamp: number }
 
-export type RawTextTaskTypeSpecta = "chunk" | "chunkSum" | "chunkSumEmbed"
-
 export type SetModelPayload = { category: AIModelCategory; modelId: string }
 
-export type Result = { category: AIModelCategory; models: AIModelResult[] }
+export type RawTextTaskTypeSpecta = "chunk" | "chunkSum" | "chunkSumEmbed"
 
 export type AssetObjectWithMediaData = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string; mediaData: ContentMetadataWithType | null }
 
@@ -136,6 +134,8 @@ export type VideoPlayerTsResponse = { data: number[] }
 export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageCaption" | "AudioTranscript" | "TextEmbedding" | "LLM"
 
 export type ImageTaskTypeSpecta = "thumbnail" | "embedding" | "description" | "descEmbed"
+
+export type ModelsListResult = { category: AIModelCategory; models: AIModelResult[] }
 
 export type RawTextRequestPayload = { hash: string; index: number }
 
