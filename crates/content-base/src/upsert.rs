@@ -15,13 +15,14 @@ use crate::{
 };
 use content_base_context::ContentBaseCtx;
 use content_base_pool::{TaskNotification, TaskPool, TaskPriority, TaskStatus};
+use content_base_task::image::description;
 use content_base_task::{
     audio::{
         trans_chunk::{AudioTransChunkTask, AudioTranscriptChunkTrait},
         trans_chunk_sum_embed::{AudioTransChunkSumEmbedTask, AudioTransChunkSumEmbedTrait},
         AudioTaskType,
     },
-    image::ImageTaskType,
+    image::{description::ImageDescriptionTask, embedding::ImageEmbeddingTask, ImageTaskType},
     raw_text::{
         chunk::{DocumentChunkTrait, RawTextChunkTask},
         chunk_sum_embed::DocumentChunkSumEmbedTrait,
@@ -122,13 +123,7 @@ impl ContentBase {
                 let _ = notification_tx.send(notification).await;
                 // 对完成的任务进行后处理
                 if let TaskStatus::Finished = task_status {
-                    let _ = task_post_process(
-                        &ctx,
-                        &file_info_clone,
-                        &task_type,
-                        db.clone(),
-                    )
-                    .await;
+                    let _ = task_post_process(&ctx, &file_info_clone, &task_type, db.clone()).await;
                 }
             }
         });
@@ -282,14 +277,19 @@ async fn task_post_process(
                 .await?;
         }
         ContentTaskType::Image(ImageTaskType::DescEmbed(task_type)) => {
-            let embedding = task_type.desc_embed_content(file_info, ctx).await?;
+            // TODO: embedding task 如果没完成，这里会读不到 embedding，需要等两个任务都完成了才能继续 image 的 post task
+            let desc_embedding = task_type.desc_embed_content(file_info, ctx).await?;
+            let description = ImageDescriptionTask
+                .description_content(file_info, ctx)
+                .await?;
+            let embedding = ImageEmbeddingTask.embedding_content(file_info, ctx).await?;
             db.try_read()?
                 .insert_image(
                     ImageModel {
                         id: None,
-                        prompt: "".to_string(),
-                        vector: embedding.clone(),
-                        prompt_vector: vec![],
+                        prompt: description,
+                        vector: embedding,
+                        prompt_vector: desc_embedding,
                     },
                     Some(ContentIndexPayload {
                         file_identifier: file_info.file_identifier.clone(),
