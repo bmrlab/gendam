@@ -36,10 +36,7 @@ impl ContentTask for ImageEmbeddingTask {
 
         self.write(
             output_path.clone(),
-            serde_json::to_string(&json!({
-                "embedding": model_output
-            }))?
-            .into(),
+            serde_json::to_string(&model_output)?.into(), // 直接把 Vec<f32> 转成字符串
         )
         .await?;
 
@@ -71,19 +68,10 @@ impl ImageEmbeddingTask {
         &self,
         file_info: &crate::FileInfo,
         ctx: &ContentBaseCtx,
-    ) -> anyhow::Result<String> {
+    ) -> anyhow::Result<Vec<f32>> {
         let task_type: ContentTaskType = self.clone().into();
         let output_path = task_type.task_output_path(file_info, ctx).await?;
-        let content = self.read_to_string(output_path)?;
-        let content: Value = serde_json::from_str(&content)?;
-
-        let content = content.get("embedding").ok_or(anyhow::anyhow!(
-            "no embedding found in image embedding file"
-        ))?;
-        let content = content.as_str().ok_or(anyhow::anyhow!(
-            "no embedding found in image embedding file"
-        ))?;
-
-        Ok(content.to_string())
+        let content_str = self.read_to_string(output_path)?;
+        Ok(serde_json::from_str(&content_str)?)
     }
 }
