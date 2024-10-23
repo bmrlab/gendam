@@ -1,19 +1,19 @@
 use crate::db::constant::{DATABASE_NAME, DATABASE_NS};
 use crate::db::sql::CREATE_TABLE;
+use crate::db::DB;
 use std::env;
 use std::path::Path;
 use surrealdb::engine::local::{Db, RocksDb};
 use surrealdb::opt::Config;
 use surrealdb::Surreal;
-use crate::db::DB;
 
 impl DB {
-    pub async fn new(path: impl AsRef<Path>) -> Self {
-        Self {
-            client: DB::init_db(path)
-                .await
-                .expect("Failed to initialize database"),
-        }
+    pub async fn new(path: impl AsRef<Path>) -> anyhow::Result<Self> {
+        let client = DB::init_db(path).await.map_err(|e| {
+            tracing::error!("Failed to initialize surrealdb: {}", e);
+            e
+        })?;
+        Ok(Self { client })
     }
 
     async fn init_db(path: impl AsRef<Path>) -> anyhow::Result<Surreal<Db>> {

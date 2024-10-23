@@ -101,14 +101,16 @@ pub async fn load_library(
     let dir = library_dir.to_str().ok_or(())?.to_string();
 
     set_current!(library_id.to_string(), dir);
-
+    let surrealdb_client = DB::new(surreal_dir).await.map_err(|e| {
+        tracing::error!("Failed to create surrealdb client: {}", e);
+    })?;
     let library = Library {
         id: library_id.to_string(),
         dir: library_dir.clone(),
         files_dir,
         artifacts_dir,
         prisma_client,
-        db: Arc::new(RwLock::new(DB::new(surreal_dir).await)),
+        db: Arc::new(RwLock::new(surrealdb_client)),
     };
 
     Ok(library)

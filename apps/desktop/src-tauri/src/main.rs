@@ -135,7 +135,7 @@ async fn main() {
             if let tauri::WindowEvent::Destroyed = e {
                 // https://github.com/bmrlab/gendam/issues/10#issuecomment-2078827778
                 tracing::info!("window destroyed");
-                if let Ok(library) = ctx.library() {
+                if let Ok(_library) = ctx.library() {
                     // drop(library);
                 }
                 // tokio::runtime::Runtime::new().unwrap().block_on(async {
