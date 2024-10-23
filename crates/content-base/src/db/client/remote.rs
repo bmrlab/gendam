@@ -4,19 +4,19 @@ use crate::db::constant::{
 use crate::db::sql::CREATE_TABLE;
 use crate::db::DB;
 use std::env;
-use std::path::Path;
+// use std::path::Path;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
-use surrealdb::opt::Config;
+// use surrealdb::opt::Config;
 use surrealdb::Surreal;
 
 impl DB {
-    pub async fn new() -> Self {
-        Self {
-            client: Self::init_db()
-                .await
-                .expect("Failed to initialize database"),
-        }
+    pub async fn new() -> anyhow::Result<Self> {
+        let client = Self::init_db().await.map_err(|e| {
+            tracing::error!("Failed to initialize surrealdb: {}", e);
+            e
+        })?;
+        Ok(Self { client })
     }
 
     async fn init_db() -> anyhow::Result<Surreal<Client>> {
