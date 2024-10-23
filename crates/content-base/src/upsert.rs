@@ -282,7 +282,7 @@ async fn task_post_process(
                 .await?;
         }
         ContentTaskType::Image(ImageTaskType::DescEmbed(task_type)) => {
-            let embedding = task_type.embed_content(file_info, ctx).await?;
+            let embedding = task_type.desc_embed_content(file_info, ctx).await?;
             db.try_read()?
                 .insert_image(
                     ImageModel {
