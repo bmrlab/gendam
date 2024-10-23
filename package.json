@@ -12,7 +12,7 @@
     "dev:web": "pnpm web dev",
     "dev:tauri": "pnpm tauri dev",
     "dev:api-server": "pnpm api-server dev",
-    "dev:prep": "bash scripts/download-sidecar.sh && cargo prisma generate && pnpm tauri build --debug",
+    "dev:prep": "bash scripts/download-sidecar.sh && bash scripts/copy-sidecar-to-target.sh && cargo prisma generate",
     "dev:model": "bash scripts/download-models.sh && bash scripts/download-ollama.sh"
   },
   "devDependencies": {
