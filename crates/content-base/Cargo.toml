@@ -27,7 +27,7 @@ content-metadata = { path = "../content-metadata" }
 uuid = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
-surrealdb = { version = "2.0.2" }
+surrealdb = { version = "=2.0.2" }
 futures = { workspace = true }
 futures-util = "0.3.30"
 regex = "1.10.6"
@@ -42,4 +42,3 @@ rand = "0.8.5"
 version = "0.6"
 features = ["Debug"]
 default-features = false
-
