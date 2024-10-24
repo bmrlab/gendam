@@ -1,6 +1,9 @@
 use prisma_lib::{asset_object, file_path, new_client_with_url, PrismaClient};
 use std::path::PathBuf;
 
+const SQLITE_DATABASE_FILE_NAME: &'static str = "gendam-library.db";
+const LEGACY_SQLITE_DATABASE_FILE_NAME: &'static str = "library.db";
+
 async fn copy_data_from_legacy_db(
     client: &PrismaClient,
     legacy_client: &PrismaClient,
@@ -110,7 +113,7 @@ pub async fn migrate_library(db_dir: &PathBuf) -> Result<PrismaClient, ()> {
     let db_url = format!(
         // "file:{}?socket_timeout=1&connection_limit=10",
         "file:{}?socket_timeout=15&connection_limit=1",
-        db_dir.join("gendam-library.db").to_str().unwrap()
+        db_dir.join(SQLITE_DATABASE_FILE_NAME).to_str().unwrap()
     );
     let client = new_client_with_url(db_url.as_str()).await.map_err(|_e| {
         tracing::error!("failed to create prisma client");
@@ -126,7 +129,7 @@ pub async fn migrate_library(db_dir: &PathBuf) -> Result<PrismaClient, ()> {
             tracing::error!("failed to deploy db migrations: {}", e);
         })?;
 
-    let legacy_db_path = db_dir.join("library.db");
+    let legacy_db_path = db_dir.join(LEGACY_SQLITE_DATABASE_FILE_NAME);
     if legacy_db_path.exists() {
         tracing::info!("db file not found, copy data from legacy db");
         let legacy_db_url = format!(
@@ -141,7 +144,10 @@ pub async fn migrate_library(db_dir: &PathBuf) -> Result<PrismaClient, ()> {
         // copy AssetObject, MediaData, FilePath from legacy db to new db
         copy_data_from_legacy_db(&client, &legacy_client).await?;
         // rename legacy db file to library.db.archived
-        if let Err(e) = std::fs::rename(&legacy_db_path, db_dir.join("library.db.archived")) {
+        if let Err(e) = std::fs::rename(
+            &legacy_db_path,
+            db_dir.join(format!("{}.archived", LEGACY_SQLITE_DATABASE_FILE_NAME)),
+        ) {
             // remove db file
             tracing::error!("failed to rename legacy db file: {}", e);
             if let Err(e) = std::fs::remove_file(&legacy_db_path) {
