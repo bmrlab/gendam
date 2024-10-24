@@ -15,6 +15,7 @@ use crate::{
 };
 use content_base_context::ContentBaseCtx;
 use content_base_pool::{TaskNotification, TaskPool, TaskPriority, TaskStatus};
+use content_base_task::image::desc_embed::ImageDescEmbedTask;
 use content_base_task::image::description;
 use content_base_task::{
     audio::{
@@ -276,28 +277,13 @@ async fn task_post_process(
                 )
                 .await?;
         }
-        ContentTaskType::Image(ImageTaskType::DescEmbed(task_type)) => {
-            // TODO: embedding task 如果没完成，这里会读不到 embedding，需要等两个任务都完成了才能继续 image 的 post task
-            let desc_embedding = task_type.desc_embed_content(file_info, ctx).await?;
-            let description = ImageDescriptionTask
-                .description_content(file_info, ctx)
-                .await?;
-            let embedding = ImageEmbeddingTask.embedding_content(file_info, ctx).await?;
-            db.try_read()?
-                .insert_image(
-                    ImageModel {
-                        id: None,
-                        prompt: description,
-                        vector: embedding,
-                        prompt_vector: desc_embedding,
-                    },
-                    Some(ContentIndexPayload {
-                        file_identifier: file_info.file_identifier.clone(),
-                        task_type: task_type.clone().into(),
-                        metadata: ContentIndexMetadata::Image(ImageIndexMetadata {}),
-                    }),
-                )
-                .await?;
+        ContentTaskType::Image(ImageTaskType::DescEmbed(_) | ImageTaskType::Embedding(_)) => {
+            // DescEmbed 和 Embedding 结束后都触发 upsert_image_index_to_surrealdb
+            // 如果有一个任务没完成，upsert_image_index_to_surrealdb 会报错
+            upsert_image_index_to_surrealdb(ctx, file_info, task_type, db).await.map_err(|e| {
+                tracing::warn!("either image embedding or description embedding task not finished yet {:?}", e);
+                e
+            })?
         }
         ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(task_type)) => {
             let pages: anyhow::Result<Vec<PageModel>> = chunk_to_page!(
@@ -347,6 +333,39 @@ async fn task_post_process(
         }
         _ => {}
     }
+    Ok(())
+}
+
+#[tracing::instrument(skip_all)]
+async fn upsert_image_index_to_surrealdb(
+    ctx: &ContentBaseCtx,
+    file_info: &FileInfo,
+    task_type: &ContentTaskType,
+    db: Arc<RwLock<DB>>,
+) -> anyhow::Result<()> {
+    // 不用 task_type.desc_embed_content，用 ImageDescEmbedTask 创建个空实例，统一写法
+    let desc_embedding = ImageDescEmbedTask
+        .desc_embed_content(file_info, ctx)
+        .await?;
+    let description = ImageDescriptionTask
+        .description_content(file_info, ctx)
+        .await?;
+    let embedding = ImageEmbeddingTask.embedding_content(file_info, ctx).await?;
+    db.try_read()?
+        .insert_image(
+            ImageModel {
+                id: None,
+                prompt: description,
+                vector: embedding,
+                prompt_vector: desc_embedding,
+            },
+            Some(ContentIndexPayload {
+                file_identifier: file_info.file_identifier.clone(),
+                task_type: task_type.to_owned(),
+                metadata: ContentIndexMetadata::Image(ImageIndexMetadata {}),
+            }),
+        )
+        .await?;
     Ok(())
 }
 
