@@ -16,7 +16,6 @@ use crate::{
 use content_base_context::ContentBaseCtx;
 use content_base_pool::{TaskNotification, TaskPool, TaskPriority, TaskStatus};
 use content_base_task::image::desc_embed::ImageDescEmbedTask;
-use content_base_task::image::description;
 use content_base_task::{
     audio::{
         trans_chunk::{AudioTransChunkTask, AudioTranscriptChunkTrait},
@@ -281,7 +280,7 @@ async fn task_post_process(
             // DescEmbed 和 Embedding 结束后都触发 upsert_image_index_to_surrealdb
             // 如果有一个任务没完成，upsert_image_index_to_surrealdb 会报错
             upsert_image_index_to_surrealdb(ctx, file_info, task_type, db).await.map_err(|e| {
-                tracing::warn!("either image embedding or description embedding task not finished yet {:?}", e);
+                tracing::warn!("either image embedding or description embedding task not finished yet: {:?}", e);
                 e
             })?
         }

@@ -4,7 +4,6 @@ use crate::query::model::full_text::FullTextSearchResult;
 use crate::query::model::vector::VectorSearchResult;
 use crate::query::model::SearchType;
 use std::collections::{HashMap, HashSet};
-use tracing::info;
 
 pub struct Rank;
 
@@ -88,8 +87,8 @@ impl Rank {
         let full_text_rank = Rank::full_text_rank(full_text_data, ScoreType::Average, None)?;
         let vector_rank = Rank::vector_rank(vector_data, None)?;
 
-        info!("full_text_rank: {:?}", full_text_rank);
-        info!("vector_rank: {:?}", vector_rank);
+        tracing::debug!("full_text_rank: {:?}", full_text_rank);
+        tracing::debug!("vector_rank: {:?}", vector_rank);
 
         let concat_arrays = concat_arrays!(full_text_rank.clone(), vector_rank.clone()).into_vec();
         let mut rank_result: Vec<RankResult> = Rank::rrf(vec![full_text_rank, vector_rank], None)
@@ -106,7 +105,7 @@ impl Rank {
             })
             .collect();
 
-        info!("rank_result: {:?}", rank_result);
+        tracing::debug!("rank_result: {:?}", rank_result);
 
         if remove_duplicate.unwrap_or(true) {
             let mut seen = HashSet::new();
