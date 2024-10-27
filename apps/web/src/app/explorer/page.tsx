@@ -6,6 +6,7 @@ import {
   useExplorerContext,
   useExplorerValue,
 } from '@/Explorer/hooks'
+import { useShortcut } from '@/hooks/useShortcut'
 import { useCurrentLibrary } from '@/lib/library'
 // import { useExplorerStore } from '@/Explorer/store'
 import { InspectorPane, InspectorProvider, useInspector, useResizableInspector } from '@/components/Inspector'
@@ -18,7 +19,7 @@ import { RSPCError } from '@rspc/client'
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Footer from './_components/Footer'
 import Header from './_components/Header'
 import ItemContextMenuV2 from './_components/ItemContextMenu'
@@ -37,21 +38,12 @@ function _ExplorerPage() {
     }
   }, [resizableInspector.width, resizableInspector.isResizing, explorer.settings])
 
-  // listen to meta + I to toggle inspector
-  // @todo 这个快捷键目前只是临时实现，之后应该统一的管理快捷键并且提供用户自定义的功能
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.metaKey && e.key === 'i') {
-        const show = !inspector.show
-        inspector.setShow(show)
-        explorer.settings.update({ inspectorShow: show }) // 和 Header 上的按钮一样，会保存设置
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
+  const showInspector = useCallback(() => {
+    const show = !inspector.show
+    inspector.setShow(show)
+    explorer.settings.update({ inspectorShow: show }) // 和 Header 上的按钮一样，会保存设置
   }, [inspector, explorer.settings])
+  useShortcut('showInspector', showInspector)
 
   // set inspector item data
   type T = ExtractExplorerItem<'FilePathDir'> | ExtractExplorerItem<'FilePathWithAssetObject'>
