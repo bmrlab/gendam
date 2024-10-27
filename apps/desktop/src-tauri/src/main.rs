@@ -131,6 +131,7 @@ async fn main() {
 
     window.on_window_event({
         let ctx = ctx.clone();
+        let window = window.clone();
         move |e| {
             if let tauri::WindowEvent::Destroyed = e {
                 // https://github.com/bmrlab/gendam/issues/10#issuecomment-2078827778
@@ -141,6 +142,12 @@ async fn main() {
                 // tokio::runtime::Runtime::new().unwrap().block_on(async {
                 //     let _ = ctx.unload_library().await;
                 // });
+            }
+            if let tauri::WindowEvent::CloseRequested { api, .. } = e {
+                // Prevents the window from being closed.
+                api.prevent_close();
+                // Minimizes the window instead.
+                window.minimize().unwrap();
             }
         }
     });
