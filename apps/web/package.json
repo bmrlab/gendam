@@ -28,6 +28,7 @@
     "next": "14.1.0",
     "react": "^18",
     "react-dom": "^18",
+    "react-hotkeys-hook": "^4.5.1",
     "react-markdown": "^9.0.1",
     "react-selecto": "^1.26.3",
     "react-zoom-pan-pinch": "^3.6.1",
