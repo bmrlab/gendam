@@ -4,7 +4,7 @@ import RenamableItemText from '@/Explorer/components/View/RenamableItemText'
 import { type ExtractExplorerItem } from '@/Explorer/types'
 import { type FilePath } from '@/lib/bindings'
 import { queryClient, rspc } from '@/lib/rspc'
-import { cn } from '@/lib/utils'
+import { cn, confirm } from '@/lib/utils'
 import { Folder_Light } from '@gendam/assets/images'
 import Icon from '@gendam/ui/icons'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
@@ -66,6 +66,9 @@ const FolderItem: React.FC<{ data: ExtractExplorerItem<'FilePathDir'>; setOpen: 
 
   const deleteMut = rspc.useMutation(['assets.delete_file_path'])
   const handleDelete = useCallback(async () => {
+    if (!(await confirm('Delete folder', `Are you sure you want to delete the folder "${filePath.name}"?`))) {
+      return
+    }
     try {
       await deleteMut.mutateAsync({
         materializedPath: filePath.materializedPath,
@@ -81,9 +84,9 @@ const FolderItem: React.FC<{ data: ExtractExplorerItem<'FilePathDir'>; setOpen: 
 
   const menu = (
     <ContextMenu.Content>
-      <ContextMenu.Item onClick={() => foldersTreeStore.setIsRenaming(filePath)}>Rename</ContextMenu.Item>
-      <ContextMenu.Item onClick={createNewSubFolder}>New Subfolder</ContextMenu.Item>
-      <ContextMenu.Item variant="destructive" onClick={handleDelete}>
+      <ContextMenu.Item onSelect={() => foldersTreeStore.setIsRenaming(filePath)}>Rename</ContextMenu.Item>
+      <ContextMenu.Item onSelect={createNewSubFolder}>New Subfolder</ContextMenu.Item>
+      <ContextMenu.Item variant="destructive" onSelect={handleDelete}>
         Delete
       </ContextMenu.Item>
     </ContextMenu.Content>

@@ -1,5 +1,5 @@
-import QuickView from './QuickView'
 import FoldersDialog from './FoldersDialog'
+import QuickView from './QuickView'
 
 export default function Shared() {
   return (

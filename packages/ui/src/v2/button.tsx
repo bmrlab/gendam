@@ -19,7 +19,7 @@ const buttonVariants = cva(
         sm: 'h-7 px-3 py-1 text-xs font-medium rounded-md shadow-sm',
         md: 'h-8 px-4 py-1 text-sm font-medium rounded-md shadow-sm',
         lg: 'h-9 px-8 py-1 text-md font-medium rounded-md shadow-sm',
-      }
+      },
     },
     defaultVariants: {
       variant: 'outline',
@@ -28,7 +28,9 @@ const buttonVariants = cva(
   },
 )
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
   asChild?: boolean
 }
 

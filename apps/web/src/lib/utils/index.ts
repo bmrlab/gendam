@@ -1,4 +1,5 @@
 export { cn, twx } from '@gendam/tailwind/utils'
+export { confirm } from './ConfirmDialog'
 
 export function formatDuration(seconds: number) {
   let d = seconds < 0 ? 0 : seconds

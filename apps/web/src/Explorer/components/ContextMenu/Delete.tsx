@@ -1,5 +1,6 @@
 import { useExplorerContext } from '@/Explorer/hooks'
 import { queryClient, rspc } from '@/lib/rspc'
+import { confirm } from '@/lib/utils'
 import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { useCallback, useMemo } from 'react'
 import { BaseContextMenuItem } from './types'
@@ -17,6 +18,15 @@ function withDeleteExplorerItem(BaseComponent: BaseContextMenuItem) {
 
     const handleDelete = useCallback(
       async (e: Event) => {
+        const n = selectedFilePathItems.length
+        if (
+          !(await confirm(
+            `Delete folder${n > 1 ? 's' : ''}`,
+            `Are you sure you want to delete ${n > 1 ? `these ${n} folders` : 'the folder'}?`,
+          ))
+        ) {
+          return
+        }
         for (let item of selectedFilePathItems) {
           try {
             await deleteMut.mutateAsync({

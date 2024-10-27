@@ -1,4 +1,3 @@
-'use client'
 import { rspc } from '@/lib/rspc'
 import Icon from '@gendam/ui/icons'
 import { useMemo, useState } from 'react'

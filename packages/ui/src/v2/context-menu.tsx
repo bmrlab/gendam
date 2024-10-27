@@ -1,8 +1,8 @@
 'use client'
+import { cn } from '@gendam/tailwind/utils'
 import * as ContextMenuPrimitive from '@radix-ui/react-context-menu'
-import * as React from 'react'
-import { cn, twx } from '@gendam/tailwind/utils'
 import { ChevronRightIcon } from '@radix-ui/react-icons'
+import * as React from 'react'
 
 const Content = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Content>,
@@ -61,7 +61,7 @@ const SubTrigger = React.forwardRef<
   <ContextMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      'focus:bg-accent focus:text-white data-[state=open]:bg-accent data-[state=open]:text-white flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none',
+      'focus:bg-accent data-[state=open]:bg-accent flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:text-white data-[state=open]:text-white',
       inset && 'pl-8',
       'cursor-default select-none outline-none',
       'flex items-center justify-start gap-1.5 rounded-md px-2.5 py-1.5 text-xs',
@@ -109,7 +109,4 @@ const ContextMenu = {
   SubContent,
 }
 
-export {
-  ContextMenuPrimitive,
-  ContextMenu,
-}
+export { ContextMenu, ContextMenuPrimitive }
