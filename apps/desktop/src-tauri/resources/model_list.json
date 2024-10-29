@@ -69,6 +69,18 @@
     }
   },
   {
+    "id": "whisper-large-v3-turbo",
+    "categories": ["AudioTranscript"],
+    "title": "Whisper Large",
+    "description": "",
+    "artifacts_dir": "whisper",
+    "artifacts": [],
+    "model_type": "Whisper",
+    "params": {
+      "model_path": "./whisper/ggml-large-v3-turbo-q5_0.bin"
+    }
+  },
+  {
     "id": "puff-base-v1",
     "categories": ["TextEmbedding"],
     "title": "Puff Base V1",
