@@ -59,6 +59,8 @@ export type Procedures = {
 
 export type TaskRedoRequestPayload = { assetObjectId: number }
 
+export type ContentTaskTypeSpecta = { contentType: "video"; taskType: VideoTaskTypeSpecta } | { contentType: "audio"; taskType: AudioTaskTypeSpecta } | { contentType: "image"; taskType: ImageTaskTypeSpecta } | { contentType: "rawText"; taskType: RawTextTaskTypeSpecta } | { contentType: "webPage"; taskType: WebPageTaskTypeSpecta }
+
 export type ModelArtifact = { url: string; checksum: string }
 
 export type AIModelResult = { info: AIModel; status: AIModelStatus }
@@ -95,13 +97,9 @@ export type RecommendRequestPayload = { assetObjectHash: string; timestamp: numb
 
 export type SetModelPayload = { category: AIModelCategory; modelId: string }
 
-export type RawTextTaskTypeSpecta = "chunk" | "chunkSum" | "chunkSumEmbed"
-
 export type AssetObjectWithMediaData = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string; mediaData: ContentMetadataWithType | null }
 
 export type ImageMetadata = { width: number; height: number; color: string }
-
-export type AudioTaskTypeSpecta = "thumbnail" | "waveform" | "transcript" | "transChunk" | "transChunkSum" | "transChunkSumEmbed"
 
 export type ImageSearchResultMetadata = { data: number }
 
@@ -125,15 +123,11 @@ export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsT
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
-export type WebPageTaskTypeSpecta = "transform" | "chunk" | "chunkSum" | "chunkSumEmbed"
-
 export type FilePath = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; createdAt: string; updatedAt: string }
 
 export type VideoPlayerTsResponse = { data: number[] }
 
 export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageCaption" | "AudioTranscript" | "TextEmbedding" | "LLM"
-
-export type ImageTaskTypeSpecta = "thumbnail" | "embedding" | "description" | "descEmbed"
 
 export type ModelsListResult = { category: AIModelCategory; models: AIModelResult[] }
 
@@ -147,11 +141,11 @@ export type FilePathRequestPayload = { id: number; isDir: boolean; materializedP
 
 export type FilePathDeletePayload = { materializedPath: string; name: string }
 
-export type ContentTaskTypeSpecta = { contentType: "video"; taskType: VideoTaskTypeSpecta } | { contentType: "audio"; taskType: AudioTaskTypeSpecta } | { contentType: "image"; taskType: ImageTaskTypeSpecta } | { contentType: "rawText"; taskType: RawTextTaskTypeSpecta } | { contentType: "webPage"; taskType: WebPageTaskTypeSpecta }
+export type AudioTaskTypeSpecta = "thumbnail" | "waveform" | "transcript" | "transChunk" | "transChunkSum" | "transChunkSumEmbed"
 
 export type AcceptShareOutput = { fileList: string[] }
 
-export type VideoTaskTypeSpecta = "thumbnail" | "frame" | "audio" | "transcript" | "transChunk" | "transChunkSum" | "transChunkSumEmbed"
+export type VideoTaskTypeSpecta = "thumbnail" | "frame" | "frameEmbedding" | "audio" | "transcript" | "transChunk" | "transChunkSum" | "transChunkSumEmbed"
 
 export type LibrariesListResult = { id: string; dir: string; title: string }
 
@@ -163,7 +157,11 @@ export type FileChunkUploadResult = { fullPath: string; chunkIndex: number; mess
 
 export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo" | "Qwen2" | "OpenAI" | "AzureOpenAI" | "LLaVAPhi3Mini"
 
+export type ImageTaskTypeSpecta = "thumbnail" | "embedding" | "description" | "descEmbed"
+
 export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
+
+export type RawTextTaskTypeSpecta = "chunk" | "chunkSum" | "chunkSumEmbed"
 
 export type DownloadModelPayload = { modelId: string }
 
@@ -196,6 +194,8 @@ export type RawTextSearchResultMetadata = { startIndex: number; endIndex: number
 export type WebPageMetadata = { source_url: string }
 
 export type SearchResultPayload = { filePath: FilePathWithAssetObjectData; metadata: SearchResultMetadata; score: number; highlight: string | null }
+
+export type WebPageTaskTypeSpecta = "transform" | "chunk" | "chunkSum" | "chunkSumEmbed"
 
 export type TaskListRequestPayload = { filter: TaskListRequestFilter }
 
