@@ -143,13 +143,13 @@ impl Qwen2 {
                                     .forward(&payload.input, payload.index_pos)
                                     .map_err(|err| anyhow::anyhow!(err));
                                 if let Err(e) = payload.tx.send(result) {
-                                    tracing::error!("completion error: {:?}", e);
+                                    tracing::error!("qwen2 completion error: {:?}", e);
                                 }
                             }
                         }
                     }
-                    _ => {
-                        tracing::warn!("qwen2 rx error");
+                    Err(e) => {
+                        tracing::warn!("qwen2 rx error: {:?}", e);
                         break;
                     }
                 }

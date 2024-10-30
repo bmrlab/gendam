@@ -268,8 +268,10 @@ impl VideoDecoder {
                         String::from_utf8_lossy(&output.stderr)
                     );
                 }
-                self.save_batch_framer(tmp_dir, frames_dir, frame_interval_seconds)
+                self.save_batch_framer(tmp_dir.as_ref(), frames_dir, frame_interval_seconds)
                     .await?;
+                // remove the temporary directory
+                std::fs::remove_dir_all(tmp_dir.as_ref())?;
             }
             Err(e) => {
                 bail!("Failed to save video frames: {e}");
@@ -310,8 +312,6 @@ impl VideoDecoder {
                 self.write(new_path, image_bytes.into()).await?;
             }
         }
-        // remove the temporary directory
-        std::fs::remove_file(tmp_dir.as_ref())?;
         Ok(())
     }
 
