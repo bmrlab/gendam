@@ -191,13 +191,11 @@ impl VideoDecoder {
 
     pub async fn save_video_frames(
         &self,
-        frames_dir: impl AsRef<Path>,
-        fps: f32,
+        tmp_dir: impl AsRef<Path>, // absolute path to the temporary directory
+        frames_dir: impl AsRef<Path>, // relative path to the frames directory
+        frame_interval_seconds: usize,
     ) -> anyhow::Result<()> {
         // 单独提取 timestamp 为 0 的帧
-        let frame_0_path = frames_dir
-            .as_ref()
-            .join(format!("0.{}", FRAME_FILE_EXTENSION));
         match std::process::Command::new(&self.ffmpeg_file_path)
             .args([
                 "-i",
@@ -225,14 +223,19 @@ impl VideoDecoder {
                         String::from_utf8_lossy(&output.stderr)
                     );
                 }
-                self.write(frame_0_path, output.stdout.into()).await?;
+                self.write(
+                    frames_dir
+                        .as_ref()
+                        .join(format!("0.{}", FRAME_FILE_EXTENSION)),
+                    output.stdout.into(),
+                )
+                .await?;
             }
             Err(e) => {
                 bail!("Failed to save video frames: {e}");
             }
         }
 
-        let actual_frame_dir = self.get_absolute_path(frames_dir.as_ref().to_path_buf())?;
         match std::process::Command::new(&self.ffmpeg_file_path)
             .args([
                 "-i",
@@ -241,15 +244,16 @@ impl VideoDecoder {
                     .ok_or_else(|| anyhow::anyhow!("Invalid video file path"))?,
                 "-vf",
                 &format!(
-                    "scale='if(gte(iw,ih)*sar,768,-1)':'if(gte(iw,ih)*sar, -1, 768)', fps={}",
-                    fps
+                    "scale='if(gte(iw,ih)*sar,768,-1)':'if(gte(iw,ih)*sar, -1, 768)', fps=1/{}",
+                    frame_interval_seconds
                 ),
                 "-vsync",
                 "vfr",
                 "-compression_level",
                 "9",
-                actual_frame_dir
-                    .join(format!("%d000-tmp.{}", FRAME_FILE_EXTENSION))
+                tmp_dir
+                    .as_ref()
+                    .join(format!("%d.{}", FRAME_FILE_EXTENSION))
                     .to_str()
                     .ok_or_else(|| anyhow::anyhow!("Invalid frames dir path"))?,
             ])
@@ -264,7 +268,8 @@ impl VideoDecoder {
                         String::from_utf8_lossy(&output.stderr)
                     );
                 }
-                self.save_batch_framer(frames_dir).await?;
+                self.save_batch_framer(tmp_dir, frames_dir, frame_interval_seconds)
+                    .await?;
             }
             Err(e) => {
                 bail!("Failed to save video frames: {e}");
@@ -274,25 +279,39 @@ impl VideoDecoder {
         Ok(())
     }
 
-    async fn save_batch_framer(&self, frames_dir: impl AsRef<Path>) -> Result<(), anyhow::Error> {
-        let actual_frame_dir = self.get_absolute_path(frames_dir.as_ref().to_path_buf())?;
-        for entry in std::fs::read_dir(actual_frame_dir)? {
+    async fn save_batch_framer(
+        &self,
+        tmp_dir: impl AsRef<Path>,
+        frames_dir: impl AsRef<Path>,
+        frame_interval_seconds: usize,
+    ) -> Result<(), anyhow::Error> {
+        for entry in std::fs::read_dir(tmp_dir.as_ref())? {
             let entry = entry?;
             let path = entry.path();
             if path.is_file() {
-                if let Some(file_name) = path.file_name() {
-                    if let Some(name_str) = file_name.to_str() {
-                        if name_str.contains("-tmp") {
-                            let new_name = name_str.replace("-tmp", "");
-                            let new_path = frames_dir.as_ref().join(new_name);
-                            self.write(new_path, std::fs::read(path.clone())?.into())
-                                .await?;
-                            std::fs::remove_file(path)?;
-                        }
-                    }
-                }
+                let image_bytes = std::fs::read(path.clone())?;
+                let file_name = match path.file_name() {
+                    Some(file_name) => match file_name.to_str() {
+                        Some(file_name_str) => file_name_str,
+                        None => continue,
+                    },
+                    None => continue,
+                };
+                let index = match file_name.strip_suffix(&format!(".{}", FRAME_FILE_EXTENSION)) {
+                    Some(index) => match index.parse::<usize>() {
+                        Ok(index) => index,
+                        Err(_) => continue,
+                    },
+                    None => continue,
+                };
+                let second_number = index * frame_interval_seconds;
+                let new_file_name = format!("{}000.{}", second_number, FRAME_FILE_EXTENSION);
+                let new_path = frames_dir.as_ref().join(new_file_name);
+                self.write(new_path, image_bytes.into()).await?;
             }
         }
+        // remove the temporary directory
+        std::fs::remove_file(tmp_dir.as_ref())?;
         Ok(())
     }
 

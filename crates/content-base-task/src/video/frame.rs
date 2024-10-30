@@ -35,11 +35,16 @@ impl ContentTask for VideoFrameTask {
     ) -> anyhow::Result<()> {
         let output = self.task_output(task_run_record).await?;
         let output_dir = output.to_path_buf(&file_info.file_identifier, ctx).await?;
-
         let video_decoder = VideoDecoder::new(&file_info.file_path)?;
-        let fps = 1.; // TODO: make this configurable
-        video_decoder.save_video_frames(output_dir, fps).await?;
-
+        let tmp_dir = ctx
+            .tmp_dir()
+            .join(format!("{}/frames", file_info.file_identifier));
+        std::fs::create_dir_all(&tmp_dir)
+            .map_err(|e| anyhow::anyhow!("Failed to create tmp dir: {e}"))?;
+        let frame_interval_seconds = 1; // TODO: make this configurable
+        video_decoder
+            .save_video_frames(&tmp_dir, &output_dir, frame_interval_seconds)
+            .await?;
         Ok(())
     }
 
