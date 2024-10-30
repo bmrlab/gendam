@@ -11,6 +11,7 @@ pub enum VideoTaskTypeSpecta {
     Thumbnail,
     Frame,
     FrameEmbedding,
+    FrameDescription,
     Audio,
     Transcript,
     TransChunk,
@@ -75,6 +76,9 @@ impl From<ContentTaskType> for ContentTaskTypeSpecta {
                 VideoTaskType::Frame(_) => ContentTaskTypeSpecta::Video(VideoTaskTypeSpecta::Frame),
                 VideoTaskType::FrameEmbedding(_) => {
                     ContentTaskTypeSpecta::Video(VideoTaskTypeSpecta::FrameEmbedding)
+                }
+                VideoTaskType::FrameDescription(_) => {
+                    ContentTaskTypeSpecta::Video(VideoTaskTypeSpecta::FrameDescription)
                 }
                 VideoTaskType::Audio(_) => ContentTaskTypeSpecta::Video(VideoTaskTypeSpecta::Audio),
                 VideoTaskType::Transcript(_) => {
