@@ -30,20 +30,13 @@ impl ContentTask for ImageDescriptionTask {
             .output_path(&file_info.file_identifier, ctx)
             .await?;
 
-        let result = ctx
-            .image_caption()?
-            .0
-            .process_single(file_info.file_path.clone())
-            .await?;
-
-        self.write(
-            output_path.clone(),
-            serde_json::to_string(&json!({
-                "caption": result
-            }))?
-            .into(),
-        )
-        .await?;
+        let (model, _) = ctx.image_caption()?;
+        let model_input: ai::ImageCaptionInput = file_info.file_path.clone();
+        let model_output = model.process_single(model_input).await?;
+        let json_output = serde_json::to_string(&json!({
+            "caption": model_output
+        }))?;
+        self.write(output_path, json_output.into()).await?;
 
         Ok(())
     }

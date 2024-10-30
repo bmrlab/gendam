@@ -189,7 +189,11 @@ impl VideoDecoder {
         }
     }
 
-    pub async fn save_video_frames(&self, frames_dir: impl AsRef<Path>) -> anyhow::Result<()> {
+    pub async fn save_video_frames(
+        &self,
+        frames_dir: impl AsRef<Path>,
+        fps: f32,
+    ) -> anyhow::Result<()> {
         // 单独提取 timestamp 为 0 的帧
         let frame_0_path = frames_dir
             .as_ref()
@@ -236,7 +240,10 @@ impl VideoDecoder {
                     .to_str()
                     .ok_or_else(|| anyhow::anyhow!("Invalid video file path"))?,
                 "-vf",
-                "scale='if(gte(iw,ih)*sar,768,-1)':'if(gte(iw,ih)*sar, -1, 768)', fps=1",
+                &format!(
+                    "scale='if(gte(iw,ih)*sar,768,-1)':'if(gte(iw,ih)*sar, -1, 768)', fps={}",
+                    fps
+                ),
                 "-vsync",
                 "vfr",
                 "-compression_level",

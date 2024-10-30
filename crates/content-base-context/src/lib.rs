@@ -150,8 +150,9 @@ impl ContentBaseCtx {
             return Ok(());
         }
 
-        let text_embedding = self.text_embedding()?.0;
-        let embedding = text_embedding.process_single(text.to_string()).await?;
+        let (text_embedding_model, _) = self.text_embedding()?;
+        let model_input: ai::TextEmbeddingInput = text.to_string();
+        let embedding = text_embedding_model.process_single(model_input).await?;
         self.write(
             path.as_ref().to_path_buf(),
             serde_json::to_string(&embedding)?.into(),
