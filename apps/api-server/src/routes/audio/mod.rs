@@ -143,7 +143,7 @@ async fn audio_transcript_path(
         .map(|v| serde_json::from_str::<ContentMetadata>(&v).unwrap_or_default())
         .unwrap_or_default();
 
-    let file_path = library.file_path(hash);
+    let file_path = library.absolute_file_path(hash);
     match file_metadata {
         ContentMetadata::Video(_) => {
             VideoTranscriptTask

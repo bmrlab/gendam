@@ -33,9 +33,9 @@ impl Library {
     /// Get the artifact directory for a given file hash.
     ///
     /// The artifacts directory will store all the artifacts for this file.
-    /// For now, `artifacts_dir` is something like `%LIBRARY_ARTIFACTS_DIR%/%SHARD_ID%/%FILE_HASH%`,
+    /// For now, `artifacts_dir` is something like `%LIBRARY_DIR%/artifacts/%SHARD_ID%/%FILE_HASH%`,
     /// where %SHARD_ID% is derived from the file hash.
-    pub fn artifacts_dir(&self, file_hash: &str) -> PathBuf {
+    pub fn absolute_artifacts_dir(&self, file_hash: &str) -> PathBuf {
         let artifacts_dir_with_shard = self
             .artifacts_dir
             .join(get_shard_hex(&file_hash))
@@ -48,21 +48,25 @@ impl Library {
         artifacts_dir_with_shard
     }
 
-    pub fn relative_artifacts_path(&self, file_hash: &str) -> PathBuf {
-        self.relative_artifacts_dir()
+    /// Get the relative path under library dir for a given file hash.
+    ///
+    /// Returns a path like `artifacts/%SHARD_ID%/%FILE_HASH%`,
+    /// where %SHARD_ID% is derived from the file hash.
+    pub fn relative_artifacts_dir(&self, file_hash: &str) -> PathBuf {
+        self.artifacts_dir_name()
             .join(get_shard_hex(file_hash))
             .join(file_hash)
     }
 
-    pub fn relative_artifacts_dir(&self) -> PathBuf {
+    pub fn artifacts_dir_name(&self) -> PathBuf {
         PathBuf::from("artifacts")
     }
 
     /// Get the file path in library for a given file hash
     ///
-    /// For now, `file_path` is something like `%LIBRARY_FILES_DIR%/%SHARD_ID%/%FILE_HASH%`,
+    /// For now, `file_path` is something like `%LIBRARY_DIR%/files/%SHARD_ID%/%FILE_HASH%`,
     /// where %SHARD_ID% is derived from the file hash.
-    pub fn file_path(&self, file_hash: &str) -> PathBuf {
+    pub fn absolute_file_path(&self, file_hash: &str) -> PathBuf {
         let files_dir_with_shard = self.files_dir.join(get_shard_hex(file_hash));
 
         if !files_dir_with_shard.exists() {
@@ -72,13 +76,18 @@ impl Library {
         files_dir_with_shard.join(file_hash)
     }
 
-    pub fn relative_file_dir(&self) -> PathBuf {
+    pub fn files_dir_name(&self) -> PathBuf {
         PathBuf::from("files")
     }
 
+    /// Get the relative path under library dir for a given file hash.
+    ///
+    /// Returns a path like `files/%SHARD_ID%/%FILE_HASH%`,
+    /// where %SHARD_ID% is derived from the file hash.
+    ///
     /// opendal will create directory iteratively if not exist
     pub fn relative_file_path(&self, file_hash: &str) -> PathBuf {
-        self.relative_file_dir()
+        self.files_dir_name()
             .join(get_shard_hex(file_hash))
             .join(file_hash)
     }

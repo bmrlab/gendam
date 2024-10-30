@@ -117,7 +117,7 @@ where
                             &input.materialized_path,
                             &input.hash,
                             &library
-                                .file_path(&input.hash)
+                                .absolute_file_path(&input.hash)
                                 .to_string_lossy()
                                 .to_string()
                                 .as_str(),
@@ -133,7 +133,7 @@ where
                             asset_object_data.id,
                             Some(
                                 &library
-                                    .file_path(&input.hash)
+                                    .absolute_file_path(&input.hash)
                                     .to_string_lossy()
                                     .to_string()
                                     .as_str(),

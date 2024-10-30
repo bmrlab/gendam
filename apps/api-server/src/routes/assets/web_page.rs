@@ -57,7 +57,7 @@ pub async fn process_web_page(
     // storage
     //     .write(
     //         library
-    //             .relative_artifacts_path(&html_hash)
+    //             .relative_artifacts_dir(&html_hash)
     //             .join("thumbnail.png"),
     //         screenshot.into(),
     //     )

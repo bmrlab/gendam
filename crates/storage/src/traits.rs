@@ -15,8 +15,20 @@ pub trait Storage: Send + Sync {
 
     fn block_op(&self) -> StorageResult<BlockingOperator>;
 
-    fn get_actual_path(&self, path: std::path::PathBuf) -> StorageResult<std::path::PathBuf> {
-        Ok(self.root()?.join(path))
+    /// Get the absolute path from root for a given relative path.
+    ///
+    /// # Arguments
+    ///
+    /// * `relative_path` - The relative path to the root
+    ///
+    /// # Returns
+    ///
+    /// * `StorageResult<std::path::PathBuf>` - The absolute path or error
+    fn get_absolute_path(
+        &self,
+        relative_path: std::path::PathBuf,
+    ) -> StorageResult<std::path::PathBuf> {
+        Ok(self.root()?.join(relative_path))
     }
 
     fn under_root(&self, path: std::path::PathBuf) -> StorageResult<bool> {

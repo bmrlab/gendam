@@ -21,8 +21,8 @@ function withDeleteExplorerItem(BaseComponent: BaseContextMenuItem) {
         const n = selectedFilePathItems.length
         if (
           !(await confirm(
-            `Delete folder${n > 1 ? 's' : ''}`,
-            `Are you sure you want to delete ${n > 1 ? `these ${n} folders` : 'the folder'}?`,
+            `Delete item${n > 1 ? 's' : ''}`,
+            `Are you sure you want to delete ${n > 1 ? `these ${n} items` : 'this item'}?`,
           ))
         ) {
           return

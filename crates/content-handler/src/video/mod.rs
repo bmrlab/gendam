@@ -228,7 +228,7 @@ impl VideoDecoder {
             }
         }
 
-        let actual_frame_dir = self.get_actual_path(frames_dir.as_ref().to_path_buf())?;
+        let actual_frame_dir = self.get_absolute_path(frames_dir.as_ref().to_path_buf())?;
         match std::process::Command::new(&self.ffmpeg_file_path)
             .args([
                 "-i",
@@ -268,7 +268,7 @@ impl VideoDecoder {
     }
 
     async fn save_batch_framer(&self, frames_dir: impl AsRef<Path>) -> Result<(), anyhow::Error> {
-        let actual_frame_dir = self.get_actual_path(frames_dir.as_ref().to_path_buf())?;
+        let actual_frame_dir = self.get_absolute_path(frames_dir.as_ref().to_path_buf())?;
         for entry in std::fs::read_dir(actual_frame_dir)? {
             let entry = entry?;
             let path = entry.path();
@@ -290,7 +290,7 @@ impl VideoDecoder {
     }
 
     pub async fn save_video_audio(&self, audio_path: impl AsRef<Path>) -> anyhow::Result<()> {
-        let actual_path = self.get_actual_path(audio_path.as_ref().to_path_buf())?;
+        let actual_path = self.get_absolute_path(audio_path.as_ref().to_path_buf())?;
         let tmp_path = add_tmp_suffix_to_path!(&actual_path);
         tracing::debug!("tmp_path: {:?}", tmp_path);
         match std::process::Command::new(&self.ffmpeg_file_path)

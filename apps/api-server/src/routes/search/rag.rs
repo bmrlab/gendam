@@ -83,7 +83,7 @@ pub async fn rag(
                     .transcript_content(
                         &FileInfo {
                             file_identifier: ref_item.file_identifier.clone(),
-                            file_path: library.file_path(&ref_item.file_identifier),
+                            file_path: library.absolute_file_path(&ref_item.file_identifier),
                         },
                         content_base.ctx(),
                     )
@@ -116,7 +116,7 @@ pub async fn rag(
                     .transcript_content(
                         &FileInfo {
                             file_identifier: ref_item.file_identifier.clone(),
-                            file_path: library.file_path(&ref_item.file_identifier),
+                            file_path: library.absolute_file_path(&ref_item.file_identifier),
                         },
                         content_base.ctx(),
                     )
@@ -149,7 +149,7 @@ pub async fn rag(
                     .chunk_content(
                         &FileInfo {
                             file_identifier: ref_item.file_identifier.clone(),
-                            file_path: library.file_path(&ref_item.file_identifier),
+                            file_path: library.absolute_file_path(&ref_item.file_identifier),
                         },
                         content_base.ctx(),
                     )

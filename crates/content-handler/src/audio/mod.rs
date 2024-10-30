@@ -131,7 +131,7 @@ impl AudioDecoder {
     }
 
     pub fn save_audio_cover(&self, dest_path: impl AsRef<Path>) -> anyhow::Result<()> {
-        let output_path = self.get_actual_path(dest_path.as_ref().to_path_buf())?;
+        let output_path = self.get_absolute_path(dest_path.as_ref().to_path_buf())?;
 
         match std::process::Command::new(&self.ffmpeg_file_path)
             .args([
@@ -158,7 +158,7 @@ impl AudioDecoder {
     }
 
     pub fn save_whisper_format(&self, dest_path: impl AsRef<Path>) -> anyhow::Result<()> {
-        let output_path = self.get_actual_path(dest_path.as_ref().to_path_buf())?;
+        let output_path = self.get_absolute_path(dest_path.as_ref().to_path_buf())?;
 
         match std::process::Command::new(&self.ffmpeg_file_path)
             .args([

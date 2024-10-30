@@ -166,7 +166,7 @@ pub async fn create_asset_object(
         duration
     );
 
-    let destination_path = library.file_path(&file_hash);
+    let destination_path = library.absolute_file_path(&file_hash);
 
     if PathBuf::from(local_full_path) != destination_path {
         let storage = get_current_fs_storage!().map_err(|e| {

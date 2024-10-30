@@ -44,7 +44,7 @@ pub trait AudioTranscriptTrait: Into<ContentTaskType> + Clone + Storage {
         let result = ctx
             .audio_transcript()?
             .0
-            .process_single(self.get_actual_path(self.audio_path(file_info, ctx).await?)?)
+            .process_single(self.get_absolute_path(self.audio_path(file_info, ctx).await?)?)
             .await?;
 
         self.write(output_path.clone(), serde_json::to_string(&result)?.into())

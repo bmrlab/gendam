@@ -55,7 +55,7 @@ pub async fn delete_unlinked_assets(library: Arc<Library>, content_base: Arc<Con
         }
 
         // delete from fs
-        let file_path = library.file_path(&asset.hash);
+        let file_path = library.absolute_file_path(&asset.hash);
         if let Err(e) = std::fs::remove_file(&file_path) {
             tracing::error!("failed to delete file({}): {}", file_path.display(), e);
         };

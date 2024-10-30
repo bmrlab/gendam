@@ -50,7 +50,7 @@ where
                     let content_base = ctx.content_base()?;
                     let file_info = FileInfo {
                         file_identifier: input.hash.clone(),
-                        file_path: library.file_path(&input.hash),
+                        file_path: library.absolute_file_path(&input.hash),
                     };
 
                     let content = {
@@ -105,7 +105,7 @@ where
                 let content_base = ctx.content_base()?;
                 let file_info = FileInfo {
                     file_identifier: input.hash.clone(),
-                    file_path: library.file_path(&input.hash),
+                    file_path: library.absolute_file_path(&input.hash),
                 };
 
                 match RawTextChunkTask
@@ -135,7 +135,7 @@ where
                 let content_base = ctx.content_base()?;
                 let file_info = FileInfo {
                     file_identifier: input.hash.clone(),
-                    file_path: library.file_path(&input.hash),
+                    file_path: library.absolute_file_path(&input.hash),
                 };
 
                 Ok(RawTextChunkSumTask
@@ -160,7 +160,7 @@ where
                 let content_base = ctx.content_base()?;
                 let file_info = FileInfo {
                     file_identifier: input.hash.clone(),
-                    file_path: library.file_path(&input.hash),
+                    file_path: library.absolute_file_path(&input.hash),
                 };
 
                 Ok(ImageDescriptionTask

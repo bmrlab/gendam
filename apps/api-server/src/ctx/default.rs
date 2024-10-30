@@ -419,7 +419,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
         /* init content base */
         let content_base = {
-            let cb_ctx = ContentBaseCtx::new(&library.relative_artifacts_dir(), &self.temp_dir)
+            let cb_ctx = ContentBaseCtx::new(&library.artifacts_dir_name(), &self.temp_dir)
                 .with_audio_transcript(
                     Arc::new(ai_handler.audio_transcript.0.clone()),
                     &ai_handler.audio_transcript.1,

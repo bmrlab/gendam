@@ -39,8 +39,8 @@ pub fn storage_trait_derive(input: TokenStream) -> TokenStream {
                 self.storage().and_then(|s| s.block_op())
             }
 
-            fn get_actual_path(&self, path: std::path::PathBuf) -> StorageResult<std::path::PathBuf> {
-                self.storage()?.get_actual_path(path)
+            fn get_absolute_path(&self, relative_path: std::path::PathBuf) -> StorageResult<std::path::PathBuf> {
+                self.storage()?.get_absolute_path(relative_path)
             }
 
             fn under_root(&self, path: std::path::PathBuf) -> StorageResult<bool> {

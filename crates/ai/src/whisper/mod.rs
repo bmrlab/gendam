@@ -37,13 +37,13 @@ pub enum WhisperModel {
 }
 
 impl WhisperModel {
-    pub fn file_name(&self) -> String {
-        match *self {
-            WhisperModel::Small => "ggml-small-q5_1.bin".to_string(),
-            WhisperModel::Medium => "ggml-medium-q5_0.bin".to_string(),
-            WhisperModel::Large => "ggml-large-v3-q5_0.bin".to_string(),
-        }
-    }
+    // pub fn file_name(&self) -> String {
+    //     match *self {
+    //         WhisperModel::Small => "ggml-small-q5_1.bin".to_string(),
+    //         WhisperModel::Medium => "ggml-medium-q5_0.bin".to_string(),
+    //         WhisperModel::Large => "ggml-large-v3-q5_0.bin".to_string(),
+    //     }
+    // }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

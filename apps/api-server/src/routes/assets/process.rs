@@ -45,7 +45,7 @@ pub async fn process_asset(
     let cb = ctx.content_base()?;
     let payload = UpsertPayload::new(
         &asset_object_data.hash,
-        library.file_path(&asset_object_data.hash),
+        library.absolute_file_path(&asset_object_data.hash),
         &content_metadata,
     );
     match cb.upsert(payload).await {
@@ -143,7 +143,7 @@ pub async fn generate_thumbnail(
 ) -> Result<(), rspc::Error> {
     let file_info = FileInfo {
         file_identifier: file_identifier.to_string(),
-        file_path: library.file_path(file_identifier),
+        file_path: library.absolute_file_path(file_identifier),
     };
     let thumbnail_handle = match file_metadata {
         ContentMetadata::Video(_) => VideoThumbnailTask.run(&file_info, content_base.ctx()),
@@ -191,7 +191,7 @@ pub async fn process_asset_metadata(
 
     let local_full_path = local_full_path
         .map(|v| v.as_ref().to_path_buf())
-        .unwrap_or(library.file_path(&asset_object_data.hash));
+        .unwrap_or(library.absolute_file_path(&asset_object_data.hash));
 
     let file_extension = local_full_path
         .extension()
@@ -250,7 +250,7 @@ pub async fn export_video_segment(
                 format!("failed to find asset_object"),
             )
         })?;
-    let video_path = library.file_path(&asset_object_data.hash);
+    let video_path = library.absolute_file_path(&asset_object_data.hash);
 
     let video_decoder = VideoDecoder::new(video_path).map_err(|e| {
         tracing::error!("Failed to create video decoder: {e}");
