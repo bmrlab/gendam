@@ -1,5 +1,6 @@
 pub mod audio;
 pub mod frame;
+pub mod frame_embedding;
 pub mod thumbnail;
 pub mod trans_chunk;
 pub mod trans_chunk_sum;
@@ -10,6 +11,7 @@ use crate::task::ContentTaskType;
 use audio::VideoAudioTask;
 use content_base_derive::ContentTask;
 use frame::VideoFrameTask;
+use frame_embedding::VideoFrameEmbeddingTask;
 use storage_macro::Storage;
 use strum_macros::{EnumIter, EnumString};
 use thumbnail::VideoThumbnailTask;
@@ -23,6 +25,7 @@ use transcript::VideoTranscriptTask;
 pub enum VideoTaskType {
     Thumbnail(VideoThumbnailTask),
     Frame(VideoFrameTask),
+    FrameEmbedding(VideoFrameEmbeddingTask),
     Audio(VideoAudioTask),
     Transcript(VideoTranscriptTask),
     TransChunk(VideoTransChunkTask),
