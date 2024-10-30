@@ -46,14 +46,10 @@ impl ContentTask for VideoFrameDescriptionTask {
             let model_output = model.process_single(model_input).await?;
 
             let output_path = output_path.join(format!("{}.json", frame_info.timestamp));
-            self.write(
-                output_path,
-                serde_json::to_string(&json!({
-                    "caption": model_output
-                }))?
-                .into(),
-            )
-            .await?;
+            let json_output = serde_json::to_string(&json!({
+                "caption": model_output
+            }))?;
+            self.write(output_path, json_output.into()).await?;
         }
 
         Ok(())

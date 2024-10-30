@@ -1,5 +1,5 @@
 use super::{frame::VideoFrameTask, VideoTaskType};
-use crate::{ContentTask, ContentTaskType, TaskRunOutput, TaskRunRecord};
+use crate::{ContentTask, ContentTaskType, FileInfo, TaskRunOutput, TaskRunRecord};
 use async_trait::async_trait;
 use content_base_context::ContentBaseCtx;
 use serde_json::{json, Value};
@@ -79,7 +79,7 @@ impl Into<ContentTaskType> for VideoFrameEmbeddingTask {
 impl VideoFrameEmbeddingTask {
     pub async fn frame_embedding_content(
         &self,
-        file_info: &crate::FileInfo,
+        file_info: &FileInfo,
         ctx: &ContentBaseCtx,
         timestamp: i64,
     ) -> anyhow::Result<Vec<f32>> {

@@ -1,5 +1,6 @@
 pub mod audio;
 pub mod frame;
+pub mod frame_desc_embed;
 pub mod frame_description;
 pub mod frame_embedding;
 pub mod thumbnail;
@@ -12,6 +13,7 @@ use crate::task::ContentTaskType;
 use audio::VideoAudioTask;
 use content_base_derive::ContentTask;
 use frame::VideoFrameTask;
+use frame_desc_embed::VideoFrameDescEmbedTask;
 use frame_description::VideoFrameDescriptionTask;
 use frame_embedding::VideoFrameEmbeddingTask;
 use storage_macro::Storage;
@@ -29,6 +31,7 @@ pub enum VideoTaskType {
     Frame(VideoFrameTask),
     FrameEmbedding(VideoFrameEmbeddingTask),
     FrameDescription(VideoFrameDescriptionTask),
+    FrameDescEmbed(VideoFrameDescEmbedTask),
     Audio(VideoAudioTask),
     Transcript(VideoTranscriptTask),
     TransChunk(VideoTransChunkTask),

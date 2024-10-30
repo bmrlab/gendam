@@ -1,20 +1,19 @@
-use std::path::PathBuf;
-
-use super::{description::ImageDescriptionTask, ImageTaskType};
+use super::{frame::VideoFrameTask, frame_description::VideoFrameDescriptionTask, VideoTaskType};
 use crate::{ContentTask, ContentTaskType, FileInfo, TaskRunOutput, TaskRunRecord};
 use async_trait::async_trait;
 use content_base_context::ContentBaseCtx;
 use serde_json::{json, Value};
+use std::path::PathBuf;
 use storage_macro::Storage;
 
 #[derive(Clone, Debug, Default, Storage)]
-pub struct ImageDescEmbedTask;
+pub struct VideoFrameDescEmbedTask;
 
 #[async_trait]
-impl ContentTask for ImageDescEmbedTask {
+impl ContentTask for VideoFrameDescEmbedTask {
     async fn task_output(&self, task_run_record: &TaskRunRecord) -> anyhow::Result<TaskRunOutput> {
         let task_type: ContentTaskType = self.clone().into();
-        Ok(TaskRunOutput::File(PathBuf::from(format!(
+        Ok(TaskRunOutput::Folder(PathBuf::from(format!(
             "{}-{}.json",
             task_type.to_string(),
             task_run_record.id()
@@ -27,15 +26,18 @@ impl ContentTask for ImageDescEmbedTask {
         ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
-        let description = ImageDescriptionTask
-            .description_content(file_info, ctx)
-            .await?;
-
         let output_path = task_run_record
             .output_path(&file_info.file_identifier, ctx)
             .await?;
 
-        ctx.save_text_embedding(&description, &output_path).await?;
+        let frame_infos = VideoFrameTask.frame_content(file_info, ctx).await?;
+        for frame_info in frame_infos {
+            let description = VideoFrameDescriptionTask
+                .frame_description_content(file_info, ctx, frame_info.timestamp)
+                .await?;
+            let output_path = output_path.join(format!("{}.json", frame_info.timestamp));
+            ctx.save_text_embedding(&description, &output_path).await?;
+        }
 
         Ok(())
     }
@@ -50,27 +52,29 @@ impl ContentTask for ImageDescEmbedTask {
     }
 
     fn task_dependencies(&self) -> Vec<ContentTaskType> {
-        vec![ImageDescriptionTask.into()]
+        vec![VideoFrameDescriptionTask.into()]
     }
 }
 
-impl Into<ContentTaskType> for ImageDescEmbedTask {
+impl Into<ContentTaskType> for VideoFrameDescEmbedTask {
     fn into(self) -> ContentTaskType {
-        ContentTaskType::Image(ImageTaskType::DescEmbed(self.clone()))
+        ContentTaskType::Video(VideoTaskType::FrameDescEmbed(self.clone()))
     }
 }
 
-impl ImageDescEmbedTask {
-    pub async fn desc_embed_content(
+impl VideoFrameDescEmbedTask {
+    pub async fn frame_desc_embed_content(
         &self,
         file_info: &FileInfo,
         ctx: &ContentBaseCtx,
+        timestamp: i64,
     ) -> anyhow::Result<Vec<f32>> {
         let task_type: ContentTaskType = self.clone().into();
-        let output_path = task_type.task_output_path(file_info, ctx).await?;
-
+        let output_path = task_type
+            .task_output_path(file_info, ctx)
+            .await?
+            .join(format!("{}.json", timestamp));
         let content_str = self.read_to_string(output_path)?;
-
         Ok(serde_json::from_str(&content_str)?)
     }
 }

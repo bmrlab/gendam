@@ -8,7 +8,8 @@ use content_base_task::{
     raw_text::chunk_sum_embed::RawTextChunkSumEmbedTask,
     video::{
         // frame::VideoFrameTask,
-        frame_description::VideoFrameDescriptionTask,
+        // frame_description::VideoFrameDescriptionTask,
+        frame_desc_embed::VideoFrameDescEmbedTask,
         frame_embedding::VideoFrameEmbeddingTask,
         trans_chunk_sum_embed::VideoTransChunkSumEmbedTask,
     },
@@ -42,7 +43,7 @@ impl ContentBase {
             ContentMetadata::Video(metadata) => {
                 // tasks.push((VideoFrameTask.into(), TaskPriority::Low));
                 tasks.push((VideoFrameEmbeddingTask.into(), TaskPriority::Low));
-                tasks.push((VideoFrameDescriptionTask.into(), TaskPriority::Low));
+                tasks.push((VideoFrameDescEmbedTask.into(), TaskPriority::Low));
                 if metadata.audio.is_some() {
                     tasks.push((VideoTransChunkSumEmbedTask.into(), TaskPriority::Low));
                 }
