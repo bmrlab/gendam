@@ -37,7 +37,7 @@ impl ContentTask for VideoFrameTask {
         let output_dir = output.to_path_buf(&file_info.file_identifier, ctx).await?;
 
         let video_decoder = VideoDecoder::new(&file_info.file_path)?;
-        let fps = 0.1; // TODO: make this configurable
+        let fps = 1.; // TODO: make this configurable
         video_decoder.save_video_frames(output_dir, fps).await?;
 
         Ok(())
