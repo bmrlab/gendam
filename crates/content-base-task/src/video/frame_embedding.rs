@@ -36,7 +36,7 @@ impl ContentTask for VideoFrameEmbeddingTask {
                 .get_absolute_path(frame_info.image_file.clone())
                 .map_err(|e| {
                     anyhow::anyhow!(
-                        "Failed to get actual path for frame image file {:?}: {:?}",
+                        "Failed to get absolute path for frame image file {:?}: {:?}",
                         frame_info.image_file.clone(),
                         e
                     )
@@ -47,7 +47,7 @@ impl ContentTask for VideoFrameEmbeddingTask {
 
             let output_path = output_path.join(format!("{}.json", frame_info.timestamp));
             self.write(
-                output_path.clone(),
+                output_path,
                 serde_json::to_string(&model_output)?.into(), // 直接把 Vec<f32> 转成字符串
             )
             .await?;

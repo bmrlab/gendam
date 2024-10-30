@@ -9,7 +9,7 @@ use quantized_llava_phi3::{format_prompt, HFPreProcessorConfig, ImageProcessor, 
 use std::path::Path;
 
 /// The length of the sample to generate (in tokens).
-const SAMPLE_LEN: usize = 1000;
+const SAMPLE_LEN: usize = 100; // A limit instruction exists in the prompt
 const REPEAT_PENALTY: f32 = 1.1;
 const REPEAT_LAST_N: usize = 64;
 
@@ -141,7 +141,7 @@ impl LLaVAPhi3Mini {
         image_file_path: impl AsRef<Path>,
     ) -> anyhow::Result<String> {
         let prompt_str = format_prompt(
-            r#"You are an advanced image analysis AI. Examine the image and describe its contents in a concise, text-only format. Focus on identifying: People (including celebrities), actions, objects, animals or pets, nature elements, visual cues of sounds, human speech (if text bubbles present), displayed text (OCR), and brand logos. Provide specific examples for each category found in the image. Only mention categories that are present; omit any that are not detected. Use plain text format without lists or JSON. Be accurate and concise in your descriptions."#,
+            r#"You are an advanced image analysis AI. Examine the image and describe its contents in a concise, text-only format. Focus on identifying: People (including celebrities), actions, objects, animals or pets, nature elements, visual cues of sounds, human speech (if text bubbles present), displayed text (OCR), and brand logos. Provide specific examples for each category found in the image. Only mention categories that are present; omit any that are not detected. Use plain text format without lists or JSON. Be accurate and concise in your descriptions. Limit your response to no more than 50 words."#,
         );
 
         let img = image::ImageReader::open(image_file_path)?

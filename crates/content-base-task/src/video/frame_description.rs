@@ -1,4 +1,4 @@
-use super::ImageTaskType;
+use super::{frame::VideoFrameTask, VideoTaskType};
 use crate::{ContentTask, ContentTaskType, TaskRunOutput, TaskRunRecord};
 use async_trait::async_trait;
 use content_base_context::ContentBaseCtx;
@@ -7,13 +7,13 @@ use std::path::PathBuf;
 use storage_macro::Storage;
 
 #[derive(Clone, Debug, Default, Storage)]
-pub struct ImageDescriptionTask;
+pub struct VideoFrameDescriptionTask;
 
 #[async_trait]
-impl ContentTask for ImageDescriptionTask {
+impl ContentTask for VideoFrameDescriptionTask {
     async fn task_output(&self, task_run_record: &TaskRunRecord) -> anyhow::Result<TaskRunOutput> {
         let task_type: ContentTaskType = self.clone().into();
-        Ok(TaskRunOutput::File(PathBuf::from(format!(
+        Ok(TaskRunOutput::Folder(PathBuf::from(format!(
             "{}-{}.json",
             task_type.to_string(),
             task_run_record.id()
@@ -30,20 +30,31 @@ impl ContentTask for ImageDescriptionTask {
             .output_path(&file_info.file_identifier, ctx)
             .await?;
 
-        let result = ctx
-            .image_caption()?
-            .0
-            .process_single(file_info.file_path.clone())
-            .await?;
+        let frame_infos = VideoFrameTask.frame_content(file_info, ctx).await?;
+        for frame_info in frame_infos {
+            let image_absolute_path = self
+                .get_absolute_path(frame_info.image_file.clone())
+                .map_err(|e| {
+                    anyhow::anyhow!(
+                        "Failed to get absolute path for frame image file {:?}: {:?}",
+                        frame_info.image_file.clone(),
+                        e
+                    )
+                })?;
+            let (model, _) = ctx.image_caption()?;
+            let model_input: ai::ImageCaptionInput = image_absolute_path.clone();
+            let model_output = model.process_single(model_input).await?;
 
-        self.write(
-            output_path.clone(),
-            serde_json::to_string(&json!({
-                "caption": result
-            }))?
-            .into(),
-        )
-        .await?;
+            let output_path = output_path.join(format!("{}.json", frame_info.timestamp));
+            self.write(
+                output_path,
+                serde_json::to_string(&json!({
+                    "caption": model_output
+                }))?
+                .into(),
+            )
+            .await?;
+        }
 
         Ok(())
     }
@@ -58,24 +69,29 @@ impl ContentTask for ImageDescriptionTask {
     }
 
     fn task_dependencies(&self) -> Vec<ContentTaskType> {
-        vec![] as Vec<ContentTaskType>
+        // VideoFrameEmbeddingTask 也设置了同样的依赖，需要确认这会不会导致 VideoFrameTask 重复执行
+        vec![VideoFrameTask.into()]
     }
 }
 
-impl Into<ContentTaskType> for ImageDescriptionTask {
+impl Into<ContentTaskType> for VideoFrameDescriptionTask {
     fn into(self) -> ContentTaskType {
-        ContentTaskType::Image(ImageTaskType::Description(self.clone()))
+        ContentTaskType::Video(VideoTaskType::FrameDescription(self.clone()))
     }
 }
 
-impl ImageDescriptionTask {
-    pub async fn description_content(
+impl VideoFrameDescriptionTask {
+    pub async fn frame_description_content(
         &self,
         file_info: &crate::FileInfo,
         ctx: &ContentBaseCtx,
+        timestamp: i64,
     ) -> anyhow::Result<String> {
         let task_type: ContentTaskType = self.clone().into();
-        let output_path = task_type.task_output_path(file_info, ctx).await?;
+        let output_path = task_type
+            .task_output_path(file_info, ctx)
+            .await?
+            .join(format!("{}.json", timestamp));
         let file_content = self.read_to_string(output_path)?;
         let json_content: Value = serde_json::from_str(&file_content)?;
 
