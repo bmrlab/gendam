@@ -1,9 +1,13 @@
-use crate::db::model::audio::{AudioFrameModel, AudioModel};
-use crate::db::model::document::DocumentModel;
-use crate::db::model::video::VideoModel;
-use crate::db::model::web::WebPageModel;
-use crate::db::model::{ImageModel, PageModel, TextModel};
-use crate::db::DB;
+use crate::db::{
+    model::{
+        audio::{AudioFrameModel, AudioModel},
+        document::DocumentModel,
+        video::{ImageFrameModel, VideoModel},
+        web::WebPageModel,
+        ImageModel, PageModel, TextModel,
+    },
+    DB,
+};
 use crate::{
     collect_async_results,
     query::payload::{
@@ -15,20 +19,24 @@ use crate::{
 };
 use content_base_context::ContentBaseCtx;
 use content_base_pool::{TaskNotification, TaskPool, TaskPriority, TaskStatus};
-use content_base_task::image::desc_embed::ImageDescEmbedTask;
 use content_base_task::{
     audio::{
         trans_chunk::{AudioTransChunkTask, AudioTranscriptChunkTrait},
         trans_chunk_sum_embed::{AudioTransChunkSumEmbedTask, AudioTransChunkSumEmbedTrait},
         AudioTaskType,
     },
-    image::{description::ImageDescriptionTask, embedding::ImageEmbeddingTask, ImageTaskType},
+    image::{
+        desc_embed::ImageDescEmbedTask, description::ImageDescriptionTask,
+        embedding::ImageEmbeddingTask, ImageTaskType,
+    },
     raw_text::{
         chunk::{DocumentChunkTrait, RawTextChunkTask},
         chunk_sum_embed::DocumentChunkSumEmbedTrait,
         RawTextTaskType,
     },
     video::{
+        frame::VideoFrameTask, frame_desc_embed::VideoFrameDescEmbedTask,
+        frame_description::VideoFrameDescriptionTask, frame_embedding::VideoFrameEmbeddingTask,
         trans_chunk::VideoTransChunkTask, trans_chunk_sum_embed::VideoTransChunkSumEmbedTask,
         VideoTaskType,
     },
@@ -182,6 +190,7 @@ macro_rules! chunk_to_page {
     }};
 }
 
+#[tracing::instrument(level = "info", skip(ctx, db))]
 async fn task_post_process(
     ctx: &ContentBaseCtx,
     file_info: &FileInfo,
@@ -189,50 +198,18 @@ async fn task_post_process(
     db: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     match task_type {
-        ContentTaskType::Video(VideoTaskType::TransChunkSumEmbed(_)) => {
-            let chunks = VideoTransChunkTask.chunk_content(file_info, ctx).await?;
-            debug!("video chunks: {chunks:?}");
-            let future = chunks
-                .into_iter()
-                .map(|chunk| async move {
-                    let embedding = VideoTransChunkSumEmbedTask
-                        .embed_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
-                        .await?;
-                    debug!("chunk: {chunk:?}, embedding: {:?}", embedding.len());
-                    Result::<AudioFrameModel, anyhow::Error>::Ok(AudioFrameModel {
-                        id: None,
-                        data: vec![TextModel {
-                            id: None,
-                            data: chunk.text.clone(),
-                            vector: embedding.clone(),
-                            // TODO: 是否需要英文
-                            en_data: "".to_string(),
-                            en_vector: vec![],
-                        }],
-                        start_timestamp: chunk.start_timestamp as f32,
-                        end_timestamp: chunk.end_timestamp as f32,
-                    })
-                })
-                .collect::<Vec<_>>();
-            let audio_frame: Vec<AudioFrameModel> = try_join_all(future).await?;
-            db.try_read()?
-                .insert_video(
-                    VideoModel {
-                        id: None,
-                        audio_frame,
-                        image_frame: vec![],
-                    },
-                    ContentIndexPayload {
-                        file_identifier: file_info.file_identifier.clone(),
-                        // 下面两个字段不会使用
-                        task_type: VideoTransChunkSumEmbedTask.clone().into(),
-                        metadata: ContentIndexMetadata::Video(VideoIndexMetadata {
-                            start_timestamp: 0,
-                            end_timestamp: 0,
-                        }),
-                    },
-                )
-                .await?;
+        ContentTaskType::Video(
+            VideoTaskType::TransChunkSumEmbed(_)
+            | VideoTaskType::FrameEmbedding(_)
+            | VideoTaskType::FrameDescEmbed(_),
+        ) => {
+            // TransChunkSumEmbed, FrameDescEmbed 和 FrameEmbedding 结束后都触发 upsert_video_index_to_surrealdb
+            // 如果有一个任务没完成，upsert_video_index_to_surrealdb 会报错
+            upsert_video_index_to_surrealdb(ctx, file_info, task_type, db).await.map_err(|e| {
+                tracing::warn!("either TransChunkSumEmbed or FrameEmbedding or FrameDescEmbed task not finished yet: {:?}", e);
+                e
+            })?;
+            tracing::info!("video index upserted to surrealdb");
         }
         ContentTaskType::Audio(AudioTaskType::TransChunkSumEmbed(_)) => {
             let chunks = AudioTransChunkTask.chunk_content(file_info, ctx).await?;
@@ -282,7 +259,8 @@ async fn task_post_process(
             upsert_image_index_to_surrealdb(ctx, file_info, task_type, db).await.map_err(|e| {
                 tracing::warn!("either image embedding or description embedding task not finished yet: {:?}", e);
                 e
-            })?
+            })?;
+            tracing::info!("image index upserted to surrealdb");
         }
         ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(task_type)) => {
             let pages: anyhow::Result<Vec<PageModel>> = chunk_to_page!(
@@ -336,6 +314,84 @@ async fn task_post_process(
 }
 
 #[tracing::instrument(skip_all)]
+async fn upsert_video_index_to_surrealdb(
+    ctx: &ContentBaseCtx,
+    file_info: &FileInfo,
+    _task_type: &ContentTaskType,
+    db: Arc<RwLock<DB>>,
+) -> anyhow::Result<()> {
+    let chunks = VideoTransChunkTask.chunk_content(file_info, ctx).await?;
+    tracing::debug!("video chunks: {chunks:?}");
+    let future = chunks
+        .into_iter()
+        .map(|chunk| async move {
+            let embedding = VideoTransChunkSumEmbedTask
+                .embed_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
+                .await?;
+            tracing::debug!("chunk: {chunk:?}, embedding: {:?}", embedding.len());
+            Result::<AudioFrameModel, anyhow::Error>::Ok(AudioFrameModel {
+                id: None,
+                data: vec![TextModel {
+                    id: None,
+                    data: chunk.text.clone(),
+                    vector: embedding.clone(),
+                    // TODO: 是否需要英文
+                    en_data: "".to_string(),
+                    en_vector: vec![],
+                }],
+                start_timestamp: chunk.start_timestamp as f32,
+                end_timestamp: chunk.end_timestamp as f32,
+            })
+        })
+        .collect::<Vec<_>>();
+    let audio_frame: Vec<AudioFrameModel> = try_join_all(future).await?;
+    let frames = VideoFrameTask.frame_content(file_info, ctx).await?;
+    tracing::debug!("video frames: {frames:?}");
+    let future = frames.into_iter().map(|frame| async move {
+        let desc_embedding = VideoFrameDescEmbedTask
+            .frame_desc_embed_content(file_info, ctx, frame.timestamp)
+            .await?;
+        let description = VideoFrameDescriptionTask
+            .frame_description_content(file_info, ctx, frame.timestamp)
+            .await?;
+        let embedding = VideoFrameEmbeddingTask
+            .frame_embedding_content(file_info, ctx, frame.timestamp)
+            .await?;
+        Result::<ImageFrameModel, anyhow::Error>::Ok(ImageFrameModel {
+            id: None,
+            data: vec![ImageModel {
+                id: None,
+                prompt: description,
+                vector: embedding,
+                prompt_vector: desc_embedding,
+            }],
+            start_timestamp: frame.timestamp as f32,
+            end_timestamp: frame.timestamp as f32,
+        })
+    });
+    let image_frame: Vec<ImageFrameModel> = try_join_all(future).await?;
+    db.try_read()?
+        .insert_video(
+            VideoModel {
+                id: None,
+                audio_frame,
+                image_frame,
+            },
+            ContentIndexPayload {
+                file_identifier: file_info.file_identifier.clone(),
+                // 下面两个字段不会使用
+                task_type: VideoTransChunkSumEmbedTask.clone().into(),
+                metadata: ContentIndexMetadata::Video(VideoIndexMetadata {
+                    start_timestamp: 0,
+                    end_timestamp: 0,
+                }),
+            },
+        )
+        .await?;
+    Ok(())
+}
+
+#[tracing::instrument(skip_all)]
 async fn upsert_image_index_to_surrealdb(
     ctx: &ContentBaseCtx,
     file_info: &FileInfo,
@@ -360,6 +416,7 @@ async fn upsert_image_index_to_surrealdb(
             },
             Some(ContentIndexPayload {
                 file_identifier: file_info.file_identifier.clone(),
+                // TODO: 确认是否下面两个字段不会使用
                 task_type: task_type.to_owned(),
                 metadata: ContentIndexMetadata::Image(ImageIndexMetadata {}),
             }),
