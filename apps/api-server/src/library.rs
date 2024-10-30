@@ -59,7 +59,7 @@ impl Default for LibraryModels {
             text_embedding: "puff-base-v1".to_string(),
             image_caption: "llava-phi3-mini".to_string(),
             audio_transcript: "whisper-small".to_string(),
-            llm: "ollama-qwen2-7b-instruct".to_string(),
+            llm: "qwen2-7b-instruct".to_string(),
         }
     }
 }
