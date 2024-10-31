@@ -265,7 +265,9 @@ export default function ClientLayout({
             if (typeof args1 === 'undefined' || args1 < 1) {
               return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
             }
-
+            // see crates/content-base-task/src/video/frame.rs
+            const frame_interval_seconds = 1
+            args1 = Math.round(args1 / frame_interval_seconds) * frame_interval_seconds
             return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/frames/${args1}000.jpg`
           })()
 

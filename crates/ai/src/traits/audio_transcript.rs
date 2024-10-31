@@ -10,7 +10,11 @@ pub struct Transcription {
     pub text: String,
 }
 
-pub type AudioTranscriptInput = PathBuf;
+#[derive(Clone, Serialize, Deserialize)]
+pub struct AudioTranscriptInput {
+    pub audio_file_path: PathBuf,
+    pub language: Option<TranscriptionLanguage>,
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct AudioTranscriptOutput {

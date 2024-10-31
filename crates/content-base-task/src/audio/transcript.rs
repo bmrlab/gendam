@@ -3,7 +3,7 @@ use crate::{
     record::{TaskRunOutput, TaskRunRecord},
     ContentTask, ContentTaskType, FileInfo,
 };
-use ai::AudioTranscriptOutput;
+use ai::{AudioTranscriptInput, AudioTranscriptOutput};
 use async_trait::async_trait;
 use content_base_context::ContentBaseCtx;
 use content_handler::audio::AudioDecoder;
@@ -41,11 +41,13 @@ pub trait AudioTranscriptTrait: Into<ContentTaskType> + Clone + Storage {
             .output_path(&file_info.file_identifier, ctx)
             .await?;
 
-        let result = ctx
-            .audio_transcript()?
-            .0
-            .process_single(self.get_absolute_path(self.audio_path(file_info, ctx).await?)?)
-            .await?;
+        let (model, _) = ctx.audio_transcript()?;
+        let model_input = AudioTranscriptInput {
+            audio_file_path: self.get_absolute_path(self.audio_path(file_info, ctx).await?)?,
+            // language: Some(ai::whisper::TranscriptionLanguage::ZH),
+            language: None,
+        };
+        let result = model.process_single(model_input).await?;
 
         self.write(output_path.clone(), serde_json::to_string(&result)?.into())
             .await?;

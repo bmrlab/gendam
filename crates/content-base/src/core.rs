@@ -41,12 +41,13 @@ impl ContentBase {
 
         match metadata {
             ContentMetadata::Video(metadata) => {
-                // tasks.push((VideoFrameTask.into(), TaskPriority::Low));
-                tasks.push((VideoFrameEmbeddingTask.into(), TaskPriority::Low));
-                tasks.push((VideoFrameDescEmbedTask.into(), TaskPriority::Low));
+                // TODO: 现在好像不支持有些是 Low 有些是 Normal，会导致 Low 的任务被 cancel 并且 Normal 的任务也不被执行...
                 if metadata.audio.is_some() {
                     tasks.push((VideoTransChunkSumEmbedTask.into(), TaskPriority::Low));
                 }
+                // tasks.push((VideoFrameTask.into(), TaskPriority::Low));
+                tasks.push((VideoFrameEmbeddingTask.into(), TaskPriority::Low));
+                tasks.push((VideoFrameDescEmbedTask.into(), TaskPriority::Low));
             }
             ContentMetadata::Audio(_metadata) => {
                 tasks.extend([

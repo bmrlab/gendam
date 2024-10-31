@@ -88,6 +88,7 @@ impl Into<AudioTranscriptOutput> for WhisperResult {
 #[derive(Clone)]
 pub struct WhisperParams {
     pub model: WhisperModel,
+    pub language: Option<TranscriptionLanguage>,
     /// if translate transcript to English, not recommend
     pub enable_translate: bool,
 }
@@ -96,6 +97,7 @@ impl Default for WhisperParams {
     fn default() -> Self {
         Self {
             model: WhisperModel::Small,
+            language: None,
             enable_translate: false,
         }
     }
@@ -143,9 +145,8 @@ impl Whisper {
     pub async fn transcribe(
         &self,
         audio_file_path: impl AsRef<Path>,
-        params: Option<WhisperParams>,
+        params: WhisperParams,
     ) -> anyhow::Result<WhisperResult> {
-        let params = params.unwrap_or_default();
         let output_file_path = audio_file_path.as_ref().with_file_name("transcript");
         let actual_audio_path = audio_file_path.as_ref().to_path_buf();
         let actual_output_path = output_file_path.as_path().to_path_buf();
@@ -164,9 +165,13 @@ impl Whisper {
 
         let model_path = self.model_path.to_string_lossy().to_string();
 
+        let language = match &params.language {
+            Some(language) => language.as_ref(),
+            None => "auto",
+        };
         let mut args_list = vec![
             "-l",
-            "auto",
+            language,
             "-f",
             actual_audio_path.to_str().unwrap(),
             "-m",
@@ -236,8 +241,16 @@ impl Model for Whisper {
         items: Vec<Self::Item>,
     ) -> anyhow::Result<Vec<anyhow::Result<Self::Output>>> {
         let mut results = Vec::with_capacity(items.len());
-        for item in items {
-            let res = self.transcribe(item, None).await;
+        for AudioTranscriptInput {
+            audio_file_path,
+            language,
+        } in items
+        {
+            let params = WhisperParams {
+                language,
+                ..Default::default()
+            };
+            let res = self.transcribe(audio_file_path, params).await;
             results.push(res.map(|v| v.into()));
         }
         Ok(results)
@@ -254,11 +267,11 @@ async fn test_whisper() {
     .await
     .unwrap();
     match whisper
-        .transcribe("/Users/zhuo/Library/Application Support/cc.musedam.local/libraries/b47c897fb11d2d07d19ab61835af1f3a3831c1729748afd7b6a311bc9cf6a79c/artifacts/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/audio.wav", Some(WhisperParams {
+        .transcribe("/Users/zhuo/Library/Application Support/cc.musedam.local/libraries/b47c897fb11d2d07d19ab61835af1f3a3831c1729748afd7b6a311bc9cf6a79c/artifacts/1aaa451c0bee906e2d1f9cac21ebb2ef5f2f82b2f87ec928fc04b58cbceda60b/audio.wav", WhisperParams {
             model: WhisperModel::Small,
+            language: None,
             enable_translate:false
-
-        })).await
+        }).await
     {
         Ok(result) => {
             for item in result.items() {

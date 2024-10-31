@@ -41,7 +41,10 @@ impl ContentTask for VideoFrameTask {
             .join(format!("{}/frames", file_info.file_identifier));
         std::fs::create_dir_all(&tmp_dir)
             .map_err(|e| anyhow::anyhow!("Failed to create tmp dir: {e}"))?;
-        let frame_interval_seconds = 1; // TODO: make this configurable
+        // TODO: 需要可以配置
+        // 但是要注意如果不是每一秒都有 frame 就要处理搜索结果里通过语音定位的 frame
+        // 要四舍五入到 frame_interval_seconds 的整数倍
+        let frame_interval_seconds = 1;
         video_decoder
             .save_video_frames(&tmp_dir, &output_dir, frame_interval_seconds)
             .await?;
