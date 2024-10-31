@@ -4,11 +4,7 @@ use crate::{
     LLMOutput,
 };
 use futures::StreamExt;
-use reqwest::{
-    self,
-    header::{HeaderMap, AUTHORIZATION},
-    Url,
-};
+use reqwest::{self, header::HeaderMap, Url};
 use reqwest_eventsource::{Event, EventSource};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Deserializer, Value};
@@ -18,7 +14,7 @@ use tokio::sync::mpsc;
 #[allow(dead_code)]
 pub struct OpenAI {
     base_url: String,
-    model: String,
+    model_name: String,
     headers: HeaderMap,
 }
 
@@ -61,7 +57,7 @@ impl LLMModel for OpenAI {
         tracing::debug!("openai url: {:?}", url);
 
         let headers = self.headers.clone();
-        let model = self.model.clone();
+        let model_name = self.model_name.clone();
         let messages = history
             .iter()
             .map(|v| {
@@ -81,10 +77,15 @@ impl LLMModel for OpenAI {
                                 v.iter()
                                     .map(|t| match t {
                                         LLMUserMessage::ImageUrl(image_url) => {
-                                            json!({"type": "image_url", "image_url": image_url})
+                                            json!({
+                                                "type": "image_url",
+                                                "image_url": {
+                                                    "url": image_url,
+                                                }
+                                            })
                                         }
                                         LLMUserMessage::Text(text) => {
-                                            json!({"type": "text", "text": text})
+                                            json!({ "type": "text", "text": text })
                                         }
                                     })
                                     .collect::<Vec<_>>(),
@@ -102,18 +103,17 @@ impl LLMModel for OpenAI {
             .collect::<Vec<Value>>();
 
         tokio::spawn(async move {
-            let client = reqwest::Client::new().post(url).headers(headers).body(
-                json!({
-                    "model": &model,
-                    "messages": messages,
-                    "stream": true,
-                    "temperature": params.temperature,
-                    "seed": params.seed,
-                    "top_p": params.top_p,
-                    "max_tokens": params.max_tokens
-                })
-                .to_string(),
-            );
+            let body = json!({
+                "model": &model_name,
+                "messages": messages,
+                "stream": true,
+                "temperature": params.temperature,
+                "seed": params.seed,
+                "top_p": params.top_p,
+                "max_tokens": params.max_tokens
+            })
+            .to_string();
+            let client = reqwest::Client::new().post(url).headers(headers).body(body);
 
             let mut es = EventSource::new(client).expect("event source created");
             let mut buffer = String::new(); // a buffer to contain possible incomplete message
@@ -200,7 +200,7 @@ impl LLMModel for OpenAI {
                         break;
                     }
                     Err(e) => {
-                        tracing::error!("failed to handle event source: {}", e);
+                        tracing::error!("failed to handle event source: {:?}", e);
                         // break;  // 不能 break，原因见下面的注释
                         if let Err(e) = tx.send(Err(e.into())).await {
                             tracing::error!("failed to send error: {}", e);
@@ -244,7 +244,7 @@ impl OpenAI {
     ///
     /// TODO
     /// - it is better to pass model when inference
-    pub fn new(base_url: &str, api_key: &str, model: &str) -> anyhow::Result<Self> {
+    pub fn new(base_url: &str, api_key: &str, model_name: &str) -> anyhow::Result<Self> {
         let base_url = if base_url.ends_with("/") {
             base_url.to_string()
         } else {
@@ -252,11 +252,15 @@ impl OpenAI {
         };
 
         let mut headers = HeaderMap::new();
-        headers.insert(AUTHORIZATION, format!("Bearer {}", api_key).parse()?);
+        headers.insert(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", api_key).parse()?,
+        );
+        headers.insert(reqwest::header::CONTENT_TYPE, "application/json".parse()?);
 
         Ok(Self {
             base_url,
-            model: model.to_string(),
+            model_name: model_name.to_string(),
             headers,
         })
     }
@@ -276,7 +280,7 @@ impl OpenAI {
 
         Ok(Self {
             base_url: base_url.to_string(),
-            model: deployment_name.to_string(),
+            model_name: deployment_name.to_string(),
             headers,
         })
     }

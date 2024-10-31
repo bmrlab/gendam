@@ -371,9 +371,9 @@ impl AIHandler {
                         ConcreteModelType::OpenAI => {
                             let base_url = get_str_from_params(&params, "base_url")?;
                             let api_key = get_str_from_params(&params, "api_key")?;
-                            let model = get_str_from_params(&params, "model")?;
+                            let model_name = get_str_from_params(&params, "model")?;
 
-                            OpenAI::new(base_url, api_key, model).map(|v| LLM::OpenAI(v))
+                            OpenAI::new(base_url, api_key, model_name).map(|v| LLM::OpenAI(v))
                         }
                         ConcreteModelType::AzureOpenAI => {
                             let azure_endpoint = get_str_from_params(&params, "azure_endpoint")?;
