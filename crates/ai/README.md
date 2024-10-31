@@ -71,7 +71,7 @@ async fn image_caption_example() -> anyhow::Result<()> {
         Some(Duration::from_secs(30)),
     )?;
 
-    let clip_caption_model = llm_model.create_image_caption_ref("Please describe the image.");
+    let clip_caption_model = llm_model.create_image_caption_ref();
 
     // Using image captioning
     let image_path = "path/to/your/image.jpg";
@@ -87,6 +87,7 @@ async fn image_caption_example() -> anyhow::Result<()> {
 ```
 
 This example demonstrates three different approaches to image captioning:
+
 1. Using BLIP model for direct image captioning.
 2. Using CLIP model for generating image embeddings.
 3. Using an LLM (in this case, OpenAI's GPT) to generate captions based on CLIP embeddings.

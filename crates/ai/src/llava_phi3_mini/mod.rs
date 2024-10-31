@@ -30,7 +30,14 @@ impl Model for LLaVAPhi3Mini {
         }
         let mut results: Vec<Result<String, anyhow::Error>> = vec![];
         for item in items {
-            let res = self.get_image_caption(item);
+            if item.image_file_paths.len() > 1 {
+                anyhow::bail!("llava-phi3 model only supports one image");
+            }
+            let image_file_path = item
+                .image_file_paths
+                .first()
+                .ok_or_else(|| anyhow::anyhow!("no image in llava-phi3 input"))?;
+            let res = self.get_image_caption(image_file_path, item.prompt);
             results.push(res);
         }
         Ok(results)
@@ -139,9 +146,12 @@ impl LLaVAPhi3Mini {
     pub fn get_image_caption(
         &mut self,
         image_file_path: impl AsRef<Path>,
+        prompt: Option<String>,
     ) -> anyhow::Result<String> {
         let prompt_str = format_prompt(
-            r#"You are an advanced image analysis AI. Examine the image and describe its contents in a concise, text-only format. Focus on identifying: People (including celebrities), actions, objects, animals or pets, nature elements, visual cues of sounds, human speech (if text bubbles present), displayed text (OCR), and brand logos. Provide specific examples for each category found in the image. Only mention categories that are present; omit any that are not detected. Use plain text format without lists or JSON. Be accurate and concise in your descriptions. Limit your response to no more than 50 words."#,
+            prompt
+                .unwrap_or("Please describe the image".to_string())
+                .as_str(),
         );
 
         let img = image::ImageReader::open(image_file_path)?
@@ -183,6 +193,7 @@ mod tests {
 
         let res = llavaphi3mini.get_image_caption(
             "/Users/xddotcom/workspace/rust/llm-playground/models/20240923-173209.jpeg",
+            None,
         )?;
 
         println!("{}", res);

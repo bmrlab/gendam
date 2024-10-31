@@ -1,4 +1,7 @@
-use super::{frame::VideoFrameTask, VideoTaskType};
+use super::{
+    frame::{VideoFrameTask, VIDEO_FRAME_SUMMARY_BATCH_SIZE},
+    VideoTaskType,
+};
 use crate::{ContentTask, ContentTaskType, TaskRunOutput, TaskRunRecord};
 use async_trait::async_trait;
 use content_base_context::ContentBaseCtx;
@@ -31,21 +34,37 @@ impl ContentTask for VideoFrameDescriptionTask {
             .await?;
 
         let frame_infos = VideoFrameTask.frame_content(file_info, ctx).await?;
-        for frame_info in frame_infos {
-            let image_absolute_path = self
-                .get_absolute_path(frame_info.image_file.clone())
-                .map_err(|e| {
-                    anyhow::anyhow!(
-                        "Failed to get absolute path for frame image file {:?}: {:?}",
-                        frame_info.image_file.clone(),
-                        e
-                    )
-                })?;
+        for frame_infos_chunk in frame_infos.chunks(VIDEO_FRAME_SUMMARY_BATCH_SIZE) {
+            let mut image_file_paths = vec![];
+            for frame_info in frame_infos_chunk {
+                let image_absolute_path = self
+                    .get_absolute_path(frame_info.image_file.clone())
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Failed to get absolute path for frame image file {:?}: {:?}",
+                            frame_info.image_file.clone(),
+                            e
+                        )
+                    })?;
+                image_file_paths.push(image_absolute_path);
+            }
             let (model, _) = ctx.image_caption()?;
-            let model_input: ai::ImageCaptionInput = image_absolute_path.clone();
+            let model_input = ai::ImageCaptionInput {
+                image_file_paths,
+                prompt: Some(
+                    r#"You are an advanced video analysis AI. Examine this sequence of video frames and describe its contents in a concise, text-only format. Focus on identifying: People (including celebrities), actions and movements, objects, animals or pets, nature elements, visual cues of sounds, human speech (if text bubbles present), displayed text (OCR), brand logos, and any notable changes between frames. Analyze the overall flow of motion and action across the frames. Provide specific examples for each category found in the sequence. Only mention categories that are present; omit any that are not detected. Use plain text format without lists or JSON. Be accurate and concise in your descriptions. Limit your response to no more than 50 words."#.to_string()
+                ),
+            };
             let model_output = model.process_single(model_input).await?;
 
-            let output_path = output_path.join(format!("{}.json", frame_info.timestamp));
+            let output_path = {
+                let first_frame = frame_infos_chunk.first().expect("first frame should exist");
+                let last_frame = frame_infos_chunk.last().expect("last frame should exist");
+                output_path.join(format!(
+                    "{}-{}.json",
+                    first_frame.timestamp, last_frame.timestamp
+                ))
+            };
             let json_output = serde_json::to_string(&json!({
                 "caption": model_output
             }))?;
@@ -81,13 +100,14 @@ impl VideoFrameDescriptionTask {
         &self,
         file_info: &crate::FileInfo,
         ctx: &ContentBaseCtx,
-        timestamp: i64,
+        start_timestamp: i64,
+        end_timestamp: i64,
     ) -> anyhow::Result<String> {
         let task_type: ContentTaskType = self.clone().into();
         let output_path = task_type
             .task_output_path(file_info, ctx)
             .await?
-            .join(format!("{}.json", timestamp));
+            .join(format!("{}-{}.json", start_timestamp, end_timestamp));
         let file_content = self.read_to_string(output_path)?;
         let json_content: Value = serde_json::from_str(&file_content)?;
 

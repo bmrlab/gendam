@@ -35,9 +35,12 @@ use content_base_task::{
         RawTextTaskType,
     },
     video::{
-        frame::VideoFrameTask, frame_desc_embed::VideoFrameDescEmbedTask,
-        frame_description::VideoFrameDescriptionTask, frame_embedding::VideoFrameEmbeddingTask,
-        trans_chunk::VideoTransChunkTask, trans_chunk_sum_embed::VideoTransChunkSumEmbedTask,
+        frame::{VideoFrameTask, VIDEO_FRAME_SUMMARY_BATCH_SIZE},
+        frame_desc_embed::VideoFrameDescEmbedTask,
+        frame_description::VideoFrameDescriptionTask,
+        frame_embedding::VideoFrameEmbeddingTask,
+        trans_chunk::VideoTransChunkTask,
+        trans_chunk_sum_embed::VideoTransChunkSumEmbedTask,
         VideoTaskType,
     },
     web_page::{chunk::WebPageChunkTask, WebPageTaskType},
@@ -347,28 +350,45 @@ async fn upsert_video_index_to_surrealdb(
     let audio_frame: Vec<AudioFrameModel> = try_join_all(future).await?;
     let frames = VideoFrameTask.frame_content(file_info, ctx).await?;
     tracing::debug!("video frames: {frames:?}");
-    let future = frames.into_iter().map(|frame| async move {
-        let desc_embedding = VideoFrameDescEmbedTask
-            .frame_desc_embed_content(file_info, ctx, frame.timestamp)
-            .await?;
-        let description = VideoFrameDescriptionTask
-            .frame_description_content(file_info, ctx, frame.timestamp)
-            .await?;
-        let embedding = VideoFrameEmbeddingTask
-            .frame_embedding_content(file_info, ctx, frame.timestamp)
-            .await?;
-        Result::<ImageFrameModel, anyhow::Error>::Ok(ImageFrameModel {
-            id: None,
-            data: vec![ImageModel {
+    let future = frames
+        .chunks(VIDEO_FRAME_SUMMARY_BATCH_SIZE)
+        .into_iter()
+        .map(|frame_infos_chunk| async move {
+            let first_frame = frame_infos_chunk.first().expect("first chunk should exist");
+            let last_frame = frame_infos_chunk.last().expect("last chunk should exist");
+
+            let desc_embedding = VideoFrameDescEmbedTask
+                .frame_desc_embed_content(
+                    file_info,
+                    ctx,
+                    first_frame.timestamp,
+                    last_frame.timestamp,
+                )
+                .await?;
+            let description = VideoFrameDescriptionTask
+                .frame_description_content(
+                    file_info,
+                    ctx,
+                    first_frame.timestamp,
+                    last_frame.timestamp,
+                )
+                .await?;
+            // TODO: 优化?, 目前 embedding 只取第一个 chunk 的，description 取的是一个片段的
+            let embedding = VideoFrameEmbeddingTask
+                .frame_embedding_content(file_info, ctx, first_frame.timestamp)
+                .await?;
+            Result::<ImageFrameModel, anyhow::Error>::Ok(ImageFrameModel {
                 id: None,
-                prompt: description,
-                vector: embedding,
-                prompt_vector: desc_embedding,
-            }],
-            start_timestamp: frame.timestamp as f32,
-            end_timestamp: frame.timestamp as f32,
-        })
-    });
+                data: vec![ImageModel {
+                    id: None,
+                    prompt: description,
+                    vector: embedding,
+                    prompt_vector: desc_embedding,
+                }],
+                start_timestamp: first_frame.timestamp as f32,
+                end_timestamp: last_frame.timestamp as f32,
+            })
+        });
     let image_frame: Vec<ImageFrameModel> = try_join_all(future).await?;
     db.try_read()?
         .insert_video(

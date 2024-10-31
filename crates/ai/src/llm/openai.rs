@@ -54,7 +54,7 @@ impl LLMModel for OpenAI {
 
         let (tx, mut rx) = mpsc::channel::<anyhow::Result<Option<String>>>(512);
 
-        tracing::debug!("openai url: {:?}", url);
+        tracing::debug!("openai url: {}", url.as_str());
 
         let headers = self.headers.clone();
         let model_name = self.model_name.clone();
@@ -190,7 +190,10 @@ impl LLMModel for OpenAI {
                         if let Some(err) = deserialize_error {
                             if !err.is_eof() {
                                 // this is a real error
-                                tracing::error!("failed to parse response: {}", &buffer);
+                                if buffer != "[DONE]" {
+                                    // this is a special message from OpenAI like API it means the conversation is done
+                                    tracing::error!("failed to parse response: {}", &buffer);
+                                }
                                 buffer.clear();
                             }
                         }

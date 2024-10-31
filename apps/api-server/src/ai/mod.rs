@@ -110,7 +110,7 @@ impl AIHandler {
             // 这里是使用 LLM 进行 image caption 的系统提示词
             // const LLM_IMAGE_CAPTION_SYSTEM_PROMPT: &'static str = r#"Describe People (including famous individuals), Actions, Objects, Animals or pets, Nature, Sounds (excluding human speech) in the image."#;
             // handler.create_image_caption_ref(LLM_IMAGE_CAPTION_SYSTEM_PROMPT)
-            handler.create_image_caption_ref("Please describe the image.")
+            handler.create_image_caption_ref()
         } else {
             // Model trait 的 process 返回的是 impl Future, 导致 Model trait 不是 object safe 的
             // 这里没法用 Box<dyn Model<Item = ImageCaptionInput, Output = ImageCaptionOutput>> 来接收每个模型的实例

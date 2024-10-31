@@ -79,9 +79,15 @@ impl Model for BLIP {
         }
 
         let mut results = vec![];
-
         for item in items {
-            let res = self.get_caption(item).await;
+            if item.image_file_paths.len() > 1 {
+                bail!("blip model only supports one image");
+            }
+            let image_file_path = item
+                .image_file_paths
+                .first()
+                .ok_or_else(|| anyhow!("no image in blip input"))?;
+            let res = self.get_caption(image_file_path).await;
             results.push(res);
         }
 

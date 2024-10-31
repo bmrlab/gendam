@@ -31,7 +31,12 @@ impl ContentTask for ImageDescriptionTask {
             .await?;
 
         let (model, _) = ctx.image_caption()?;
-        let model_input: ai::ImageCaptionInput = file_info.file_path.clone();
+        let model_input = ai::ImageCaptionInput {
+            image_file_paths: vec![file_info.file_path.clone()],
+            prompt: Some(
+                r#"You are an advanced image analysis AI. Examine the image and describe its contents in a concise, text-only format. Focus on identifying: People (including celebrities), actions, objects, animals or pets, nature elements, visual cues of sounds, human speech (if text bubbles present), displayed text (OCR), and brand logos. Provide specific examples for each category found in the image. Only mention categories that are present; omit any that are not detected. Use plain text format without lists or JSON. Be accurate and concise in your descriptions. Limit your response to no more than 50 words."#.to_string()
+            ),
+        };
         let model_output = model.process_single(model_input).await?;
         let json_output = serde_json::to_string(&json!({
             "caption": model_output

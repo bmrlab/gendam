@@ -1,11 +1,11 @@
-use super::ImageCaptionModel;
+use super::{ImageCaptionInput, ImageCaptionModel};
 use crate::{
     llm::{LLMInferenceParams, LLMMessage},
     AIModel,
 };
 use base64::Engine;
 use futures::{Stream, StreamExt};
-use std::{io::Cursor, path::PathBuf, pin::Pin};
+use std::{io::Cursor, pin::Pin};
 
 pub type LLMInput = (Vec<LLMMessage>, LLMInferenceParams);
 type LLMOutputInner = Pin<Box<dyn Stream<Item = anyhow::Result<Option<String>>> + Send + Sync>>;
@@ -61,37 +61,33 @@ impl LLMModel {
     ///
     /// # Returns
     /// An `ImageCaptionModel` that can be used to generate captions for images.
-    pub fn create_image_caption_ref(self, prompt: &str) -> ImageCaptionModel {
-        let prompt = prompt.to_string();
-
+    pub fn create_image_caption_ref(self) -> ImageCaptionModel {
         self.create_reference(
-            move |v: PathBuf| {
-                let prompt = prompt.clone();
+            move |v: ImageCaptionInput| {
+                let prompt = v.prompt.unwrap_or("Please describe the image.".to_string());
 
                 async move {
                     let result: Result<_, _> = {
-                        let image = image::ImageReader::open(v)?
-                            .with_guessed_format()?
-                            .decode()?;
-                        let mut buf = Vec::new();
-                        {
-                            let mut cursor = Cursor::new(&mut buf);
-                            let _ = image.write_to(&mut cursor, image::ImageFormat::Png);
+                        let mut image_urls: Vec<String> = vec![];
+                        for image_file_path in v.image_file_paths {
+                            let image = image::ImageReader::open(image_file_path)?
+                                .with_guessed_format()?
+                                .decode()?;
+                            let mut buf = Vec::new();
+                            {
+                                let mut cursor = Cursor::new(&mut buf);
+                                let _ = image.write_to(&mut cursor, image::ImageFormat::Png);
+                            }
+                            let base64 = base64::engine::general_purpose::STANDARD.encode(&buf);
+                            image_urls.push(format!("data:image/png;base64,{}", base64));
                         }
-                        let base64 = base64::engine::general_purpose::STANDARD.encode(&buf);
-
-                        Ok((
-                            vec![
-                                // LLMMessage::new_system(),
-                                LLMMessage::new_user_with_image(
-                                    prompt.clone().as_str(),
-                                    format!("data:image/png;base64,{}", base64).as_str(),
-                                ),
-                            ],
-                            LLMInferenceParams::default(),
-                        ))
+                        let params = LLMInferenceParams::default();
+                        let messages: Vec<LLMMessage> = vec![
+                            // LLMMessage::new_system(),
+                            LLMMessage::new_user_with_images(prompt.clone().as_str(), &image_urls),
+                        ];
+                        Ok((messages, params))
                     };
-
                     result
                 }
             },
@@ -110,7 +106,7 @@ mod test {
 
     use crate::{
         llm::{openai::OpenAI, LLMInferenceParams, LLMMessage, LLM},
-        AIModel,
+        AIModel, ImageCaptionInput,
     };
 
     #[test_log::test(tokio::test)]
@@ -136,10 +132,13 @@ mod test {
         let output = output.to_string().await;
         tracing::info!("output: {:?}", output);
 
-        let image_caption = llm.create_image_caption_ref("Please describe the image.");
+        let image_caption = llm.create_image_caption_ref();
 
         let result = image_caption
-            .process_single(PathBuf::from("/Users/zhuo/Pictures/avatar.JPG"))
+            .process_single(ImageCaptionInput {
+                image_file_paths: vec![PathBuf::from("/Users/zhuo/Pictures/avatar.JPG")],
+                prompt: None,
+            })
             .await;
 
         tracing::info!("result: {:?}", result);

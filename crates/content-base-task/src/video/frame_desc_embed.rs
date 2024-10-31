@@ -1,4 +1,8 @@
-use super::{frame::VideoFrameTask, frame_description::VideoFrameDescriptionTask, VideoTaskType};
+use super::{
+    frame::{VideoFrameTask, VIDEO_FRAME_SUMMARY_BATCH_SIZE},
+    frame_description::VideoFrameDescriptionTask,
+    VideoTaskType,
+};
 use crate::{ContentTask, ContentTaskType, FileInfo, TaskRunOutput, TaskRunRecord};
 use async_trait::async_trait;
 use content_base_context::ContentBaseCtx;
@@ -31,11 +35,21 @@ impl ContentTask for VideoFrameDescEmbedTask {
             .await?;
 
         let frame_infos = VideoFrameTask.frame_content(file_info, ctx).await?;
-        for frame_info in frame_infos {
+        for frame_infos_chunk in frame_infos.chunks(VIDEO_FRAME_SUMMARY_BATCH_SIZE) {
+            let first_frame = frame_infos_chunk.first().expect("first frame should exist");
+            let last_frame = frame_infos_chunk.last().expect("last frame should exist");
             let description = VideoFrameDescriptionTask
-                .frame_description_content(file_info, ctx, frame_info.timestamp)
+                .frame_description_content(
+                    file_info,
+                    ctx,
+                    first_frame.timestamp,
+                    last_frame.timestamp,
+                )
                 .await?;
-            let output_path = output_path.join(format!("{}.json", frame_info.timestamp));
+            let output_path = output_path.join(format!(
+                "{}-{}.json",
+                first_frame.timestamp, last_frame.timestamp
+            ));
             ctx.save_text_embedding(&description, &output_path).await?;
         }
 
@@ -67,13 +81,14 @@ impl VideoFrameDescEmbedTask {
         &self,
         file_info: &FileInfo,
         ctx: &ContentBaseCtx,
-        timestamp: i64,
+        start_timestamp: i64,
+        end_timestamp: i64,
     ) -> anyhow::Result<Vec<f32>> {
         let task_type: ContentTaskType = self.clone().into();
         let output_path = task_type
             .task_output_path(file_info, ctx)
             .await?
-            .join(format!("{}.json", timestamp));
+            .join(format!("{}-{}.json", start_timestamp, end_timestamp));
         let content_str = self.read_to_string(output_path)?;
         Ok(serde_json::from_str(&content_str)?)
     }

@@ -37,6 +37,15 @@ impl LLMMessage {
             LLMUserMessage::ImageUrl(image_url.to_string()),
         ])
     }
+
+    pub fn new_user_with_images(text: &str, image_urls: &Vec<String>) -> Self {
+        let mut messages: Vec<LLMUserMessage> = image_urls
+            .iter()
+            .map(|url| LLMUserMessage::ImageUrl(url.to_owned()))
+            .collect();
+        messages.insert(0, LLMUserMessage::Text(text.to_string()));
+        LLMMessage::User(messages)
+    }
 }
 
 #[derive(Debug, Clone)]
