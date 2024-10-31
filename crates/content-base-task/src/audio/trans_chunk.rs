@@ -15,10 +15,7 @@ use storage_macro::Storage;
 pub trait AudioTranscriptChunkTrait: Into<ContentTaskType> + Clone + Storage {
     fn transcript_task(&self) -> impl ContentTask;
 
-    async fn chunk_output(
-        &self,
-        task_run_record: &TaskRunRecord,
-    ) -> anyhow::Result<TaskRunOutput> {
+    async fn chunk_output(&self, task_run_record: &TaskRunRecord) -> anyhow::Result<TaskRunOutput> {
         let task_type: ContentTaskType = self.clone().into();
         Ok(TaskRunOutput::File(PathBuf::from(format!(
             "{}-{}.json",
@@ -33,7 +30,7 @@ pub trait AudioTranscriptChunkTrait: Into<ContentTaskType> + Clone + Storage {
         ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
-        let tokenizer = ctx.llm_tokenizer()?;
+        let (tokenizer, _) = ctx.text_tokenizer()?;
 
         let transcript_path = self
             .transcript_task()
@@ -130,8 +127,7 @@ impl ContentTask for AudioTransChunkTask {
         ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
-        self.run_chunk(file_info, ctx, task_run_record)
-            .await
+        self.run_chunk(file_info, ctx, task_run_record).await
     }
 
     fn task_parameters(&self, ctx: &ContentBaseCtx) -> Value {

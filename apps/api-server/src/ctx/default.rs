@@ -424,10 +424,10 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                     Arc::new(ai_handler.audio_transcript.0.clone()),
                     &ai_handler.audio_transcript.1,
                 )
-                .with_llm(
-                    Arc::new(ai_handler.llm.0.clone()),
-                    ai_handler.llm.1.clone(),
-                    &ai_handler.llm.2,
+                .with_llm(Arc::new(ai_handler.llm.0.clone()), &ai_handler.llm.1)
+                .with_text_tokenizer(
+                    ai_handler.text_tokenizer.0.clone(),
+                    &ai_handler.text_tokenizer.1,
                 )
                 .with_multi_modal_embedding(
                     Arc::new(ai_handler.multi_modal_embedding.0.clone()),

@@ -127,6 +127,22 @@
     "dim": 1792
   },
   {
+    "id": "llava-phi3-mini",
+    "categories": ["ImageCaption"],
+    "title": "LLaVA Phi3 Mini",
+    "description": "",
+    "artifacts_dir": "./llava-phi3-mini",
+    "artifacts": [],
+    "model_type": "LLaVAPhi3Mini",
+    "params": {
+      "model_path": "./llava-phi3-mini/llava-phi-3-mini-int4.gguf",
+      "mmproj_model_path": "./llava-phi3-mini/llava-phi-3-mini-mmproj-f16.gguf",
+      "tokenizer_path": "./llava-phi3-mini/tokenizer.json",
+      "preprocessor_config_path": "./llava-phi3-mini/preprocessor_config.json",
+      "device": "metal"
+    }
+  },
+  {
     "id": "qwen2-7b-instruct",
     "categories": ["LLM"],
     "title": "Qwen2 7B Instruct",
@@ -150,22 +166,6 @@
     }
   },
   {
-    "id": "llava-phi3-mini",
-    "categories": ["LLM", "ImageCaption"],
-    "title": "LLaVA Phi3 Mini",
-    "description": "",
-    "artifacts_dir": "./llava-phi3-mini",
-    "artifacts": [],
-    "model_type": "LLaVAPhi3Mini",
-    "params": {
-      "model_path": "./llava-phi3-mini/llava-phi-3-mini-int4.gguf",
-      "mmproj_model_path": "./llava-phi3-mini/llava-phi-3-mini-mmproj-f16.gguf",
-      "tokenizer_path": "./llava-phi3-mini/tokenizer.json",
-      "preprocessor_config_path": "./llava-phi3-mini/preprocessor_config.json",
-      "device": "metal"
-    }
-  },
-  {
     "id": "ollama-qwen2-7b-instruct",
     "categories": ["LLM"],
     "title": "Ollama Qwen2 7B Instruct",
@@ -181,8 +181,7 @@
     "params": {
       "base_url": "http://localhost:11434/v1",
       "api_key": "ollama",
-      "model": "qwen2:7b-instruct-q4_0",
-      "tokenizer_path": "./qwen2/tokenizer.json"
+      "model": "qwen2:7b-instruct-q4_0"
     }
   },
   {

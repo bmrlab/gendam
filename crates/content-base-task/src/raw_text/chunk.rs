@@ -33,7 +33,7 @@ pub trait DocumentChunkTrait: Into<ContentTaskType> + Clone + Storage {
         ctx: &ContentBaseCtx,
         task_run_record: &TaskRunRecord,
     ) -> anyhow::Result<()> {
-        let tokenizer = ctx.llm_tokenizer()?;
+        let (tokenizer, _) = ctx.text_tokenizer()?;
 
         // TODO need to handle chunk with better strategy
         let content = self.text_content(file_info, ctx).await?;

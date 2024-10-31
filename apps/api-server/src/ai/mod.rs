@@ -38,7 +38,9 @@ pub struct AIHandler {
     pub image_caption: (ImageCaptionModel, String),
     pub audio_transcript: (AudioTranscriptModel, String),
     pub text_embedding: (TextEmbeddingModel, String),
-    pub llm: (LLMModel, ai::tokenizers::Tokenizer, String),
+    pub llm: (LLMModel, String),
+    /// 目前这个是专门给 audio transcript 和 raw text 的 chunking 用的
+    pub text_tokenizer: (ai::tokenizers::Tokenizer, String),
 }
 
 impl fmt::Debug for AIHandler {
@@ -63,13 +65,17 @@ impl AIHandler {
         let text_embedding =
             Self::get_text_embedding(ctx, (&multi_modal_embedding.0, &multi_modal_embedding.1))?;
         let llm = Self::get_llm(ctx)?;
+        let text_tokenizer = Self::get_text_tokenizer(ctx)?;
+        let image_caption = Self::get_image_caption(ctx)?;
+        let audio_transcript = Self::get_audio_transcript(ctx)?;
 
         Ok(Self {
             multi_modal_embedding,
-            image_caption: Self::get_image_caption(ctx)?,
-            audio_transcript: Self::get_audio_transcript(ctx)?,
+            image_caption,
+            audio_transcript,
             text_embedding,
             llm,
+            text_tokenizer,
         })
     }
 
@@ -311,17 +317,38 @@ impl AIHandler {
         Ok((handler, model_name))
     }
 
-    fn get_llm(
+    /// 目前这个是专门给 audio transcript 和 raw text 的 chunking 用的
+    fn get_text_tokenizer(
         ctx: &dyn CtxWithLibrary,
-    ) -> Result<(LLMModel, ai::tokenizers::Tokenizer, String), rspc::Error> {
+    ) -> Result<(ai::tokenizers::Tokenizer, String), rspc::Error> {
+        let resources_dir = ctx.get_resources_dir().to_path_buf();
+        let library = ctx.library()?;
+        let settings = get_library_settings(&library.dir);
+        let model = get_model_info_by_id(ctx, &settings.models.llm)?;
+
+        let (tokenizer_path, name) = match model.model_type {
+            ConcreteModelType::Qwen2 => (
+                get_str_from_params(&model.params, "tokenizer_path")?,
+                model.id.as_str(),
+            ),
+            ConcreteModelType::OpenAI | ConcreteModelType::AzureOpenAI => {
+                // TODO: LLM Service 不需要 tokenizer，但是 audio transcript 和 raw text 的 chunking 需要，这里设置个默认的，回头优化
+                ("./qwen2/tokenizer.json", "default")
+            }
+            _ => ("./qwen2/tokenizer.json", "default"),
+        };
+        let tokenizer = ai::tokenizers::Tokenizer::from_file(resources_dir.join(tokenizer_path))
+            .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
+        Ok((tokenizer, name.to_string()))
+    }
+
+    fn get_llm(ctx: &dyn CtxWithLibrary) -> Result<(LLMModel, String), rspc::Error> {
         let resources_dir = ctx.get_resources_dir().to_path_buf();
         let library = ctx.library()?;
         let settings = get_library_settings(&library.dir);
 
         let model = get_model_info_by_id(ctx, &settings.models.llm)?;
         let model_name = model.id.clone();
-        let tokenizer_path = get_str_from_params(&model.params, "tokenizer_path")?;
-        let tokenizer_path = resources_dir.join(tokenizer_path);
 
         let handler = AIModel::new(
             move || {
@@ -370,11 +397,7 @@ impl AIHandler {
         )
         .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
 
-        // TODO here use a fake tokenizer for now, should be updated in the future
-        let tokenizer = ai::tokenizers::Tokenizer::from_file(tokenizer_path)
-            .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
-
-        Ok((handler, tokenizer, model_name))
+        Ok((handler, model_name))
     }
 
     pub fn update_multi_modal_embedding(&mut self, ctx: &dyn CtxWithLibrary) {

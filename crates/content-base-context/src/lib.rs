@@ -1,8 +1,7 @@
 pub mod artifacts;
 
 use ai::{
-    tokenizers::Tokenizer, AudioTranscriptModel, ImageCaptionModel, LLMModel,
-    MultiModalEmbeddingModel, TextEmbeddingModel,
+    AudioTranscriptModel, ImageCaptionModel, LLMModel, MultiModalEmbeddingModel, TextEmbeddingModel,
 };
 use anyhow::bail;
 use std::{
@@ -20,7 +19,7 @@ pub struct ContentBaseCtx {
     audio_transcript: Option<(Arc<AudioTranscriptModel>, String)>,
     image_caption: Option<(Arc<ImageCaptionModel>, String)>,
     llm: Option<(Arc<LLMModel>, String)>,
-    llm_tokenizer: Option<Tokenizer>,
+    text_tokenizer: Option<(ai::tokenizers::Tokenizer, String)>,
 }
 
 impl ContentBaseCtx {
@@ -33,7 +32,7 @@ impl ContentBaseCtx {
             audio_transcript: None,
             image_caption: None,
             llm: None,
-            llm_tokenizer: None,
+            text_tokenizer: None,
         }
     }
 
@@ -78,9 +77,18 @@ impl ContentBaseCtx {
         self
     }
 
-    pub fn with_llm(mut self, llm: Arc<LLMModel>, tokenizer: Tokenizer, model_name: &str) -> Self {
+    pub fn with_llm(mut self, llm: Arc<LLMModel>, model_name: &str) -> Self {
         self.llm = Some((llm, model_name.to_string()));
-        self.llm_tokenizer = Some(tokenizer);
+        self
+    }
+
+    /// 目前这个是专门给 audio transcript 和 raw text 的 chunking 用的
+    pub fn with_text_tokenizer(
+        mut self,
+        tokenizer: ai::tokenizers::Tokenizer,
+        tokenizer_name: &str,
+    ) -> Self {
+        self.text_tokenizer = Some((tokenizer, tokenizer_name.into()));
         self
     }
 
@@ -129,9 +137,10 @@ impl ContentBaseCtx {
         }
     }
 
-    pub fn llm_tokenizer(&self) -> anyhow::Result<&Tokenizer> {
-        match self.llm_tokenizer.as_ref() {
-            Some(v) => Ok(v),
+    /// 目前这个是专门给 audio transcript 和 raw text 的 chunking 用的
+    pub fn text_tokenizer(&self) -> anyhow::Result<(&ai::tokenizers::Tokenizer, &str)> {
+        match self.text_tokenizer.as_ref() {
+            Some(v) => Ok((&v.0, &v.1)),
             _ => {
                 bail!("llm_tokenizer is not enabled")
             }
