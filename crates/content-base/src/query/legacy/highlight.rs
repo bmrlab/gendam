@@ -1,4 +1,4 @@
-use super::payload::ContentIndexMetadata;
+use super::super::payload::ContentIndexMetadata;
 use content_base_context::ContentBaseCtx;
 use content_base_task::{
     audio::trans_chunk::{AudioTransChunkTask, AudioTranscriptChunkTrait},

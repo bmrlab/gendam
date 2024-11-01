@@ -1,13 +1,10 @@
+mod data_handler;
+pub mod model;
+pub mod payload;
 use crate::query::model::hit_result::HitResult;
 use crate::query::payload::RetrievalResultData;
 use crate::ContentBase;
 use payload::SearchResultData;
-
-mod data_handler;
-mod highlight;
-pub mod model;
-pub mod payload;
-pub mod search;
 
 const RETRIEVAL_COUNT: u64 = 20;
 const MAX_RANK_COUNT: usize = 10;

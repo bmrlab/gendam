@@ -1,11 +1,11 @@
-use super::highlight::retrieve_highlight;
-use super::payload::{
+use super::super::payload::{
     audio::AudioIndexMetadata,
     raw_text::RawTextIndexMetadata,
     video::{merge_results_with_time_duration, VideoIndexMetadata},
     web_page::WebPageIndexMetadata,
     ContentIndexMetadata, ContentIndexPayload, SearchResultData,
 };
+use super::highlight::retrieve_highlight;
 use content_base_context::ContentBaseCtx;
 use std::collections::HashMap;
 
@@ -27,7 +27,7 @@ use std::collections::HashMap;
 
 /// Transforms tuple (`ContentIndexPayload`, score) into `SearchResultData` with **merged score**.
 /// Then reorder the results.
-pub(super) async fn reorder_final_results(
+async fn reorder_final_results(
     ctx: &ContentBaseCtx,
     retrieval_results: &HashMap<String, Vec<(ContentIndexPayload, f32)>>,
 ) -> anyhow::Result<Vec<SearchResultData>> {
