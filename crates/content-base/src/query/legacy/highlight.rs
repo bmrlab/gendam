@@ -9,7 +9,6 @@ use content_base_task::{
     },
     video::trans_chunk::VideoTransChunkTask,
     web_page::chunk::WebPageChunkTask,
-    FileInfo,
 };
 
 /// Retrieves highlight text using metadata of content's index in vector store
@@ -23,10 +22,6 @@ pub(super) async fn retrieve_highlight(
     file_identifier: &str,
     metadata: &ContentIndexMetadata,
 ) -> Option<String> {
-    let file_info = FileInfo {
-        file_identifier: file_identifier.to_string(),
-        file_path: "/-/invalid/-/".to_string().into(),
-    };
     // let task_record = TaskRecord::from_content_base(file_info.file_identifier.as_str(), ctx).await;
     match metadata {
         ContentIndexMetadata::Video(video_metadata) => {
@@ -36,7 +31,7 @@ pub(super) async fn retrieve_highlight(
             // let chunk_sum_task = VideoTransChunkSumTask;
             // chunk_sum_task.sum_content(&file_info, ctx, video_metadata.start_timestamp, video_metadata.end_timestamp).await.ok()
             let chunk_task = VideoTransChunkTask;
-            match chunk_task.chunk_content(&file_info, ctx).await {
+            match chunk_task.chunk_content(file_identifier, ctx).await {
                 Ok(chunks) => {
                     let matching_chunks = chunks
                         .iter()
@@ -60,7 +55,7 @@ pub(super) async fn retrieve_highlight(
             // let chunk_sum_task = AudioTransChunkSumTask;
             // chunk_sum_task.sum_content(&file_info, ctx, audio_metadata.start_timestamp, audio_metadata.end_timestamp).await.ok()
             let chunk_task = AudioTransChunkTask;
-            match chunk_task.chunk_content(&file_info, ctx).await {
+            match chunk_task.chunk_content(file_identifier, ctx).await {
                 Ok(chunks) => {
                     let matching_chunks = chunks
                         .iter()
@@ -82,7 +77,7 @@ pub(super) async fn retrieve_highlight(
         ContentIndexMetadata::Image(_) => {
             let chunk_sum_task = ImageDescriptionTask;
             chunk_sum_task
-                .description_content(&file_info, ctx)
+                .description_content(file_identifier, ctx)
                 .await
                 .ok()
         }
@@ -99,13 +94,13 @@ pub(super) async fn retrieve_highlight(
             // TODO: 一种更好的实现还是用 RawTextChunkTask，但是要多取 start_index 之前的一个片段和 end_index 之后的一个片段
             let chunk_sum_task = RawTextChunkSumTask;
             chunk_sum_task
-                .sum_content(&file_info, ctx, text_metadata.start_index)
+                .sum_content(file_identifier, ctx, text_metadata.start_index)
                 .await
                 .ok()
         }
         ContentIndexMetadata::WebPage(webpage_metadata) => {
             let chunk_task = WebPageChunkTask;
-            match chunk_task.chunk_content(&file_info, ctx).await {
+            match chunk_task.chunk_content(file_identifier, ctx).await {
                 Ok(chunks) => {
                     let content = chunks
                         .iter()

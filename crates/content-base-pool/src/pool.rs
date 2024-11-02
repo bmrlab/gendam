@@ -124,7 +124,7 @@ impl TaskPool {
 
                         let task = Task {
                             file_identifier: file_identifier.clone(),
-                            file_path: file_path.clone(),
+                            file_full_path_on_disk: file_path.clone(),
                             task_type: task_type.clone(),
                         };
                         let task = Arc::new(task);
@@ -362,7 +362,7 @@ impl TaskPoolContext {
                                 // create new dependent tasks
                                 let mut payload = NewTaskPayload::new(
                                     dep.file_identifier(),
-                                    &current_task.task.file_path,
+                                    &current_task.task.file_full_path_on_disk,
                                     dep.task_type(),
                                 );
                                 payload.with_priority(Some(current_task.priority.into()));
@@ -404,7 +404,7 @@ impl TaskPoolContext {
 
                     let file_info = FileInfo {
                         file_identifier: task_id.file_identifier().to_string(),
-                        file_path: current_task.task.file_path.clone(),
+                        file_full_path_on_disk: current_task.task.file_full_path_on_disk.clone(),
                     };
 
                     if let Some(tx) = current_task.notifier.clone() {

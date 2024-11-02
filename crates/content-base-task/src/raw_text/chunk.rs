@@ -12,12 +12,6 @@ pub struct RawTextChunkTask;
 
 #[async_trait]
 pub trait DocumentChunkTrait: Into<ContentTaskType> + Clone + Storage {
-    async fn text_content(
-        &self,
-        file_info: &FileInfo,
-        ctx: &ContentBaseCtx,
-    ) -> anyhow::Result<String>;
-
     async fn chunk_output(&self, task_run_record: &TaskRunRecord) -> anyhow::Result<TaskRunOutput> {
         let task_type: ContentTaskType = self.clone().into();
         Ok(TaskRunOutput::File(PathBuf::from(format!(
@@ -27,16 +21,16 @@ pub trait DocumentChunkTrait: Into<ContentTaskType> + Clone + Storage {
         ))))
     }
 
-    async fn run_chunk(
+    async fn run_text_chunk(
         &self,
-        file_info: &FileInfo,
+        file_identifier: &str,
+        content: String,
         ctx: &ContentBaseCtx,
         task_run_record: &TaskRunRecord,
     ) -> anyhow::Result<()> {
         let (tokenizer, _) = ctx.text_tokenizer()?;
 
         // TODO need to handle chunk with better strategy
-        let content = self.text_content(file_info, ctx).await?;
         let mut items = vec![];
         let mut start = 0;
         for paragraph in content.split("\n").into_iter() {
@@ -46,9 +40,7 @@ pub trait DocumentChunkTrait: Into<ContentTaskType> + Clone + Storage {
         let chunks = naive_chunk(&items, tokenizer, 100)?;
         let chunks = chunks.into_iter().map(|v| v.join("\n")).collect::<Vec<_>>();
 
-        let output_path = task_run_record
-            .output_path(&file_info.file_identifier, ctx)
-            .await?;
+        let output_path = task_run_record.output_path(file_identifier, ctx).await?;
         self.write(output_path, serde_json::to_string(&chunks)?.into())
             .await?;
 
@@ -63,30 +55,18 @@ pub trait DocumentChunkTrait: Into<ContentTaskType> + Clone + Storage {
 
     async fn chunk_content(
         &self,
-        file_info: &FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
     ) -> anyhow::Result<Vec<String>> {
         let task_type: ContentTaskType = self.clone().into();
-        let output_path = task_type.task_output_path(file_info, ctx).await?;
+        let output_path = task_type.task_output_path(file_identifier, ctx).await?;
         let content = self.read_to_string(output_path)?;
         Ok(serde_json::from_str(&content)?)
     }
 }
 
 #[async_trait]
-impl DocumentChunkTrait for RawTextChunkTask {
-    async fn text_content(
-        &self,
-        file_info: &FileInfo,
-        _ctx: &ContentBaseCtx,
-    ) -> anyhow::Result<String> {
-        let file = std::fs::File::open(&file_info.file_path)?;
-        let mut reader = std::io::BufReader::new(file);
-        let mut content = String::new();
-        reader.read_to_string(&mut content)?;
-        Ok(content)
-    }
-}
+impl DocumentChunkTrait for RawTextChunkTask {}
 
 #[async_trait]
 impl ContentTask for RawTextChunkTask {
@@ -100,7 +80,12 @@ impl ContentTask for RawTextChunkTask {
         ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
-        self.run_chunk(file_info, ctx, task_run_record).await
+        let file = std::fs::File::open(&file_info.file_full_path_on_disk)?;
+        let mut reader = std::io::BufReader::new(file);
+        let mut content = String::new();
+        reader.read_to_string(&mut content)?;
+        self.run_text_chunk(&file_info.file_identifier, content, ctx, task_run_record)
+            .await
     }
 
     fn task_parameters(&self, _ctx: &ContentBaseCtx) -> Value {

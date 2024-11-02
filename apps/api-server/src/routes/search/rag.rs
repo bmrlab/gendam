@@ -15,7 +15,7 @@ use content_base::{
         RawTextTaskType,
     },
     video::{transcript::VideoTranscriptTask, VideoTaskType},
-    ContentBase, ContentTaskType, FileInfo,
+    ContentBase, ContentTaskType,
 };
 use content_library::Library;
 use serde::{Deserialize, Serialize};
@@ -80,13 +80,7 @@ pub async fn rag(
                 ContentTaskType::Video(VideoTaskType::TransChunkSumEmbed(_)),
             ) => {
                 match VideoTranscriptTask
-                    .transcript_content(
-                        &FileInfo {
-                            file_identifier: ref_item.file_identifier.clone(),
-                            file_path: library.absolute_file_path(&ref_item.file_identifier),
-                        },
-                        content_base.ctx(),
-                    )
+                    .transcript_content(&ref_item.file_identifier, content_base.ctx())
                     .await
                 {
                     Ok(transcript) => {
@@ -113,13 +107,7 @@ pub async fn rag(
                 ContentTaskType::Audio(AudioTaskType::TransChunkSumEmbed(_)),
             ) => {
                 match AudioTranscriptTask
-                    .transcript_content(
-                        &FileInfo {
-                            file_identifier: ref_item.file_identifier.clone(),
-                            file_path: library.absolute_file_path(&ref_item.file_identifier),
-                        },
-                        content_base.ctx(),
-                    )
+                    .transcript_content(&ref_item.file_identifier, content_base.ctx())
                     .await
                 {
                     Ok(transcript) => {
@@ -146,13 +134,7 @@ pub async fn rag(
                 ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(_)),
             ) => {
                 match RawTextChunkTask
-                    .chunk_content(
-                        &FileInfo {
-                            file_identifier: ref_item.file_identifier.clone(),
-                            file_path: library.absolute_file_path(&ref_item.file_identifier),
-                        },
-                        content_base.ctx(),
-                    )
+                    .chunk_content(&ref_item.file_identifier, content_base.ctx())
                     .await
                 {
                     Ok(chunks) => {

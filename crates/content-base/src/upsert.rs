@@ -60,29 +60,29 @@ use tracing::{debug, warn};
 #[derive(Serialize, Deserialize)]
 pub struct UpsertPayload {
     file_identifier: String,
-    file_path: PathBuf,
-    file_extension: Option<String>,
+    file_full_path_on_disk: PathBuf,
+    // file_extension: Option<String>,
     metadata: ContentMetadata,
 }
 
 impl UpsertPayload {
     pub fn new(
         file_identifier: &str,
-        file_path: impl AsRef<Path>,
+        file_full_path_on_disk: impl AsRef<Path>,
         metadata: &ContentMetadata,
     ) -> Self {
         Self {
             file_identifier: file_identifier.to_string(),
-            file_path: file_path.as_ref().to_path_buf(),
-            file_extension: None,
+            file_full_path_on_disk: file_full_path_on_disk.as_ref().to_path_buf(),
+            // file_extension: None,
             metadata: metadata.clone(),
         }
     }
 
-    pub fn with_extension(mut self, file_extension: &str) -> Self {
-        self.file_extension = Some(file_extension.to_string());
-        self
-    }
+    // pub fn with_extension(mut self, file_extension: &str) -> Self {
+    //     self.file_extension = Some(file_extension.to_string());
+    //     self
+    // }
 }
 
 impl ContentBase {
@@ -104,9 +104,8 @@ impl ContentBase {
 
         let file_info = FileInfo {
             file_identifier: payload.file_identifier.clone(),
-            file_path: payload.file_path.clone(),
+            file_full_path_on_disk: payload.file_full_path_on_disk.clone(),
         };
-        let file_info_clone = file_info.clone();
 
         let tasks = Self::tasks(&payload.metadata);
 
@@ -126,6 +125,7 @@ impl ContentBase {
         // 对 task notification 做进一步处理
         let ctx = self.ctx.clone();
         let db = self.db.clone();
+        let file_identifier_clone = file_identifier.to_string();
         tokio::spawn(async move {
             while let Some(notification) = inner_rx.recv().await {
                 let task_type = notification.task_type.clone();
@@ -134,7 +134,8 @@ impl ContentBase {
                 let _ = notification_tx.send(notification).await;
                 // 对完成的任务进行后处理
                 if let TaskStatus::Finished = task_status {
-                    let _ = task_post_process(&ctx, &file_info_clone, &task_type, db.clone()).await;
+                    let _ = task_post_process(&ctx, &file_identifier_clone, &task_type, db.clone())
+                        .await;
                 }
             }
         });
@@ -154,7 +155,7 @@ async fn run_task(
     if let Err(e) = task_pool
         .add_task(
             &file_info.file_identifier,
-            &file_info.file_path,
+            &file_info.file_full_path_on_disk,
             &task_type,
             priority,
             notification_tx,
@@ -169,12 +170,12 @@ async fn run_task(
 }
 
 macro_rules! chunk_to_page {
-    ($file_info:expr, $ctx:expr, $task_type:expr, $chunks:expr) => {{
+    ($file_identifier:expr, $ctx:expr, $task_type:expr, $chunks:expr) => {{
         collect_async_results!($chunks
             .into_iter()
             .enumerate()
             .map(|(i, chunk)| async move {
-                let embedding = $task_type.embed_content($file_info, $ctx, i).await?;
+                let embedding = $task_type.embed_content($file_identifier, $ctx, i).await?;
                 anyhow::Result::<PageModel>::Ok(PageModel {
                     id: None,
                     text: vec![TextModel {
@@ -196,7 +197,7 @@ macro_rules! chunk_to_page {
 #[tracing::instrument(level = "info", skip(ctx, db))]
 async fn task_post_process(
     ctx: &ContentBaseCtx,
-    file_info: &FileInfo,
+    file_identifier: &str,
     task_type: &ContentTaskType,
     db: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
@@ -208,19 +209,26 @@ async fn task_post_process(
         ) => {
             // TransChunkSumEmbed, FrameDescEmbed 和 FrameEmbedding 结束后都触发 upsert_video_index_to_surrealdb
             // 如果有一个任务没完成，upsert_video_index_to_surrealdb 会报错
-            upsert_video_index_to_surrealdb(ctx, file_info, task_type, db).await.map_err(|e| {
+            upsert_video_index_to_surrealdb(ctx, file_identifier, task_type, db).await.map_err(|e| {
                 tracing::warn!("either TransChunkSumEmbed or FrameEmbedding or FrameDescEmbed task not finished yet: {:?}", e);
                 e
             })?;
             tracing::info!("video index upserted to surrealdb");
         }
         ContentTaskType::Audio(AudioTaskType::TransChunkSumEmbed(_)) => {
-            let chunks = AudioTransChunkTask.chunk_content(file_info, ctx).await?;
+            let chunks = AudioTransChunkTask
+                .chunk_content(file_identifier, ctx)
+                .await?;
             let future = chunks
                 .into_iter()
                 .map(|chunk| async move {
                     let embedding = AudioTransChunkSumEmbedTask
-                        .embed_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
+                        .embed_content(
+                            file_identifier,
+                            ctx,
+                            chunk.start_timestamp,
+                            chunk.end_timestamp,
+                        )
                         .await?;
                     Result::<AudioFrameModel, anyhow::Error>::Ok(AudioFrameModel {
                         id: None,
@@ -245,7 +253,7 @@ async fn task_post_process(
                         audio_frame: audio_frame?,
                     },
                     ContentIndexPayload {
-                        file_identifier: file_info.file_identifier.clone(),
+                        file_identifier: file_identifier.to_string(),
                         // 下面两个字段不会使用
                         task_type: AudioTransChunkSumEmbedTask.clone().into(),
                         metadata: ContentIndexMetadata::Audio(AudioIndexMetadata {
@@ -259,7 +267,7 @@ async fn task_post_process(
         ContentTaskType::Image(ImageTaskType::DescEmbed(_) | ImageTaskType::Embedding(_)) => {
             // DescEmbed 和 Embedding 结束后都触发 upsert_image_index_to_surrealdb
             // 如果有一个任务没完成，upsert_image_index_to_surrealdb 会报错
-            upsert_image_index_to_surrealdb(ctx, file_info, task_type, db).await.map_err(|e| {
+            upsert_image_index_to_surrealdb(ctx, file_identifier, task_type, db).await.map_err(|e| {
                 tracing::warn!("either image embedding or description embedding task not finished yet: {:?}", e);
                 e
             })?;
@@ -267,17 +275,17 @@ async fn task_post_process(
         }
         ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(task_type)) => {
             let pages: anyhow::Result<Vec<PageModel>> = chunk_to_page!(
-                file_info,
+                file_identifier,
                 ctx,
                 task_type,
-                RawTextChunkTask.chunk_content(file_info, ctx).await?
+                RawTextChunkTask.chunk_content(file_identifier, ctx).await?
             );
             debug!("pages: {pages:?}");
             db.try_read()?
                 .insert_document(
                     DocumentModel::new(pages?),
                     ContentIndexPayload {
-                        file_identifier: file_info.file_identifier.clone(),
+                        file_identifier: file_identifier.to_string(),
                         task_type: task_type.clone().into(),
                         metadata: RawTextIndexMetadata {
                             start_index: 0,
@@ -290,17 +298,17 @@ async fn task_post_process(
         }
         ContentTaskType::WebPage(WebPageTaskType::ChunkSumEmbed(task_type)) => {
             let pages: anyhow::Result<Vec<PageModel>> = chunk_to_page!(
-                file_info,
+                file_identifier,
                 ctx,
                 task_type,
-                WebPageChunkTask.chunk_content(file_info, ctx).await?
+                WebPageChunkTask.chunk_content(file_identifier, ctx).await?
             );
             debug!("pages: {pages:?}");
             db.try_read()?
                 .insert_web_page(
                     WebPageModel::new(pages?),
                     ContentIndexPayload {
-                        file_identifier: file_info.file_identifier.clone(),
+                        file_identifier: file_identifier.to_string(),
                         task_type: task_type.clone().into(),
                         metadata: WebPageIndexMetadata {
                             start_index: 0,
@@ -319,17 +327,24 @@ async fn task_post_process(
 #[tracing::instrument(skip_all)]
 async fn upsert_video_index_to_surrealdb(
     ctx: &ContentBaseCtx,
-    file_info: &FileInfo,
+    file_identifier: &str,
     _task_type: &ContentTaskType,
     db: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
-    let chunks = VideoTransChunkTask.chunk_content(file_info, ctx).await?;
+    let chunks = VideoTransChunkTask
+        .chunk_content(file_identifier, ctx)
+        .await?;
     tracing::debug!("video chunks: {chunks:?}");
     let future = chunks
         .into_iter()
         .map(|chunk| async move {
             let embedding = VideoTransChunkSumEmbedTask
-                .embed_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
+                .embed_content(
+                    file_identifier,
+                    ctx,
+                    chunk.start_timestamp,
+                    chunk.end_timestamp,
+                )
                 .await?;
             tracing::debug!("chunk: {chunk:?}, embedding: {:?}", embedding.len());
             Result::<AudioFrameModel, anyhow::Error>::Ok(AudioFrameModel {
@@ -348,7 +363,7 @@ async fn upsert_video_index_to_surrealdb(
         })
         .collect::<Vec<_>>();
     let audio_frame: Vec<AudioFrameModel> = try_join_all(future).await?;
-    let frames = VideoFrameTask.frame_content(file_info, ctx).await?;
+    let frames = VideoFrameTask.frame_content(file_identifier, ctx).await?;
     tracing::debug!("video frames: {frames:?}");
     let future = frames
         .chunks(VIDEO_FRAME_SUMMARY_BATCH_SIZE)
@@ -359,7 +374,7 @@ async fn upsert_video_index_to_surrealdb(
 
             let desc_embedding = VideoFrameDescEmbedTask
                 .frame_desc_embed_content(
-                    file_info,
+                    file_identifier,
                     ctx,
                     first_frame.timestamp,
                     last_frame.timestamp,
@@ -367,7 +382,7 @@ async fn upsert_video_index_to_surrealdb(
                 .await?;
             let description = VideoFrameDescriptionTask
                 .frame_description_content(
-                    file_info,
+                    file_identifier,
                     ctx,
                     first_frame.timestamp,
                     last_frame.timestamp,
@@ -375,7 +390,7 @@ async fn upsert_video_index_to_surrealdb(
                 .await?;
             // TODO: 优化?, 目前 embedding 只取第一个 chunk 的，description 取的是一个片段的
             let embedding = VideoFrameEmbeddingTask
-                .frame_embedding_content(file_info, ctx, first_frame.timestamp)
+                .frame_embedding_content(file_identifier, ctx, first_frame.timestamp)
                 .await?;
             Result::<ImageFrameModel, anyhow::Error>::Ok(ImageFrameModel {
                 id: None,
@@ -398,7 +413,7 @@ async fn upsert_video_index_to_surrealdb(
                 image_frame,
             },
             ContentIndexPayload {
-                file_identifier: file_info.file_identifier.clone(),
+                file_identifier: file_identifier.to_string(),
                 // 下面两个字段不会使用
                 task_type: VideoTransChunkSumEmbedTask.clone().into(),
                 metadata: ContentIndexMetadata::Video(VideoIndexMetadata {
@@ -414,18 +429,20 @@ async fn upsert_video_index_to_surrealdb(
 #[tracing::instrument(skip_all)]
 async fn upsert_image_index_to_surrealdb(
     ctx: &ContentBaseCtx,
-    file_info: &FileInfo,
+    file_identifier: &str,
     task_type: &ContentTaskType,
     db: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     // 不用 task_type.desc_embed_content，用 ImageDescEmbedTask 创建个空实例，统一写法
     let desc_embedding = ImageDescEmbedTask
-        .desc_embed_content(file_info, ctx)
+        .desc_embed_content(file_identifier, ctx)
         .await?;
     let description = ImageDescriptionTask
-        .description_content(file_info, ctx)
+        .description_content(file_identifier, ctx)
         .await?;
-    let embedding = ImageEmbeddingTask.embedding_content(file_info, ctx).await?;
+    let embedding = ImageEmbeddingTask
+        .embedding_content(file_identifier, ctx)
+        .await?;
     db.try_read()?
         .insert_image(
             ImageModel {
@@ -435,7 +452,7 @@ async fn upsert_image_index_to_surrealdb(
                 prompt_vector: desc_embedding,
             },
             Some(ContentIndexPayload {
-                file_identifier: file_info.file_identifier.clone(),
+                file_identifier: file_identifier.to_string(),
                 // TODO: 确认是否下面两个字段不会使用
                 task_type: task_type.to_owned(),
                 metadata: ContentIndexMetadata::Image(ImageIndexMetadata {}),

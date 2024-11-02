@@ -6,13 +6,14 @@ use content_base_derive::ContentTask;
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use std::{fmt, path::PathBuf};
-use storage::Storage;
 use storage_macro::Storage;
 
 #[derive(Clone, Debug)]
 pub struct FileInfo {
+    /// Unique identifier for the file, which is the hash of the asset_object in database
     pub file_identifier: String,
-    pub file_path: PathBuf,
+    /// Full path to the file on disk
+    pub file_full_path_on_disk: PathBuf,
 }
 
 #[derive(ContentTask, Clone, Debug, Storage)]
@@ -112,12 +113,15 @@ impl Hash for ContentTaskType {
 
 #[allow(unused_imports, dead_code)]
 mod test {
-    use crate::ContentTaskType;
-    use crate::video::VideoTaskType;
     use crate::video::frame::VideoFrameTask;
+    use crate::video::VideoTaskType;
+    use crate::ContentTaskType;
 
     #[test]
     fn test_display() {
-        println!("{}", ContentTaskType::Video(VideoTaskType::Frame(VideoFrameTask {})));
+        println!(
+            "{}",
+            ContentTaskType::Video(VideoTaskType::Frame(VideoFrameTask {}))
+        );
     }
 }

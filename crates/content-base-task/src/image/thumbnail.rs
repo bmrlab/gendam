@@ -25,7 +25,7 @@ impl ContentTask for ImageThumbnailTask {
         let output = self.task_output(task_run_record).await?;
         let output_path = output.to_path_buf(&file_info.file_identifier, ctx).await?;
 
-        let image = ImageReader::open(&file_info.file_path)?
+        let image = ImageReader::open(&file_info.file_full_path_on_disk)?
             .with_guessed_format()?
             .decode()?;
 

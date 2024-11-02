@@ -116,11 +116,12 @@ mod test {
 
         let file_info = FileInfo {
             file_identifier: file_identifier.into(),
-            file_path: PathBuf::from_str("/Users/zhuo/Desktop/测试视频/4月1日.mp4")
+            file_full_path_on_disk: PathBuf::from_str("/Users/zhuo/Desktop/测试视频/4月1日.mp4")
                 .expect("str should be valid path"),
         };
 
-        let video_decoder = VideoDecoder::new(&file_info.file_path).expect("video decoder built");
+        let video_decoder =
+            VideoDecoder::new(&file_info.file_full_path_on_disk).expect("video decoder built");
         let metadata = video_decoder.get_video_metadata().expect("got metadata");
         let metadata = ContentMetadata::Video(metadata);
 

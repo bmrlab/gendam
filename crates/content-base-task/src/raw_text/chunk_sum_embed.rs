@@ -25,10 +25,16 @@ pub trait DocumentChunkSumEmbedTrait: Into<ContentTaskType> + Clone + Storage {
         ctx: &ContentBaseCtx,
         task_run_record: &mut crate::record::TaskRunRecord,
     ) -> anyhow::Result<()> {
-        let chunks = self.chunk_task().chunk_content(file_info, ctx).await?;
+        let chunks = self
+            .chunk_task()
+            .chunk_content(&file_info.file_identifier, ctx)
+            .await?;
         let llm = ctx.llm()?.0;
         for idx in 0..chunks.len() {
-            let summarization = self.sum_task().sum_content(file_info, ctx, idx).await?;
+            let summarization = self
+                .sum_task()
+                .sum_content(&file_info.file_identifier, ctx, idx)
+                .await?;
 
             let user_prompt = format!(
                 "Please translate following content into English, and response with translation only, without anything else.\n{}",
@@ -71,13 +77,13 @@ pub trait DocumentChunkSumEmbedTrait: Into<ContentTaskType> + Clone + Storage {
 
     async fn embed_content(
         &self,
-        file_info: &crate::FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
         index: usize,
     ) -> anyhow::Result<Vec<f32>> {
         let task_type: ContentTaskType = self.clone().into();
         let output_path = task_type
-            .task_output_path(file_info, ctx)
+            .task_output_path(file_identifier, ctx)
             .await?
             .join(format!("{}.json", index));
         let content_str = self.read_to_string(output_path)?;

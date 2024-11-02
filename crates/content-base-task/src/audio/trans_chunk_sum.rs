@@ -28,9 +28,12 @@ pub trait AudioTransChunkSumTrait: Into<ContentTaskType> + Clone + Storage {
     ) -> anyhow::Result<()> {
         let transcript = self
             .transcript_task()
-            .transcript_content(file_info, ctx)
+            .transcript_content(&file_info.file_identifier, ctx)
             .await?;
-        let chunks = self.chunk_task().chunk_content(file_info, ctx).await?;
+        let chunks = self
+            .chunk_task()
+            .chunk_content(&file_info.file_identifier, ctx)
+            .await?;
 
         let llm = ctx.llm()?.0;
 
@@ -134,14 +137,14 @@ Additional Rules:
 
     async fn sum_content(
         &self,
-        file_info: &crate::FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
         start_timestamp: i64,
         end_timestamp: i64,
     ) -> anyhow::Result<String> {
         let task_type: ContentTaskType = self.clone().into();
         let output_path = task_type
-            .task_output_path(file_info, ctx)
+            .task_output_path(file_identifier, ctx)
             .await?
             .join(format!("{}-{}.json", start_timestamp, end_timestamp,));
         let content_str = self.read_to_string(output_path)?;

@@ -31,7 +31,8 @@ impl ContentTask for ImageEmbeddingTask {
             .await?;
 
         let (model, _) = ctx.multi_modal_embedding()?;
-        let model_input = ai::MultiModalEmbeddingInput::Image(file_info.file_path.clone());
+        let model_input =
+            ai::MultiModalEmbeddingInput::Image(file_info.file_full_path_on_disk.clone());
         let model_output = model.process_single(model_input).await?;
 
         self.write(
@@ -66,11 +67,11 @@ impl Into<ContentTaskType> for ImageEmbeddingTask {
 impl ImageEmbeddingTask {
     pub async fn embedding_content(
         &self,
-        file_info: &crate::FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
     ) -> anyhow::Result<Vec<f32>> {
         let task_type: ContentTaskType = self.clone().into();
-        let output_path = task_type.task_output_path(file_info, ctx).await?;
+        let output_path = task_type.task_output_path(file_identifier, ctx).await?;
         let content_str = self.read_to_string(output_path)?;
         Ok(serde_json::from_str(&content_str)?)
     }

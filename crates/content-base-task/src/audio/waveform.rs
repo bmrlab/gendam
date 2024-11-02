@@ -33,7 +33,7 @@ pub trait AudioWaveformTrait: Into<ContentTaskType> + Clone + Storage {
         ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
-        let audio_decoder = AudioDecoder::new(&file_info.file_path)?;
+        let audio_decoder = AudioDecoder::new(&file_info.file_full_path_on_disk)?;
         let waveform = audio_decoder.generate_audio_waveform(500)?;
 
         let output_path = task_run_record
@@ -53,11 +53,11 @@ pub trait AudioWaveformTrait: Into<ContentTaskType> + Clone + Storage {
 
     async fn audio_waveform_content(
         &self,
-        file_info: &FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
     ) -> anyhow::Result<Vec<f32>> {
         let task_type: ContentTaskType = self.clone().into();
-        let output_path = task_type.task_output_path(file_info, ctx).await?;
+        let output_path = task_type.task_output_path(file_identifier, ctx).await?;
         let content = self.read_to_string(output_path)?;
         Ok(serde_json::from_str(&content)?)
     }
@@ -70,7 +70,7 @@ impl AudioWaveformTrait for AudioWaveformTask {
         file_info: &FileInfo,
         _ctx: &ContentBaseCtx,
     ) -> anyhow::Result<PathBuf> {
-        Ok(file_info.file_path.clone())
+        Ok(file_info.file_full_path_on_disk.clone())
     }
 }
 

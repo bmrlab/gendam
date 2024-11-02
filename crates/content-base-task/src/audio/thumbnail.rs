@@ -12,12 +12,6 @@ pub struct AudioThumbnailTask;
 
 #[async_trait]
 pub trait AudioThumbnailTrait: Into<ContentTaskType> + Clone + Storage {
-    async fn audio_path(
-        &self,
-        file_info: &FileInfo,
-        ctx: &ContentBaseCtx,
-    ) -> anyhow::Result<PathBuf>;
-
     async fn audio_thumbnail_output(
         &self,
         _task_run_record: &TaskRunRecord,
@@ -33,7 +27,7 @@ pub trait AudioThumbnailTrait: Into<ContentTaskType> + Clone + Storage {
         ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
-        let audio_decoder = AudioDecoder::new(&file_info.file_path)?;
+        let audio_decoder = AudioDecoder::new(&file_info.file_full_path_on_disk)?;
         let output_path = task_run_record
             .output_path(&file_info.file_identifier, ctx)
             .await?;
@@ -54,15 +48,7 @@ pub trait AudioThumbnailTrait: Into<ContentTaskType> + Clone + Storage {
 }
 
 #[async_trait]
-impl AudioThumbnailTrait for AudioThumbnailTask {
-    async fn audio_path(
-        &self,
-        file_info: &FileInfo,
-        _ctx: &ContentBaseCtx,
-    ) -> anyhow::Result<PathBuf> {
-        Ok(file_info.file_path.clone())
-    }
-}
+impl AudioThumbnailTrait for AudioThumbnailTask {}
 
 #[async_trait]
 impl ContentTask for AudioThumbnailTask {

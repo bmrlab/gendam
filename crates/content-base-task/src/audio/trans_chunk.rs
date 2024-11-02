@@ -34,7 +34,7 @@ pub trait AudioTranscriptChunkTrait: Into<ContentTaskType> + Clone + Storage {
 
         let transcript_path = self
             .transcript_task()
-            .task_output_path(file_info, ctx)
+            .task_output_path(&file_info.file_identifier, ctx)
             .await?;
         let transcript_str = self.read_to_string(transcript_path)?;
         let transcript: AudioTranscriptOutput = serde_json::from_str(&transcript_str)?;
@@ -82,11 +82,11 @@ pub trait AudioTranscriptChunkTrait: Into<ContentTaskType> + Clone + Storage {
 
     async fn chunk_content(
         &self,
-        file_info: &FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
     ) -> anyhow::Result<Vec<Transcription>> {
         let task_type: ContentTaskType = self.clone().into();
-        let output_path = task_type.task_output_path(file_info, ctx).await?;
+        let output_path = task_type.task_output_path(file_identifier, ctx).await?;
         let content = self.read_to_string(output_path)?;
         Ok(serde_json::from_str(&content)?)
     }

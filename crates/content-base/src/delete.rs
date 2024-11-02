@@ -39,7 +39,7 @@ impl ContentBase {
 
         let file_info = FileInfo {
             file_identifier: payload.file_identifier.clone(),
-            file_path: PathBuf::new(), // this filed is not used in delete
+            file_full_path_on_disk: PathBuf::new(), // this filed is not used in delete
         };
 
         let tasks = Self::tasks(task_record.metadata());

@@ -5,7 +5,7 @@ use crate::routes::audio::{downloader::DownloadHelper, reader::AudioReader};
 use crate::CtxWithLibrary;
 use content_base::audio::transcript::AudioTranscriptTask;
 use content_base::video::transcript::VideoTranscriptTask;
-use content_base::{ContentBase, ContentMetadata, ContentTask, FileInfo};
+use content_base::{ContentBase, ContentMetadata, ContentTask};
 use content_library::Library;
 use prisma_lib::asset_object;
 use rspc::{Router, RouterBuilder};
@@ -128,12 +128,12 @@ fn get_all_audio_format(path: PathBuf) -> Vec<AudioResp> {
 async fn audio_transcript_path(
     library: &Library,
     content_base: &ContentBase,
-    hash: &str,
+    asset_object_hash: &str,
 ) -> anyhow::Result<PathBuf> {
     let asset_object_data = library
         .prisma_client()
         .asset_object()
-        .find_unique(asset_object::hash::equals(hash.to_string()))
+        .find_unique(asset_object::hash::equals(asset_object_hash.to_string()))
         .exec()
         .await?
         .ok_or(anyhow::anyhow!("Asset not found"))?;
@@ -143,28 +143,15 @@ async fn audio_transcript_path(
         .map(|v| serde_json::from_str::<ContentMetadata>(&v).unwrap_or_default())
         .unwrap_or_default();
 
-    let file_path = library.absolute_file_path(hash);
     match file_metadata {
         ContentMetadata::Video(_) => {
             VideoTranscriptTask
-                .task_output_path(
-                    &FileInfo {
-                        file_identifier: hash.to_string(),
-                        file_path: file_path.clone(),
-                    },
-                    content_base.ctx(),
-                )
+                .task_output_path(asset_object_hash, content_base.ctx())
                 .await
         }
         ContentMetadata::Audio(_) => {
             AudioTranscriptTask
-                .task_output_path(
-                    &FileInfo {
-                        file_identifier: hash.to_string(),
-                        file_path: file_path.clone(),
-                    },
-                    content_base.ctx(),
-                )
+                .task_output_path(asset_object_hash, content_base.ctx())
                 .await
         }
         _ => Err(anyhow::anyhow!("Unsupported content type")),

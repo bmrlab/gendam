@@ -22,7 +22,7 @@ impl ContentTask for WebPageTransformTask {
         ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
-        let markdown_string = convert_to_markdown(&file_info.file_path)?;
+        let markdown_string = convert_to_markdown(&file_info.file_full_path_on_disk)?;
 
         let output = self.task_output(task_run_record).await?;
         let output_path = output.to_path_buf(&file_info.file_identifier, ctx).await?;
@@ -53,10 +53,10 @@ impl Into<ContentTaskType> for WebPageTransformTask {
 impl WebPageTransformTask {
     pub async fn markdown_content(
         &self,
-        file_info: &FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
     ) -> anyhow::Result<String> {
-        let path = self.task_output_path(file_info, ctx).await?;
+        let path = self.task_output_path(file_identifier, ctx).await?;
 
         Ok(self.read_to_string(path)?)
     }

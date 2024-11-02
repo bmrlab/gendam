@@ -63,11 +63,11 @@ pub trait AudioTranscriptTrait: Into<ContentTaskType> + Clone + Storage {
 
     async fn transcript_content(
         &self,
-        file_info: &FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
     ) -> anyhow::Result<AudioTranscriptOutput> {
         let task_type: ContentTaskType = self.clone().into();
-        let output_path = task_type.task_output_path(file_info, ctx).await?;
+        let output_path = task_type.task_output_path(file_identifier, ctx).await?;
         let content = self.read_to_string(output_path)?;
         Ok(serde_json::from_str(&content)?)
     }
@@ -102,7 +102,7 @@ impl ContentTask for AudioTranscriptTask {
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
         let tmp_audio_path = self.audio_path(file_info, ctx).await?;
-        let audio_decoder = AudioDecoder::new(&file_info.file_path)?;
+        let audio_decoder = AudioDecoder::new(&file_info.file_full_path_on_disk)?;
         audio_decoder.save_whisper_format(&tmp_audio_path)?;
         self.run_audio_transcript(file_info, ctx, task_run_record)
             .await?;

@@ -38,16 +38,18 @@ impl Library {
     ///
     /// DO NOT USE THIS FUNCTION, USE `relative_artifacts_dir` INSTEAD. Generally, files should be accessed through the OpenDAL interface.
     pub fn _absolute_artifacts_dir(&self, file_hash: &str) -> PathBuf {
-        let artifacts_dir_with_shard = self
+        let artifacts_dir = self
             .artifacts_dir
-            .join(get_shard_hex(&file_hash))
+            .join(get_shard_hex(file_hash))
             .join(file_hash);
 
-        if !artifacts_dir_with_shard.exists() {
-            std::fs::create_dir_all(&artifacts_dir_with_shard).unwrap();
+        if !artifacts_dir.exists() {
+            if let Err(e) = std::fs::create_dir_all(&artifacts_dir) {
+                tracing::error!("Failed to create artifacts dir {:?}: {}", artifacts_dir, e);
+            }
         }
 
-        artifacts_dir_with_shard
+        artifacts_dir
     }
 
     /// Get the relative path of artifact directory under library root for a given file hash.
@@ -71,13 +73,11 @@ impl Library {
     ///
     /// DO NOT USE THIS FUNCTION, USE `relative_file_dir` INSTEAD
     fn _absolute_file_dir(&self, file_hash: &str) -> PathBuf {
-        let files_dir_with_shard = self.files_dir.join(get_shard_hex(file_hash));
-
-        if !files_dir_with_shard.exists() {
-            std::fs::create_dir_all(&files_dir_with_shard).unwrap();
+        let file_dir_with_shard = self.files_dir.join(get_shard_hex(file_hash));
+        if !file_dir_with_shard.exists() {
+            std::fs::create_dir_all(&file_dir_with_shard).unwrap();
         }
-
-        files_dir_with_shard.join(file_hash)
+        file_dir_with_shard.join(file_hash)
     }
 
     /// Get the relative path of file directory under library root for a given file hash.
@@ -100,15 +100,19 @@ impl Library {
     /// Returns a file path like `%LIBRARY_DIR%/files/%SHARD_ID%/%FILE_HASH%/%VERBOSE_FILE_NAME%`
     ///
     /// Generally, files should be accessed through the OpenDAL interface.
-    /// However, file processing needs to be done locally, so this interface is needed to read local files directly.
-    pub fn absolute_file_path(&self, file_hash: &str) -> PathBuf {
-        let files_dir_with_shard = self.files_dir.join(get_shard_hex(file_hash));
-
-        if !files_dir_with_shard.exists() {
-            std::fs::create_dir_all(&files_dir_with_shard).unwrap();
-        }
-
-        files_dir_with_shard.join(file_hash)
+    /// 注意！这个方法需要读取一次磁盘，所以不要频繁调用。目前主要是给文件处理服务用，没有问题。
+    /// 一般来说，不需要读取本地文件，前端只需要预览图，只有查看原文件的时候才需要，这个也不频繁。
+    pub fn file_full_path_on_disk(&self, file_hash: &str) -> PathBuf {
+        let file_dir = self
+            .files_dir
+            .join(get_shard_hex(file_hash))
+            .join(file_hash);
+        let verbose_file_name = std::fs::read_to_string(file_dir.join("file.json"))
+            .ok()
+            .and_then(|content| serde_json::from_str::<serde_json::Value>(&content).ok())
+            .and_then(|json| json["verbose_file_name"].as_str().map(|s| s.to_owned()))
+            .unwrap_or("file_not_found".to_owned());
+        file_dir.join(verbose_file_name)
     }
 }
 

@@ -39,7 +39,7 @@ impl ContentTask for VideoFrameTask {
     ) -> anyhow::Result<()> {
         let output = self.task_output(task_run_record).await?;
         let output_dir = output.to_path_buf(&file_info.file_identifier, ctx).await?;
-        let video_decoder = VideoDecoder::new(&file_info.file_path)?;
+        let video_decoder = VideoDecoder::new(&file_info.file_full_path_on_disk)?;
         let tmp_dir = ctx
             .tmp_dir()
             .join(format!("{}/frames", file_info.file_identifier));
@@ -75,12 +75,12 @@ impl Into<ContentTaskType> for VideoFrameTask {
 impl VideoFrameTask {
     pub async fn frame_content(
         &self,
-        file_info: &crate::FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
     ) -> anyhow::Result<Vec<FrameInfo>> {
         let task_type: ContentTaskType = self.clone().into();
         // output_path is in the format `artifacts/[shard]/[hash]/frames`
-        let output_path = task_type.task_output_path(file_info, ctx).await?;
+        let output_path = task_type.task_output_path(file_identifier, ctx).await?;
 
         let mut frames: Vec<FrameInfo> = Vec::new();
         let dir_entries = self.read_dir(output_path.clone()).await?;

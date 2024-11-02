@@ -25,12 +25,20 @@ pub trait AudioTransChunkSumEmbedTrait: Into<ContentTaskType> + Storage + Clone 
         ctx: &ContentBaseCtx,
         task_run_record: &mut crate::record::TaskRunRecord,
     ) -> anyhow::Result<()> {
-        let chunks = self.chunk_task().chunk_content(file_info, ctx).await?;
+        let chunks = self
+            .chunk_task()
+            .chunk_content(&file_info.file_identifier, ctx)
+            .await?;
         let llm = ctx.llm()?.0;
         for chunk in chunks.iter() {
             let summarization = self
                 .sum_task()
-                .sum_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
+                .sum_content(
+                    &file_info.file_identifier,
+                    ctx,
+                    chunk.start_timestamp,
+                    chunk.end_timestamp,
+                )
                 .await?;
 
             let user_prompt = format!(
@@ -77,14 +85,14 @@ pub trait AudioTransChunkSumEmbedTrait: Into<ContentTaskType> + Storage + Clone 
 
     async fn embed_content(
         &self,
-        file_info: &crate::FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
         start_timestamp: i64,
         end_timestamp: i64,
     ) -> anyhow::Result<Vec<f32>> {
         let task_type: ContentTaskType = self.clone().into();
         let output_path = task_type
-            .task_output_path(file_info, ctx)
+            .task_output_path(file_identifier, ctx)
             .await?
             .join(format!("{}-{}.json", start_timestamp, end_timestamp,));
         let content_str = self.read_to_string(output_path)?;

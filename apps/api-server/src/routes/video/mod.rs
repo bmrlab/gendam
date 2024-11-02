@@ -24,7 +24,7 @@ where
         t(|ctx: TCtx, input: VideoPlayerTsRequestPayload| async move {
             let library = ctx.library()?;
 
-            let video_path = library.absolute_file_path(&input.hash);
+            let video_path = library.file_full_path_on_disk(&input.hash);
             let video_decoder = VideoDecoder::new(video_path).map_err(|e| {
                 rspc::Error::new(
                     rspc::ErrorCode::InternalServerError,

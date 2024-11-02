@@ -19,7 +19,6 @@ use read::{get_file_path, list_file_path};
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use std::path::PathBuf;
 use tokio::{fs::OpenOptions, io::AsyncWriteExt};
 use tracing::info;
 use types::FilePathRequestPayload;
@@ -75,13 +74,8 @@ where
                         )
                         .await?;
                     if !asset_object_existed {
-                        process_asset_metadata(
-                            &library,
-                            &content_base,
-                            asset_object_data.id,
-                            Some(&input.local_full_path),
-                        )
-                        .await?;
+                        process_asset_metadata(&library, &content_base, asset_object_data.id)
+                            .await?;
                         info!("process metadata finished");
                         process_asset(&library, &ctx, asset_object_data.hash, None).await?;
                         info!("process asset finished");
@@ -117,7 +111,7 @@ where
                             &input.materialized_path,
                             &input.hash,
                             &library
-                                .absolute_file_path(&input.hash)
+                                .file_full_path_on_disk(&input.hash)
                                 .to_string_lossy()
                                 .to_string()
                                 .as_str(),
@@ -127,19 +121,8 @@ where
                     if asset_object_existed {
                         // TODO add artifacts merging logic
                     } else {
-                        process_asset_metadata(
-                            &library,
-                            &content_base,
-                            asset_object_data.id,
-                            Some(
-                                &library
-                                    .absolute_file_path(&input.hash)
-                                    .to_string_lossy()
-                                    .to_string()
-                                    .as_str(),
-                            ),
-                        )
-                        .await?;
+                        process_asset_metadata(&library, &content_base, asset_object_data.id)
+                            .await?;
                         info!("process asset metadata finished");
                         process_asset(&library, &ctx, asset_object_data.hash, Some(true)).await?;
                     }
@@ -344,13 +327,7 @@ where
                 let library = ctx.library()?;
                 let content_base = ctx.content_base()?;
                 let asset_object_id = input;
-                process_asset_metadata(
-                    &library,
-                    &content_base,
-                    asset_object_id,
-                    Option::<PathBuf>::None,
-                )
-                .await?;
+                process_asset_metadata(&library, &content_base, asset_object_id).await?;
                 Ok(())
             })
         })

@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use super::{audio::VideoAudioTask, VideoTaskType};
 use crate::{
     audio::transcript::AudioTranscriptTrait,
@@ -7,6 +6,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use content_base_context::ContentBaseCtx;
+use std::path::PathBuf;
 use storage_macro::Storage;
 
 #[derive(Clone, Storage, Debug, Default)]
@@ -14,8 +14,14 @@ pub struct VideoTranscriptTask;
 
 #[async_trait]
 impl AudioTranscriptTrait for VideoTranscriptTask {
-    async fn audio_path(&self, file_info: &FileInfo, ctx: &ContentBaseCtx) -> anyhow::Result<PathBuf> {
-        VideoAudioTask.task_output_path(file_info, ctx).await
+    async fn audio_path(
+        &self,
+        file_info: &FileInfo,
+        ctx: &ContentBaseCtx,
+    ) -> anyhow::Result<PathBuf> {
+        VideoAudioTask
+            .task_output_path(&file_info.file_identifier, ctx)
+            .await
     }
 }
 

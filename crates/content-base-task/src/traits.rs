@@ -77,17 +77,15 @@ pub trait ContentTask: Into<ContentTaskType> + Clone + Storage {
     /// Get task output path from the target `TaskRunRecord`.
     async fn task_output_path(
         &self,
-        file_info: &FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
     ) -> anyhow::Result<PathBuf> {
-        let task_record = TaskRecord::from_content_base(&file_info.file_identifier, ctx).await;
+        let task_record = TaskRecord::from_content_base(file_identifier, ctx).await;
         let task_run_record = task_record
             .target_run(ctx, &self.clone().into())
             .ok_or(anyhow::anyhow!("no target run found"))?;
         let task_output = self.task_output(&task_run_record).await?;
-        let output_path = task_output
-            .to_path_buf(&file_info.file_identifier, ctx)
-            .await?;
+        let output_path = task_output.to_path_buf(file_identifier, ctx).await?;
         Ok(output_path)
     }
 

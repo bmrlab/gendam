@@ -1,5 +1,5 @@
 use super::{frame::VideoFrameTask, VideoTaskType};
-use crate::{ContentTask, ContentTaskType, FileInfo, TaskRunOutput, TaskRunRecord};
+use crate::{ContentTask, ContentTaskType, TaskRunOutput, TaskRunRecord};
 use async_trait::async_trait;
 use content_base_context::ContentBaseCtx;
 use serde_json::{json, Value};
@@ -30,7 +30,9 @@ impl ContentTask for VideoFrameEmbeddingTask {
             .output_path(&file_info.file_identifier, ctx)
             .await?;
 
-        let frame_infos = VideoFrameTask.frame_content(file_info, ctx).await?;
+        let frame_infos = VideoFrameTask
+            .frame_content(&file_info.file_identifier, ctx)
+            .await?;
         for frame_info in frame_infos {
             let image_absolute_path = self
                 .get_absolute_path(frame_info.image_file.clone())
@@ -79,13 +81,13 @@ impl Into<ContentTaskType> for VideoFrameEmbeddingTask {
 impl VideoFrameEmbeddingTask {
     pub async fn frame_embedding_content(
         &self,
-        file_info: &FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
         timestamp: i64,
     ) -> anyhow::Result<Vec<f32>> {
         let task_type: ContentTaskType = self.clone().into();
         let output_path = task_type
-            .task_output_path(file_info, ctx)
+            .task_output_path(file_identifier, ctx)
             .await?
             .join(format!("{}.json", timestamp));
         let content_str = self.read_to_string(output_path)?;

@@ -7,7 +7,6 @@ use content_base::{
         chunk_sum::{DocumentChunkSumTrait, RawTextChunkSumTask},
     },
     video::{trans_chunk_sum::VideoTransChunkSumTask, transcript::VideoTranscriptTask},
-    FileInfo,
 };
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
@@ -46,17 +45,13 @@ where
             }
             t({
                 |ctx, input: TranscriptRequestPayload| async move {
-                    let library = ctx.library()?;
+                    let _library = ctx.library()?;
                     let content_base = ctx.content_base()?;
-                    let file_info = FileInfo {
-                        file_identifier: input.hash.clone(),
-                        file_path: library.absolute_file_path(&input.hash),
-                    };
 
                     let content = {
                         match input.request_type {
                             TranscriptType::Original => match VideoTranscriptTask
-                                .transcript_content(&file_info, content_base.ctx())
+                                .transcript_content(&input.hash, content_base.ctx())
                                 .await
                             {
                                 Ok(transcript) => {
@@ -78,7 +73,7 @@ where
                             TranscriptType::Summarization => {
                                 VideoTransChunkSumTask
                                     .sum_content(
-                                        &file_info,
+                                        &input.hash,
                                         content_base.ctx(),
                                         input.start_timestamp as i64,
                                         input.end_timestamp as i64,
@@ -101,15 +96,11 @@ where
         })
         .query("raw_text.chunk.content", |t| {
             t(|ctx, input: RawTextRequestPayload| async move {
-                let library = ctx.library()?;
+                let _library = ctx.library()?;
                 let content_base = ctx.content_base()?;
-                let file_info = FileInfo {
-                    file_identifier: input.hash.clone(),
-                    file_path: library.absolute_file_path(&input.hash),
-                };
 
                 match RawTextChunkTask
-                    .chunk_content(&file_info, content_base.ctx())
+                    .chunk_content(&input.hash, content_base.ctx())
                     .await
                 {
                     Ok(content) => {
@@ -131,15 +122,11 @@ where
         })
         .query("raw_text.chunk.summarization", |t| {
             t(|ctx, input: RawTextRequestPayload| async move {
-                let library = ctx.library()?;
+                let _library = ctx.library()?;
                 let content_base = ctx.content_base()?;
-                let file_info = FileInfo {
-                    file_identifier: input.hash.clone(),
-                    file_path: library.absolute_file_path(&input.hash),
-                };
 
                 Ok(RawTextChunkSumTask
-                    .sum_content(&file_info, content_base.ctx(), input.index as usize)
+                    .sum_content(&input.hash, content_base.ctx(), input.index as usize)
                     .await
                     .map_err(|e| {
                         rspc::Error::new(
@@ -156,15 +143,11 @@ where
                 hash: String,
             }
             t(|ctx, input: ImageRequestPayload| async move {
-                let library = ctx.library()?;
+                let _library = ctx.library()?;
                 let content_base = ctx.content_base()?;
-                let file_info = FileInfo {
-                    file_identifier: input.hash.clone(),
-                    file_path: library.absolute_file_path(&input.hash),
-                };
 
                 Ok(ImageDescriptionTask
-                    .description_content(&file_info, content_base.ctx())
+                    .description_content(&input.hash, content_base.ctx())
                     .await
                     .map_err(|e| {
                         rspc::Error::new(

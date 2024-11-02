@@ -33,7 +33,9 @@ impl ContentTask for VideoFrameDescriptionTask {
             .output_path(&file_info.file_identifier, ctx)
             .await?;
 
-        let frame_infos = VideoFrameTask.frame_content(file_info, ctx).await?;
+        let frame_infos = VideoFrameTask
+            .frame_content(&file_info.file_identifier, ctx)
+            .await?;
         for frame_infos_chunk in frame_infos.chunks(VIDEO_FRAME_SUMMARY_BATCH_SIZE) {
             let mut image_file_paths = vec![];
             for frame_info in frame_infos_chunk {
@@ -99,14 +101,14 @@ impl Into<ContentTaskType> for VideoFrameDescriptionTask {
 impl VideoFrameDescriptionTask {
     pub async fn frame_description_content(
         &self,
-        file_info: &crate::FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
         start_timestamp: i64,
         end_timestamp: i64,
     ) -> anyhow::Result<String> {
         let task_type: ContentTaskType = self.clone().into();
         let output_path = task_type
-            .task_output_path(file_info, ctx)
+            .task_output_path(file_identifier, ctx)
             .await?
             .join(format!("{}-{}.json", start_timestamp, end_timestamp));
         let file_content = self.read_to_string(output_path)?;

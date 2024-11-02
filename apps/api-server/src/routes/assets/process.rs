@@ -7,7 +7,6 @@ use content_base::{
 use content_handler::{file_metadata, video::VideoDecoder};
 use content_library::Library;
 use prisma_lib::{asset_object, file_handler_task};
-use std::path::Path;
 use tracing::Instrument;
 
 #[tracing::instrument(skip(library, ctx, _with_existing_artifacts))]
@@ -45,7 +44,7 @@ pub async fn process_asset(
     let cb = ctx.content_base()?;
     let payload = UpsertPayload::new(
         &asset_object_data.hash,
-        library.absolute_file_path(&asset_object_data.hash),
+        library.file_full_path_on_disk(&asset_object_data.hash),
         &content_metadata,
     );
     match cb.upsert(payload).await {
@@ -143,7 +142,7 @@ pub async fn generate_thumbnail(
 ) -> Result<(), rspc::Error> {
     let file_info = FileInfo {
         file_identifier: file_identifier.to_string(),
-        file_path: library.absolute_file_path(file_identifier),
+        file_full_path_on_disk: library.file_full_path_on_disk(file_identifier),
     };
     let thumbnail_handle = match file_metadata {
         ContentMetadata::Video(_) => VideoThumbnailTask.run(&file_info, content_base.ctx()),
@@ -163,12 +162,11 @@ pub async fn generate_thumbnail(
     Ok(())
 }
 
-#[tracing::instrument(skip(library, content_base, local_full_path))]
+#[tracing::instrument(skip(library, content_base))]
 pub async fn process_asset_metadata(
     library: &Library,
     content_base: &ContentBase,
     asset_object_id: i32,
-    local_full_path: Option<impl AsRef<Path>>,
 ) -> Result<(), rspc::Error> {
     let asset_object_data = match library
         .prisma_client()
@@ -189,15 +187,12 @@ pub async fn process_asset_metadata(
 
     tracing::info!(hash = &asset_object_data.hash, "processing asset metadata");
 
-    let local_full_path = local_full_path
-        .map(|v| v.as_ref().to_path_buf())
-        .unwrap_or(library.absolute_file_path(&asset_object_data.hash));
-
-    let file_extension = local_full_path
+    let file_full_path_on_disk = library.file_full_path_on_disk(&asset_object_data.hash);
+    let file_extension = file_full_path_on_disk
         .extension()
         .map(|v| v.to_string_lossy().to_string());
 
-    let (metadata, mime) = file_metadata(local_full_path, file_extension.as_deref());
+    let (metadata, mime) = file_metadata(file_full_path_on_disk, file_extension.as_deref());
 
     let metadata_json = match serde_json::to_string(&metadata) {
         Ok(metadata) => Some(metadata),
@@ -250,7 +245,7 @@ pub async fn export_video_segment(
                 format!("failed to find asset_object"),
             )
         })?;
-    let video_path = library.absolute_file_path(&asset_object_data.hash);
+    let video_path = library.file_full_path_on_disk(&asset_object_data.hash);
 
     let video_decoder = VideoDecoder::new(video_path).map_err(|e| {
         tracing::error!("Failed to create video decoder: {e}");

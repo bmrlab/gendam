@@ -19,7 +19,7 @@ impl Library {
         let mut buffer = Vec::new();
 
         for hash in hashes {
-            let file_path = self.absolute_file_path(hash);
+            let file_path = self.file_full_path_on_disk(hash);
             let file_name = file_path.strip_prefix(&self.dir)?;
             zip.start_file(file_name.to_string_lossy().to_string(), options)?;
             let mut file = std::fs::File::open(file_path)?;

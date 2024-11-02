@@ -32,7 +32,10 @@ pub trait DocumentChunkSumTrait: Into<ContentTaskType> + Clone + Storage {
         ctx: &ContentBaseCtx,
         task_run_record: &TaskRunRecord,
     ) -> anyhow::Result<()> {
-        let chunks = self.chunk_task().chunk_content(file_info, ctx).await?;
+        let chunks = self
+            .chunk_task()
+            .chunk_content(&file_info.file_identifier, ctx)
+            .await?;
         let llm = ctx.llm()?.0;
 
         for i in 0..chunks.len() {
@@ -114,13 +117,13 @@ Additional Rules:
 
     async fn sum_content(
         &self,
-        file_info: &crate::FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
         index: usize,
     ) -> anyhow::Result<String> {
         let task_type: ContentTaskType = self.clone().into();
         let output_path = task_type
-            .task_output_path(file_info, ctx)
+            .task_output_path(file_identifier, ctx)
             .await?
             .join(format!("{}.json", index));
 

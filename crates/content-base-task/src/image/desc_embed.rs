@@ -28,7 +28,7 @@ impl ContentTask for ImageDescEmbedTask {
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
         let description = ImageDescriptionTask
-            .description_content(file_info, ctx)
+            .description_content(&file_info.file_identifier, ctx)
             .await?;
 
         let output_path = task_run_record
@@ -63,11 +63,11 @@ impl Into<ContentTaskType> for ImageDescEmbedTask {
 impl ImageDescEmbedTask {
     pub async fn desc_embed_content(
         &self,
-        file_info: &FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
     ) -> anyhow::Result<Vec<f32>> {
         let task_type: ContentTaskType = self.clone().into();
-        let output_path = task_type.task_output_path(file_info, ctx).await?;
+        let output_path = task_type.task_output_path(file_identifier, ctx).await?;
 
         let content_str = self.read_to_string(output_path)?;
 

@@ -13,15 +13,7 @@ use super::{transform::WebPageTransformTask, WebPageTaskType};
 pub struct WebPageChunkTask;
 
 #[async_trait]
-impl DocumentChunkTrait for WebPageChunkTask {
-    async fn text_content(
-        &self,
-        file_info: &FileInfo,
-        ctx: &ContentBaseCtx,
-    ) -> anyhow::Result<String> {
-        WebPageTransformTask.markdown_content(file_info, ctx).await
-    }
-}
+impl DocumentChunkTrait for WebPageChunkTask {}
 
 #[async_trait]
 impl ContentTask for WebPageChunkTask {
@@ -35,7 +27,11 @@ impl ContentTask for WebPageChunkTask {
         ctx: &ContentBaseCtx,
         task_run_record: &mut TaskRunRecord,
     ) -> anyhow::Result<()> {
-        self.run_chunk(file_info, ctx, task_run_record).await
+        let content = WebPageTransformTask
+            .markdown_content(&file_info.file_identifier, ctx)
+            .await?;
+        self.run_text_chunk(&file_info.file_identifier, content, ctx, task_run_record)
+            .await
     }
 
     fn task_parameters(&self, _ctx: &ContentBaseCtx) -> Value {

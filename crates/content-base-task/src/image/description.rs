@@ -32,7 +32,7 @@ impl ContentTask for ImageDescriptionTask {
 
         let (model, _) = ctx.image_caption()?;
         let model_input = ai::ImageCaptionInput {
-            image_file_paths: vec![file_info.file_path.clone()],
+            image_file_paths: vec![file_info.file_full_path_on_disk.clone()],
             prompt: Some(
                 r#"You are an advanced image description expert. Examine this image and describe the visual content. Pay attention to: people's actions and expressions, scene changes, movement, and any key events or transitions. Begin your response with 'The image ...'. Limit your response to no more than 50 words."#.to_string()
             ),
@@ -69,11 +69,11 @@ impl Into<ContentTaskType> for ImageDescriptionTask {
 impl ImageDescriptionTask {
     pub async fn description_content(
         &self,
-        file_info: &crate::FileInfo,
+        file_identifier: &str,
         ctx: &ContentBaseCtx,
     ) -> anyhow::Result<String> {
         let task_type: ContentTaskType = self.clone().into();
-        let output_path = task_type.task_output_path(file_info, ctx).await?;
+        let output_path = task_type.task_output_path(file_identifier, ctx).await?;
         let file_content = self.read_to_string(output_path)?;
         let json_content: Value = serde_json::from_str(&file_content)?;
 

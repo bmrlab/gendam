@@ -39,7 +39,7 @@ impl TaskId {
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 pub(crate) struct Task {
     pub file_identifier: String,
-    pub file_path: PathBuf,
+    pub file_full_path_on_disk: PathBuf,
     pub task_type: ContentTaskType,
 }
 
@@ -51,6 +51,7 @@ impl Task {
 
 pub struct NewTaskPayload {
     pub file_identifier: String,
+    /// Full path to the file on disk
     pub file_path: PathBuf,
     pub task_type: ContentTaskType,
     pub priority: TaskPriority,
