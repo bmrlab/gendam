@@ -14,7 +14,7 @@ impl ContentTask for VideoFrameEmbeddingTask {
     async fn task_output(&self, task_run_record: &TaskRunRecord) -> anyhow::Result<TaskRunOutput> {
         let task_type: ContentTaskType = self.clone().into();
         Ok(TaskRunOutput::Folder(PathBuf::from(format!(
-            "{}-{}.json",
+            "{}-{}",
             task_type.to_string(),
             task_run_record.id()
         ))))
