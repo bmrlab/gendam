@@ -6,7 +6,9 @@ edition = { workspace = true }
 [dependencies]
 prisma-lib = { path = "../../crates/prisma" }
 content-library = { path = "../../crates/content-library" }
-content-base = { path = "../../crates/content-base", features = ["embedded-db"] }
+content-base = { path = "../../crates/content-base", features = [
+    "embedded-db",
+] }
 content-handler = { path = "../../crates/content-handler" }
 analytics-tracing = { path = "../../crates/analytics-tracing" }
 ai = { path = "../../crates/ai" }
@@ -28,10 +30,10 @@ dotenvy = { workspace = true }
 tracing = { workspace = true }
 axum = { version = "0.7.4", features = ["ws"] }
 tower-http = { version = "0.5.2", default-features = false, features = [
-  "cors",
-  "fs",
+    "cors",
+    "fs",
 ] }
-rand = "0.8.5"
+rand = { workspace = true }
 chrono = { workspace = true }
 dirs = "5.0.1"
 blake3 = "1.5.0"
@@ -44,13 +46,13 @@ priority-queue = "2.0.0"
 async-trait = { workspace = true }
 downloader = { workspace = true }
 reqwest = { workspace = true }
+regex = { workspace = true }
 
 # 处理 enum
 strum = "0.26"
 strum_macros = "0.26"
 
 thread-priority = "0.16.0"
-regex = "1.10.4"
 mime_guess = "2.0.4"
 futures.workspace = true
 libp2p = "0.53.2"

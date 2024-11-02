@@ -195,87 +195,66 @@ export default function ClientLayout({
     [librarySettings],
   )
 
+  const _constructStorageUri = useCallback((path: string) => {
+    if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
+      return convertFileSrc(path, 'storage')
+    } else {
+      return `http://localhost:3001/_storage/localhost${path}`
+    }
+  }, [])
+
   const getFileSrc = useCallback(
     (assetObjectHash: string) => {
       if (!library) {
         return '/images/empty.png'
       }
-      // const fileFullPath = library.dir + '/files/' + assetObjectHash
-      const fileFullPath = `${library.dir}/files/${getFileShardHex(assetObjectHash)}/${assetObjectHash}`
-      if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-        return convertFileSrc(fileFullPath, 'storage')
-        // return convertFileSrc(fileFullPath)
-      } else {
-        return `http://localhost:3001/file/localhost/${fileFullPath}`
-      }
+      const path = `/asset_object/${assetObjectHash}/file`
+      return _constructStorageUri(path)
     },
-    [library],
+    [library, _constructStorageUri],
   )
-
-  const _getFullSrc = useCallback((src: string) => {
-    if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
-      return convertFileSrc(src, 'storage')
-    } else {
-      return `http://localhost:3001/file/localhost/${src}`
-    }
-  }, [])
 
   const getThumbnailSrc = useCallback(
     (assetObjectHash: string, assetObjectType: AssetObjectType) => {
       if (!library) {
         return '/images/empty.png'
       }
-
+      const prefix = `/asset_object/${assetObjectHash}/artifacts`
       const fileFullPath = match(assetObjectType)
-        .with(
-          'audio',
-          () => `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`,
-        )
-        .with(
-          'video',
-          () => `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`,
-        )
-        .with(
-          'image',
-          () => `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.webp`,
-        )
-        .with(
-          'webPage',
-          () => `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.png`,
-        )
-        .otherwise(
-          () => `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`,
-        )
-
-      return _getFullSrc(fileFullPath)
+        .with('audio', () => `${prefix}/thumbnail.jpg`)
+        .with('video', () => `${prefix}/thumbnail.jpg`)
+        .with('image', () => `${prefix}/thumbnail.webp`)
+        .with('webPage', () => `${prefix}/thumbnail.png`)
+        .otherwise(() => `${prefix}/thumbnail.jpg`)
+      return _constructStorageUri(fileFullPath)
     },
-    [library, _getFullSrc],
+    [library, _constructStorageUri],
   )
 
   const getPreviewSrc: AssetPreviewMetadata = useCallback(
     (assetObjectHash, type, args1?: number) => {
-      if (!library) return '/images/empty.png'
-
+      if (!library) {
+        return '/images/empty.png'
+      }
+      const prefix = `/asset_object/${assetObjectHash}/artifacts`
       return match(type)
-        .with('audio', () =>
-          _getFullSrc(`${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/waveform.json`),
-        )
+        .with('audio', () => _constructStorageUri(`${prefix}/waveform.json`))
         .with('video', () => {
           const fileFullPath = (() => {
             if (typeof args1 === 'undefined' || args1 < 1) {
-              return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/thumbnail.jpg`
+              return `${prefix}/thumbnail.jpg`
             }
             // see crates/content-base-task/src/video/frame.rs
             const frame_interval_seconds = 1
             args1 = Math.round(args1 / frame_interval_seconds) * frame_interval_seconds
-            return `${library.dir}/artifacts/${getFileShardHex(assetObjectHash)}/${assetObjectHash}/frames/${args1}000.jpg`
+            return `${prefix}/frames/${args1}000.jpg`
           })()
 
-          return _getFullSrc(fileFullPath)
+          return _constructStorageUri(fileFullPath)
         })
         .exhaustive()
     },
-    [library, _getFullSrc],
+    [library, _constructStorageUri],
   )
 
   return (

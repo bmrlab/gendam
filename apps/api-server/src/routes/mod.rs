@@ -1,6 +1,7 @@
 mod assets;
 mod audio;
 mod libraries;
+pub mod localhost;
 pub(crate) mod p2p;
 mod search;
 mod storage;
@@ -8,10 +9,10 @@ mod tasks;
 mod users;
 mod video;
 
-pub use storage::location::*;
-
 use crate::CtxWithLibrary;
+pub use localhost::get_localhost_routes;
 use rspc::Router;
+pub use storage::location::*;
 
 pub fn get_routes<TCtx>() -> Router<TCtx>
 where
@@ -42,9 +43,9 @@ where
     #[cfg(debug_assertions)] // Only export in development builds
     {
         use std::path::PathBuf;
-        if let Err(e) = router.export_ts(
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("client/types.ts"),
-        ) {
+        if let Err(e) =
+            router.export_ts(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("client/types.ts"))
+        {
             tracing::error!("Failed to export typescript bindings: {}", e);
         }
     }

@@ -3839,6 +3839,7 @@ dependencies = [
  "prisma-client-rust-cli",
  "prisma-lib",
  "rand 0.8.5",
+ "regex",
  "rspc",
  "rspc-tauri",
  "serde",

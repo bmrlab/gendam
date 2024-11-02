@@ -65,6 +65,7 @@ pub async fn get_asset_object_location(
     return Ok(DataLocationType::Fs);
 }
 
+/// TODO: 这样的实现不大靠谱，应该调整逻辑，使用更好的方式来访问资源
 pub fn get_hash_from_url(path: &str) -> Option<String> {
     let parts: Vec<&str> = path.split('/').collect();
     if let Some(artifacts_index) = parts.iter().position(|&r| r == "artifacts" || r == "files") {

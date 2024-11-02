@@ -3,9 +3,10 @@ mod content_metadata;
 mod cron_jobs;
 mod download;
 mod library;
+mod routes;
 mod validators;
 
-mod routes;
+pub use routes::get_localhost_routes;
 pub use routes::get_routes;
 pub use routes::p2p::ShareInfo;
 

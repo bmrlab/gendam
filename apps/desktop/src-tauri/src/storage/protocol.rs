@@ -1,68 +1,128 @@
-use global_variable::{get_current_s3_storage, get_or_insert_fs_storage};
+use global_variable::{current_library_dir, get_current_fs_storage, get_current_s3_storage};
 use rand::RngCore;
 use std::future::Future;
 use std::path::PathBuf;
 use std::sync::Arc;
 use storage::prelude::*;
+use tauri::http::HttpRange;
+use tauri::http::{header::*, status::StatusCode, MimeType, Request, Response, ResponseBuilder};
 use tokio::io::AsyncWriteExt;
 use url::Position;
 use url::Url;
 
 use crate::storage::state::StorageState;
-use api_server::{get_hash_from_url, DataLocationType};
-use tauri::http::HttpRange;
-use tauri::http::{header::*, status::StatusCode, MimeType, Request, Response, ResponseBuilder};
+use api_server::DataLocationType;
 
+fn get_shard_hex(hash: &str) -> &str {
+    &hash[0..3]
+}
+
+enum ResourceKind {
+    // file with hash
+    File(String),
+    // artifacts with hash and rest path
+    Artifacts(String, String),
+}
+
+/// 支持以下两种资源的访问
+/// - /asset_object/[hash]/artifacts/[rest_parts...]
+/// - /asset_object/[hash]/file
+/// 注意：这两个 uri 都不是本地的路径，只是协议的 url schema，实际的文件路径是在这个 handler 里面计算得到的
 pub fn storage_protocol_handler(
     state: Arc<tokio::sync::Mutex<StorageState>>,
     request: &Request,
 ) -> Result<Response, Box<dyn std::error::Error>> {
-    let parsed_path = Url::parse(request.uri())?;
-    let filtered_path = &parsed_path[..Position::AfterPath];
-    let path = filtered_path
-        .strip_prefix("storage://localhost/")
-        // the `strip_prefix` only returns None when a request is made to `https://tauri.$P` on Windows
-        // where `$P` is not `localhost/*`
-        .unwrap_or("");
-    let path = percent_encoding::percent_decode(path.as_bytes())
-        .decode_utf8_lossy()
-        .to_string();
+    let request_path = {
+        let parsed_path = Url::parse(request.uri())?;
+        let filtered_path = &parsed_path[..Position::AfterPath];
+        let path = filtered_path
+            .strip_prefix("storage://localhost/")
+            // the `strip_prefix` only returns None when a request is made to `https://tauri.$P` on Windows
+            // where `$P` is not `localhost/*`
+            .unwrap_or("");
+        let path = percent_encoding::percent_decode(path.as_bytes()).decode_utf8_lossy();
+        path.to_string()
+    };
 
     let mut resp = ResponseBuilder::new();
 
-    // split path
-    // get `root path` and `relative path`
-    let part_split: Vec<&str> = path.split('/').collect();
-    let index_res = part_split
-        .iter()
-        .position(|&x| x == "artifacts" || x == "files");
-    if index_res.is_none() {
-        return resp.status(StatusCode::NOT_FOUND).body(vec![]);
-    }
-    let index = index_res.unwrap();
-    // extract the part starting from "artifacts or files"
-    let root_path = part_split[..index].join("/");
-    let relative_path = part_split[index..].join("/");
+    let request_resource_kind = {
+        // path should be like /asset_object/[hash]/artifacts/[artifacts_path] or /asset_object/[hash]/file
+        let path_regex = match regex::Regex::new(r"^/asset_object/([^/]+)/(artifacts/.*|file)$") {
+            Ok(path_regex) => path_regex,
+            Err(e) => {
+                tracing::error!("Failed to compile regex: {}", e);
+                return resp.status(StatusCode::INTERNAL_SERVER_ERROR).body(vec![]);
+            }
+        };
+        if let Some(captures) = path_regex.captures(request_path.as_str()) {
+            let asset_object_hash = match captures.get(1) {
+                Some(hash) => hash.as_str().to_string(),
+                None => return resp.status(StatusCode::NOT_FOUND).body(vec![]),
+            };
+            let srorage_type = match captures.get(2) {
+                Some(x) => {
+                    if x.as_str() == "file" {
+                        ResourceKind::File(asset_object_hash)
+                    } else {
+                        match x.as_str().strip_prefix("artifacts/") {
+                            Some(rest_parts) => {
+                                ResourceKind::Artifacts(asset_object_hash, rest_parts.to_string())
+                            }
+                            None => return resp.status(StatusCode::NOT_FOUND).body(vec![]),
+                        }
+                    }
+                }
+                None => return resp.status(StatusCode::NOT_FOUND).body(vec![]),
+            };
+            srorage_type
+        } else {
+            return resp.status(StatusCode::NOT_FOUND).body(vec![]);
+        }
+    };
+
+    let library_root_dir = PathBuf::from(current_library_dir!());
+    // relative_dir 是 file 或者 artifacts 目录，不是最终文件的路径
+    let relative_dir = match &request_resource_kind {
+        ResourceKind::File(hash) => {
+            let shard_hex = get_shard_hex(hash);
+            PathBuf::from(format!("files/{}/{}", shard_hex, hash))
+        }
+        ResourceKind::Artifacts(hash, _rest_parts) => {
+            let shard_hex = get_shard_hex(hash);
+            PathBuf::from(format!("artifacts/{}/{}", shard_hex, hash))
+        }
+    };
 
     // check if the file exists in the local
     //  - if exists, use fs_storage
     //  - if not, check if the file exists in the s3 storage
-    let local_exist =
-        std::path::Path::new(format!("{}/{}", root_path, relative_path).as_str()).exists();
     let mut location = DataLocationType::Fs;
-    if !local_exist {
-        let hash = get_hash_from_url(&path);
-        if hash.is_some() {
-            let state_clone = state.clone();
-            location = safe_block_on(async move {
-                let mut state = state_clone.lock().await;
-                state.get_location(hash.unwrap().as_str()).await.unwrap()
-            });
+    if !library_root_dir.join(&relative_dir).exists() {
+        let hash = match &request_resource_kind {
+            ResourceKind::File(hash) => hash,
+            ResourceKind::Artifacts(hash, _) => hash,
+        };
+        let state_clone = state.clone();
+        let hash_clone = hash.clone();
+        location = match safe_block_on(async move {
+            let mut state = state_clone.lock().await;
+            state.get_location(hash_clone.as_str()).await
+        }) {
+            Ok(location) => location,
+            Err(e) => {
+                tracing::error!("`state.get_location` got error: {:?}", e);
+                return resp.status(StatusCode::INTERNAL_SERVER_ERROR).body(vec![]);
+            }
         }
     }
 
     let storage: Box<dyn Storage> = match location {
-        DataLocationType::Fs => Box::new(get_or_insert_fs_storage!(root_path)?),
+        DataLocationType::Fs => {
+            let storage = get_current_fs_storage!()?;
+            // let storage = get_or_insert_fs_storage!(library_root_dir.to_string_lossy().to_string())?; // 和 get_current_fs_storage 等价
+            Box::new(storage)
+        }
         DataLocationType::S3 => {
             match safe_block_on(async move {
                 let mut state = state.lock().await;
@@ -71,33 +131,53 @@ pub fn storage_protocol_handler(
                 Ok(settings) => Box::new(get_current_s3_storage!(settings)?),
                 Err(e) => {
                     tracing::error!("Failed to get library settings: {:?}", e);
-                    return resp.status(StatusCode::BAD_REQUEST).body(vec![]);
+                    return resp.status(StatusCode::INTERNAL_SERVER_ERROR).body(vec![]);
                 }
             }
         }
     };
 
-    let relative_path_clone = relative_path.clone();
-    let storage_clone = storage.clone_box();
-    let (len, mime_type, read_bytes) = safe_block_on(async move {
-        let len = storage_clone
-            .len(PathBuf::from(relative_path_clone.clone()))
-            .await?;
-        let range_vec = storage_clone
-            .read_with_range(PathBuf::from(relative_path_clone), 0..8192)
-            .await?
-            .to_vec();
+    let relative_file_path = match &request_resource_kind {
+        ResourceKind::File(_) => {
+            let verbose_file_name = match storage
+                .read_to_string(relative_dir.join("file.json"))
+                .ok()
+                .and_then(|content| serde_json::from_str::<serde_json::Value>(&content).ok())
+                .and_then(|json| json["verbose_file_name"].as_str().map(|s| s.to_owned()))
+            {
+                Some(x) => x,
+                None => {
+                    tracing::error!("Failed to get verbose_file_name");
+                    return resp.status(StatusCode::INTERNAL_SERVER_ERROR).body(vec![]);
+                }
+            };
+            relative_dir.join(verbose_file_name)
+        }
+        ResourceKind::Artifacts(_, rest_parts) => relative_dir.join(rest_parts),
+    };
 
-        let (mime_type, read_bytes) = {
-            (
-                MimeType::parse(&range_vec, &path),
-                // return the `magic_bytes` if we read the whole file
-                // to avoid reading it again later if this is not a range request
-                if len < 8192 { Some(range_vec) } else { None },
-            )
-        };
+    let (len, mime_type, read_bytes) = safe_block_on({
+        let storage = storage.clone_box();
+        let request_path = request_path.clone();
+        let relative_file_path = relative_file_path.clone();
+        async move {
+            let len = storage.len(relative_file_path.clone()).await?;
+            let range_vec = storage
+                .read_with_range(relative_file_path, 0..8192)
+                .await?
+                .to_vec();
 
-        Ok::<(u64, String, Option<Vec<u8>>), anyhow::Error>((len, mime_type, read_bytes))
+            let (mime_type, read_bytes) = {
+                (
+                    MimeType::parse(&range_vec, &request_path),
+                    // return the `magic_bytes` if we read the whole file
+                    // to avoid reading it again later if this is not a range request
+                    if len < 8192 { Some(range_vec) } else { None },
+                )
+            };
+
+            Ok::<(u64, String, Option<Vec<u8>>), anyhow::Error>((len, mime_type, read_bytes))
+        }
     })?;
 
     resp = resp
@@ -153,7 +233,7 @@ pub fn storage_protocol_handler(
 
             let buf = safe_block_on(async move {
                 let buf = storage
-                    .read_with_range(PathBuf::from(relative_path.clone()), start..nbytes)
+                    .read_with_range(relative_file_path, start..nbytes)
                     .await?
                     .to_vec();
                 Ok::<Vec<u8>, anyhow::Error>(buf)
@@ -213,7 +293,7 @@ pub fn storage_protocol_handler(
                     let nbytes = end + 1 - start;
 
                     let local_buf = storage
-                        .read_with_range(PathBuf::from(relative_path.clone()), start..nbytes)
+                        .read_with_range(relative_file_path.clone(), start..nbytes)
                         .await?
                         .to_vec();
 
@@ -233,7 +313,7 @@ pub fn storage_protocol_handler(
             b
         } else {
             safe_block_on(async move {
-                let local_buf = storage.read(PathBuf::from(relative_path)).await?.to_vec();
+                let local_buf = storage.read(relative_file_path).await?.to_vec();
                 Ok::<Vec<u8>, anyhow::Error>(local_buf)
             })?
         };
