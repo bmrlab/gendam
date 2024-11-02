@@ -152,12 +152,12 @@ impl QLLaVAPhi3 {
         &self,
         device: &Device,
         input_ids: &Tensor,
-        images: &[Tensor],
+        images_tensors: &[Tensor],
         _image_sizes: &[(u32, u32)],
     ) -> candle_core::Result<Tensor> {
-        let concat_images = Tensor::cat(images, 0)?;
+        let concat_images = Tensor::cat(images_tensors, 0)?;
         let image_features_together = self.encode_images(&concat_images)?;
-        let split_sizes = images
+        let split_sizes = images_tensors
             .iter()
             .map(|x| x.shape().dims()[0])
             .collect::<Vec<usize>>();
@@ -317,9 +317,14 @@ where
     res
 }
 
-pub fn format_prompt(prompt: &str) -> String {
+pub fn format_prompt(prompt: &str, images_count: usize) -> String {
+    let images_tags = (0..images_count)
+        .map(|_| "<image>\n")
+        .collect::<Vec<&str>>()
+        .join("");
     format!(
-        "<s><|system|>\n<|end|>\n<|user|>\n<image>\n{text_msg}<|end|>\n<|assistant|>\n",
+        "<s><|system|>\n<|end|>\n<|user|>\n{image_tags}{text_msg}<|end|>\n<|assistant|>\n",
+        image_tags = images_tags.as_str(),
         text_msg = prompt,
     )
 }

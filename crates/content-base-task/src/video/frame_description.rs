@@ -49,11 +49,12 @@ impl ContentTask for VideoFrameDescriptionTask {
                 image_file_paths.push(image_absolute_path);
             }
             let (model, _) = ctx.image_caption()?;
+            let num_images = image_file_paths.len();
             let model_input = ai::ImageCaptionInput {
                 image_file_paths,
-                prompt: Some(
-                    r#"You are an advanced video analysis AI. Examine this sequence of video frames and describe its contents in a concise, text-only format. Focus on identifying: People (including celebrities), actions and movements, objects, animals or pets, nature elements, visual cues of sounds, human speech (if text bubbles present), displayed text (OCR), brand logos, and any notable changes between frames. Analyze the overall flow of motion and action across the frames. Provide specific examples for each category found in the sequence. Only mention categories that are present; omit any that are not detected. Use plain text format without lists or JSON. Be accurate and concise in your descriptions. Limit your response to no more than 50 words."#.to_string()
-                ),
+                prompt: Some(format!(
+                    r#"You are an advanced video description AI. Watch this image sequence of video clip consisting of {num_images} frames, narrate what you see and describe any notable changes between frames. Begin your response with 'The video clip...'. Limit your response to no more than 50 words."#
+                )),
             };
             let model_output = model.process_single(model_input).await?;
 

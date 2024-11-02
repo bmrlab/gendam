@@ -12,7 +12,8 @@ use std::path::PathBuf;
 use storage_macro::Storage;
 
 /// TODO: 优化，应该是对 frames 进行关键帧拆分以后形成不同的 chunk 而不是固定数量
-pub const VIDEO_FRAME_SUMMARY_BATCH_SIZE: usize = 5;
+/// 这里设置的时候要注意，最好是 n^2，因为 llava phi 3 模型会把图片拼成 n * n grids 作为一个图片输入
+pub const VIDEO_FRAME_SUMMARY_BATCH_SIZE: usize = 9;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FrameInfo {

@@ -9,7 +9,7 @@ use quantized_llava_phi3::{format_prompt, HFPreProcessorConfig, ImageProcessor, 
 use std::path::Path;
 
 /// The length of the sample to generate (in tokens).
-const SAMPLE_LEN: usize = 100; // A limit instruction exists in the prompt
+const SAMPLE_LEN: usize = 1000;
 const REPEAT_PENALTY: f32 = 1.1;
 const REPEAT_LAST_N: usize = 64;
 
@@ -30,14 +30,7 @@ impl Model for LLaVAPhi3Mini {
         }
         let mut results: Vec<Result<String, anyhow::Error>> = vec![];
         for item in items {
-            if item.image_file_paths.len() > 1 {
-                anyhow::bail!("llava-phi3 model only supports one image");
-            }
-            let image_file_path = item
-                .image_file_paths
-                .first()
-                .ok_or_else(|| anyhow::anyhow!("no image in llava-phi3 input"))?;
-            let res = self.get_image_caption(image_file_path, item.prompt);
+            let res = self.get_image_caption(item.image_file_paths, item.prompt);
             results.push(res);
         }
         Ok(results)
@@ -136,42 +129,121 @@ impl LLaVAPhi3Mini {
             if next_token == config.eos_token_id {
                 break;
             }
-            tos.next_token(next_token)?;
+            if let Some(_token) = tos.next_token(next_token)? {
+                #[cfg(debug_assertions)]
+                {
+                    use std::io::Write;
+                    print!("{}", _token);
+                    std::io::stdout().flush()?;
+                }
+            }
+        }
+        #[cfg(debug_assertions)]
+        {
+            println!("\n");
         }
         let result = tos.decode_all()?;
         Ok(result)
     }
 
-    #[tracing::instrument(level = "info", skip(self, image_file_path))]
-    pub fn get_image_caption(
+    fn assemble_grid_images(
         &mut self,
-        image_file_path: impl AsRef<Path>,
-        prompt: Option<String>,
-    ) -> anyhow::Result<String> {
-        let prompt_str = format_prompt(
-            prompt
-                .unwrap_or("Please describe the image".to_string())
-                .as_str(),
+        image_file_paths: &Vec<impl AsRef<Path>>,
+    ) -> anyhow::Result<(usize, usize, image::DynamicImage)> {
+        // Compute the optimal grid layout for the images
+        let num_images = image_file_paths.len();
+        let grid_cols = (num_images as f64).sqrt().ceil() as usize;
+        let grid_rows = (num_images + grid_cols - 1) / grid_cols;
+
+        // Make the grid square by using the larger dimension
+        let grid_size = grid_cols.max(grid_rows);
+
+        // Set target dimensions for each grid cell (square)
+        let target_size = 2000u32;
+        let border_size = 2u32;
+
+        let mut grid_images = vec![];
+        for path in image_file_paths {
+            let img = image::ImageReader::open(path)?
+                .with_guessed_format()?
+                .decode()?;
+
+            // Calculate resize dimensions while maintaining aspect ratio
+            let (width, height) = (img.width(), img.height());
+            let ratio = width as f32 / height as f32;
+            let (new_width, new_height) = if ratio > 1.0 {
+                (target_size, (target_size as f32 / ratio) as u32)
+            } else {
+                ((target_size as f32 * ratio) as u32, target_size)
+            };
+
+            let resized = img.resize(new_width, new_height, image::imageops::FilterType::Lanczos3);
+            grid_images.push(resized);
+        }
+
+        // Calculate total grid dimensions including borders for square grid
+        let grid_width = target_size * grid_size as u32 + border_size * (grid_size as u32 + 1);
+        let grid_height = target_size * grid_size as u32 + border_size * (grid_size as u32 + 1);
+
+        // Create a white background grid
+        let mut grid = image::RgbaImage::from_pixel(
+            grid_width,
+            grid_height,
+            image::Rgba([255, 255, 255, 255]),
         );
 
-        let img = image::ImageReader::open(image_file_path)?
-            .with_guessed_format()?
-            .decode()?;
-        let image_tensor = self.image_processor.preprocess(&img)?.unsqueeze(0)?;
-        // let image_tensor = image_tensor.to_dtype(DType::BF16)?.to_device(&device)?;
-        let image_tensor = image_tensor.to_device(&self.device)?;
-        let image_size = (img.width(), img.height());
+        for (i, img) in grid_images.iter().enumerate() {
+            let grid_x = (i % grid_cols) as u32;
+            let grid_y = (i / grid_cols) as u32;
 
-        let tokens = self.inner.tokenizer_image_token(prompt_str.as_str())?;
+            // Calculate center position for the image within its grid cell
+            let cell_x = grid_x * (target_size + border_size) + border_size;
+            let cell_y = grid_y * (target_size + border_size) + border_size;
+
+            let x = cell_x + (target_size - img.width()) / 2;
+            let y = cell_y + (target_size - img.height()) / 2;
+
+            image::imageops::overlay(&mut grid, img, x as i64, y as i64);
+        }
+
+        Ok((grid_cols, grid_rows, image::DynamicImage::ImageRgba8(grid)))
+    }
+
+    /// llava phi 3 虽然支持多个图片输入，但是并不能正常输出结果
+    /// 模型推理方法保留支持多图的逻辑，但实际是把图片拼接成一个大图，作为1张图片输入
+    #[tracing::instrument(level = "info", skip(self, image_file_paths))]
+    pub fn get_image_caption(
+        &mut self,
+        image_file_paths: Vec<impl AsRef<Path>>,
+        prompt: Option<String>,
+    ) -> anyhow::Result<String> {
+        let (_grid_cols, _grid_rows, img) = self.assemble_grid_images(&image_file_paths)?;
+        let image_tensor = self
+            .image_processor
+            .preprocess(&img)?
+            .unsqueeze(0)?
+            // .to_dtype(candle_core::DType::BF16)?
+            .to_device(&self.device)?;
+        let image_size = (img.width(), img.height());
+        // img.save("assembled_grid_images.png")?;
+
+        let mut prompt = prompt.unwrap_or("Please describe the image".to_string());
+        if image_file_paths.len() > 1 {
+            // let num_images = image_file_paths.len();
+            prompt = format!("The input consists of a sequence of consecutive images that we'll analyze together.\n{prompt}");
+        }
+        let prompt_str = format_prompt(prompt.as_str(), 1);
+        let prompt_tokens = self.inner.tokenizer_image_token(prompt_str.as_str())?;
 
         let input_embeds = self.inner.prepare_inputs_labels_for_multimodal(
             &self.device,
-            &tokens,
+            &prompt_tokens,
             &[image_tensor],
             &[image_size],
         )?;
 
-        let caption = self.generate(input_embeds, 299792458, 0.2)?;
+        // TODO: seed and temperature should be configurable
+        let caption = self.generate(input_embeds, 299792458, 0.)?;
 
         Ok(caption)
     }
@@ -191,10 +263,18 @@ mod tests {
             "/Users/xddotcom/workspace/rust/llm-playground/models/llava-phi-3/preprocessor_config.json",
         )?;
 
-        let res = llavaphi3mini.get_image_caption(
-            "/Users/xddotcom/workspace/rust/llm-playground/models/20240923-173209.jpeg",
-            None,
-        )?;
+        let image_file_paths = vec![
+            "/Users/xddotcom/local_dam_files/明星影视剧画面/6000.jpg",
+            // "/Users/xddotcom/local_dam_files/明星影视剧画面/1170000.jpg",
+            // "/Users/xddotcom/local_dam_files/明星影视剧画面/392000.jpg",
+            // "/Users/xddotcom/local_dam_files/明星影视剧画面/304000.jpg",
+        ];
+        let prompt = r#"You are an advanced image description expert. Examine this image and describe the visual content. Pay attention to: people's actions and expressions, scene changes, movement, and any key events or transitions. Begin your response with 'The image ...'. Limit your response to no more than 50 words."#.to_string();
+        // let prompt = format!(
+        //     r#"You are an advanced video description expert. Watch this image sequence of video clip consisting of {num_images} frames, narrate what you see and describe any notable changes between frames. Begin your response with 'The video clip...'. Limit your response to no more than 50 words."#,
+        //     num_images = image_file_paths.len()
+        // );
+        let res = llavaphi3mini.get_image_caption(image_file_paths, Some(prompt))?;
 
         println!("{}", res);
 
