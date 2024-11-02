@@ -3,6 +3,7 @@ use content_library::Library;
 use global_variable::get_current_fs_storage;
 use prisma_client_rust::QueryError;
 use prisma_lib::{asset_object, file_path};
+use serde_json::json;
 use std::path::PathBuf;
 use storage::prelude::*;
 
@@ -114,6 +115,9 @@ pub async fn create_asset_object(
     name: &str,
     local_full_path: &str,
 ) -> Result<(file_path::Data, asset_object::Data, bool), rspc::Error> {
+    let error_500 =
+        |message: String| rspc::Error::new(rspc::ErrorCode::InternalServerError, message);
+
     if let Some((parent_materialized_path, dir_name)) =
         split_materialized_path(materialized_path).await
     {
@@ -140,24 +144,16 @@ pub async fn create_asset_object(
 
     let start_time = std::time::Instant::now();
     let fs_metadata = std::fs::metadata(&local_full_path).map_err(|e| {
-        rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!(
-                "failed to get video metadata from {}: {}",
-                local_full_path, e
-            ),
-        )
+        error_500(format!(
+            "failed to get video metadata from {}: {}",
+            local_full_path, e
+        ))
     })?;
 
     let file_size_in_bytes = fs_metadata.len() as i32;
     let file_hash = generate_file_hash(&local_full_path, fs_metadata.len() as u64)
         .await
-        .map_err(|e| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("failed to generate file hash: {}", e),
-            )
-        })?;
+        .map_err(|e| error_500(format!("failed to generate file hash: {}", e)))?;
     let duration = start_time.elapsed();
     tracing::info!(
         "{:?}, hash: {:?}, duration: {:?}",
@@ -166,30 +162,36 @@ pub async fn create_asset_object(
         duration
     );
 
-    let destination_path = library.absolute_file_path(&file_hash);
-
-    if PathBuf::from(local_full_path) != destination_path {
-        let storage = get_current_fs_storage!().map_err(|e| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("failed to get current storage: {}", e),
-            )
-        })?;
-
+    // 把文件复制到 library 的 files 目录下，并且以 file_hash 命名
+    {
+        let destination_file_dir = library.relative_file_dir(&file_hash);
+        let origin_file_path = PathBuf::from(local_full_path);
+        // TODO: 如果 origin_file_path 已经是 destination_file_dir 里面的，得跳过，但这在正常情况下不会出现
+        let storage = get_current_fs_storage!()
+            .map_err(|e| error_500(format!("failed to get current storage: {}", e)))?;
+        let file_extension = origin_file_path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map_or("".to_string(), |ext| format!(".{}", ext));
+        let verbose_file_name = format!("{}{}", file_hash, file_extension);
+        // 保存一份 file.json 记录磁盘文件上的文件名和必要的元数据
+        let file_json_path = destination_file_dir.join("file.json");
+        let file_json_str = serde_json::to_string_pretty(&json!({
+            "verbose_file_name": verbose_file_name,
+        }))
+        .map_err(|e| error_500(format!("failed to serialize file.json: {}", e)))?;
         storage
-            .copy(
-                PathBuf::from(local_full_path),
-                library.relative_file_path(&file_hash),
-            )
+            .write(file_json_path, file_json_str.into())
             .await
-            .map_err(|e| {
-                rspc::Error::new(
-                    rspc::ErrorCode::InternalServerError,
-                    format!("failed to copy file: {}", e),
-                )
-            })?;
+            .map_err(|e| error_500(format!("failed to write file.json: {}", e)))?;
+        let destination_file_path = destination_file_dir.join(verbose_file_name);
+        storage
+            .copy(origin_file_path, destination_file_path)
+            .await
+            .map_err(|e| error_500(format!("failed to copy file: {}", e)))?;
     }
 
+    // 保存 asset_object 和 file_path 到数据库
     let (asset_object_data, file_path_data, asset_object_existed) = library
         .prisma_client()
         ._transaction()

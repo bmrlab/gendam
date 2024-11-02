@@ -29,12 +29,15 @@ impl Library {
         Arc::clone(&self.db)
     }
 
-    /// Get the artifact directory for a given file hash.
+    /// Get the absolute path of artifact directory on disk for a given file hash.
+    ///
+    /// Returns a dir like `%LIBRARY_DIR%/artifacts/%SHARD_ID%/%FILE_HASH%/`,
+    /// where %SHARD_ID% is derived from the file hash.
     ///
     /// The artifacts directory will store all the artifacts for this file.
-    /// For now, `artifacts_dir` is something like `%LIBRARY_DIR%/artifacts/%SHARD_ID%/%FILE_HASH%`,
-    /// where %SHARD_ID% is derived from the file hash.
-    pub fn absolute_artifacts_dir(&self, file_hash: &str) -> PathBuf {
+    ///
+    /// DO NOT USE THIS FUNCTION, USE `relative_artifacts_dir` INSTEAD. Generally, files should be accessed through the OpenDAL interface.
+    pub fn _absolute_artifacts_dir(&self, file_hash: &str) -> PathBuf {
         let artifacts_dir_with_shard = self
             .artifacts_dir
             .join(get_shard_hex(&file_hash))
@@ -47,10 +50,11 @@ impl Library {
         artifacts_dir_with_shard
     }
 
-    /// Get the relative path under library dir for a given file hash.
+    /// Get the relative path of artifact directory under library root for a given file hash.
     ///
-    /// Returns a path like `artifacts/%SHARD_ID%/%FILE_HASH%`,
-    /// where %SHARD_ID% is derived from the file hash.
+    /// Returns a dir like `artifacts/%SHARD_ID%/%FILE_HASH%/`
+    ///
+    /// OpenDAL will create directory iteratively if not exist
     pub fn relative_artifacts_dir(&self, file_hash: &str) -> PathBuf {
         self.artifacts_dir_name()
             .join(get_shard_hex(file_hash))
@@ -61,11 +65,12 @@ impl Library {
         PathBuf::from("artifacts")
     }
 
-    /// Get the file path in library for a given file hash
+    /// Get the absolute path of file directory on disk for a given file hash.
     ///
-    /// For now, `file_path` is something like `%LIBRARY_DIR%/files/%SHARD_ID%/%FILE_HASH%`,
-    /// where %SHARD_ID% is derived from the file hash.
-    pub fn absolute_file_path(&self, file_hash: &str) -> PathBuf {
+    /// Returns a dir like `%LIBRARY_DIR%/files/%SHARD_ID%/%FILE_HASH%/`
+    ///
+    /// DO NOT USE THIS FUNCTION, USE `relative_file_dir` INSTEAD
+    fn _absolute_file_dir(&self, file_hash: &str) -> PathBuf {
         let files_dir_with_shard = self.files_dir.join(get_shard_hex(file_hash));
 
         if !files_dir_with_shard.exists() {
@@ -75,20 +80,35 @@ impl Library {
         files_dir_with_shard.join(file_hash)
     }
 
+    /// Get the relative path of file directory under library root for a given file hash.
+    ///
+    /// Returns a dir like `files/%SHARD_ID%/%FILE_HASH%/`,
+    ///
+    /// OpenDAL will create directory iteratively if not exist
+    pub fn relative_file_dir(&self, file_hash: &str) -> PathBuf {
+        self.files_dir_name()
+            .join(get_shard_hex(file_hash))
+            .join(file_hash)
+    }
+
     pub fn files_dir_name(&self) -> PathBuf {
         PathBuf::from("files")
     }
 
-    /// Get the relative path under library dir for a given file hash.
+    /// Get the absolute file path on disk for a given file hash
     ///
-    /// Returns a path like `files/%SHARD_ID%/%FILE_HASH%`,
-    /// where %SHARD_ID% is derived from the file hash.
+    /// Returns a file path like `%LIBRARY_DIR%/files/%SHARD_ID%/%FILE_HASH%/%VERBOSE_FILE_NAME%`
     ///
-    /// opendal will create directory iteratively if not exist
-    pub fn relative_file_path(&self, file_hash: &str) -> PathBuf {
-        self.files_dir_name()
-            .join(get_shard_hex(file_hash))
-            .join(file_hash)
+    /// Generally, files should be accessed through the OpenDAL interface.
+    /// However, file processing needs to be done locally, so this interface is needed to read local files directly.
+    pub fn absolute_file_path(&self, file_hash: &str) -> PathBuf {
+        let files_dir_with_shard = self.files_dir.join(get_shard_hex(file_hash));
+
+        if !files_dir_with_shard.exists() {
+            std::fs::create_dir_all(&files_dir_with_shard).unwrap();
+        }
+
+        files_dir_with_shard.join(file_hash)
     }
 }
 

@@ -28,7 +28,7 @@ impl Library {
             buffer.clear();
 
             // add artifacts
-            let results = walkdir::WalkDir::new(self.absolute_artifacts_dir(hash))
+            let results = walkdir::WalkDir::new(self._absolute_artifacts_dir(hash))
                 .into_iter()
                 .filter_map(|v| v.ok());
 

@@ -4,12 +4,12 @@ use prisma_lib::{asset_object, file_handler_task};
 use std::{path::PathBuf, sync::Arc};
 use storage::Storage;
 
-async fn remove_shared_dir(dir_or_file: PathBuf) -> anyhow::Result<()> {
+async fn remove_shared_dir(dir: PathBuf) -> anyhow::Result<()> {
     let fs_storage = global_variable::get_current_fs_storage!()?;
-    tracing::debug!("remove dir or file {:?}", dir_or_file);
-    fs_storage.remove_dir_all(dir_or_file.clone()).await?;
+    tracing::debug!("remove dir or file {:?}", dir);
+    fs_storage.remove_dir_all(dir.clone()).await?;
     let op = fs_storage.op()?;
-    if let Some(shard_dir) = dir_or_file.parent() {
+    if let Some(shard_dir) = dir.parent() {
         let sub_dirs = fs_storage.read_dir(shard_dir.to_path_buf()).await?;
         let mut is_empty = true;
         for sub_dir in sub_dirs {
@@ -101,7 +101,7 @@ pub async fn delete_unlinked_assets(library: Arc<Library>, content_base: Arc<Con
             continue;
         }
 
-        let file_path = library.relative_file_path(&asset.hash);
+        let file_path = library.relative_file_dir(&asset.hash);
         if let Err(e) = remove_shared_dir(file_path).await {
             tracing::error!("failed to remove file of {}: {}", asset.hash, e);
         }

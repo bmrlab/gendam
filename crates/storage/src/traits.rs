@@ -101,6 +101,9 @@ pub trait Storage: Send + Sync {
             .map_err(StorageError::from)
     }
 
+    /// Copy a file from one location to another.
+    /// If the source file is not under the root of OpenDAL, it will read the file and write it to the destination.
+    /// If the source file is under the root of OpenDAL, it will use OpenDAL's copy operation directly.
     async fn copy(&self, from: std::path::PathBuf, to: std::path::PathBuf) -> StorageResult<()> {
         let to = path_to_string(to)?;
         // copy file between path(not under root of opendal) and opendal
