@@ -112,6 +112,7 @@ impl TaskRunRecord {
     }
 }
 
+/// 一个文件的所有任务记录，一般来说，也就是对应一个 artifacts.json 文件
 #[derive(Clone, Serialize, Deserialize, Debug, Storage)]
 pub struct TaskRecord {
     file_identifier: String,
@@ -142,10 +143,13 @@ impl TaskRecord {
         self.tasks.get(task_type)
     }
 
-    pub async fn remove_all_record(&mut self, task_type: &ContentTaskType, ctx: &ContentBaseCtx) -> Option<Vec<TaskRunRecord>> {
+    pub async fn remove_task_run_records(
+        &mut self,
+        task_type: &ContentTaskType,
+        ctx: &ContentBaseCtx,
+    ) -> Option<Vec<TaskRunRecord>> {
         let result = self.tasks.remove(task_type);
         let _ = self.save(ctx).await;
-
         result
     }
 
@@ -164,6 +168,7 @@ impl TaskRecord {
         Ok(())
     }
 
+    /// 从 artifacts.json 文件中读取任务记录，初始化一个文件的 TaskRecord
     pub async fn from_content_base(file_identifier: &str, ctx: &ContentBaseCtx) -> Self {
         // FIXME self.read_to_string can only be called by object not but Self::
         // so create a fake self to call read_to_string

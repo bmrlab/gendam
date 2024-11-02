@@ -165,17 +165,29 @@ where
                     .exec()
                     .await?;
 
-                // delete existed artifacts
+                // delete existed artifacts and search indexes
                 let content_base = ctx.content_base()?;
-                let payload = DeletePayload::new(&asset_object_data.hash);
-                content_base.delete(payload).await.map_err(|e| {
-                    rspc::Error::new(
-                        rspc::ErrorCode::InternalServerError,
-                        format!("failed to delete asset: {:?}", e),
-                    )
-                })?;
+                let hash = asset_object_data.hash.as_str();
+                content_base
+                    .delete_search_indexes(DeletePayload::new(hash))
+                    .await
+                    .map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("failed to delete search indexes of {}: {}", hash, e),
+                        )
+                    })?;
+                content_base
+                    .delete_artifacts(DeletePayload::new(hash))
+                    .await
+                    .map_err(|e| {
+                        rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("failed to delete artifacts for {}: {}", hash, e),
+                        )
+                    })?;
 
-                process_asset(&library, &ctx, asset_object_data.hash, None).await?;
+                process_asset(&library, &ctx, hash.to_owned(), None).await?;
 
                 Ok(())
             })

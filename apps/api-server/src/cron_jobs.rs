@@ -1,7 +1,32 @@
 use content_base::{delete::DeletePayload, ContentBase};
 use content_library::Library;
 use prisma_lib::{asset_object, file_handler_task};
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
+use storage::Storage;
+
+async fn remove_shared_dir(dir_or_file: PathBuf) -> anyhow::Result<()> {
+    let fs_storage = global_variable::get_current_fs_storage!()?;
+    tracing::debug!("remove dir or file {:?}", dir_or_file);
+    fs_storage.remove_dir_all(dir_or_file.clone()).await?;
+    let op = fs_storage.op()?;
+    if let Some(shard_dir) = dir_or_file.parent() {
+        let sub_dirs = fs_storage.read_dir(shard_dir.to_path_buf()).await?;
+        let mut is_empty = true;
+        for sub_dir in sub_dirs {
+            let x = op.stat(sub_dir.to_string_lossy().as_ref()).await?;
+            if x.is_dir() {
+                is_empty = false;
+                break;
+            }
+        }
+        if is_empty {
+            tracing::debug!("remove empty shard dir {:?}", shard_dir);
+            fs_storage.remove_dir_all(shard_dir.to_path_buf()).await?;
+        }
+    }
+
+    Ok(())
+}
 
 pub async fn delete_unlinked_assets(library: Arc<Library>, content_base: Arc<ContentBase>) {
     // 查找所有未关联 file path 的 asset object
@@ -41,7 +66,8 @@ pub async fn delete_unlinked_assets(library: Arc<Library>, content_base: Arc<Con
             .exec()
             .await
         {
-            tracing::error!("failed to delete asset_object: {}", e);
+            tracing::error!("failed to delete asset {} in db: {} ", &asset.hash, e);
+            continue;
         }
 
         if let Err(e) = library
@@ -51,17 +77,33 @@ pub async fn delete_unlinked_assets(library: Arc<Library>, content_base: Arc<Con
             .exec()
             .await
         {
-            tracing::error!("failed to delete asset related tasks: {}", e);
+            tracing::error!("failed to task log of asset {} in db: {}", &asset.hash, e);
+            continue;
         }
 
-        // delete from fs
-        let file_path = library.absolute_file_path(&asset.hash);
-        if let Err(e) = std::fs::remove_file(&file_path) {
-            tracing::error!("failed to delete file({}): {}", file_path.display(), e);
+        let delete_payload = DeletePayload::new(&asset.hash);
+        if let Err(e) = content_base.delete_search_indexes(delete_payload).await {
+            tracing::error!("failed to delete search indexes of {}: {}", asset.hash, e);
+            continue;
+        }
+
+        let delete_payload = DeletePayload::new(&asset.hash);
+        if let Err(e) = content_base.delete_artifacts(delete_payload).await {
+            tracing::error!("failed to delete artifacts for {}: {}", asset.hash, e);
+            continue;
         };
-        let payload = DeletePayload::new(&asset.hash);
-        if let Err(e) = content_base.delete(payload).await {
-            tracing::error!("failed to delete artifacts: {}", e);
+
+        // 在没有错误地删除了任务记录后，
+        // 删除 artifacts 目录中留下的的 thumbnail 和 artifacts.json 文件，以及 artifacts 目录
+        let artifacts_dir = library.relative_artifacts_dir(&asset.hash);
+        if let Err(e) = remove_shared_dir(artifacts_dir).await {
+            tracing::error!("failed to remove artifacts dir of {}: {}", asset.hash, e);
+            continue;
+        }
+
+        let file_path = library.relative_file_path(&asset.hash);
+        if let Err(e) = remove_shared_dir(file_path).await {
+            tracing::error!("failed to remove file of {}: {}", asset.hash, e);
         }
     }
 }

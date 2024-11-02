@@ -40,7 +40,7 @@ pub trait ContentTask: Into<ContentTaskType> + Clone + Storage {
     ) -> anyhow::Result<()> {
         let mut task_record = TaskRecord::from_content_base(&file_info.file_identifier, ctx).await;
         if let Some(task_run_records) = task_record
-            .remove_all_record(&self.clone().into(), ctx)
+            .remove_task_run_records(&self.clone().into(), ctx)
             .await
         {
             for task_run_record in task_run_records {

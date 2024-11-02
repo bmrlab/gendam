@@ -18,17 +18,23 @@ impl DeletePayload {
 }
 
 impl ContentBase {
-    pub async fn delete(&self, payload: DeletePayload) -> anyhow::Result<()> {
-        // delete records in vector
+    /// 删除 surrealdb 中的索引
+    pub async fn delete_search_indexes(&self, payload: DeletePayload) -> anyhow::Result<()> {
         self.db
             .try_write()?
             .delete_by_file_identifier(&payload.file_identifier)
             .await?;
         info!(
-            "delete file_identifier: {} in vector done",
+            "Deleted file_identifier: {} in surrealdb",
             payload.file_identifier
         );
 
+        Ok(())
+    }
+
+    /// 删除 artifacts 目录中的任务记录
+    /// 这里只删除 ../core.rs 中 tasks 方法里列出的任务相关的所有数据，其他的任务（如果有），需要其他地方另外删除，这里不处理
+    pub async fn delete_artifacts(&self, payload: DeletePayload) -> anyhow::Result<()> {
         let task_record = TaskRecord::from_content_base(&payload.file_identifier, &self.ctx).await;
 
         let file_info = FileInfo {
