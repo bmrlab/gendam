@@ -66,14 +66,16 @@ mod test {
     use content_base_context::ContentBaseCtx;
     use content_handler::video::VideoDecoder;
     use content_metadata::ContentMetadata;
-    use global_variable::{init_global_variables, set_current};
     use std::{path::PathBuf, str::FromStr, sync::Arc};
 
     #[test_log::test(tokio::test)]
     async fn test_video() {
-        init_global_variables!();
+        global_variable::init_global_variables!();
         // set storage root path
-        set_current!("abcdefg".into(), "/Users/zhuo/Desktop".into());
+        global_variable::set_global_current_library!(
+            "abcdefg".into(),
+            "/Users/zhuo/Desktop".into()
+        );
 
         // the artifacts_dir is relative to the storage root
         let content_base = ContentBaseCtx::new("gendam-test-artifacts", "");

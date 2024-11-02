@@ -51,7 +51,6 @@ mod test {
     };
     use content_handler::{file_metadata, video::VideoDecoder};
     use content_metadata::ContentMetadata;
-    use global_variable::{init_global_variables, set_current};
     use std::path::Path;
     use std::{env, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
     use tokio::sync::RwLock;
@@ -75,9 +74,9 @@ mod test {
 
     #[test_log::test(tokio::test)]
     async fn test_task_pool() {
-        init_global_variables!();
+        global_variable::init_global_variables!();
         // set storage root path
-        set_current!(
+        global_variable::set_global_current_library!(
             "abcdefg".into(),
             get_desktop_path().to_str().unwrap().into()
         );
@@ -175,9 +174,12 @@ mod test {
 
     #[test_log::test(tokio::test(flavor = "multi_thread"))]
     async fn test_core() {
-        init_global_variables!();
+        global_variable::init_global_variables!();
         // set storage root path
-        set_current!("abcdefg".into(), "/Users/zhuo/Desktop".into());
+        global_variable::set_global_current_library!(
+            "abcdefg".into(),
+            "/Users/zhuo/Desktop".into()
+        );
 
         // the artifacts_dir is relative to the storage root
         let ctx = ContentBaseCtx::new("gendam-test-artifacts", "");

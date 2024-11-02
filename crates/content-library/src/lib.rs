@@ -1,5 +1,4 @@
 use content_base::db::DB;
-use global_variable::set_current;
 use prisma_lib::PrismaClient;
 use std::{
     path::{Path, PathBuf},
@@ -109,7 +108,8 @@ pub async fn load_library(
 
     let dir = library_dir.to_str().ok_or(())?.to_string();
 
-    set_current!(library_id.to_string(), dir);
+    global_variable::set_global_current_library!(library_id.to_string(), dir);
+
     let surrealdb_client = DB::new(surreal_dir).await.map_err(|e| {
         tracing::error!("Failed to create surrealdb client: {}", e);
     })?;
