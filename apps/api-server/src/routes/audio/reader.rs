@@ -87,7 +87,7 @@ impl AudioReader {
     fn parse(path: PathBuf) -> anyhow::Result<Vec<AudioData>> {
         debug!("audio parse path {}", path.display());
 
-        let storage = get_current_fs_storage!().map_err(|e| {
+        let storage = global_variable::get_current_fs_storage!().map_err(|e| {
             rspc::Error::new(
                 rspc::ErrorCode::InternalServerError,
                 format!("failed to get current storage: {}", e),

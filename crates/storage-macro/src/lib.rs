@@ -8,16 +8,11 @@ pub fn storage_trait_derive(input: TokenStream) -> TokenStream {
     let name = input.ident;
 
     let expanded = quote! {
-        use global_variable::get_current_fs_storage;
         use storage::prelude::*;
-        use storage::Bytes;
-        use storage::Buffer;
-        use storage::Operator;
-        use storage::BlockingOperator;
 
         impl #name {
             fn storage(&self) -> StorageResult<impl Storage> {
-                get_current_fs_storage!()
+                global_variable::get_current_fs_storage!()
             }
         }
 
@@ -31,11 +26,11 @@ pub fn storage_trait_derive(input: TokenStream) -> TokenStream {
                 self.storage()?.root()
             }
 
-            fn op(&self) -> StorageResult<Operator> {
+            fn op(&self) -> StorageResult<storage::Operator> {
                 self.storage()?.op()
             }
 
-            fn block_op(&self) -> StorageResult<BlockingOperator> {
+            fn block_op(&self) -> StorageResult<storage::BlockingOperator> {
                 self.storage().and_then(|s| s.block_op())
             }
 
@@ -47,7 +42,7 @@ pub fn storage_trait_derive(input: TokenStream) -> TokenStream {
                 self.storage()?.under_root(path)
             }
 
-            fn read_blocking(&self, path: std::path::PathBuf) -> StorageResult<Buffer> {
+            fn read_blocking(&self, path: std::path::PathBuf) -> StorageResult<storage::Buffer> {
                 self.storage()?.read_blocking(path)
             }
 
@@ -55,7 +50,7 @@ pub fn storage_trait_derive(input: TokenStream) -> TokenStream {
                 self.storage()?.read_to_string(path)
             }
 
-            fn write_blocking(&self, path: std::path::PathBuf, bs: Bytes) -> StorageResult<()> {
+            fn write_blocking(&self, path: std::path::PathBuf, bs: storage::Bytes) -> StorageResult<()> {
                 self.storage()?.write_blocking(path, bs)
             }
 
@@ -71,11 +66,11 @@ pub fn storage_trait_derive(input: TokenStream) -> TokenStream {
                 self.storage()?.is_exist(path).await
             }
 
-            async fn read(&self, path: std::path::PathBuf) -> StorageResult<Buffer> {
+            async fn read(&self, path: std::path::PathBuf) -> StorageResult<storage::Buffer> {
                 self.storage()?.read(path).await
             }
 
-            async fn write(&self, path: std::path::PathBuf, bs: Buffer) -> StorageResult<()> {
+            async fn write(&self, path: std::path::PathBuf, bs: storage::Buffer) -> StorageResult<()> {
                 self.storage()?.write(path, bs).await
             }
 
@@ -106,7 +101,7 @@ pub fn storage_trait_derive(input: TokenStream) -> TokenStream {
                 &self,
                 path: std::path::PathBuf,
                 range: std::ops::Range<u64>,
-            ) -> StorageResult<Buffer> {
+            ) -> StorageResult<storage::Buffer> {
                 self.storage()?.read_with_range(path, range).await
             }
         }
