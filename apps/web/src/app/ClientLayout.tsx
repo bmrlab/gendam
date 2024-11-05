@@ -199,7 +199,7 @@ export default function ClientLayout({
     if (typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined') {
       return convertFileSrc(path, 'storage')
     } else {
-      return `http://localhost:3001/_storage/localhost${path}`
+      return `http://localhost:3001/_storage/localhost/${path}`
     }
   }, [])
 
@@ -208,7 +208,7 @@ export default function ClientLayout({
       if (!library) {
         return '/images/empty.png'
       }
-      const path = `/asset_object/${assetObjectHash}/file`
+      const path = `asset_object/${assetObjectHash}/file`
       return _constructStorageUri(path)
     },
     [library, _constructStorageUri],
@@ -219,7 +219,7 @@ export default function ClientLayout({
       if (!library) {
         return '/images/empty.png'
       }
-      const prefix = `/asset_object/${assetObjectHash}/artifacts`
+      const prefix = `asset_object/${assetObjectHash}/artifacts`
       const fileFullPath = match(assetObjectType)
         .with('audio', () => `${prefix}/thumbnail.jpg`)
         .with('video', () => `${prefix}/thumbnail.jpg`)
@@ -236,7 +236,7 @@ export default function ClientLayout({
       if (!library) {
         return '/images/empty.png'
       }
-      const prefix = `/asset_object/${assetObjectHash}/artifacts`
+      const prefix = `asset_object/${assetObjectHash}/artifacts`
       return match(type)
         .with('audio', () => _constructStorageUri(`${prefix}/waveform.json`))
         .with('video', () => {

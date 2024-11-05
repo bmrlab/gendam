@@ -48,7 +48,7 @@ pub fn storage_protocol_handler(
 
     let request_resource_kind = {
         // path should be like /asset_object/[hash]/artifacts/[artifacts_path] or /asset_object/[hash]/file
-        let path_regex = match regex::Regex::new(r"^/asset_object/([^/]+)/(artifacts/.*|file)$") {
+        let path_regex = match regex::Regex::new(r"^asset_object/([^/]+)/(artifacts/.*|file)$") {
             Ok(path_regex) => path_regex,
             Err(e) => {
                 tracing::error!("Failed to compile regex: {}", e);
@@ -162,10 +162,19 @@ pub fn storage_protocol_handler(
         let relative_file_path = relative_file_path.clone();
         async move {
             let len = storage.len(relative_file_path.clone()).await?;
-            let range_vec = storage
-                .read_with_range(relative_file_path, 0..8192)
-                .await?
-                .to_vec();
+            // Avoid requesting more bytes than file size for MIME type detection
+            let read_length = std::cmp::min(len, 8192);
+            let buffer = match storage
+                .read_with_range(relative_file_path, 0..read_length)
+                .await
+            {
+                Ok(buffer) => buffer,
+                Err(e) => {
+                    tracing::error!("Failed to read file: {:?}", e);
+                    return Err(anyhow::anyhow!("Failed to read file"));
+                }
+            };
+            let range_vec = buffer.to_vec();
 
             let (mime_type, read_bytes) = {
                 (
