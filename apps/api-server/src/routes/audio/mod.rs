@@ -1,5 +1,5 @@
-pub mod downloader;
-pub mod reader;
+pub(crate) mod downloader;
+pub(crate) mod reader;
 
 use crate::routes::audio::{downloader::DownloadHelper, reader::AudioReader};
 use crate::CtxWithLibrary;

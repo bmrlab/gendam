@@ -56,8 +56,6 @@ export type Procedures = {
         { key: "search.rag", input: RAGRequestPayload, result: RAGResult }
 };
 
-export type TaskRedoRequestPayload = { assetObjectId: number }
-
 export type ModelArtifact = { url: string; checksum: string }
 
 export type AIModelResult = { info: AIModel; status: AIModelStatus }
@@ -65,8 +63,6 @@ export type AIModelResult = { info: AIModel; status: AIModelStatus }
 export type RetrievalResultPayload = { filePath: FilePathWithAssetObjectData; metadata: SearchResultMetadata; score: number; taskType: ContentTaskTypeSpecta }
 
 export type Auth = { id: string; name: string }
-
-export type SharePayload = { fileIdList: number[]; peerId: string }
 
 export type SearchResultMetadata = ({ type: "video" } & VideoSearchResultMetadata) | ({ type: "audio" } & AudioSearchResultMetadata) | ({ type: "image" } & ImageSearchResultMetadata) | ({ type: "rawText" } & RawTextSearchResultMetadata) | ({ type: "webPage" } & WebPageSearchResultMetadata)
 
@@ -132,11 +128,7 @@ export type FilePathGetPayload = { materializedPath: string; name: string }
 
 export type FilePathWithAssetObjectData = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; assetObject?: AssetObjectWithMediaData | null; createdAt: string; updatedAt: string }
 
-export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: string[] | null }
-
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
-
-export type AcceptShareOutput = { fileList: string[] }
 
 export type VideoTaskTypeSpecta = "thumbnail" | "frame" | "frameEmbedding" | "frameDescription" | "frameDescEmbed" | "audio" | "transcript" | "transChunk" | "transChunkSum" | "transChunkSumEmbed"
 
@@ -153,6 +145,10 @@ export type WebPageCreatePayload = { materializedPath: string; url: string }
 export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo" | "Qwen2" | "OpenAI" | "AzureOpenAI" | "LLaVAPhi3Mini"
+
+export type AcceptShareOutput = { fileList: string[] }
+
+export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: string[] | null }
 
 export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
 
@@ -184,9 +180,15 @@ export type FilePathCreatePayload = { materializedPath: string; name: string }
 
 export type UploadPayload = { materializedPaths: string[]; hashes: string[] }
 
+export type TaskListRequestFilter = { assetObjectId?: number | null; assetObjectIds?: number[] | null }
+
 export type VideoMetadata = { width: string; height: string; duration: number; bit_rate: string; avg_frame_rate: VideoAvgFrameRate; audio: AudioMetadata | null }
 
+export type TaskRedoRequestPayload = { assetObjectId: number }
+
 export type WebPageSearchResultMetadata = { startIndex: number; endIndex: number }
+
+export type SharePayload = { fileIdList: number[]; peerId: string }
 
 export type RawTextSearchResultMetadata = { startIndex: number; endIndex: number }
 
@@ -207,5 +209,3 @@ export type LibrarySettingsExplorer = { layout: LibrarySettingsLayoutEnum; inspe
 export type SearchRequestPayload = { text: string }
 
 export type RAGResult = { result_type: "Reference"; data: RetrievalResultPayload } | { result_type: "Response"; data: string } | { result_type: "Error"; data: string } | { result_type: "Done" }
-
-export type TaskListRequestFilter = { assetObjectId?: number | null; assetObjectIds?: number[] | null }

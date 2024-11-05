@@ -5,7 +5,7 @@ use specta::Type;
 use std::fmt;
 use storage::Storage;
 
-use crate::get_library_settings;
+use crate::library::get_library_settings;
 
 #[derive(Type, Eq, PartialEq, Clone, Debug)]
 pub enum DataLocationType {

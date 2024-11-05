@@ -4,7 +4,7 @@ use crate::cron_jobs::delete_unlinked_assets;
 use crate::{
     ai::AIHandler,
     download::{DownloadHub, DownloadReporter, DownloadStatus},
-    routes::p2p::ShareInfo,
+    routes::p2p::info::ShareInfo,
 };
 use async_trait::async_trait;
 use content_base::{ContentBase, ContentBaseCtx};

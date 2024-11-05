@@ -1,7 +1,7 @@
 use crate::{
     ai::AIHandler,
     download::{DownloadReporter, DownloadStatus},
-    routes::p2p::ShareInfo,
+    routes::p2p::info::ShareInfo,
 };
 use async_trait::async_trait;
 use content_base::ContentBase;

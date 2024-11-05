@@ -1,2 +1,2 @@
-pub mod default;
-pub mod traits;
+pub(crate) mod default;
+pub(crate) mod traits;

@@ -3,6 +3,14 @@ name = "api-server"
 version = { workspace = true }
 edition = { workspace = true }
 
+[lib]
+name = "api_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "api-server"
+path = "src/bin/main.rs"
+
 [dependencies]
 prisma-lib = { path = "../../crates/prisma" }
 content-library = { path = "../../crates/content-library" }

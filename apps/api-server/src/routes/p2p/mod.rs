@@ -1,8 +1,7 @@
 mod find_all;
-pub mod info;
-
-pub use crate::routes::p2p::info::ShareInfo;
+pub(crate) mod info;
 use crate::CtxWithLibrary;
+use info::ShareInfo;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
 use serde_json::json;

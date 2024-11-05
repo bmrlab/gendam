@@ -2,7 +2,6 @@ mod rag;
 mod recommend;
 mod search;
 
-use crate::{get_hash_from_url, get_library_settings, CtxWithLibrary};
 use glob::glob;
 use rag::{rag, RAGRequestPayload};
 use recommend::{recommend_frames, RecommendRequestPayload};
@@ -11,6 +10,9 @@ use search::{search_all, SearchRequestPayload};
 use storage::Storage;
 use storage::{EntryMode, S3Storage};
 use tokio::sync::mpsc;
+
+use super::storage::location::get_hash_from_url;
+use crate::{library::get_library_settings, CtxWithLibrary};
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
 where

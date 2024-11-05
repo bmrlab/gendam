@@ -1,7 +1,9 @@
-// extern crate api_server; // 引入 lib.rs 里面的内容, Rust 2018 之后不需要再写了
-use api_server::{
-    ctx::default::{Ctx, Store},
-    localhost, p2p_info, CtxStore, CtxWithLibrary,
+use super::{
+    ctx::{
+        default::{Ctx, Store},
+        traits::{CtxStore, CtxWithLibrary},
+    },
+    routes::{get_rspc_routes, localhost, p2p::info as p2p_info},
 };
 use axum::{http::request::Parts, routing::get};
 use dotenvy::dotenv;
@@ -12,8 +14,7 @@ use std::{
 };
 use tower_http::cors::{Any, CorsLayer};
 
-#[tokio::main]
-async fn main() {
+pub async fn start_server() {
     match dotenv() {
         Ok(path) => println!(".env read successfully from {}", path.display()),
         Err(e) => println!("Could not load .env file: {e}"),
@@ -62,7 +63,7 @@ async fn main() {
         .allow_origin(Any);
 
     let store = Arc::new(Mutex::new(default_store));
-    let router = api_server::get_routes::<Ctx<Store>>().arced();
+    let router = get_rspc_routes::<Ctx<Store>>().arced();
 
     let node = Arc::new(Mutex::<p2p::Node<p2p_info::ShareInfo>>::new(
         p2p::Node::new().expect("create node error"),

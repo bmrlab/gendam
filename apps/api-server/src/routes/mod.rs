@@ -1,19 +1,19 @@
 mod assets;
 mod audio;
 mod libraries;
-pub mod localhost;
-pub mod p2p;
 mod search;
-mod storage;
 mod tasks;
 mod users;
 mod video;
 
+pub(crate) mod localhost;
+pub(crate) mod p2p;
+pub(crate) mod storage;
+
 use crate::CtxWithLibrary;
 use rspc::Router;
-pub use storage::location::*;
 
-pub fn get_routes<TCtx>() -> Router<TCtx>
+pub fn get_rspc_routes<TCtx>() -> Router<TCtx>
 where
     TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {

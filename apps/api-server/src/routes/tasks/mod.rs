@@ -1,5 +1,6 @@
-pub mod types;
-use crate::{routes::assets::process::process_asset, CtxWithLibrary};
+pub(crate) mod types;
+use super::assets::process::process_asset;
+use crate::CtxWithLibrary;
 use content_base::{delete::DeletePayload, task::CancelTaskPayload, ContentTaskType};
 use prisma_lib::{asset_object, file_handler_task};
 use rspc::{Router, RouterBuilder};

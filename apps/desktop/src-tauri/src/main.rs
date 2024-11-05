@@ -1,6 +1,9 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use api_server::{ctx::default::Ctx, CtxWithLibrary};
+use api_server::exports::{
+    ctx::{Ctx, CtxWithLibrary},
+    get_rspc_routes,
+};
 use dotenvy::dotenv;
 use global_variable::init_global_variables;
 use std::sync::{Arc, Mutex};
@@ -115,7 +118,7 @@ async fn main() {
     });
 
     let store = Arc::new(Mutex::new(Store::new(tauri_store)));
-    let router = api_server::get_routes::<Ctx<Store>>();
+    let router = get_rspc_routes::<Ctx<Store>>();
     let ctx = Ctx::<Store>::new(
         local_data_root,
         resources_dir,

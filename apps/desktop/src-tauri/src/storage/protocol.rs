@@ -11,7 +11,7 @@ use url::Position;
 use url::Url;
 
 use crate::storage::state::StorageState;
-use api_server::DataLocationType;
+use api_server::exports::storage::DataLocationType;
 
 fn get_shard_hex(hash: &str) -> &str {
     &hash[0..3]

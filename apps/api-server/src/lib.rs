@@ -1,19 +1,30 @@
 mod ai;
 mod content_metadata;
 mod cron_jobs;
+mod ctx;
 mod download;
 mod library;
 mod routes;
+mod standalone;
 mod validators;
 
-pub use routes::get_routes;
-pub use routes::localhost;
-pub use routes::p2p::info as p2p_info;
+// re-exports for internal use only
+pub(crate) use ctx::traits::CtxWithLibrary;
 
-pub mod ctx;
-pub use ctx::traits::{CtxStore, CtxWithLibrary, StoreError};
-
-pub use library::get_library_settings;
-pub use routes::get_asset_object_location;
-pub use routes::get_hash_from_url;
-pub use routes::DataLocationType;
+// Public re-exports for external use only.
+// Internal code should use full paths.
+pub mod exports {
+    pub mod standalone {
+        pub use crate::standalone::start_server;
+    }
+    pub mod storage {
+        pub use crate::routes::storage::location::{get_asset_object_location, DataLocationType};
+    }
+    pub mod ctx {
+        pub use crate::ctx::{
+            default::Ctx,
+            traits::{CtxStore, CtxWithLibrary, StoreError},
+        };
+    }
+    pub use crate::{library::get_library_settings, routes::get_rspc_routes};
+}

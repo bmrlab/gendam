@@ -1,4 +1,4 @@
-pub mod models;
+pub(crate) mod models;
 
 use self::models::{get_model_info_by_id, ConcreteModelType};
 use crate::{library::get_library_settings, CtxWithLibrary};
