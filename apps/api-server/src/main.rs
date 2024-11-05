@@ -1,11 +1,10 @@
-extern crate api_server; // 引入 lib.rs 里面的内容
+// extern crate api_server; // 引入 lib.rs 里面的内容, Rust 2018 之后不需要再写了
 use api_server::{
     ctx::default::{Ctx, Store},
-    CtxStore, CtxWithLibrary, ShareInfo,
+    localhost, p2p_info, CtxStore, CtxWithLibrary,
 };
 use axum::{http::request::Parts, routing::get};
 use dotenvy::dotenv;
-use p2p::Node;
 use std::{
     env,
     path::Path,
@@ -65,7 +64,7 @@ async fn main() {
     let store = Arc::new(Mutex::new(default_store));
     let router = api_server::get_routes::<Ctx<Store>>().arced();
 
-    let node = Arc::new(Mutex::<Node<ShareInfo>>::new(
+    let node = Arc::new(Mutex::<p2p::Node<p2p_info::ShareInfo>>::new(
         p2p::Node::new().expect("create node error"),
     ));
 
@@ -90,13 +89,12 @@ async fn main() {
                 }
             })
         })
-        .merge(api_server::get_localhost_routes(ctx.clone()))
+        .merge(localhost::get_routes(ctx.clone()))
         .layer(cors);
 
     let addr = "[::]:3001".parse::<std::net::SocketAddr>().unwrap(); // This listens on IPv6 and IPv4
     tracing::debug!("Listening on http://{}/rspc/version", addr);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal(ctx.clone()))
         .await
@@ -116,7 +114,6 @@ async fn shutdown_signal(ctx: impl CtxWithLibrary) {
             .recv()
             .await;
     };
-
     #[cfg(not(unix))]
     let terminate = std::future::pending::<()>();
 
@@ -127,7 +124,7 @@ async fn shutdown_signal(ctx: impl CtxWithLibrary) {
             std::process::exit(0);
         },
         _ = terminate => {
-            tracing::info!("Ctrl-C received, unload library and shut down...");
+            tracing::info!("Terminate signal received, unload library and shut down...");
             let _ = ctx.unload_library().await;
             std::process::exit(0);
         },

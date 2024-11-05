@@ -2,7 +2,7 @@ mod assets;
 mod audio;
 mod libraries;
 pub mod localhost;
-pub(crate) mod p2p;
+pub mod p2p;
 mod search;
 mod storage;
 mod tasks;
@@ -10,7 +10,6 @@ mod users;
 mod video;
 
 use crate::CtxWithLibrary;
-pub use localhost::get_localhost_routes;
 use rspc::Router;
 pub use storage::location::*;
 

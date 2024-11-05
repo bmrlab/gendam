@@ -9,6 +9,79 @@ import QueueStatusHeader from './QueueStatusHeader'
 // import { twx } from '@/lib/utils'
 // const QueueItem = twx.div`flex items-center justify-start pl-2 pr-4 py-2`
 
+const uploadChunk = async (
+  fileName: string,
+  chunk: ArrayBuffer,
+  chunkSize: number,
+  chunkIndex: number,
+  totalChunks: number,
+) => {
+  const url = `http://localhost:3001/_storage/localhost/upload_file_chunk_to_temp/`
+  const chunkData = {
+    fileName,
+    chunkSize,
+    chunkIndex,
+    totalChunks,
+    chunk: Array.from(new Uint8Array(chunk)),
+  }
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify(chunkData),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Upload failed: ${response.statusText}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error('Upload failed:', error)
+    throw error
+  }
+}
+
+const uploadFile = async (fileName: string, file: File) => {
+  // 这里一定要 async 上传，不能 await 然后 block for loop，因为这样会消耗更多内存导致最终浏览器崩溃
+  {
+    const uuid = crypto.randomUUID()
+    const lastDotIndex = fileName.lastIndexOf('.')
+    fileName =
+      lastDotIndex !== -1
+        ? `${fileName.slice(0, lastDotIndex)}_${uuid}${fileName.slice(lastDotIndex)}`
+        : `${fileName}_${uuid}`
+  }
+  const parallelUploads = 10
+  const chunkSize = 1 * 1024 * 1024 // 1MB chunks
+  const totalChunks = Math.ceil(file.size / chunkSize)
+  const promises = []
+  let fullPath = ''
+  const promise = async (i: number, start: number, end: number) => {
+    const chunk = await file.slice(start, end).arrayBuffer()
+    const res = await uploadChunk(fileName, chunk, chunkSize, i, totalChunks)
+    fullPath = res.fullPath
+    console.log('File chunk uploaded', res)
+  }
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * chunkSize
+    const end = Math.min(start + chunkSize, file.size)
+    promises.push(promise(i, start, end))
+    if (i === 0 || promises.length % parallelUploads === 0) {
+      // 第 0 个 chunk 要单独来，确保先创建文件
+      await Promise.all(promises)
+      promises.length = 0
+    }
+  }
+  if (promises.length > 0) {
+    await Promise.all(promises)
+    promises.length = 0
+  }
+  return fullPath
+}
+
 const QueueList = () => {
   const uploadQueueStore = useUploadQueueStore()
   return (
@@ -51,7 +124,6 @@ const QueueList = () => {
 export default function UploadQueue({ close }: { close: () => void }) {
   const uploadQueueStore = useUploadQueueStore()
   const createAssetObjectMut = rspc.useMutation(['assets.create_asset_object'])
-  const uploadFileChunkToTempMut = rspc.useMutation(['assets.upload_file_chunk_to_temp'])
 
   const completeUploading = uploadQueueStore.completeUploading
   const failedUploading = uploadQueueStore.failedUploading
@@ -73,40 +145,6 @@ export default function UploadQueue({ close }: { close: () => void }) {
     },
     [createAssetObjectMut, completeUploading, failedUploading],
   )
-  const CHUNK_SIZE = 1024 * 1024 // 1MB chunks
-  const uploadChunk = useCallback(
-    async (fileName: string, chunk: ArrayBuffer, chunkIndex: number, totalChunks: number) => {
-      const chunkData = {
-        fileName,
-        chunkIndex,
-        totalChunks,
-        chunk: Array.from(new Uint8Array(chunk)),
-      }
-      // await mutation.mutateAsync(chunkData)
-      return uploadFileChunkToTempMut.mutateAsync(chunkData)
-    },
-    [uploadFileChunkToTempMut],
-  )
-  const uploadFile = useCallback(
-    async (fileName: string, file: File) => {
-      const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
-      let fullPath = ''
-      for (let i = 0; i < totalChunks; i++) {
-        const start = i * CHUNK_SIZE
-        const end = Math.min(start + CHUNK_SIZE, file.size)
-        const chunk = await file.slice(start, end).arrayBuffer()
-        try {
-          const res = await uploadChunk(fileName, chunk, i, totalChunks)
-          fullPath = res.fullPath
-          console.log('File chunk uploaded', res)
-        } catch (e) {
-          throw e
-        }
-      }
-      return fullPath
-    },
-    [CHUNK_SIZE, uploadChunk],
-  )
 
   useEffect(() => {
     // useUploadQueueStore.subscribe((e) => {})
@@ -122,7 +160,7 @@ export default function UploadQueue({ close }: { close: () => void }) {
           .catch((e) => console.error('File upload failed', e))
       }
     }
-  }, [uploadQueueStore, createAssetObject, uploadFile])
+  }, [uploadQueueStore, createAssetObject])
 
   return (
     <>

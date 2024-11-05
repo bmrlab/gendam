@@ -17,9 +17,8 @@ use process::process_asset;
 use process::process_asset_metadata;
 use read::{get_file_path, list_file_path};
 use rspc::{Router, RouterBuilder};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use specta::Type;
-use tokio::{fs::OpenOptions, io::AsyncWriteExt};
 use tracing::info;
 use types::FilePathRequestPayload;
 use types::FilePathWithAssetObjectData;
@@ -128,78 +127,6 @@ where
                     }
 
                     Ok(())
-                }
-            })
-        })
-        .mutation("upload_file_chunk_to_temp", |t| {
-            // TODO: 使用 OpenDAL 来实现
-            // 注意: 这个接口只能一个个调用，不然上传同一个文件会出现并发写的问题
-            t({
-                #[derive(Serialize, Deserialize, Type, Debug)]
-                #[serde(rename_all = "camelCase")]
-                struct FileChunkUploadResult {
-                    full_path: String, // whether the file is fully uploaded
-                    chunk_index: u32,
-                    message: String,
-                }
-                #[derive(Deserialize, Type, Debug)]
-                #[serde(rename_all = "camelCase")]
-                struct FileChunkUploadData {
-                    file_name: String,
-                    chunk_index: u32,
-                    total_chunks: u32,
-                    chunk: Vec<u8>,
-                }
-                |_ctx, chunk_data: FileChunkUploadData| async move {
-                    let temp_dir_root = std::env::temp_dir();
-                    let full_path = {
-                        let temp_dir = temp_dir_root.join("gendam-file-upload");
-                        std::fs::create_dir_all(&temp_dir).map_err(|e| {
-                            rspc::Error::new(
-                                rspc::ErrorCode::InternalServerError,
-                                format!("Failed to create temporary directory: {}", e),
-                            )
-                        })?;
-                        temp_dir.join(&chunk_data.file_name)
-                    };
-
-                    if chunk_data.chunk_index == 0 && full_path.exists() {
-                        std::fs::remove_file(&full_path).map_err(|e| {
-                            rspc::Error::new(
-                                rspc::ErrorCode::InternalServerError,
-                                format!("Failed to delete existing file: {}", e),
-                            )
-                        })?;
-                    }
-
-                    let mut file = OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open(&full_path)
-                        .await
-                        .map_err(|e| {
-                            rspc::Error::new(
-                                rspc::ErrorCode::InternalServerError,
-                                format!("Failed to open file: {}", e),
-                            )
-                        })?;
-
-                    file.write_all(&chunk_data.chunk).await.map_err(|e| {
-                        rspc::Error::new(
-                            rspc::ErrorCode::InternalServerError,
-                            format!("Failed to write chunk: {}", e),
-                        )
-                    })?;
-
-                    if chunk_data.chunk_index == chunk_data.total_chunks - 1 {
-                        // 最后一个分片，可以进行文件完整性检查等操作
-                    }
-
-                    Ok(FileChunkUploadResult {
-                        full_path: full_path.to_string_lossy().to_string(),
-                        chunk_index: chunk_data.chunk_index,
-                        message: format!("Chunk {} uploaded successfully", chunk_data.chunk_index),
-                    })
                 }
             })
         })

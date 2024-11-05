@@ -56,9 +56,8 @@ pub async fn delete_unlinked_assets(library: Arc<Library>, content_base: Arc<Con
         })
         .collect::<Vec<_>>();
 
-    tracing::debug!("unlinked_assets : {:?}", unlinked_assets);
-
     for asset in unlinked_assets {
+        tracing::debug!("delete unlinked asset {:?}", asset.hash);
         if let Err(e) = library
             .prisma_client()
             .asset_object()

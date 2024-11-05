@@ -59,6 +59,7 @@ libp2p = "0.53.2"
 async-stream = { workspace = true }
 infer = "0.15.0"
 glob = "0.3.0"
+lazy_static = "1.5.0"
 
 # 处理数据库数据序列化和反序列化
 asynchronous-codec = "0.7.0"

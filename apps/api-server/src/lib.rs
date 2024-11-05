@@ -6,9 +6,9 @@ mod library;
 mod routes;
 mod validators;
 
-pub use routes::get_localhost_routes;
 pub use routes::get_routes;
-pub use routes::p2p::ShareInfo;
+pub use routes::localhost;
+pub use routes::p2p::info as p2p_info;
 
 pub mod ctx;
 pub use ctx::traits::{CtxStore, CtxWithLibrary, StoreError};

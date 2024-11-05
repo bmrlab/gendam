@@ -321,6 +321,7 @@ dependencies = [
  "glob",
  "global-variable",
  "infer 0.15.0",
+ "lazy_static",
  "libp2p",
  "mime_guess",
  "p2p",
