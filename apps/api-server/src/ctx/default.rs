@@ -1,5 +1,7 @@
 // Ctx 和 Store 的默认实现，主要给 api_server/main 用，不过目前 CtxWithLibrary 的实现也是可以给 tauri 用的，就先用着
-use super::traits::{CtxStore, CtxWithAI, CtxWithDownload, CtxWithLibrary, CtxWithP2P, StoreError};
+use super::traits::{
+    CtxError, CtxStore, CtxWithAI, CtxWithDownload, CtxWithLibrary, CtxWithP2P, StoreError,
+};
 use crate::cron_jobs::delete_unlinked_assets;
 use crate::{
     ai::AIHandler,
@@ -13,7 +15,6 @@ use futures::FutureExt;
 use p2p::Node;
 use std::{
     boxed::Box,
-    fmt::Debug,
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc, Mutex},
 };
@@ -150,25 +151,18 @@ impl<S: CtxStore> Ctx<S> {
 }
 
 impl<S: CtxStore + Send> CtxWithP2P for Ctx<S> {
-    fn node(&self) -> Result<Node<ShareInfo>, rspc::Error> {
-        match self.node.lock() {
-            Ok(node) => Ok(node.clone()),
-            Err(e) => Err(rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                e.to_string(),
-            )),
-        }
+    fn node(&self) -> Result<Node<ShareInfo>, CtxError> {
+        let node = self.node.lock()?;
+        Ok(node.clone())
     }
 }
 
 impl<S: CtxStore + Send> CtxWithAI for Ctx<S> {
-    fn ai_handler(&self) -> Result<AIHandler, rspc::Error> {
-        match self.ai_handler.lock().unwrap().as_ref() {
+    fn ai_handler(&self) -> Result<AIHandler, CtxError> {
+        let ai_handler = self.ai_handler.lock()?;
+        match ai_handler.as_ref() {
             Some(ai_handler) => Ok(ai_handler.clone()),
-            None => Err(rspc::Error::new(
-                rspc::ErrorCode::BadRequest,
-                String::from("No ai handler is set"),
-            )),
+            None => Err(CtxError::BadRequest("No ai handler is set".into())),
         }
     }
 
@@ -178,32 +172,28 @@ impl<S: CtxStore + Send> CtxWithAI for Ctx<S> {
 }
 
 impl<S: CtxStore + Send> CtxWithDownload for Ctx<S> {
-    fn download_reporter(&self) -> Result<DownloadReporter, rspc::Error> {
-        match self.download_hub.lock().unwrap().as_ref() {
+    fn download_reporter(&self) -> Result<DownloadReporter, CtxError> {
+        let download_hub = self.download_hub.lock()?;
+        match download_hub.as_ref() {
             Some(download_hub) => Ok(download_hub.get_reporter()),
-            None => Err(rspc::Error::new(
-                rspc::ErrorCode::BadRequest,
-                String::from("No download reporter is set"),
-            )),
+            None => Err(CtxError::BadRequest("No download reporter is set".into())),
         }
     }
 
-    fn download_status(&self) -> Result<Vec<DownloadStatus>, rspc::Error> {
-        match self.download_hub.lock().unwrap().as_ref() {
+    fn download_status(&self) -> Result<Vec<DownloadStatus>, CtxError> {
+        let download_hub = self.download_hub.lock()?;
+        match download_hub.as_ref() {
             Some(download_hub) => Ok(download_hub.get_file_list()),
-            None => Err(rspc::Error::new(
-                rspc::ErrorCode::BadRequest,
-                String::from("No download status is set"),
-            )),
+            None => Err(CtxError::BadRequest("No download status is set".into())),
         }
     }
 }
 
-fn unexpected_err(e: impl Debug) -> rspc::Error {
-    rspc::Error::new(
-        rspc::ErrorCode::InternalServerError,
-        format!("unlock failed: {:?}", e),
-    )
+// lock()? will return CtxError
+impl<T> From<std::sync::PoisonError<T>> for CtxError {
+    fn from(e: std::sync::PoisonError<T>) -> Self {
+        CtxError::Internal(format!("Lock poison error: {}", e))
+    }
 }
 
 impl<S: CtxStore + Send> Ctx<S> {
@@ -230,13 +220,10 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         self.resources_dir.clone()
     }
 
-    fn library(&self) -> Result<Library, rspc::Error> {
+    fn library(&self) -> Result<Library, CtxError> {
         match self.current_library.lock().unwrap().as_ref() {
             Some(library) => Ok(library.clone()),
-            None => Err(rspc::Error::new(
-                rspc::ErrorCode::BadRequest,
-                String::from("No current library is set"),
-            )),
+            None => Err(CtxError::BadRequest("No current library is set".into())),
         }
     }
 
@@ -254,15 +241,12 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
     }
 
     #[tracing::instrument(level = "info", skip_all)] // create a span for better tracking
-    async fn unload_library(&self) -> Result<(), rspc::Error> {
+    async fn unload_library(&self) -> Result<(), CtxError> {
         {
             let mut is_busy = self.is_busy.lock().unwrap();
             if *is_busy.get_mut() {
                 // FIXME should use 429 too many requests error code
-                return Err(rspc::Error::new(
-                    rspc::ErrorCode::Conflict,
-                    "App is busy".into(),
-                ));
+                return Err(CtxError::Conflict("App is busy".into()));
             }
             is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
         }
@@ -273,14 +257,14 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
         /* cancel tasks */
         {
-            let mut content_base = self.content_base.lock().map_err(unexpected_err)?;
+            let mut content_base = self.content_base.lock()?;
             *content_base = None;
             tracing::info!(task = "update content base", "Success");
         }
 
         /* shutdown ai handler */
         let current_ai_handler = {
-            let ai_handler = self.ai_handler.lock().map_err(unexpected_err)?;
+            let ai_handler = self.ai_handler.lock()?;
             let ai_handler = ai_handler.as_ref().map(|v| v.clone());
             ai_handler
         };
@@ -291,7 +275,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
 
         /* update ctx */
         {
-            let mut current_library = self.current_library.lock().map_err(unexpected_err)?;
+            let mut current_library = self.current_library.lock()?;
             *current_library = None; // same as self.current_library.lock().unwrap().take();
             tracing::info!(task = "update ctx", "Success");
         }
@@ -323,15 +307,11 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
     }
 
     #[tracing::instrument(level = "info", skip(self))] // create a span for better tracking
-    async fn load_library(&self, library_id: &str) -> Result<Library, rspc::Error> {
+    async fn load_library(&self, library_id: &str) -> Result<Library, CtxError> {
         {
             let mut is_busy = self.is_busy.lock().unwrap();
             if *is_busy.get_mut() {
-                // FIXME should use 429 too many requests error code
-                return Err(rspc::Error::new(
-                    rspc::ErrorCode::Conflict,
-                    "App is busy".into(),
-                ));
+                return Err(CtxError::Conflict("App is busy".into()));
             }
             is_busy.store(true, std::sync::atomic::Ordering::Relaxed);
         }
@@ -345,13 +325,10 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 tracing::info!("Library with id {} is already loaded", library_id);
                 return Ok(library.clone());
             } else {
-                return Err(rspc::Error::new(
-                    rspc::ErrorCode::BadRequest,
-                    format!(
-                        "Library with diffrerent id {} is already loaded",
-                        library.id
-                    ),
-                ));
+                return Err(CtxError::BadRequest(format!(
+                    "Library with diffrerent id {} is already loaded",
+                    library.id
+                )));
             }
         }
 
@@ -361,10 +338,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 .await
                 .map_err(|e| {
                     tracing::error!(task = "init library", "Failed: {:?}", e);
-                    rspc::Error::new(
-                        rspc::ErrorCode::InternalServerError,
-                        format!("Failed to init library: {:?}", e),
-                    )
+                    CtxError::Internal(format!("Failed to init library: {:?}", e))
                 })?;
             tracing::info!(task = "init library", "Success");
             library
@@ -373,14 +347,14 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         /* update ctx */
         {
             // should update ctx before self.qdrant_info() is called
-            let mut current_library = self.current_library.lock().map_err(unexpected_err)?;
+            let mut current_library = self.current_library.lock()?;
             current_library.replace(library.clone());
             tracing::info!(task = "update ctx", "Success");
         }
 
         /* update store */
         {
-            let mut store = self.store.lock().map_err(unexpected_err)?;
+            let mut store = self.store.lock()?;
             let _ = store.insert("current-library-id", library_id);
             if let Err(e) = store.save() {
                 tracing::warn!(task = "update store", "Failed: {:?}", e);
@@ -393,7 +367,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         // init download hub
         {
             let download_hub = DownloadHub::new();
-            let mut current_download_hub = self.download_hub.lock().map_err(unexpected_err)?;
+            let mut current_download_hub = self.download_hub.lock()?;
             current_download_hub.replace(download_hub);
         }
 
@@ -407,13 +381,10 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
             // init AI handler after library is loaded
             let ai_handler = AIHandler::new(self).map_err(|e| {
                 tracing::error!(task = "init ai handler", "Failed: {}", e);
-                rspc::Error::new(
-                    rspc::ErrorCode::InternalServerError,
-                    format!("Failed to init AI handler: {}", e),
-                )
+                CtxError::Internal(format!("Failed to init AI handler: {}", e))
             })?;
             tracing::info!(task = "init ai handler", "Success");
-            let mut current_ai_handler = self.ai_handler.lock().map_err(unexpected_err)?;
+            let mut current_ai_handler = self.ai_handler.lock()?;
             current_ai_handler.replace(ai_handler.clone());
             ai_handler
         };
@@ -444,13 +415,10 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 );
             let cb = ContentBase::new(&cb_ctx, library.db()).map_err(|e| {
                 tracing::error!(task = "init content base", "Failed: {}", e);
-                rspc::Error::new(
-                    rspc::ErrorCode::InternalServerError,
-                    format!("Failed to init content base: {}", e),
-                )
+                CtxError::Internal(format!("Failed to init content base: {}", e))
             })?;
             tracing::info!(task = "init task pool", "Success");
-            let mut current_cb = self.content_base.lock().map_err(unexpected_err)?;
+            let mut current_cb = self.content_base.lock()?;
             current_cb.replace(cb.clone());
 
             cb
@@ -485,28 +453,25 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                 }),
             };
 
-            let _ = self.add_task(task).await?;
+            let _ = self.add_cron_task(task).await?;
         }
 
         Ok(library)
     }
 
-    fn content_base(&self) -> Result<ContentBase, rspc::Error> {
+    fn content_base(&self) -> Result<ContentBase, CtxError> {
         match self.content_base.lock().unwrap().as_ref() {
             Some(content_base) => Ok(content_base.clone()),
-            None => Err(rspc::Error::new(
-                rspc::ErrorCode::BadRequest,
-                String::from("No content base is set"),
-            )),
+            None => Err(CtxError::BadRequest("No content base is set".into())),
         }
     }
+}
 
-    async fn add_task(&self, task: cron::Task) -> Result<(), rspc::Error> {
+impl<S: CtxStore + Send> Ctx<S> {
+    async fn add_cron_task(&self, task: cron::Task) -> Result<(), CtxError> {
         let _ = self.cron.lock().await.create_job(task).await.map_err(|e| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("cron add task error: {:?}", e),
-            )
+            tracing::error!(task = "add task", "Failed: {:?}", e);
+            CtxError::Internal(format!("cron add task error: {:?}", e))
         })?;
         Ok(())
     }

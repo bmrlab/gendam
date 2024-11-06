@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use storage::S3Config;
 use strum_macros::{Display, EnumString};
 
+use crate::ctx::traits::CtxError;
 use crate::CtxWithLibrary;
 
 // libraries/[uuid as library id]/settings.json
@@ -176,12 +177,12 @@ pub fn set_library_settings(library_dir: &PathBuf, settings: LibrarySettings) {
 pub async fn load_library_exclusive_and_wait<TCtx>(
     ctx: TCtx,
     library_id: String,
-) -> Result<Library, rspc::Error>
+) -> Result<Library, CtxError>
 where
     // 传入 `spawn` 的闭包必须是 `'static` 的
     TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
-    let (tx, rx) = tokio::sync::oneshot::channel::<Result<Library, rspc::Error>>();
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<Library, CtxError>>();
     tokio::spawn(async move {
         match ctx.load_library(&library_id).await {
             Ok(library) => {
@@ -190,7 +191,7 @@ where
                 let _ = tx.send(Ok(library));
             }
             Err(e) => {
-                tracing::error!(library_id = library_id, "Failed to load library: {}", e);
+                tracing::error!(library_id = library_id, "Failed to load library: {:?}", e);
                 let _ = tx.send(Err(e));
                 // 不要 unload, 前端遇到 load 失败以后自己调用 unload, 方便控制状态
                 // ctx.unload_library().await
@@ -200,21 +201,21 @@ where
     // 放在 thread 里执行，这样在请求被 cancel 的时候还会继续执行，前端通过轮询 status 接口获取结果
     match rx.await {
         Ok(res) => res,
-        Err(e) => Err(rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("Failed to receive load library result: {}", e),
-        )),
+        Err(e) => Err(CtxError::Internal(format!(
+            "Failed to receive load library result: {}",
+            e
+        ))),
     }
 }
 
 /// Load library and wait for it to be loaded
 /// If another request comes in while a previous load is still in progress, it will fail with an error.
-pub async fn unload_library_exclusive_and_wait<TCtx>(ctx: TCtx) -> Result<(), rspc::Error>
+pub async fn unload_library_exclusive_and_wait<TCtx>(ctx: TCtx) -> Result<(), CtxError>
 where
     // 传入 `spawn` 的闭包必须是 `'static` 的
     TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
 {
-    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), rspc::Error>>();
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), CtxError>>();
     tokio::spawn(async move {
         match ctx.unload_library().await {
             Ok(_) => {
@@ -222,7 +223,7 @@ where
                 let _ = tx.send(Ok(()));
             }
             Err(e) => {
-                tracing::error!("Failed to unload library: {}", e);
+                tracing::error!("Failed to unload library: {:?}", e);
                 let _ = tx.send(Err(e));
             }
         };
@@ -230,9 +231,9 @@ where
     // 放在 thread 里执行，这样在请求被 cancel 的时候还会继续执行，前端通过轮询 status 接口获取结果
     match rx.await {
         Ok(result) => result,
-        Err(e) => Err(rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("Failed to receive unload library result: {}", e),
-        )),
+        Err(e) => Err(CtxError::Internal(format!(
+            "Failed to receive unload library result: {}",
+            e
+        ))),
     }
 }

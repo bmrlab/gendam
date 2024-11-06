@@ -23,7 +23,7 @@ pub mod exports {
     pub mod ctx {
         pub use crate::ctx::{
             default::Ctx,
-            traits::{CtxStore, CtxWithLibrary, StoreError},
+            traits::{CtxError, CtxStore, CtxWithLibrary, StoreError},
         };
     }
     pub use crate::{library::get_library_settings, routes::get_rspc_routes};

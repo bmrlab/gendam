@@ -76,8 +76,6 @@ export type AudioMetadata = { bit_rate: string; duration: number }
 
 export type ImageRequestPayload = { hash: string }
 
-export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
-
 export type FilePathDeletePayload = { materializedPath: string; name: string }
 
 export type RecommendRequestPayload = { assetObjectHash: string; timestamp: number }
@@ -96,6 +94,8 @@ export type ExportInput = { types: AudioType[]; hash: string; path: string; file
 
 export type RawTextMetadata = { text_count: string }
 
+export type LibrarySettingsThemeEnum = "light" | "dark"
+
 export type S3Config = { bucket: string; endpoint: string; accessKeyId: string; secretAccessKey: string }
 
 export type RAGRequestPayload = { query: string }
@@ -105,6 +105,8 @@ export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean |
 export type ImageTaskTypeSpecta = "thumbnail" | "embedding" | "description" | "descEmbed"
 
 export type AudioSearchResultMetadata = { startTime: number; endTime: number }
+
+export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorer: LibrarySettingsExplorer; models: LibraryModels; alwaysDeleteLocalFileAfterUpload: boolean; s3Config: S3Config | null }
 
 export type FileHandlerTask = { id: number; assetObjectId: number; taskType: string; exitCode: number | null; exitMessage: string | null; startsAt: string | null; endsAt: string | null; createdAt: string; updatedAt: string }
 
@@ -116,13 +118,7 @@ export type AIModelCategory = "ImageEmbedding" | "MultiModalEmbedding" | "ImageC
 
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
 
-export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorer: LibrarySettingsExplorer; models: LibraryModels; alwaysDeleteLocalFileAfterUpload: boolean; s3Config: S3Config | null }
-
 export type ModelsListResult = { category: AIModelCategory; models: AIModelResult[] }
-
-export type LibrarySettingsThemeEnum = "light" | "dark"
-
-export type LibrarySettingsExplorer = { layout: LibrarySettingsLayoutEnum; inspectorSize: number; inspectorShow: boolean }
 
 export type FilePathGetPayload = { materializedPath: string; name: string }
 
@@ -135,6 +131,8 @@ export type FilePathWithAssetObjectData = { id: number; isDir: boolean; material
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
 export type VideoTaskTypeSpecta = "thumbnail" | "frame" | "frameEmbedding" | "frameDescription" | "frameDescEmbed" | "audio" | "transcript" | "transChunk" | "transChunkSum" | "transChunkSumEmbed"
+
+export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type TranscriptRequestPayload = { hash: string; startTimestamp: number; endTimestamp: number; requestType: TranscriptType }
 
@@ -149,6 +147,8 @@ export type AcceptShareOutput = { fileList: string[] }
 export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: string[] | null }
 
 export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
+
+export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string; Llm: string }
 
 export type DownloadModelPayload = { modelId: string }
 
@@ -202,10 +202,10 @@ export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string 
 
 export type AudioResp = { type: AudioType; content: string }
 
-export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string; Llm: string }
-
 export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
 
 export type SearchRequestPayload = { text: string }
 
 export type RAGResult = { result_type: "Reference"; data: RetrievalResultPayload } | { result_type: "Response"; data: string } | { result_type: "Error"; data: string } | { result_type: "Done" }
+
+export type LibrarySettingsExplorer = { layout: LibrarySettingsLayoutEnum; inspectorSize: number; inspectorShow: boolean }
