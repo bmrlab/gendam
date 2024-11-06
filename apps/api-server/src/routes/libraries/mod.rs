@@ -1,7 +1,8 @@
 mod models;
 
 use crate::library::{
-    get_library_settings, set_library_settings, LibrarySettings, LIBRARY_SETTINGS_FILE_NAME,
+    get_library_settings, load_library_exclusive_and_wait, set_library_settings,
+    unload_library_exclusive_and_wait, LibrarySettings, LIBRARY_SETTINGS_FILE_NAME,
 };
 use crate::CtxWithLibrary;
 use content_library::{create_library, list_library_dirs};
@@ -87,37 +88,15 @@ where
             #[serde(rename_all = "camelCase")]
             pub struct LibraryLoadResult {
                 pub id: String,
-                pub dir: String,
+                pub dir: PathBuf, // string
             }
             t(|ctx, library_id: String| async move {
-                let (tx, rx) = tokio::sync::oneshot::channel::<Result<LibraryLoadResult, rspc::Error>>();
-                tokio::spawn(async move {
-                    match ctx.load_library(&library_id).await {
-                        Ok(library) => {
-                            tracing::info!(library_id=library_id, "Library loaded: {:?}", library);
-                            let result = LibraryLoadResult {
-                                id: library.id,
-                                dir: library.dir.to_str().unwrap().to_string(),
-                            };
-                            // 不要 unwrap, 请求被 cancel 以后 rx 会被 drop, 这里 send 会返回错误
-                            let _ = tx.send(Ok(result));
-                        }
-                        Err(e) => {
-                            tracing::error!(library_id=library_id, "Failed to load library: {}", e);
-                            let _ = tx.send(Err(e));
-                            // 不要 unload, 前端遇到 load 失败以后自己调用 unload, 方便控制状态
-                            // ctx.unload_library().await
-                        }
-                    };
-                });
-                // 放在 thread 里执行，这样在请求被 cancel 的时候还会继续执行，前端通过轮询 status 接口获取结果
-                match rx.await {
-                    Ok(result) => result,
-                    Err(e) => Err(rspc::Error::new(
-                        rspc::ErrorCode::InternalServerError,
-                        format!("Failed to receive load library result: {}", e),
-                    )),
-                }
+                let library = load_library_exclusive_and_wait(ctx, library_id).await?;
+                let result = LibraryLoadResult {
+                    id: library.id,
+                    dir: library.dir,
+                };
+                Ok(result)
             })
         })
         .mutation("unload_library", |t| {
@@ -126,27 +105,8 @@ where
             t(|ctx, _: Option<serde_json::Value>| async move {
                 // 不需要确认 library 存在, 意外情况下可能 library 已经清空但是 task 和 qdrant 还在, unload_library 可反复执行
                 // ctx.library()?;
-                let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), rspc::Error>>();
-                tokio::spawn(async move {
-                    match ctx.unload_library().await {
-                        Ok(_) => {
-                            tracing::info!("Library unloaded");
-                            let _ = tx.send(Ok(()));
-                        }
-                        Err(e) => {
-                            tracing::error!("Failed to unload library: {}", e);
-                            let _ = tx.send(Err(e));
-                        }
-                    };
-                });
-                // 放在 thread 里执行，这样在请求被 cancel 的时候还会继续执行，前端通过轮询 status 接口获取结果
-                match rx.await {
-                    Ok(result) => result,
-                    Err(e) => Err(rspc::Error::new(
-                        rspc::ErrorCode::InternalServerError,
-                        format!("Failed to receive unload library result: {}", e),
-                    )),
-                }
+                unload_library_exclusive_and_wait(ctx).await?;
+                Ok(())
             })
         })
         .query("status", |t| {

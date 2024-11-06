@@ -209,8 +209,9 @@ fn unexpected_err(e: impl Debug) -> rspc::Error {
 impl<S: CtxStore + Send> Ctx<S> {
     async fn trigger_unfinished_tasks(&self) -> () {
         if let Ok(_library) = self.library() {
-            tracing::warn!("TODO: trigger unfinished tasks");
+            //
         } else {
+            //
         }
     }
 }
@@ -458,7 +459,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         /* trigger unfinished tasks */
         {
             self.trigger_unfinished_tasks().await;
-            tracing::info!(task = "trigger unfinished tasks", "Success");
+            tracing::warn!(task = "trigger unfinished tasks", "Not implemented");
         }
 
         // init cron

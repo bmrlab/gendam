@@ -1,8 +1,11 @@
+use content_library::Library;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::path::PathBuf;
 use storage::S3Config;
 use strum_macros::{Display, EnumString};
+
+use crate::CtxWithLibrary;
 
 // libraries/[uuid as library id]/settings.json
 pub const LIBRARY_SETTINGS_FILE_NAME: &str = "settings.json";
@@ -166,4 +169,70 @@ pub fn set_library_settings(library_dir: &PathBuf, settings: LibrarySettings) {
             tracing::error!("Failed to create file: {}", e);
         }
     };
+}
+
+/// Load library and wait for it to be loaded
+/// If another request comes in while a previous load is still in progress, it will fail with an error.
+pub async fn load_library_exclusive_and_wait<TCtx>(
+    ctx: TCtx,
+    library_id: String,
+) -> Result<Library, rspc::Error>
+where
+    // 传入 `spawn` 的闭包必须是 `'static` 的
+    TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
+{
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<Library, rspc::Error>>();
+    tokio::spawn(async move {
+        match ctx.load_library(&library_id).await {
+            Ok(library) => {
+                tracing::info!(library_id = library_id, "Library loaded: {:?}", library);
+                // 不要 unwrap, 请求被 cancel 以后 rx 会被 drop, 这里 send 会返回错误
+                let _ = tx.send(Ok(library));
+            }
+            Err(e) => {
+                tracing::error!(library_id = library_id, "Failed to load library: {}", e);
+                let _ = tx.send(Err(e));
+                // 不要 unload, 前端遇到 load 失败以后自己调用 unload, 方便控制状态
+                // ctx.unload_library().await
+            }
+        };
+    });
+    // 放在 thread 里执行，这样在请求被 cancel 的时候还会继续执行，前端通过轮询 status 接口获取结果
+    match rx.await {
+        Ok(res) => res,
+        Err(e) => Err(rspc::Error::new(
+            rspc::ErrorCode::InternalServerError,
+            format!("Failed to receive load library result: {}", e),
+        )),
+    }
+}
+
+/// Load library and wait for it to be loaded
+/// If another request comes in while a previous load is still in progress, it will fail with an error.
+pub async fn unload_library_exclusive_and_wait<TCtx>(ctx: TCtx) -> Result<(), rspc::Error>
+where
+    // 传入 `spawn` 的闭包必须是 `'static` 的
+    TCtx: CtxWithLibrary + Clone + Send + Sync + 'static,
+{
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), rspc::Error>>();
+    tokio::spawn(async move {
+        match ctx.unload_library().await {
+            Ok(_) => {
+                tracing::info!("Library unloaded");
+                let _ = tx.send(Ok(()));
+            }
+            Err(e) => {
+                tracing::error!("Failed to unload library: {}", e);
+                let _ = tx.send(Err(e));
+            }
+        };
+    });
+    // 放在 thread 里执行，这样在请求被 cancel 的时候还会继续执行，前端通过轮询 status 接口获取结果
+    match rx.await {
+        Ok(result) => result,
+        Err(e) => Err(rspc::Error::new(
+            rspc::ErrorCode::InternalServerError,
+            format!("Failed to receive unload library result: {}", e),
+        )),
+    }
 }
