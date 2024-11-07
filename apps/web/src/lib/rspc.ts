@@ -17,12 +17,12 @@ export const websocketClient = createClient<Procedures>({
         : new NoOpTransport(),
 })
 
+// export const client = websocketClient
 export const client = createClient<Procedures>({
   transport:
     typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined'
       ? new TauriTransport()
       : typeof window !== 'undefined'
-        // ? new WebsocketTransport('ws://localhost:3001/rspc/ws')
         ? new FetchTransport('http://localhost:3001/rspc')
         : new NoOpTransport(),
 })

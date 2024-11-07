@@ -37,13 +37,14 @@ where
                 struct FilePathCreatePayload {
                     #[serde(deserialize_with = "validators::materialized_path_string")]
                     materialized_path: String,
-                    #[serde(deserialize_with = "validators::path_name_string")]
+                    // #[serde(deserialize_with = "validators::path_name_string")]
                     name: String,
                 }
                 |ctx, input: FilePathCreatePayload| async move {
+                    let materialized_path = input.materialized_path;
+                    let name = validators::replace_invalid_chars_in_path_name(input.name);
                     let library = ctx.library()?;
-                    let file_path =
-                        create_dir(&library, &input.materialized_path, &input.name).await?;
+                    let file_path = create_dir(&library, &materialized_path, &name).await?;
                     Ok(file_path)
                 }
             })
@@ -55,20 +56,22 @@ where
                 struct AssetObjectCreatePayload {
                     #[serde(deserialize_with = "validators::materialized_path_string")]
                     materialized_path: String,
-                    #[serde(deserialize_with = "validators::path_name_string")]
+                    // #[serde(deserialize_with = "validators::path_name_string")]
                     name: String,
                     local_full_path: String,
                     // TODO: 加一个参数，指定是否需要删除源文件，对于客户端临时上传的文件，可以考虑删除
                 }
                 |ctx: TCtx, input: AssetObjectCreatePayload| async move {
                     info!("received create_asset_object: {input:?}");
+                    let materialized_path = input.materialized_path;
+                    let name = validators::replace_invalid_chars_in_path_name(input.name);
                     let library = ctx.library()?;
                     let content_base = ctx.content_base()?;
                     let (file_path_data, asset_object_data, asset_object_existed) =
                         create_asset_object(
                             &library,
-                            &input.materialized_path,
-                            &input.name,
+                            &materialized_path,
+                            &name,
                             &input.local_full_path,
                         )
                         .await?;

@@ -65,9 +65,8 @@ where
     deserializer.deserialize_str(PathNameString)
 }
 
-/// TODO: 应该在 create_asset_object 和 create_dir 接口上去掉 validators, 然后调用这个方法清洗字符串
-#[allow(dead_code)]
-pub fn replace_invalid_chars_in_path_name(input: &str) -> String {
+/// 应该在 create_asset_object 和 create_dir 接口上去掉 validators, 然后调用这个方法清洗字符串
+pub fn replace_invalid_chars_in_path_name(input: String) -> String {
     input
         .chars()
         .map(|c| match c {
