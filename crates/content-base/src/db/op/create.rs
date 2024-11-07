@@ -5,22 +5,19 @@ use tracing::{debug, error};
 use crate::db::model::audio::{AudioFrameModel, AudioModel};
 use crate::db::model::document::DocumentModel;
 use crate::db::model::id::ID;
+use crate::db::model::payload::PayloadModel;
 use crate::db::model::video::{ImageFrameModel, VideoModel};
 use crate::db::model::web::WebPageModel;
 use crate::db::model::{ImageModel, PageModel, TextModel};
-use crate::{
-    check_db_error_from_resp, collect_async_results, concat_arrays,
-    query::payload::ContentIndexPayload,
-};
 use crate::db::DB;
-use crate::db::model::payload::PayloadModel;
+use crate::{check_db_error_from_resp, collect_async_results, concat_arrays};
 
 /// insert api
 impl DB {
     pub async fn insert_image(
         &self,
         image_model: ImageModel,
-        payload: Option<ContentIndexPayload>,
+        file_identifier: Option<String>,
     ) -> anyhow::Result<ID> {
         let mut resp = self
             .client
@@ -44,8 +41,8 @@ impl DB {
 
         match id {
             Some(id) => {
-                if let Some(payload) = payload {
-                    let payload_id = self.create_payload(payload.into()).await?;
+                if let Some(file_identifier) = file_identifier {
+                    let payload_id = self.create_payload(file_identifier.into()).await?;
                     self.create_with_relation(&id, &payload_id).await?;
                 }
                 Ok(id)
@@ -59,7 +56,7 @@ impl DB {
     pub async fn insert_audio(
         &self,
         audio: AudioModel,
-        payload: ContentIndexPayload,
+        file_identifier: String,
     ) -> anyhow::Result<ID> {
         let ids = self
             .batch_insert_audio_frame(audio.audio_frame)
@@ -84,7 +81,7 @@ impl DB {
                     ids.iter().map(|id| id.as_str()).collect(),
                 )
                 .await?;
-                let payload_id = self.create_payload(payload.into()).await?;
+                let payload_id = self.create_payload(file_identifier.into()).await?;
                 self.create_with_relation(&id, &payload_id).await?;
                 Ok(id)
             }
@@ -95,7 +92,7 @@ impl DB {
     pub async fn insert_video(
         &self,
         video: VideoModel,
-        payload: ContentIndexPayload,
+        file_identifier: String,
     ) -> anyhow::Result<ID> {
         let image_frame_ids = self
             .batch_insert_image_frame(video.image_frame)
@@ -143,7 +140,7 @@ impl DB {
                         .collect(),
                 )
                 .await?;
-                let payload = self.create_payload(payload.into()).await?;
+                let payload = self.create_payload(file_identifier.into()).await?;
                 self.create_with_relation(&id, &payload).await?;
                 Ok(id)
             }
@@ -154,7 +151,7 @@ impl DB {
     pub async fn insert_web_page(
         &self,
         web_page: WebPageModel,
-        payload: ContentIndexPayload,
+        file_identifier: String,
     ) -> anyhow::Result<ID> {
         let page_ids = self
             .batch_insert_page(web_page.page)
@@ -178,7 +175,7 @@ impl DB {
                     page_ids.iter().map(|id| id.as_str()).collect(),
                 )
                 .await?;
-                let payload_id = self.create_payload(payload.into()).await?;
+                let payload_id = self.create_payload(file_identifier.into()).await?;
                 self.create_with_relation(&id, &payload_id).await?;
                 Ok(id)
             }
@@ -189,7 +186,7 @@ impl DB {
     pub async fn insert_document(
         &self,
         document: DocumentModel,
-        payload: ContentIndexPayload,
+        file_identifier: String,
     ) -> anyhow::Result<ID> {
         let page_ids = self
             .batch_insert_page(document.page)
@@ -213,7 +210,7 @@ impl DB {
                     page_ids.iter().map(|id| id.as_str()).collect(),
                 )
                 .await?;
-                let payload_id = self.create_payload(payload.into()).await?;
+                let payload_id = self.create_payload(file_identifier.into()).await?;
                 self.create_with_relation(&id, &payload_id).await?;
                 Ok(id)
             }
@@ -484,22 +481,10 @@ mod test {
     use crate::db::model::id::{ID, TB};
     use crate::db::model::{ImageModel, TextModel};
     use crate::db::shared::test::{
-        fake_audio_model, fake_audio_payload, fake_document, fake_document_payload,
-        fake_image_model, fake_image_payload, fake_page_model, fake_video_model,
-        fake_video_payload, fake_web_page_model, fake_web_page_payload, gen_vector, setup,
+        fake_audio_model, fake_document, fake_file_identifier, fake_image_model, fake_page_model,
+        fake_video_model, fake_web_page_model, gen_vector, setup,
     };
     use crate::db::DB;
-    use crate::query::payload::{ContentIndexMetadata, ContentIndexPayload};
-    use content_base_task::audio::trans_chunk::AudioTransChunkTask;
-    use content_base_task::image::desc_embed::ImageDescEmbedTask;
-    use content_base_task::image::ImageTaskType;
-    use content_base_task::raw_text::chunk_sum_embed::RawTextChunkSumEmbedTask;
-    use content_base_task::raw_text::RawTextTaskType;
-    use content_base_task::video::trans_chunk::VideoTransChunkTask;
-    use content_base_task::video::VideoTaskType;
-    use content_base_task::web_page::transform::WebPageTransformTask;
-    use content_base_task::web_page::WebPageTaskType;
-    use content_base_task::ContentTaskType;
     use itertools::Itertools;
     use std::process::id;
     use test_log::test;
@@ -525,7 +510,7 @@ mod test {
     async fn test_insert_image() {
         let db = setup(None).await;
         let _ = db
-            .insert_image(fake_image_model(), Some(fake_image_payload()))
+            .insert_image(fake_image_model(), Some(fake_file_identifier()))
             .await;
     }
 
@@ -533,7 +518,7 @@ mod test {
     async fn test_insert_audio() {
         let db = setup(None).await;
         let id = db
-            .insert_audio(fake_audio_model(), fake_audio_payload())
+            .insert_audio(fake_audio_model(), fake_file_identifier())
             .await
             .unwrap();
         assert_eq!(id.tb(), &TB::Audio);
@@ -543,7 +528,7 @@ mod test {
     async fn test_insert_video() {
         let db = setup(None).await;
         let id = db
-            .insert_video(fake_video_model(), fake_video_payload())
+            .insert_video(fake_video_model(), fake_file_identifier())
             .await
             .unwrap();
         assert_eq!(id.tb(), &TB::Video);
@@ -560,7 +545,7 @@ mod test {
     async fn test_insert_web_page() {
         let db = setup(None).await;
         let id = db
-            .insert_web_page(fake_web_page_model(), fake_web_page_payload())
+            .insert_web_page(fake_web_page_model(), fake_file_identifier())
             .await
             .unwrap();
         assert_eq!(id.tb(), &TB::Web);
@@ -570,7 +555,7 @@ mod test {
     async fn test_insert_document() {
         let db = setup(None).await;
         let id = db
-            .insert_document(fake_document(), fake_document_payload())
+            .insert_document(fake_document(), fake_file_identifier())
             .await
             .unwrap();
         assert_eq!(id.tb(), &TB::Document);

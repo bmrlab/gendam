@@ -56,20 +56,6 @@ impl From<&ContentIndexMetadata> for ContentTaskType {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-/// SearchPayload is serialized and deserialized as the `payload` field of `qdrant_client::qdrant::SearchPoint`.
-/// This process primarily occurs in:
-/// 1. Serialization: When inserting or updating points in Qdrant (e.g., in the task_post_process function)
-/// 2. Deserialization: When retrieving search results from Qdrant (e.g., in the group_results_by_asset function)
-/// For video content, the serialized JSON format might look like this:
-/// {
-///   "file_identifier": "123456",
-///   "task_type": "video-trans-chunk-sum-embed",
-///   "metadata": {
-///     "content_type": "Video",
-///     "start_timestamp": 10000,
-///     "end_timestamp": 15000
-///   }
-/// }
 pub struct ContentIndexPayload {
     pub file_identifier: String,
     pub task_type: ContentTaskType,

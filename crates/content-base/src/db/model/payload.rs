@@ -1,5 +1,4 @@
 use crate::db::model::id::ID;
-use crate::query::payload::ContentIndexPayload;
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Clone)]
@@ -18,12 +17,12 @@ impl PayloadModel {
     }
 }
 
-impl From<ContentIndexPayload> for PayloadModel {
-    fn from(value: ContentIndexPayload) -> Self {
+impl From<String> for PayloadModel {
+    fn from(value: String) -> Self {
         Self {
             id: None,
             url: None,
-            file_identifier: Some(value.file_identifier),
+            file_identifier: Some(value),
         }
     }
 }

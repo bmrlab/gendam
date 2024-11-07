@@ -465,7 +465,7 @@ mod test {
     use crate::db::model::id::ID;
     use crate::db::model::video::VideoModel;
     use crate::db::shared::test::{
-        fake_upsert_text_clause, fake_video_model, fake_video_payload, gen_vector, setup,
+        fake_file_identifier, fake_upsert_text_clause, fake_video_model, gen_vector, setup,
     };
     use crate::query::payload::{ContentIndexMetadata, ContentIndexPayload};
     use content_base_task::video::VideoTaskType;
@@ -543,7 +543,7 @@ mod test {
             .unwrap();
 
         let video_id = db
-            .insert_video(fake_video_model(), fake_video_payload())
+            .insert_video(fake_video_model(), fake_file_identifier())
             .await
             .unwrap();
 

@@ -239,8 +239,8 @@ mod test {
     use crate::db::model::audio::AudioModel;
     use crate::db::model::id::{ID, TB};
     use crate::db::shared::test::{
-        fake_audio_frame_model, fake_audio_model, fake_audio_payload, fake_image_model,
-        fake_image_payload, fake_text_model, fake_video_model, fake_video_payload, setup,
+        fake_audio_frame_model, fake_audio_model, fake_file_identifier, fake_image_model,
+        fake_text_model, fake_video_model, setup,
     };
     use crate::db::DB;
 
@@ -270,7 +270,7 @@ mod test {
     async fn test_delete_image() {
         let db = local_db().await;
         let image = db
-            .insert_image(fake_image_model(), Some(fake_image_payload()))
+            .insert_image(fake_image_model(), Some(fake_file_identifier()))
             .await
             .unwrap();
         db.delete(&image).await.expect("delete image");
@@ -282,7 +282,7 @@ mod test {
     async fn test_delete_audio() {
         let db = local_db().await;
         let audio = db
-            .insert_audio(fake_audio_model(), fake_audio_payload())
+            .insert_audio(fake_audio_model(), fake_file_identifier())
             .await
             .unwrap();
         db.delete(&audio).await.expect("delete audio");
@@ -294,7 +294,7 @@ mod test {
     async fn test_delete_video() {
         let db = local_db().await;
         let video_id = db
-            .insert_video(fake_video_model(), fake_video_payload())
+            .insert_video(fake_video_model(), fake_file_identifier())
             .await
             .unwrap();
         println!("video_id: {:?}", video_id);

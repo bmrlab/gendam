@@ -8,15 +8,7 @@ use crate::db::{
     },
     DB,
 };
-use crate::{
-    collect_async_results,
-    query::payload::{
-        audio::AudioIndexMetadata, image::ImageIndexMetadata, raw_text::RawTextIndexMetadata,
-        video::VideoIndexMetadata, web_page::WebPageIndexMetadata, ContentIndexMetadata,
-        ContentIndexPayload,
-    },
-    ContentBase,
-};
+use crate::{collect_async_results, ContentBase};
 use content_base_context::ContentBaseCtx;
 use content_base_pool::{TaskNotification, TaskPool, TaskPriority, TaskStatus};
 use content_base_task::{
@@ -209,7 +201,7 @@ async fn task_post_process(
         ) => {
             // TransChunkSumEmbed, FrameDescEmbed 和 FrameEmbedding 结束后都触发 upsert_video_index_to_surrealdb
             // 如果有一个任务没完成，upsert_video_index_to_surrealdb 会报错
-            upsert_video_index_to_surrealdb(ctx, file_identifier, task_type, db).await.map_err(|e| {
+            upsert_video_index_to_surrealdb(ctx, file_identifier, db).await.map_err(|e| {
                 tracing::warn!("either TransChunkSumEmbed or FrameEmbedding or FrameDescEmbed task not finished yet: {:?}", e);
                 e
             })?;
@@ -252,22 +244,14 @@ async fn task_post_process(
                         id: None,
                         audio_frame: audio_frame?,
                     },
-                    ContentIndexPayload {
-                        file_identifier: file_identifier.to_string(),
-                        // 下面两个字段不会使用
-                        task_type: AudioTransChunkSumEmbedTask.clone().into(),
-                        metadata: ContentIndexMetadata::Audio(AudioIndexMetadata {
-                            start_timestamp: 0,
-                            end_timestamp: 0,
-                        }),
-                    },
+                    file_identifier.to_string(),
                 )
                 .await?;
         }
         ContentTaskType::Image(ImageTaskType::DescEmbed(_) | ImageTaskType::Embedding(_)) => {
             // DescEmbed 和 Embedding 结束后都触发 upsert_image_index_to_surrealdb
             // 如果有一个任务没完成，upsert_image_index_to_surrealdb 会报错
-            upsert_image_index_to_surrealdb(ctx, file_identifier, task_type, db).await.map_err(|e| {
+            upsert_image_index_to_surrealdb(ctx, file_identifier, db).await.map_err(|e| {
                 tracing::warn!("either image embedding or description embedding task not finished yet: {:?}", e);
                 e
             })?;
@@ -282,18 +266,7 @@ async fn task_post_process(
             );
             debug!("pages: {pages:?}");
             db.try_read()?
-                .insert_document(
-                    DocumentModel::new(pages?),
-                    ContentIndexPayload {
-                        file_identifier: file_identifier.to_string(),
-                        task_type: task_type.clone().into(),
-                        metadata: RawTextIndexMetadata {
-                            start_index: 0,
-                            end_index: 0,
-                        }
-                        .into(),
-                    },
-                )
+                .insert_document(DocumentModel::new(pages?), file_identifier.to_string())
                 .await?;
         }
         ContentTaskType::WebPage(WebPageTaskType::ChunkSumEmbed(task_type)) => {
@@ -305,18 +278,7 @@ async fn task_post_process(
             );
             debug!("pages: {pages:?}");
             db.try_read()?
-                .insert_web_page(
-                    WebPageModel::new(pages?),
-                    ContentIndexPayload {
-                        file_identifier: file_identifier.to_string(),
-                        task_type: task_type.clone().into(),
-                        metadata: WebPageIndexMetadata {
-                            start_index: 0,
-                            end_index: 0,
-                        }
-                        .into(),
-                    },
-                )
+                .insert_web_page(WebPageModel::new(pages?), file_identifier.to_string())
                 .await?;
         }
         _ => {}
@@ -328,7 +290,6 @@ async fn task_post_process(
 async fn upsert_video_index_to_surrealdb(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
-    _task_type: &ContentTaskType,
     db: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     let chunks = VideoTransChunkTask
@@ -412,15 +373,7 @@ async fn upsert_video_index_to_surrealdb(
                 audio_frame,
                 image_frame,
             },
-            ContentIndexPayload {
-                file_identifier: file_identifier.to_string(),
-                // 下面两个字段不会使用
-                task_type: VideoTransChunkSumEmbedTask.clone().into(),
-                metadata: ContentIndexMetadata::Video(VideoIndexMetadata {
-                    start_timestamp: 0,
-                    end_timestamp: 0,
-                }),
-            },
+            file_identifier.to_string(),
         )
         .await?;
     Ok(())
@@ -430,7 +383,6 @@ async fn upsert_video_index_to_surrealdb(
 async fn upsert_image_index_to_surrealdb(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
-    task_type: &ContentTaskType,
     db: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     // 不用 task_type.desc_embed_content，用 ImageDescEmbedTask 创建个空实例，统一写法
@@ -451,12 +403,7 @@ async fn upsert_image_index_to_surrealdb(
                 vector: embedding,
                 prompt_vector: desc_embedding,
             },
-            Some(ContentIndexPayload {
-                file_identifier: file_identifier.to_string(),
-                // TODO: 确认是否下面两个字段不会使用
-                task_type: task_type.to_owned(),
-                metadata: ContentIndexMetadata::Image(ImageIndexMetadata {}),
-            }),
+            Some(file_identifier.to_string()),
         )
         .await?;
     Ok(())
