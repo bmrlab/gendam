@@ -65,7 +65,8 @@ where
                 }
             })
         })
-        .route("/_storage/localhost/asset_object/:hash/artifacts/:rest", {
+        .route("/_storage/localhost/asset_object/:hash/artifacts/*rest", {
+            // *rest will match the rest of the path including the slashes
             let ctx = ctx.clone();
             get(
                 |ExtractPath((hash, rest)): ExtractPath<(String, String)>| async move {
