@@ -4,7 +4,7 @@ import { ExtractExplorerItemWithType } from '@/Explorer/types'
 export default function AudioQuickView({
   assetObject,
 }: {
-  assetObject: ExtractExplorerItemWithType<'audio'>['assetObject']
+  assetObject: ExtractExplorerItemWithType<'Audio'>['assetObject']
 }) {
   return (
     <div className="flex h-full w-full items-center justify-center">

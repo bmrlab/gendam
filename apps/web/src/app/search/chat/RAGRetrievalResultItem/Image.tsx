@@ -3,7 +3,7 @@ import { useCurrentLibrary } from '@/lib/library'
 import { rspc } from '@/lib/rspc'
 import Image from 'next/image'
 
-export default function ImageRetrievalItem({ assetObject, metadata }: ExtractExplorerItem<'RetrievalResult', 'image'>) {
+export default function ImageRetrievalItem({ assetObject, metadata }: ExtractExplorerItem<'RetrievalResult', 'Image'>) {
   const currentLibrary = useCurrentLibrary()
   const { data } = rspc.useQuery(['assets.artifacts.image.description', { hash: assetObject.hash }])
 
@@ -12,7 +12,7 @@ export default function ImageRetrievalItem({ assetObject, metadata }: ExtractExp
       <div className="flex flex-col space-y-2">
         <div className="relative h-[200px] w-[280px]">
           <Image
-            src={currentLibrary.getThumbnailSrc(assetObject.hash, 'image')}
+            src={currentLibrary.getThumbnailSrc(assetObject.hash, 'Image')}
             className="object-cover"
             fill
             priority

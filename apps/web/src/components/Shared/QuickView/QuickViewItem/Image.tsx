@@ -4,7 +4,7 @@ import { ExtractExplorerItemWithType } from '@/Explorer/types'
 export default function ImageQuickView({
   assetObject,
 }: {
-  assetObject: ExtractExplorerItemWithType<'image'>['assetObject']
+  assetObject: ExtractExplorerItemWithType<'Image'>['assetObject']
 }) {
   return (
     <div className="h-full w-full overflow-hidden">

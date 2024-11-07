@@ -108,7 +108,7 @@ function SearchPage() {
                 <Image
                   src={currentLibrary.getPreviewSrc(
                     requestPayload.assetObjectHash,
-                    'video',
+                    'Video',
                     Math.floor(requestPayload.timestamp / 1000),
                   )}
                   alt={requestPayload.filePath?.name ?? requestPayload.assetObjectHash}

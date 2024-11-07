@@ -1957,6 +1957,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "specta",
  "storage",
  "storage-macro",
  "strum",

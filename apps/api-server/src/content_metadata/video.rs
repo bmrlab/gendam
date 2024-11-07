@@ -6,12 +6,14 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
 pub struct VideoAvgFrameRate {
     pub numerator: String,
     pub denominator: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
 pub struct VideoMetadata {
     pub width: String,
     pub height: String,

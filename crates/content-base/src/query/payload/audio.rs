@@ -1,16 +1,17 @@
 use super::ContentIndexMetadata;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub enum AudioSliceType {
     Transcript, // 语音转写，目前暂时只有这一个
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct AudioIndexMetadata {
     pub slice_type: AudioSliceType,
-    pub start_timestamp: i64,
-    pub end_timestamp: i64,
+    pub start_timestamp: i32,
+    pub end_timestamp: i32,
 }
 
 impl TryFrom<ContentIndexMetadata> for AudioIndexMetadata {

@@ -14,8 +14,8 @@ export default function VideoExportContextMenu() {
 
     const validItems = selectedItems
       .map((item) => {
-        if (item.type === 'SearchResult' && item.metadata.type === 'video') {
-          return item as ExtractExplorerItem<'SearchResult', 'video'>
+        if (item.type === 'SearchResult' && item.metadata.contentType === 'Video') {
+          return item as ExtractExplorerItem<'SearchResult', 'Video'>
         } else {
           return void 0
         }
@@ -44,8 +44,8 @@ export default function VideoExportContextMenu() {
             verboseFileName: filePaths[0].name,
             assetObjectId: assetObject.id,
             outputDir: selectedDir as string,
-            millisecondsFrom: metadata.startTime,
-            millisecondsTo: Math.max(metadata.endTime, metadata.startTime + 1000),
+            millisecondsFrom: metadata.startTimestamp,
+            millisecondsTo: Math.max(metadata.endTimestamp, metadata.startTimestamp + 1000),
           })
           toast.success('Exported successfully', {
             description: `Exported ${filePaths[0].name} to ${selectedDir}`,

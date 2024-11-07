@@ -7,11 +7,11 @@ import { Tabs } from '@gendam/ui/v2/tabs'
 import Image from 'next/image'
 import { match } from 'ts-pattern'
 
-export default function RawTextRetrievalItem(props: ExtractExplorerItem<'RetrievalResult', 'rawText'>) {
+export default function RawTextRetrievalItem(props: ExtractExplorerItem<'RetrievalResult', 'RawText'>) {
   const currentLibrary = useCurrentLibrary()
 
   return match(props)
-    .with(matchRetrievalResult('rawText', 'chunkSumEmbed'), (props) => <RawTextSummarizationItem {...props} />)
+    .with(matchRetrievalResult('RawText', { chunkType: 'Content' }), (props) => <RawTextSummarizationItem {...props} />)
     .otherwise(() => (
       <div className="flex flex-col space-y-2 rounded-md p-2">
         <div className="relative h-40 w-64">
@@ -24,7 +24,7 @@ export default function RawTextRetrievalItem(props: ExtractExplorerItem<'Retriev
 function RawTextSummarizationItem({
   assetObject,
   metadata,
-}: ExtractExplorerItem<'RetrievalResult', 'rawText', 'chunkSumEmbed'>) {
+}: ExtractExplorerItem<'RetrievalResult', 'RawText', { chunkType: 'Content' }>) {
   const { data: summarization } = rspc.useQuery([
     'assets.artifacts.raw_text.chunk.summarization',
     {

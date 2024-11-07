@@ -6,14 +6,14 @@ import Image from 'next/image'
 
 export default function ImageSearchItem({
   assetObject,
-}: ExtractExplorerItem<'SearchResult' | 'RetrievalResult', 'image'>) {
+}: ExtractExplorerItem<'SearchResult' | 'RetrievalResult', 'Image'>) {
   const currentLibrary = useCurrentLibrary()
   // const { data: description } = rspc.useQuery(['assets.artifacts.image.description', { hash: assetObject.hash }])
 
   return (
     <div className="relative h-full w-full">
       <Image
-        src={currentLibrary.getThumbnailSrc(assetObject.hash, 'image')}
+        src={currentLibrary.getThumbnailSrc(assetObject.hash, 'Image')}
         alt={assetObject.hash}
         fill={true}
         className="object-cover"

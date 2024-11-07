@@ -14,7 +14,7 @@ import { useSortedTasks } from './hooks'
 export default function RawTextDetail({
   filePath,
   assetObject,
-}: ExtractExplorerItem<'FilePathWithAssetObject', 'rawText'>) {
+}: ExtractExplorerItem<'FilePathWithAssetObject', 'RawText'>) {
   const { sortedTasks, handleJobsCancel } = useSortedTasks(assetObject)
 
   return (
@@ -31,7 +31,7 @@ export default function RawTextDetail({
         {(assetObject) => (
           <>
             <InspectorItemMetadataItem name="Text Count">
-              {assetObject.mediaData?.text_count ?? 0}
+              {assetObject.mediaData?.textCount ?? 0}
             </InspectorItemMetadataItem>
           </>
         )}

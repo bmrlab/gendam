@@ -33,11 +33,11 @@ export default function InspectorItem({ data }: { data: ExplorerItem | null }) {
         <FolderDetail data={data.filePath} />
       ) : data?.type === 'FilePathWithAssetObject' ? (
         match(data)
-          .with(matchExplorerItemWithType('video'), (props) => <VideoDetail {...props} />)
-          .with(matchExplorerItemWithType('audio'), (props) => <AudioDetail {...props} />)
-          .with(matchExplorerItemWithType('image'), (props) => <ImageDetail {...props} />)
-          .with(matchExplorerItemWithType('rawText'), (props) => <RawTextDetail {...props} />)
-          .with(matchExplorerItemWithType('webPage'), (props) => <WebPageDetail {...props} />)
+          .with(matchExplorerItemWithType('Video'), (props) => <VideoDetail {...props} />)
+          .with(matchExplorerItemWithType('Audio'), (props) => <AudioDetail {...props} />)
+          .with(matchExplorerItemWithType('Image'), (props) => <ImageDetail {...props} />)
+          .with(matchExplorerItemWithType('RawText'), (props) => <RawTextDetail {...props} />)
+          .with(matchExplorerItemWithType('WebPage'), (props) => <WebPageDetail {...props} />)
           .otherwise(() => <></>)
       ) : (
         <></>

@@ -7,17 +7,17 @@ import { Tabs } from '@gendam/ui/v2/tabs'
 import Image from 'next/image'
 import { match } from 'ts-pattern'
 
-export default function VideoRetrievalItem(props: ExtractExplorerItem<'RetrievalResult', 'video'>) {
+export default function VideoRetrievalItem(props: ExtractExplorerItem<'RetrievalResult', 'Video'>) {
   const currentLibrary = useCurrentLibrary()
   const { assetObject, metadata } = props
 
   return match(props)
-    .with(matchRetrievalResult('video', 'transChunkSumEmbed'), (props) => <VideoTranscriptItem {...props} />)
+    .with(matchRetrievalResult('Video', { sliceType: 'Audio' }), (props) => <VideoTranscriptItem {...props} />)
     .otherwise(() => (
       <div className="relative h-full w-full">
         <div className="flex h-full items-stretch justify-between">
           <Image
-            src={currentLibrary.getThumbnailSrc(assetObject.hash, 'video')}
+            src={currentLibrary.getThumbnailSrc(assetObject.hash, 'Video')}
             alt={assetObject.hash}
             fill={true}
             className="object-cover"
@@ -31,15 +31,15 @@ export default function VideoRetrievalItem(props: ExtractExplorerItem<'Retrieval
 function VideoTranscriptItem({
   assetObject,
   metadata,
-}: ExtractExplorerItem<'RetrievalResult', 'video', 'transChunkSumEmbed'>) {
+}: ExtractExplorerItem<'RetrievalResult', 'Video', { sliceType: 'Audio' }>) {
   const currentLibrary = useCurrentLibrary()
 
   const { data: summarization } = rspc.useQuery([
     'assets.artifacts.video.transcript',
     {
       hash: assetObject.hash,
-      startTimestamp: metadata.startTime,
-      endTimestamp: metadata.endTime,
+      startTimestamp: metadata.startTimestamp,
+      endTimestamp: metadata.endTimestamp,
       requestType: 'Summarization',
     },
   ])
@@ -49,8 +49,8 @@ function VideoTranscriptItem({
       'assets.artifacts.video.transcript',
       {
         hash: assetObject.hash,
-        startTimestamp: metadata.startTime,
-        endTimestamp: metadata.endTime,
+        startTimestamp: metadata.startTimestamp,
+        endTimestamp: metadata.endTimestamp,
         requestType: 'Original',
       },
     ],
@@ -64,7 +64,7 @@ function VideoTranscriptItem({
       <div className="flex flex-col space-y-2">
         <div className="relative h-[200px] w-[280px]">
           <Image
-            src={currentLibrary.getPreviewSrc(assetObject.hash, 'video', Math.floor(metadata.startTime / 1e3))}
+            src={currentLibrary.getPreviewSrc(assetObject.hash, 'Video', Math.floor(metadata.startTimestamp / 1e3))}
             className="object-cover"
             fill
             priority
@@ -74,9 +74,9 @@ function VideoTranscriptItem({
 
         <div className="flex flex-col items-start space-y-1 text-xs text-gray-600">
           <div className="flex items-center justify-start space-x-1">
-            <span>{formatDuration(metadata.startTime / 1e3)}</span>
+            <span>{formatDuration(metadata.startTimestamp / 1e3)}</span>
             <span>→</span>
-            <span>{formatDuration(metadata.endTime / 1e3)}</span>
+            <span>{formatDuration(metadata.endTimestamp / 1e3)}</span>
           </div>
         </div>
       </div>

@@ -60,19 +60,17 @@ export type ModelArtifact = { url: string; checksum: string }
 
 export type AIModelResult = { info: AIModel; status: AIModelStatus }
 
-export type RetrievalResultPayload = { filePath: FilePathWithAssetObjectData; metadata: SearchResultMetadata; score: number; taskType: ContentTaskTypeSpecta }
-
 export type Auth = { id: string; name: string }
 
-export type SearchResultMetadata = ({ type: "video" } & VideoSearchResultMetadata) | ({ type: "audio" } & AudioSearchResultMetadata) | ({ type: "image" } & ImageSearchResultMetadata) | ({ type: "rawText" } & RawTextSearchResultMetadata) | ({ type: "webPage" } & WebPageSearchResultMetadata)
+export type ContentIndexMetadata = ({ contentType: "Video" } & VideoIndexMetadata) | ({ contentType: "Audio" } & AudioIndexMetadata) | ({ contentType: "Image" } & ImageIndexMetadata) | ({ contentType: "RawText" } & RawTextIndexMetadata) | ({ contentType: "WebPage" } & WebPageIndexMetadata)
 
-export type WebPageTaskTypeSpecta = "transform" | "chunk" | "chunkSum" | "chunkSumEmbed"
+export type VideoIndexMetadata = { sliceType: VideoSliceType; startTimestamp: number; endTimestamp: number }
 
-export type ContentMetadataWithType = ({ contentType: "audio" } & AudioMetadata) | ({ contentType: "video" } & VideoMetadata) | ({ contentType: "image" } & ImageMetadata) | ({ contentType: "rawText" } & RawTextMetadata) | ({ contentType: "webPage" } & WebPageMetadata) | { contentType: "unknown" }
+export type WebPageIndexMetadata = { chunkType: WebPageChunkType; startIndex: number; endIndex: number }
 
-export type ContentTaskTypeSpecta = { contentType: "video"; taskType: VideoTaskTypeSpecta } | { contentType: "audio"; taskType: AudioTaskTypeSpecta } | { contentType: "image"; taskType: ImageTaskTypeSpecta } | { contentType: "rawText"; taskType: RawTextTaskTypeSpecta } | { contentType: "webPage"; taskType: WebPageTaskTypeSpecta }
+export type ContentMetadataWithType = ({ contentType: "Audio" } & AudioMetadata) | ({ contentType: "Video" } & VideoMetadata) | ({ contentType: "Image" } & ImageMetadata) | ({ contentType: "RawText" } & RawTextMetadata) | ({ contentType: "WebPage" } & WebPageMetadata) | { contentType: "Unknown" }
 
-export type AudioMetadata = { bit_rate: string; duration: number }
+export type AudioMetadata = { bitRate: string; duration: number }
 
 export type ImageRequestPayload = { hash: string }
 
@@ -86,23 +84,23 @@ export type ImageMetadata = { width: number; height: number; color: string }
 
 export type FilePathGetPayload = { materializedPath: string; name: string }
 
-export type ImageSearchResultMetadata = { data: number }
+export type RetrievalResultPayload = { filePath: FilePathWithAssetObjectData; metadata: ContentIndexMetadata; score: number; referenceContent: string }
 
 export type TranscriptType = "Original" | "Summarization"
 
 export type ExportInput = { types: AudioType[]; hash: string; path: string; fileName?: string | null }
 
-export type RawTextMetadata = { text_count: string }
+export type RawTextMetadata = { textCount: string }
+
+export type RAGResult = { resultType: "Reference"; data: RetrievalResultPayload } | { resultType: "Response"; data: string } | { resultType: "Error"; data: string } | { resultType: "Done" }
 
 export type LibrarySettingsThemeEnum = "light" | "dark"
 
 export type S3Config = { bucket: string; endpoint: string; accessKeyId: string; secretAccessKey: string }
 
-export type RAGRequestPayload = { query: string }
+export type RawTextChunkType = "Content"
 
-export type ImageTaskTypeSpecta = "thumbnail" | "embedding" | "description" | "descEmbed"
-
-export type AudioSearchResultMetadata = { startTime: number; endTime: number }
+export type AudioIndexMetadata = { sliceType: AudioSliceType; startTimestamp: number; endTimestamp: number }
 
 export type LibrarySettings = { title: string; appearanceTheme: LibrarySettingsThemeEnum; explorer: LibrarySettingsExplorer; models: LibraryModels; alwaysDeleteLocalFileAfterUpload: boolean; s3Config: S3Config | null }
 
@@ -128,19 +126,17 @@ export type FilePathWithAssetObjectData = { id: number; isDir: boolean; material
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
 
-export type VideoTaskTypeSpecta = "thumbnail" | "frame" | "frameEmbedding" | "frameDescription" | "frameDescEmbed" | "audio" | "transcript" | "transChunk" | "transChunkSum" | "transChunkSumEmbed"
-
 export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
 
 export type TranscriptRequestPayload = { hash: string; startTimestamp: number; endTimestamp: number; requestType: TranscriptType }
 
-export type RawTextTaskTypeSpecta = "chunk" | "chunkSum" | "chunkSumEmbed"
-
 export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo" | "Qwen2" | "OpenAI" | "AzureOpenAI" | "LLaVAPhi3Mini"
 
 export type AcceptShareOutput = { fileList: string[] }
+
+export type WebPageChunkType = "Content"
 
 export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: string[] | null }
 
@@ -160,11 +156,15 @@ export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPa
 
 export type TranscriptResponse = { content: string }
 
-export type VideoSearchResultMetadata = { startTime: number; endTime: number }
+export type SearchResultPayload = { filePath: FilePathWithAssetObjectData; metadata: ContentIndexMetadata; score: number; highlight: string | null }
 
-export type AudioTaskTypeSpecta = "thumbnail" | "waveform" | "transcript" | "transChunk" | "transChunkSum" | "transChunkSumEmbed"
+export type RawTextIndexMetadata = { chunkType: RawTextChunkType; startIndex: number; endIndex: number }
 
 export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
+
+export type VideoMetadata = { width: string; height: string; duration: number; bitRate: string; avgFrameRate: VideoAvgFrameRate; audio: AudioMetadata | null }
+
+export type AudioSliceType = "Transcript"
 
 export type RawTextRequestPayload = { hash: string; index: number }
 
@@ -172,25 +172,19 @@ export type VideoSegmentExportPayload = { verboseFileName: string; outputDir: st
 
 export type WebPageCreatePayload = { materializedPath: string; url: string }
 
+export type ImageIndexMetadata = { data: number }
+
 export type FilePathCreatePayload = { materializedPath: string; name: string }
 
 export type UploadPayload = { materializedPaths: string[]; hashes: string[] }
 
 export type TaskListRequestFilter = { assetObjectId?: number | null; assetObjectIds?: number[] | null }
 
-export type VideoMetadata = { width: string; height: string; duration: number; bit_rate: string; avg_frame_rate: VideoAvgFrameRate; audio: AudioMetadata | null }
-
 export type TaskRedoRequestPayload = { assetObjectId: number }
-
-export type WebPageSearchResultMetadata = { startIndex: number; endIndex: number }
 
 export type SharePayload = { fileIdList: number[]; peerId: string }
 
-export type RawTextSearchResultMetadata = { startIndex: number; endIndex: number }
-
-export type WebPageMetadata = { source_url: string }
-
-export type SearchResultPayload = { filePath: FilePathWithAssetObjectData; metadata: SearchResultMetadata; score: number; highlight: string | null }
+export type WebPageMetadata = { sourceUrl: string }
 
 export type TaskListRequestPayload = { filter: TaskListRequestFilter }
 
@@ -204,8 +198,10 @@ export type AIModel = { id: string; title: string; description: string; categori
 
 export type SearchRequestPayload = { text: string }
 
-export type RAGResult = { result_type: "Reference"; data: RetrievalResultPayload } | { result_type: "Response"; data: string } | { result_type: "Error"; data: string } | { result_type: "Done" }
-
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
 
 export type LibrarySettingsExplorer = { layout: LibrarySettingsLayoutEnum; inspectorSize: number; inspectorShow: boolean }
+
+export type VideoSliceType = "Visual" | "Audio"
+
+export type RAGRequestPayload = { query: string }

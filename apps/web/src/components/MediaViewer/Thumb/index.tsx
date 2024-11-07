@@ -1,7 +1,7 @@
 'use client'
 
 import { matchExplorerItemWithType } from '@/Explorer/pattern'
-import { ExtractExplorerItem, type ExplorerItem } from '@/Explorer/types'
+import { ExtractExplorerItem } from '@/Explorer/types'
 import { Document_Light } from '@gendam/assets/images'
 import Image from 'next/image'
 import { match } from 'ts-pattern'
@@ -22,13 +22,13 @@ export default function FileThumb({
   variant: ThumbnailVariant
 }) {
   return match(data)
-    .with(matchExplorerItemWithType('video'), (item) => <VideoThumb data={item.assetObject} className={className} />)
-    .with(matchExplorerItemWithType('audio'), (item) => <AudioThumb data={item.assetObject} className={className} />)
-    .with(matchExplorerItemWithType('image'), (item) => <ImageThumb data={item.assetObject} className={className} />)
-    .with(matchExplorerItemWithType('rawText'), (item) => (
+    .with(matchExplorerItemWithType('Video'), (item) => <VideoThumb data={item.assetObject} className={className} />)
+    .with(matchExplorerItemWithType('Audio'), (item) => <AudioThumb data={item.assetObject} className={className} />)
+    .with(matchExplorerItemWithType('Image'), (item) => <ImageThumb data={item.assetObject} className={className} />)
+    .with(matchExplorerItemWithType('RawText'), (item) => (
       <RawTextThumb data={item.assetObject} className={className} />
     ))
-    .with(matchExplorerItemWithType('webPage'), (item) => (
+    .with(matchExplorerItemWithType('WebPage'), (item) => (
       <WebPageThumb data={item.assetObject} className={className} />
     ))
     .otherwise(() => (

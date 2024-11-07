@@ -6,7 +6,7 @@ export default function RawTextThumb({
   data,
   className,
 }: {
-  data: ExtractExplorerItemWithType<'rawText'>['assetObject']
+  data: ExtractExplorerItemWithType<'RawText'>['assetObject']
   className?: string
 }) {
   return <Image src={Document_Light} alt={data.hash} fill={true} className="object-contain" priority />

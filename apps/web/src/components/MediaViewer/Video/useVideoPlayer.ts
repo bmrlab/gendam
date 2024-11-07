@@ -18,7 +18,7 @@ export type VideoPlayerOptions = {
 }
 
 export const useVideoPlayer = (
-  assetObject: ExtractAssetObject<'video'>,
+  assetObject: ExtractAssetObject<'Video'>,
   { currentTime, controls, autoPlay, loop, muted }: VideoPlayerOptions,
 ) => {
   const videoRef = useRef<HTMLDivElement>(null)
@@ -122,9 +122,9 @@ export const useVideoPlayer = (
     const player = playerRef.current
     player.duration = () => mediaData.duration
     if (currentTime && currentTime > 0) {
-      player.poster(currentLibrary.getPreviewSrc(assetObject.hash, 'video', Math.floor(currentTime / 1e3)))
+      player.poster(currentLibrary.getPreviewSrc(assetObject.hash, 'Video', Math.floor(currentTime / 1e3)))
     } else {
-      player.poster(currentLibrary.getThumbnailSrc(assetObject.hash, 'video'))
+      player.poster(currentLibrary.getThumbnailSrc(assetObject.hash, 'Video'))
     }
 
     const src = currentLibrary.getFileSrc(assetObject.hash)

@@ -15,7 +15,7 @@ import { useSortedTasks } from './hooks'
 export default function VideoDetail({
   filePath,
   assetObject,
-}: ExtractExplorerItem<'FilePathWithAssetObject', 'video'>) {
+}: ExtractExplorerItem<'FilePathWithAssetObject', 'Video'>) {
   const { sortedTasks, handleJobsCancel } = useSortedTasks(assetObject)
 
   return (

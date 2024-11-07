@@ -7,14 +7,14 @@ import Image from 'next/image'
 export default function AudioSearchItem({
   assetObject,
   metadata,
-}: ExtractExplorerItem<'SearchResult' | 'RetrievalResult', 'audio'>) {
+}: ExtractExplorerItem<'SearchResult' | 'RetrievalResult', 'Audio'>) {
   const currentLibrary = useCurrentLibrary()
 
   return (
     <div className="relative h-full w-full">
       <div className="flex h-full items-stretch justify-between">
         <Image
-          src={currentLibrary.getThumbnailSrc(assetObject.hash, 'audio')}
+          src={currentLibrary.getThumbnailSrc(assetObject.hash, 'Audio')}
           alt={assetObject.hash}
           fill={true}
           className="object-cover"
@@ -33,9 +33,9 @@ export default function AudioSearchItem({
           {assetObject.hash}
         </div>
         <div className="flex items-center justify-between text-xs">
-          <div>{formatDuration(metadata.startTime / 1000)}</div>
+          <div>{formatDuration(metadata.startTimestamp / 1000)}</div>
           <div>→</div>
-          <div>{formatDuration(metadata.endTime / 1000 + 1)}</div>
+          <div>{formatDuration(metadata.endTimestamp / 1000 + 1)}</div>
         </div>
       </div>
     </div>

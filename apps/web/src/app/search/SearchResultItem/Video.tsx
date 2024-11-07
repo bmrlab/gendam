@@ -8,12 +8,12 @@ import { useMemo } from 'react'
 export default function VideoSearchItem({
   assetObject,
   metadata,
-}: ExtractExplorerItem<'SearchResult' | 'RetrievalResult', 'video'>) {
+}: ExtractExplorerItem<'SearchResult' | 'RetrievalResult', 'Video'>) {
   const currentLibrary = useCurrentLibrary()
 
   const frames = useMemo(() => {
-    const startTime = Math.floor(metadata.startTime / 1e3)
-    const endTime = Math.floor(metadata.endTime / 1e3)
+    const startTime = Math.floor(metadata.startTimestamp / 1e3)
+    const endTime = Math.floor(metadata.endTimestamp / 1e3)
     const duration = endTime - startTime
     if (duration >= 1 && duration < 6) {
       return [startTime, endTime]
@@ -30,7 +30,7 @@ export default function VideoSearchItem({
         {frames.map((frame, index) => (
           <div key={index} className="visible relative flex-1 bg-neutral-100">
             <Image
-              src={currentLibrary.getPreviewSrc(assetObject.hash, 'video', frame)}
+              src={currentLibrary.getPreviewSrc(assetObject.hash, 'Video', frame)}
               alt={assetObject.hash}
               fill={true}
               className="object-cover"
@@ -46,9 +46,9 @@ export default function VideoSearchItem({
         )}
       >
         <div className="flex items-center justify-between text-xs">
-          <div>{formatDuration(metadata.startTime / 1000)}</div>
+          <div>{formatDuration(metadata.startTimestamp / 1000)}</div>
           <div>→</div>
-          <div>{formatDuration(metadata.endTime / 1000 + 1)}</div>
+          <div>{formatDuration(metadata.endTimestamp / 1000 + 1)}</div>
         </div>
       </div>
     </div>

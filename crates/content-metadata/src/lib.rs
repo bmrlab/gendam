@@ -15,7 +15,7 @@ use web_page::WebPageMetadata;
 #[derive(Clone, Debug, Serialize, Deserialize, EnumDiscriminants)]
 #[strum_discriminants(derive(Serialize, Deserialize, strum_macros::Display))]
 #[strum_discriminants(name(ContentType))]
-#[serde(tag = "content_type")]
+#[serde(tag = "contentType")]
 #[non_exhaustive]
 pub enum ContentMetadata {
     Audio(AudioMetadata),

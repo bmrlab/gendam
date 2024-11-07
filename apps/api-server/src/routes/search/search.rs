@@ -18,87 +18,9 @@ pub struct SearchRequestPayload {
 
 #[derive(Serialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct VideoSearchResultMetadata {
-    pub start_time: i32,
-    pub end_time: i32,
-}
-
-#[derive(Serialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct AudioSearchResultMetadata {
-    pub start_time: i32,
-    pub end_time: i32,
-}
-
-#[derive(Serialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct ImageSearchResultMetadata {
-    data: i32,
-}
-
-#[derive(Serialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct RawTextSearchResultMetadata {
-    start_index: u32,
-    end_index: u32,
-}
-
-#[derive(Serialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct WebPageSearchResultMetadata {
-    start_index: u32,
-    end_index: u32,
-}
-
-#[derive(Serialize, Type)]
-#[serde(rename_all = "camelCase", tag = "type")]
-pub enum SearchResultMetadata {
-    Video(VideoSearchResultMetadata),
-    Audio(AudioSearchResultMetadata),
-    Image(ImageSearchResultMetadata),
-    RawText(RawTextSearchResultMetadata),
-    WebPage(WebPageSearchResultMetadata),
-}
-
-impl From<&ContentIndexMetadata> for SearchResultMetadata {
-    fn from(metadata: &ContentIndexMetadata) -> Self {
-        match metadata {
-            ContentIndexMetadata::Video(item) => {
-                SearchResultMetadata::Video(VideoSearchResultMetadata {
-                    start_time: item.start_timestamp as i32,
-                    end_time: item.end_timestamp as i32,
-                })
-            }
-            ContentIndexMetadata::Audio(item) => {
-                SearchResultMetadata::Audio(AudioSearchResultMetadata {
-                    start_time: item.start_timestamp as i32,
-                    end_time: item.end_timestamp as i32,
-                })
-            }
-            ContentIndexMetadata::Image(_) => {
-                SearchResultMetadata::Image(ImageSearchResultMetadata { data: 0 })
-            }
-            ContentIndexMetadata::RawText(item) => {
-                SearchResultMetadata::RawText(RawTextSearchResultMetadata {
-                    start_index: item.start_index as u32,
-                    end_index: item.end_index as u32,
-                })
-            }
-            ContentIndexMetadata::WebPage(item) => {
-                SearchResultMetadata::WebPage(WebPageSearchResultMetadata {
-                    start_index: item.start_index as u32,
-                    end_index: item.end_index as u32,
-                })
-            }
-        }
-    }
-}
-
-#[derive(Serialize, Type)]
-#[serde(rename_all = "camelCase")]
 pub struct SearchResultPayload {
     pub file_path: FilePathWithAssetObjectData,
-    pub metadata: SearchResultMetadata,
+    pub metadata: ContentIndexMetadata,
     pub score: f32,
     pub highlight: Option<String>,
 }
@@ -128,7 +50,7 @@ pub async fn search_all(
     let result = retrieve_assets_for_search(library, &search_results, |item, file_path| {
         SearchResultPayload {
             file_path: file_path.clone().into(),
-            metadata: SearchResultMetadata::from(&item.metadata),
+            metadata: item.metadata.clone(),
             score: item.score,
             highlight: item.highlight.clone(),
         }

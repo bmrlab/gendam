@@ -14,7 +14,7 @@ use video::VideoMetadata;
 use web_page::WebPageMetadata;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type)]
-#[serde(tag = "contentType", rename_all = "camelCase")]
+#[serde(tag = "contentType")]
 pub enum ContentMetadataWithType {
     Audio(AudioMetadata),
     Video(VideoMetadata),

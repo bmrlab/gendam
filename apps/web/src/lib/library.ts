@@ -1,4 +1,4 @@
-import { ContentMetadataWithType, ContentTaskTypeSpecta, LibrarySettings, SearchResultMetadata } from '@/lib/bindings'
+import { ContentIndexMetadata, ContentMetadataWithType, LibrarySettings } from '@/lib/bindings'
 import { ContextType, createContext, useContext } from 'react'
 
 export type Library = {
@@ -6,14 +6,11 @@ export type Library = {
   dir: string
 }
 
-export type AssetObjectType =
-  | ContentMetadataWithType['contentType']
-  | SearchResultMetadata['type']
-  | ContentTaskTypeSpecta['contentType']
+export type AssetObjectType = ContentMetadataWithType['contentType'] | ContentIndexMetadata['contentType']
 
 export type AssetPreviewMetadata = {
-  (assetObjectHash: string, type: 'audio'): string
-  (assetObjectHash: string, type: 'video', timestampInSecond?: number): string
+  (assetObjectHash: string, contentType: 'Audio'): string
+  (assetObjectHash: string, contentType: 'Video', timestampInSecond?: number): string
 }
 
 export type CurrentLibraryContext = {

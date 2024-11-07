@@ -4,13 +4,13 @@ import Image from 'next/image'
 
 export default function WebPageSearchItem({
   assetObject,
-}: ExtractExplorerItem<'SearchResult' | 'RetrievalResult', 'webPage'>) {
+}: ExtractExplorerItem<'SearchResult' | 'RetrievalResult', 'WebPage'>) {
   const currentLibrary = useCurrentLibrary()
 
   return (
     <div className="h-full w-full">
       <Image
-        src={currentLibrary.getThumbnailSrc(assetObject.hash, 'webPage')}
+        src={currentLibrary.getThumbnailSrc(assetObject.hash, 'WebPage')}
         alt={assetObject.hash}
         fill={true}
         className="object-cover"

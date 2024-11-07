@@ -6,13 +6,13 @@ export default function VideoThumb({
   data,
   className,
 }: {
-  data: ExtractExplorerItemWithType<'video'>['assetObject']
+  data: ExtractExplorerItemWithType<'Video'>['assetObject']
   className?: string
 }) {
   const currentLibrary = useCurrentLibrary()
   return (
     <Image
-      src={currentLibrary.getThumbnailSrc(data.hash, 'video')}
+      src={currentLibrary.getThumbnailSrc(data.hash, 'Video')}
       alt={data.hash}
       fill={true}
       className="object-contain"

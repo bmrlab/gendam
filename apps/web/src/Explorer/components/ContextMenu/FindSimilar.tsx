@@ -17,13 +17,13 @@ function withFindSimilarExplorerItem(BaseComponent: BaseContextMenuItem) {
       if (!data) return [() => void 0, false]
 
       return match(data)
-        .with(P.union(matchSearchResult('video'), matchRetrievalResult('video')), (item) => {
+        .with(P.union(matchSearchResult('Video'), matchRetrievalResult('Video')), (item) => {
           return [
             () => {
               searchQuery.fetch({
                 api: 'search.recommend',
                 assetObjectHash: item.assetObject.hash,
-                timestamp: item.metadata.startTime,
+                timestamp: item.metadata.startTimestamp,
                 filePath: 'filePaths' in item ? item.filePaths[0] : void 0,
               })
             },

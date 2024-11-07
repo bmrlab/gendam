@@ -23,7 +23,7 @@ export default function Audio({ hash, duration, className }: { hash: string; dur
 
   useEffect(() => {
     const audioUrl = currentLibrary.getFileSrc(hash)
-    const waveformUrl = currentLibrary.getPreviewSrc(hash, 'audio')
+    const waveformUrl = currentLibrary.getPreviewSrc(hash, 'Audio')
 
     ;(async () => {
       try {

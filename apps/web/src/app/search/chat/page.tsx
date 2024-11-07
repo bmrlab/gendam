@@ -44,23 +44,23 @@ export default function TestChatPage() {
       setResponseState(ResponseState.FETCHING_REFERENCE)
     },
     onData: (result) => {
-      if (result.result_type === 'Reference') {
+      if (result.resultType === 'Reference') {
         setReferenceList((v) => [
           ...v,
           {
             type: 'RetrievalResult',
-            taskType: result.data.taskType,
             assetObject: result.data.filePath.assetObject!,
             score: result.data.score,
             metadata: result.data.metadata,
+            referenceContent: result.data.referenceContent,
           },
         ])
-      } else if (result.result_type === 'Done') {
+      } else if (result.resultType === 'Done') {
         setResponseState(ResponseState.DONE)
-      } else if (result.result_type === 'Response') {
+      } else if (result.resultType === 'Response') {
         setResponseState(ResponseState.GENERATING)
         setResponse((v) => (v += result.data))
-      } else if (result.result_type === 'Error') {
+      } else if (result.resultType === 'Error') {
         setResponseState(ResponseState.ERROR)
         setErrorMessage(result.data)
       } else {

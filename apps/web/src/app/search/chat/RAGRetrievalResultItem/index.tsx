@@ -14,20 +14,20 @@ import WebPageRetrievalItem from './WebPage'
 
 export default function RetrievalResultItem(props: ExtractExplorerItem<'RetrievalResult'>) {
   return match(props)
-    .with(matchRetrievalResult('video'), (props) => <VideoRetrievalItem {...props} />)
-    .with(matchRetrievalResult('audio'), (props) => <AudioRetrievalItem {...props} />)
-    .with(matchRetrievalResult('image'), (props) => <ImageRetrievalItem {...props} />)
-    .with(matchRetrievalResult('rawText'), (props) => <RawTextRetrievalItem {...props} />)
-    .with(matchRetrievalResult('webPage'), (props) => <WebPageRetrievalItem {...props} />)
+    .with(matchRetrievalResult('Video'), (props) => <VideoRetrievalItem {...props} />)
+    .with(matchRetrievalResult('Audio'), (props) => <AudioRetrievalItem {...props} />)
+    .with(matchRetrievalResult('Image'), (props) => <ImageRetrievalItem {...props} />)
+    .with(matchRetrievalResult('RawText'), (props) => <RawTextRetrievalItem {...props} />)
+    .with(matchRetrievalResult('WebPage'), (props) => <WebPageRetrievalItem {...props} />)
     .otherwise(() => <div></div>)
 }
 
 export function RetrievalResultItemPreview(props: ExtractExplorerItem<'RetrievalResult'>) {
   return match(props)
-    .with(matchRetrievalResult('video'), (props) => <VideoSearchItem {...props} />)
-    .with(matchRetrievalResult('audio'), (props) => <AudioSearchItem {...props} />)
-    .with(matchRetrievalResult('image'), (props) => <ImageSearchItem {...props} />)
-    .with(matchRetrievalResult('rawText'), (props) => <RawTextSearchItem {...props} />)
-    .with(matchRetrievalResult('webPage'), (props) => <WebPageSearchItem {...props} />)
+    .with(matchRetrievalResult('Video'), (props) => <VideoSearchItem {...props} />)
+    .with(matchRetrievalResult('Audio'), (props) => <AudioSearchItem {...props} />)
+    .with(matchRetrievalResult('Image'), (props) => <ImageSearchItem {...props} />)
+    .with(matchRetrievalResult('RawText'), (props) => <RawTextSearchItem {...props} />)
+    .with(matchRetrievalResult('WebPage'), (props) => <WebPageSearchItem {...props} />)
     .otherwise(() => <div></div>)
 }

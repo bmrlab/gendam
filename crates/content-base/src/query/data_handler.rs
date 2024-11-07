@@ -73,7 +73,9 @@ impl ContentBase {
     ) -> anyhow::Result<Vec<SearchResultData>> {
         let file_identifier = hit_result.payload.file_identifier();
         let metadata = match hit_result.result.clone() {
-            SelectResultModel::Image(_) => vec![ContentIndexMetadata::Image(ImageIndexMetadata {})],
+            SelectResultModel::Image(_) => {
+                vec![ContentIndexMetadata::Image(ImageIndexMetadata { data: 0 })]
+            }
             SelectResultModel::Audio(ref audio) => audio
                 .audio_frame
                 .iter()
@@ -82,8 +84,8 @@ impl ContentBase {
                         if hit_result.hit_id.contains(frame_id) {
                             Some(ContentIndexMetadata::Audio(AudioIndexMetadata {
                                 slice_type: AudioSliceType::Transcript,
-                                start_timestamp: frame.start_timestamp as i64,
-                                end_timestamp: frame.end_timestamp as i64,
+                                start_timestamp: frame.start_timestamp as i32,
+                                end_timestamp: frame.end_timestamp as i32,
                             }))
                         } else {
                             None
@@ -100,8 +102,8 @@ impl ContentBase {
                             if hit_result.hit_id.contains(frame_id) {
                                 Some(ContentIndexMetadata::Video(VideoIndexMetadata {
                                     slice_type: VideoSliceType::Audio,
-                                    start_timestamp: frame.start_timestamp as i64,
-                                    end_timestamp: frame.end_timestamp as i64,
+                                    start_timestamp: frame.start_timestamp as i32,
+                                    end_timestamp: frame.end_timestamp as i32,
                                 }))
                             } else {
                                 None
@@ -117,8 +119,8 @@ impl ContentBase {
                             if hit_result.hit_id.contains(frame_id) {
                                 Some(ContentIndexMetadata::Video(VideoIndexMetadata {
                                     slice_type: VideoSliceType::Visual,
-                                    start_timestamp: frame.start_timestamp as i64,
-                                    end_timestamp: frame.end_timestamp as i64,
+                                    start_timestamp: frame.start_timestamp as i32,
+                                    end_timestamp: frame.end_timestamp as i32,
                                 }))
                             } else {
                                 None
@@ -137,8 +139,8 @@ impl ContentBase {
                         if hit_result.hit_id.contains(page_id) {
                             Some(ContentIndexMetadata::WebPage(WebPageIndexMetadata {
                                 chunk_type: WebPageChunkType::Content,
-                                start_index: page.start_index as usize,
-                                end_index: page.end_index as usize,
+                                start_index: page.start_index,
+                                end_index: page.end_index,
                             }))
                         } else {
                             None
@@ -154,8 +156,8 @@ impl ContentBase {
                         if hit_result.hit_id.contains(page_id) {
                             Some(ContentIndexMetadata::RawText(RawTextIndexMetadata {
                                 chunk_type: RawTextChunkType::Content,
-                                start_index: page.start_index as usize,
-                                end_index: page.end_index as usize,
+                                start_index: page.start_index,
+                                end_index: page.end_index,
                             }))
                         } else {
                             None
@@ -179,10 +181,10 @@ impl ContentBase {
                     }
                     ContentIndexMetadata::Image(_) => None,
                     ContentIndexMetadata::RawText(raw_text) => {
-                        Some((raw_text.start_index, raw_text.end_index))
+                        Some((raw_text.start_index as usize, raw_text.end_index as usize))
                     }
                     ContentIndexMetadata::WebPage(web_page) => {
-                        Some((web_page.start_index, web_page.end_index))
+                        Some((web_page.start_index as usize, web_page.end_index as usize))
                     }
                 };
 

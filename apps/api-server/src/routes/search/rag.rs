@@ -1,21 +1,9 @@
-use super::search::{retrieve_assets_for_search, SearchResultMetadata};
-use crate::{
-    ai::AIHandler,
-    routes::{assets::types::FilePathWithAssetObjectData, tasks::types::ContentTaskTypeSpecta},
-};
+use super::search::retrieve_assets_for_search;
+use crate::{ai::AIHandler, routes::assets::types::FilePathWithAssetObjectData};
 use ai::llm::{LLMInferenceParams, LLMMessage};
 use content_base::{
-    audio::{
-        transcript::{AudioTranscriptTask, AudioTranscriptTrait},
-        AudioTaskType,
-    },
     query::{payload::ContentIndexMetadata, QueryPayload},
-    raw_text::{
-        chunk::{DocumentChunkTrait, RawTextChunkTask},
-        RawTextTaskType,
-    },
-    video::{transcript::VideoTranscriptTask, VideoTaskType},
-    ContentBase, ContentTaskType,
+    ContentBase,
 };
 use content_library::Library;
 use serde::{Deserialize, Serialize};
@@ -32,13 +20,13 @@ pub struct RAGRequestPayload {
 #[serde(rename_all = "camelCase")]
 pub struct RetrievalResultPayload {
     pub file_path: FilePathWithAssetObjectData,
-    pub metadata: SearchResultMetadata,
+    pub metadata: ContentIndexMetadata,
     pub score: f32,
-    pub task_type: ContentTaskTypeSpecta,
+    pub reference_content: String, // 检索到的相关内容片段
 }
 
 #[derive(Serialize, Type)]
-#[serde(tag = "result_type", content = "data")]
+#[serde(tag = "resultType", content = "data")]
 pub enum RAGResult {
     Reference(RetrievalResultPayload),
     Response(String),
@@ -59,9 +47,9 @@ pub async fn rag(
     let results = retrieve_assets_for_search(library, &retrieval_results, |item, file_path| {
         RetrievalResultPayload {
             file_path: file_path.clone().into(),
-            metadata: SearchResultMetadata::from(&item.metadata),
+            metadata: item.metadata.clone(),
             score: item.score,
-            task_type: item.task_type.clone().into(),
+            reference_content: item.reference_content.clone(),
         }
     })
     .await?;
@@ -70,94 +58,10 @@ pub async fn rag(
         tx.send(RAGResult::Reference(ref_item)).await?;
     }
 
-    let mut references_content = vec![];
-
-    // find original chunk data, and use LLM to answer the question
-    for ref_item in retrieval_results.iter() {
-        match (&ref_item.metadata, &ref_item.task_type) {
-            (
-                ContentIndexMetadata::Video(metadata),
-                ContentTaskType::Video(VideoTaskType::TransChunkSumEmbed(_)),
-            ) => {
-                match VideoTranscriptTask
-                    .transcript_content(&ref_item.file_identifier, content_base.ctx())
-                    .await
-                {
-                    Ok(transcript) => {
-                        let mut transcript_vec = vec![];
-                        for item in transcript.transcriptions {
-                            if item.start_timestamp < metadata.start_timestamp {
-                                continue;
-                            }
-                            if item.end_timestamp > metadata.end_timestamp {
-                                break;
-                            }
-                            transcript_vec.push(item.text);
-                        }
-
-                        references_content.push(transcript_vec.join("\n"));
-                    }
-                    _ => {
-                        tracing::warn!("failed to get transcript for {}", ref_item.file_identifier);
-                    }
-                }
-            }
-            (
-                ContentIndexMetadata::Audio(metadata),
-                ContentTaskType::Audio(AudioTaskType::TransChunkSumEmbed(_)),
-            ) => {
-                match AudioTranscriptTask
-                    .transcript_content(&ref_item.file_identifier, content_base.ctx())
-                    .await
-                {
-                    Ok(transcript) => {
-                        let mut transcript_vec = vec![];
-                        for item in transcript.transcriptions {
-                            if item.start_timestamp < metadata.start_timestamp {
-                                continue;
-                            }
-                            if item.end_timestamp > metadata.end_timestamp {
-                                break;
-                            }
-                            transcript_vec.push(item.text);
-                        }
-
-                        references_content.push(transcript_vec.join("\n"));
-                    }
-                    _ => {
-                        tracing::warn!("failed to get transcript for {}", ref_item.file_identifier);
-                    }
-                }
-            }
-            (
-                ContentIndexMetadata::RawText(metadata),
-                ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(_)),
-            ) => {
-                match RawTextChunkTask
-                    .chunk_content(&ref_item.file_identifier, content_base.ctx())
-                    .await
-                {
-                    Ok(chunks) => {
-                        let mut raw_text_vec = vec![];
-
-                        for i in metadata.start_index..=metadata.end_index {
-                            if let Some(chunk) = chunks.get(i) {
-                                raw_text_vec.push(chunk.clone());
-                            }
-                        }
-
-                        references_content.push(raw_text_vec.join("\n"));
-                    }
-                    _ => {
-                        tracing::warn!("failed to get content for {}", ref_item.file_identifier);
-                    }
-                }
-            }
-            _ => {
-                // other combinations are considered invalid
-            }
-        }
-    }
+    let references_content = retrieval_results
+        .iter()
+        .map(|item| item.reference_content.clone())
+        .collect::<Vec<_>>();
 
     let mut reference_content = String::new();
     references_content.iter().enumerate().for_each(|(idx, v)| {

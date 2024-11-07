@@ -8,18 +8,7 @@ use self::{
     audio::AudioIndexMetadata, image::ImageIndexMetadata, raw_text::RawTextIndexMetadata,
     video::VideoIndexMetadata, web_page::WebPageIndexMetadata,
 };
-use content_base_task::audio::trans_chunk_sum_embed::AudioTransChunkSumEmbedTask;
-use content_base_task::audio::AudioTaskType;
-use content_base_task::image::desc_embed::ImageDescEmbedTask;
-use content_base_task::image::ImageTaskType;
-use content_base_task::raw_text::chunk_sum_embed::RawTextChunkSumEmbedTask;
-use content_base_task::raw_text::RawTextTaskType;
-use content_base_task::video::trans_chunk_sum_embed::VideoTransChunkSumEmbedTask;
-use content_base_task::video::VideoTaskType;
-use content_base_task::web_page::chunk_sum_embed::WebPageChunkSumEmbedTask;
-use content_base_task::web_page::WebPageTaskType;
-use content_base_task::ContentTaskType;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 // ContentIndexMetadata uses tagged variant serialization
 // When serialized to JSON, variants will include a "content_type" field indicating the variant type
@@ -27,8 +16,8 @@ use serde::{Deserialize, Serialize};
 //   "content_type": "Video",
 //   ...VideoIndexMetadata fields...
 // }
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(tag = "content_type")]
+#[derive(Debug, Clone, Serialize, specta::Type)]
+#[serde(tag = "contentType")]
 pub enum ContentIndexMetadata {
     Video(VideoIndexMetadata),
     Audio(AudioIndexMetadata),
@@ -37,29 +26,7 @@ pub enum ContentIndexMetadata {
     WebPage(WebPageIndexMetadata),
 }
 
-impl From<&ContentIndexMetadata> for ContentTaskType {
-    fn from(metadata: &ContentIndexMetadata) -> Self {
-        match metadata {
-            ContentIndexMetadata::Video(_) => ContentTaskType::Video(
-                VideoTaskType::TransChunkSumEmbed(VideoTransChunkSumEmbedTask),
-            ),
-            ContentIndexMetadata::Audio(_) => ContentTaskType::Audio(
-                AudioTaskType::TransChunkSumEmbed(AudioTransChunkSumEmbedTask),
-            ),
-            ContentIndexMetadata::Image(_) => {
-                ContentTaskType::Image(ImageTaskType::DescEmbed(ImageDescEmbedTask))
-            }
-            ContentIndexMetadata::RawText(_) => {
-                ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(RawTextChunkSumEmbedTask))
-            }
-            ContentIndexMetadata::WebPage(_) => {
-                ContentTaskType::WebPage(WebPageTaskType::ChunkSumEmbed(WebPageChunkSumEmbedTask))
-            }
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct SearchResultData {
     pub file_identifier: String,
     pub score: f32,
@@ -67,26 +34,15 @@ pub struct SearchResultData {
     pub highlight: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct RetrievalResultData {
     pub file_identifier: String,
     pub score: f32,
     pub metadata: ContentIndexMetadata,
-    pub task_type: ContentTaskType,
+    pub reference_content: String, // 检索到的相关内容片段
 }
 
-impl From<SearchResultData> for RetrievalResultData {
-    fn from(data: SearchResultData) -> Self {
-        Self {
-            file_identifier: data.file_identifier.clone(),
-            score: data.score,
-            metadata: data.metadata.clone(),
-            task_type: ContentTaskType::from(&data.metadata),
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct SearchRequest {
     pub text: String,
 }

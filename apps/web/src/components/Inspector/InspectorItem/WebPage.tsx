@@ -14,7 +14,7 @@ import { useSortedTasks } from './hooks'
 export default function WebPageDetail({
   filePath,
   assetObject,
-}: ExtractExplorerItem<'FilePathWithAssetObject', 'webPage'>) {
+}: ExtractExplorerItem<'FilePathWithAssetObject', 'WebPage'>) {
   const { sortedTasks, handleJobsCancel } = useSortedTasks(assetObject)
 
   return (
@@ -30,7 +30,7 @@ export default function WebPageDetail({
       <InspectorItemMetadata data={assetObject}>
         {(assetObject) => (
           <>
-            <InspectorItemMetadataItem name="Url">{assetObject.mediaData?.source_url}</InspectorItemMetadataItem>
+            <InspectorItemMetadataItem name="Url">{assetObject.mediaData?.sourceUrl}</InspectorItemMetadataItem>
           </>
         )}
       </InspectorItemMetadata>

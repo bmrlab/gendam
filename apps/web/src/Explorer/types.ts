@@ -1,5 +1,6 @@
-import type { AssetObject, ContentTaskType, FilePath, SearchResultMetadata } from '@/lib/bindings'
+import type { AssetObject, AudioSliceType, ContentIndexMetadata, FilePath } from '@/lib/bindings'
 import { AssetObjectType } from '@/lib/library'
+import { RawTextChunkType, VideoSliceType, WebPageChunkType } from 'api-server/client/types'
 import { match } from 'ts-pattern'
 
 // LibraryRoot is a special type of item that represents the root of the library
@@ -33,15 +34,15 @@ type SearchResultItem = {
   type: 'SearchResult'
   filePaths: RawFilePath[]
   assetObject: AssetObject
-  metadata: SearchResultMetadata
+  metadata: ContentIndexMetadata
   highlight: string | null
 }
 
 type RetrievalResultItem = {
   type: 'RetrievalResult'
-  taskType: ContentTaskType
   assetObject: AssetObject
-  metadata: SearchResultMetadata
+  metadata: ContentIndexMetadata
+  referenceContent: string
 }
 
 type UnknownItem = {
@@ -56,11 +57,6 @@ export type ExplorerItem =
   | RetrievalResultItem
   | UnknownItem
 
-type ValidContentTaskType<V extends AssetObjectType = AssetObjectType> = Extract<
-  ContentTaskType,
-  { contentType: V }
->['taskType']
-
 export type ExtractAssetObject<V extends AssetObjectType> = AssetObject & {
   mediaData: Extract<AssetObject['mediaData'], { contentType: V }> | null
 }
@@ -71,17 +67,25 @@ export type ExtractFilePathWithAssetObjectItem<V extends AssetObjectType> = File
 
 export type ExtractSearchResultItem<V extends AssetObjectType> = SearchResultItem & {
   assetObject: ExtractAssetObject<V>
-  metadata: SearchResultMetadata & { type: V }
+  metadata: ContentIndexMetadata & { contentType: V }
 }
+
+export type ValidMetadataType<V extends AssetObjectType = AssetObjectType> = V extends 'Video'
+  ? { sliceType: VideoSliceType }
+  : V extends 'Audio'
+    ? { sliceType: AudioSliceType }
+    : V extends 'WebPage'
+      ? { chunkType: WebPageChunkType }
+      : V extends 'RawText'
+        ? { chunkType: RawTextChunkType }
+        : {}
 
 export type ExtractRetrievalResultItem<
   V extends AssetObjectType = AssetObjectType,
-  U extends ValidContentTaskType<V> = ValidContentTaskType<V>,
+  U extends ValidMetadataType<V> = ValidMetadataType<V>,
 > = RetrievalResultItem & {
   assetObject: ExtractAssetObject<V>
-  metadata: SearchResultMetadata & { type: V }
-} & {
-  taskType: { contentType: V; taskType: U }
+  metadata: ContentIndexMetadata & { contentType: V } & U
 }
 
 export type ExtractExplorerItem<
@@ -93,7 +97,7 @@ export type ExtractExplorerItem<
     | 'RetrievalResult'
     | 'Unknown',
   V extends AssetObjectType = AssetObjectType,
-  U extends ValidContentTaskType<V> = ValidContentTaskType<V>,
+  U extends ValidMetadataType<V> = ValidMetadataType<V>,
 > = T extends 'LibraryRoot'
   ? LibraryRootItem
   : T extends 'FilePathDir'
@@ -107,9 +111,7 @@ export type ExtractExplorerItem<
             // 这里其实就是 ExtractRetrievalResultItem<V, U>，但是得展开来写，不然类型会报错
             RetrievalResultItem & {
               assetObject: ExtractAssetObject<V>
-              metadata: SearchResultMetadata & { type: V }
-            } & {
-              taskType: { contentType: V; taskType: U }
+              metadata: ContentIndexMetadata & { contentType: V } & U
             }
           : UnknownItem
 
@@ -129,18 +131,18 @@ export function uniqueId(item: ExplorerItem): string {
     case 'SearchResult':
       return `SearchResult:${item.assetObject.id}:${uniqueIdForSearchMetadata(item.metadata)}`
     case 'RetrievalResult':
-      return `RetrievalResult:${item.assetObject.id}:${item.taskType}:${uniqueIdForSearchMetadata(item.metadata)}`
+      return `RetrievalResult:${item.assetObject.id}:${uniqueIdForSearchMetadata(item.metadata)}`
     case 'Unknown':
       return `Unknown:${Math.random()}`
   }
 }
 
-function uniqueIdForSearchMetadata(item: SearchResultMetadata): string {
+function uniqueIdForSearchMetadata(item: ContentIndexMetadata): string {
   return match(item)
-    .with({ type: 'video' }, (item) => item.startTime.toString())
-    .with({ type: 'audio' }, (item) => item.startTime.toString())
-    .with({ type: 'image' }, (item) => item.type)
-    .with({ type: 'rawText' }, (item) => item.startIndex.toString())
-    .with({ type: 'webPage' }, (item) => item.startIndex.toString())
+    .with({ contentType: 'Video' }, (item) => `${item.contentType}:${item.sliceType}:${item.startTimestamp}`)
+    .with({ contentType: 'Audio' }, (item) => `${item.contentType}:${item.sliceType}:${item.startTimestamp}`)
+    .with({ contentType: 'Image' }, (item) => `${item.contentType}`)
+    .with({ contentType: 'RawText' }, (item) => `${item.contentType}:${item.chunkType}:${item.startIndex}`)
+    .with({ contentType: 'WebPage' }, (item) => `${item.contentType}:${item.chunkType}:${item.startIndex}`)
     .exhaustive()
 }

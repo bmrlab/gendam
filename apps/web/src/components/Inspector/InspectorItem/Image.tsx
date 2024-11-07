@@ -15,7 +15,7 @@ import { useSortedTasks } from './hooks'
 export default function ImageDetail({
   filePath,
   assetObject,
-}: ExtractExplorerItem<'FilePathWithAssetObject', 'image'>) {
+}: ExtractExplorerItem<'FilePathWithAssetObject', 'Image'>) {
   const { sortedTasks, handleJobsCancel } = useSortedTasks(assetObject)
   const { data } = rspc.useQuery(['assets.artifacts.image.description', { hash: assetObject.hash }])
 

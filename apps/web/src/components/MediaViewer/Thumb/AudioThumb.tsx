@@ -6,13 +6,13 @@ export default function AudioThumb({
   data,
   className,
 }: {
-  data: ExtractExplorerItemWithType<'audio'>['assetObject']
+  data: ExtractExplorerItemWithType<'Audio'>['assetObject']
   className?: string
 }) {
   const currentLibrary = useCurrentLibrary()
   return (
     <Image
-      src={currentLibrary.getThumbnailSrc(data.hash, 'audio')}
+      src={currentLibrary.getThumbnailSrc(data.hash, 'Audio')}
       alt={data.hash}
       fill={true}
       className="object-contain"

@@ -10,7 +10,7 @@ export function Video({
   loop = false,
   muted = true,
 }: {
-  assetObject: ExtractAssetObject<'video'>
+  assetObject: ExtractAssetObject<'Video'>
 } & Partial<VideoPlayerOptions>) {
   const videoRef = useVideoPlayer(assetObject, { currentTime, controls, autoPlay, loop, muted })
 

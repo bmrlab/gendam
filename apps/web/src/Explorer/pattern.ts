@@ -1,6 +1,7 @@
-import { ContentTaskType } from '@/lib/bindings'
 import { AssetObjectType } from '@/lib/library'
+import { ContentIndexMetadata } from 'api-server/client/types'
 import { P } from 'ts-pattern'
+import { ValidMetadataType } from './types'
 
 export function matchFilePath<T extends AssetObjectType>(contentType: T) {
   return {
@@ -17,38 +18,36 @@ export function matchSearchResult<T extends AssetObjectType>(contentType: T) {
   return {
     ...matchFilePath(contentType),
     type: 'SearchResult' as const,
-    metadata: {
-      type: contentType,
-    },
+    contentType,
+    metadata: { contentType },
   }
 }
 
 export function matchRetrievalResult<T extends AssetObjectType>(
   contentType: T,
-): Omit<ReturnType<typeof matchSearchResult<T>>, 'type'> & { type: 'RetrievalResult'; taskType: { contentType: T } }
-
-export function matchRetrievalResult<
-  T extends AssetObjectType,
-  V extends Extract<ContentTaskType, { contentType: T }>['taskType'],
->(
-  contentType: T,
-  taskType: V,
 ): Omit<ReturnType<typeof matchSearchResult<T>>, 'type'> & {
   type: 'RetrievalResult'
-  taskType: { contentType: T; taskType: V }
+  contentType: T
 }
 
-export function matchRetrievalResult<
-  T extends AssetObjectType,
-  V extends Extract<ContentTaskType, { contentType: T }>['taskType'],
->(contentType: T, taskType?: V) {
+export function matchRetrievalResult<T extends AssetObjectType, U extends ValidMetadataType<T>>(
+  contentType: T,
+  metadataType: U,
+): Omit<ReturnType<typeof matchSearchResult<T>>, 'type'> & {
+  type: 'RetrievalResult'
+  contentType: T
+  metadata: ContentIndexMetadata & { contentType: T } & U
+}
+
+export function matchRetrievalResult<T extends AssetObjectType, U extends ValidMetadataType<T>>(
+  contentType: T,
+  metadata?: U,
+) {
   return {
     ...matchSearchResult(contentType),
     type: 'RetrievalResult' as const,
-    taskType: {
-      contentType,
-      taskType: taskType ?? P.any,
-    },
+    contentType,
+    metadata: metadata ?? P.any,
   }
 }
 

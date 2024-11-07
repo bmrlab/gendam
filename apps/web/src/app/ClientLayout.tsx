@@ -224,10 +224,11 @@ export default function ClientLayout({
       }
       const prefix = `asset_object/${assetObjectHash}/artifacts`
       const fileFullPath = match(assetObjectType)
-        .with('audio', () => `${prefix}/thumbnail.jpg`)
-        .with('video', () => `${prefix}/thumbnail.jpg`)
-        .with('image', () => `${prefix}/thumbnail.webp`)
-        .with('webPage', () => `${prefix}/thumbnail.png`)
+        .with('Audio', () => `${prefix}/thumbnail.jpg`)
+        .with('Video', () => `${prefix}/thumbnail.jpg`)
+        .with('Image', () => `${prefix}/thumbnail.webp`)
+        .with('WebPage', () => `${prefix}/thumbnail.png`)
+        .with('RawText', () => `${prefix}/thumbnail.jpg`)
         .otherwise(() => `${prefix}/thumbnail.jpg`)
       return _constructStorageUri(fileFullPath)
     },
@@ -241,8 +242,8 @@ export default function ClientLayout({
       }
       const prefix = `asset_object/${assetObjectHash}/artifacts`
       return match(type)
-        .with('audio', () => _constructStorageUri(`${prefix}/waveform.json`))
-        .with('video', () => {
+        .with('Audio', () => _constructStorageUri(`${prefix}/waveform.json`))
+        .with('Video', () => {
           const fileFullPath = (() => {
             if (typeof args1 === 'undefined' || args1 < 1) {
               return `${prefix}/thumbnail.jpg`
