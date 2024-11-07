@@ -2,18 +2,16 @@ use super::ContentIndexMetadata;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VideoIndexMetadata {
-    pub start_timestamp: i64,
-    pub end_timestamp: i64,
+pub enum VideoSliceType {
+    Visual, // 画面切片
+    Audio,  // 语音切片
 }
 
-impl VideoIndexMetadata {
-    pub fn new(start_timestamp: i64, end_timestamp: i64) -> Self {
-        Self {
-            start_timestamp,
-            end_timestamp,
-        }
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VideoIndexMetadata {
+    pub slice_type: VideoSliceType,
+    pub start_timestamp: i64,
+    pub end_timestamp: i64,
 }
 
 impl TryFrom<ContentIndexMetadata> for VideoIndexMetadata {

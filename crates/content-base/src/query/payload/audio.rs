@@ -1,19 +1,16 @@
 use super::ContentIndexMetadata;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AudioIndexMetadata {
-    pub start_timestamp: i64,
-    pub end_timestamp: i64,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum AudioSliceType {
+    Transcript, // 语音转写，目前暂时只有这一个
 }
 
-impl AudioIndexMetadata {
-    pub fn new(start_timestamp: i64, end_timestamp: i64) -> Self {
-        Self {
-            start_timestamp,
-            end_timestamp,
-        }
-    }
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AudioIndexMetadata {
+    pub slice_type: AudioSliceType,
+    pub start_timestamp: i64,
+    pub end_timestamp: i64,
 }
 
 impl TryFrom<ContentIndexMetadata> for AudioIndexMetadata {

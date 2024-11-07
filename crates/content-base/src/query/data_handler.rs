@@ -1,10 +1,13 @@
 use super::{model::SearchModel, HitResult, QueryPayload};
 use crate::db::model::SelectResultModel;
-use crate::query::payload::audio::AudioIndexMetadata;
-use crate::query::payload::image::ImageIndexMetadata;
-use crate::query::payload::video::VideoIndexMetadata;
-use crate::query::payload::web_page::WebPageIndexMetadata;
-use crate::query::payload::{ContentIndexMetadata, SearchResultData};
+use crate::query::payload::{
+    audio::{AudioIndexMetadata, AudioSliceType},
+    image::ImageIndexMetadata,
+    raw_text::{RawTextChunkType, RawTextIndexMetadata},
+    video::{VideoIndexMetadata, VideoSliceType},
+    web_page::{WebPageChunkType, WebPageIndexMetadata},
+    ContentIndexMetadata, SearchResultData,
+};
 use crate::{
     concat_arrays,
     constant::STOP_WORDS,
@@ -78,6 +81,7 @@ impl ContentBase {
                     frame.id.as_ref().and_then(|frame_id| {
                         if hit_result.hit_id.contains(frame_id) {
                             Some(ContentIndexMetadata::Audio(AudioIndexMetadata {
+                                slice_type: AudioSliceType::Transcript,
                                 start_timestamp: frame.start_timestamp as i64,
                                 end_timestamp: frame.end_timestamp as i64,
                             }))
@@ -95,6 +99,7 @@ impl ContentBase {
                         frame.id.as_ref().and_then(|frame_id| {
                             if hit_result.hit_id.contains(frame_id) {
                                 Some(ContentIndexMetadata::Video(VideoIndexMetadata {
+                                    slice_type: VideoSliceType::Audio,
                                     start_timestamp: frame.start_timestamp as i64,
                                     end_timestamp: frame.end_timestamp as i64,
                                 }))
@@ -111,6 +116,7 @@ impl ContentBase {
                         frame.id.as_ref().and_then(|frame_id| {
                             if hit_result.hit_id.contains(frame_id) {
                                 Some(ContentIndexMetadata::Video(VideoIndexMetadata {
+                                    slice_type: VideoSliceType::Visual,
                                     start_timestamp: frame.start_timestamp as i64,
                                     end_timestamp: frame.end_timestamp as i64,
                                 }))
@@ -130,6 +136,7 @@ impl ContentBase {
                     page.id.as_ref().and_then(|page_id| {
                         if hit_result.hit_id.contains(page_id) {
                             Some(ContentIndexMetadata::WebPage(WebPageIndexMetadata {
+                                chunk_type: WebPageChunkType::Content,
                                 start_index: page.start_index as usize,
                                 end_index: page.end_index as usize,
                             }))
@@ -145,7 +152,8 @@ impl ContentBase {
                 .filter_map(|page| {
                     page.id.as_ref().and_then(|page_id| {
                         if hit_result.hit_id.contains(page_id) {
-                            Some(ContentIndexMetadata::WebPage(WebPageIndexMetadata {
+                            Some(ContentIndexMetadata::RawText(RawTextIndexMetadata {
+                                chunk_type: RawTextChunkType::Content,
                                 start_index: page.start_index as usize,
                                 end_index: page.end_index as usize,
                             }))

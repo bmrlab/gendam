@@ -1,8 +1,14 @@
 use super::ContentIndexMetadata;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum WebPageChunkType {
+    Content, // 正文内容，目前暂时只有这一个
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WebPageIndexMetadata {
+    pub chunk_type: WebPageChunkType,
     pub start_index: usize,
     pub end_index: usize,
 }

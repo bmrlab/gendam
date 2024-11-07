@@ -1,8 +1,14 @@
 use super::ContentIndexMetadata;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum RawTextChunkType {
+    Content, // 正文内容，目前暂时只有这一个
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RawTextIndexMetadata {
+    pub chunk_type: RawTextChunkType,
     pub start_index: usize,
     pub end_index: usize,
 }
