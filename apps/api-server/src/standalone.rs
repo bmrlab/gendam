@@ -3,7 +3,8 @@ use super::{
         default::{Ctx, Store},
         traits::{CtxStore, CtxWithLibrary},
     },
-    routes::{get_rspc_routes, localhost, p2p::info as p2p_info},
+    library::{load_library_exclusive_and_wait, unload_library_exclusive_and_wait},
+    routes::{get_rspc_routes, localhost},
 };
 use axum::{http::request::Parts, routing::get};
 use dotenvy::dotenv;
@@ -14,7 +15,7 @@ use std::{
 };
 use tower_http::cors::{Any, CorsLayer};
 
-pub async fn start_server() {
+pub async fn start_server() -> anyhow::Result<()> {
     match dotenv() {
         Ok(path) => println!(".env read successfully from {}", path.display()),
         Err(e) => println!("Could not load .env file: {e}"),
@@ -60,9 +61,8 @@ pub async fn start_server() {
 
         let store = Arc::new(Mutex::new(default_store));
 
-        let node = Arc::new(Mutex::<p2p::Node<p2p_info::ShareInfo>>::new(
-            p2p::Node::new().expect("create node error"),
-        ));
+        let p2p_node = p2p::Node::new().expect("Failed to create p2p node");
+        let node = Arc::new(Mutex::new(p2p_node));
 
         Ctx::<Store>::new(
             local_data_root,
@@ -73,6 +73,13 @@ pub async fn start_server() {
             node,
         )
     };
+
+    // Load library if it is set in store, otherwise user should set it in the UI
+    if let Some(library_id_in_store) = ctx.library_id_in_store() {
+        if let Err(e) = load_library_exclusive_and_wait(ctx.clone(), library_id_in_store).await {
+            anyhow::bail!("Failed to load library: {:?}", e);
+        }
+    }
 
     let app: axum::Router = axum::Router::new()
         .route("/", get(|| async { "Hello 'rspc'!" }))
@@ -106,11 +113,12 @@ pub async fn start_server() {
         app,
     )
     .with_graceful_shutdown(shutdown_signal(ctx.clone()))
-    .await
-    .unwrap();
+    .await?;
+
+    Ok(())
 }
 
-async fn shutdown_signal(ctx: impl CtxWithLibrary) {
+async fn shutdown_signal(ctx: impl CtxWithLibrary + Clone + Send + Sync + 'static) {
     let ctrl_c = async {
         tokio::signal::ctrl_c()
             .await
@@ -129,12 +137,14 @@ async fn shutdown_signal(ctx: impl CtxWithLibrary) {
     tokio::select! {
         _ = ctrl_c => {
             tracing::info!("Ctrl-C received, unload library and shut down...");
-            let _ = ctx.unload_library().await;
+            // let _ = ctx.unload_library().await;
+            let _ = unload_library_exclusive_and_wait(ctx).await;
             std::process::exit(0);
         },
         _ = terminate => {
             tracing::info!("Terminate signal received, unload library and shut down...");
-            let _ = ctx.unload_library().await;
+            // let _ = ctx.unload_library().await;
+            let _ = unload_library_exclusive_and_wait(ctx).await;
             std::process::exit(0);
         },
     }

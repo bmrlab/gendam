@@ -125,12 +125,15 @@ export default function ClientLayout({
         if (!loaded) {
           try {
             // app 刚启动的时候 loaded 是 false, 先 unload 一下以 kill qdrant
+            // 现在 qdrant 没有了，服务端会在启动的时候首先 load_library，这里其实不会触发
             await unloadLibrary()
           } catch (error) {
             console.error(error)
           }
         }
         // loadLibrary 可以重复执行, 这里不需要判断 loaded 是否为 true
+        // 虽然现在服务端会首先 loadLibrary, 这里还是要执行一下以获取完整的 library 信息
+        // TODO：未来再简化这里的逻辑，可以考虑把 library 的信息放到 library.status 接口里面
         try {
           const { isBusy } = await loadLibrary(id)
           if (isBusy) {

@@ -26,5 +26,11 @@ pub mod exports {
             traits::{CtxError, CtxStore, CtxWithLibrary, StoreError},
         };
     }
-    pub use crate::{library::get_library_settings, routes::get_rspc_routes};
+    pub mod library {
+        pub use crate::library::{
+            get_library_settings, load_library_exclusive_and_wait,
+            unload_library_exclusive_and_wait,
+        };
+    }
+    pub use crate::routes::get_rspc_routes;
 }

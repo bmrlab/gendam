@@ -3,6 +3,7 @@
 use api_server::exports::{
     ctx::{Ctx, CtxWithLibrary},
     get_rspc_routes,
+    library::{load_library_exclusive_and_wait, unload_library_exclusive_and_wait},
 };
 use dotenvy::dotenv;
 use global_variable::init_global_variables;
@@ -24,28 +25,29 @@ async fn main() {
 
     init_global_variables!();
 
-    let app = tauri::Builder::default()
-        .register_uri_scheme_protocol("storage", move |app, request: &Request| {
-            let state = app
-                .state::<Arc<tokio::sync::Mutex<StorageState>>>()
-                .inner()
-                .clone();
-            storage_protocol_handler(state, request)
-        })
-        .setup(|_app| {
-            #[cfg(debug_assertions)] // only include this code on debug builds
-            {
-                let window = _app.get_window("main").unwrap();
-                window.open_devtools();
-                window.close_devtools();
-            }
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![greet,]);
-
-    let app = app
-        .build(tauri::generate_context!())
-        .expect("error while building tauri application");
+    let app = {
+        let app_builder = tauri::Builder::default()
+            .register_uri_scheme_protocol("storage", move |app, request: &Request| {
+                let state = app
+                    .state::<Arc<tokio::sync::Mutex<StorageState>>>()
+                    .inner()
+                    .clone();
+                storage_protocol_handler(state, request)
+            })
+            .setup(|_app| {
+                #[cfg(debug_assertions)] // only include this code on debug builds
+                {
+                    let window = _app.get_window("main").unwrap();
+                    window.open_devtools();
+                    window.close_devtools();
+                }
+                Ok(())
+            })
+            .invoke_handler(tauri::generate_handler![greet,]);
+        app_builder
+            .build(tauri::generate_context!())
+            .expect("error while building tauri application")
+    };
 
     #[cfg(not(debug_assertions))]
     {
@@ -68,69 +70,77 @@ async fn main() {
         // tracing::error!("This event will be logged in the root span.");
     }
 
-    // p2p
-    let node = p2p::Node::new().expect("create node fail");
-
-    let p2p = Arc::new(Mutex::new(node));
-
-    // let p2p_clone = p2p.clone();
-
     // tauri::async_runtime::spawn(async move {
     //     let mut node = p2p_clone.lock().unwrap().clone();
     //     node.start_p2p().await.unwrap();
     // });
 
     let window = app.get_window("main").unwrap();
-    let local_data_root = window
-        .app_handle()
-        .path_resolver()
-        .app_local_data_dir()
-        .expect("failed to find local data dir");
-    std::fs::create_dir_all(&local_data_root).unwrap();
 
-    let resources_dir = window
-        .app_handle()
-        .path_resolver()
-        .resolve_resource("resources")
-        .expect("failed to find resources dir");
-    let temp_dir = std::env::temp_dir();
-    let cache_dir = tauri::api::path::cache_dir().unwrap_or({
-        tracing::error!("Failed to get cache dir");
-        temp_dir.clone()
+    let store = {
+        // app.app_handle()
+        window
+            .app_handle()
+            .plugin(tauri_plugin_store::Builder::default().build())
+            .expect("failed to add store plugin");
+        // TODO: 需要确认下 tauri_plugin_store 这个 plugin 是不是需要，如果网页上不用，应该不需要
+        // validate_app_version(window.app_handle(), &local_data_root);
+        let mut tauri_store = tauri_plugin_store::StoreBuilder::new(
+            window.app_handle(),
+            "settings.json".parse().unwrap(),
+        )
+        .build();
+        tauri_store.load().unwrap_or_else(|e| {
+            tracing::warn!("Failed to load tauri store: {:?}", e);
+        });
+        Arc::new(Mutex::new(Store::new(tauri_store)))
+    };
+
+    let ctx = {
+        let local_data_root = window
+            .app_handle()
+            .path_resolver()
+            .app_local_data_dir()
+            .expect("failed to find local data dir");
+        std::fs::create_dir_all(&local_data_root).unwrap();
+
+        let resources_dir = window
+            .app_handle()
+            .path_resolver()
+            .resolve_resource("resources")
+            .expect("failed to find resources dir");
+        let temp_dir = std::env::temp_dir();
+        let cache_dir = tauri::api::path::cache_dir().unwrap_or({
+            tracing::error!("Failed to get cache dir");
+            temp_dir.clone()
+        });
+
+        let p2p_node = p2p::Node::new().expect("Failed to create p2p node");
+        let node = Arc::new(Mutex::new(p2p_node));
+        // let p2p_clone = p2p.clone();
+
+        Ctx::<Store>::new(
+            local_data_root,
+            resources_dir,
+            temp_dir,
+            cache_dir,
+            store,
+            node,
+        )
+    };
+
+    // Load library if it is set in store, otherwise user should set it in the UI
+    if let Some(library_id_in_store) = ctx.library_id_in_store() {
+        if let Err(e) = load_library_exclusive_and_wait(ctx.clone(), library_id_in_store).await {
+            panic!("Failed to load library: {:?}", e);
+        }
+    }
+
+    // init opendal's storage state
+    app.manage({
+        let storage_state = StorageState::new(ctx.clone());
+        Arc::new(tokio::sync::Mutex::new(storage_state))
     });
-
-    // app.app_handle()
-    window
-        .app_handle()
-        .plugin(tauri_plugin_store::Builder::default().build())
-        .expect("failed to add store plugin");
-    // TODO: 需要确认下 tauri_plugin_store 这个 plugin 是不是需要，如果网页上不用，应该不需要
-
-    // validate_app_version(window.app_handle(), &local_data_root);
-
-    let mut tauri_store = tauri_plugin_store::StoreBuilder::new(
-        window.app_handle(),
-        "settings.json".parse().unwrap(),
-    )
-    .build();
-    tauri_store.load().unwrap_or_else(|e| {
-        tracing::warn!("Failed to load tauri store: {:?}", e);
-    });
-
-    let store = Arc::new(Mutex::new(Store::new(tauri_store)));
-    let router = get_rspc_routes::<Ctx<Store>>();
-    let ctx = Ctx::<Store>::new(
-        local_data_root,
-        resources_dir,
-        temp_dir,
-        cache_dir,
-        store,
-        p2p,
-    );
-
-    app.manage(Arc::new(tokio::sync::Mutex::new(StorageState::new(
-        ctx.clone(),
-    ))));
 
     window.on_window_event({
         let ctx = ctx.clone();
@@ -142,9 +152,10 @@ async fn main() {
                 if let Ok(_library) = ctx.library() {
                     // drop(library);
                 }
-                // tokio::runtime::Runtime::new().unwrap().block_on(async {
-                //     let _ = ctx.unload_library().await;
-                // });
+                tokio::runtime::Runtime::new().unwrap().block_on(async {
+                    // let _ = ctx.unload_library().await;
+                    let _ = unload_library_exclusive_and_wait(ctx.clone()).await;
+                });
             }
             if let tauri::WindowEvent::CloseRequested { api, .. } = e {
                 // Prevents the window from being closed.
@@ -157,10 +168,13 @@ async fn main() {
 
     window
         .app_handle()
-        .plugin(rspc_tauri::plugin(router.arced(), move |_window| {
-            // 不能每次 new 而应该是 clone，这样会保证 ctx 里面的每个元素每次只是新建了引用
-            ctx.clone()
-        }))
+        .plugin({
+            let router = get_rspc_routes::<Ctx<Store>>().arced();
+            rspc_tauri::plugin(router, move |_window| {
+                // 不能每次 new 而应该是 clone，这样会保证 ctx 里面的每个元素每次只是新建了引用
+                ctx.clone()
+            })
+        })
         .expect("failed to add rspc plugin");
 
     app.run(|_, _| {});
