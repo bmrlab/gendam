@@ -20,9 +20,13 @@ use content_base_task::web_page::chunk_sum_embed::WebPageChunkSumEmbedTask;
 use content_base_task::web_page::WebPageTaskType;
 use content_base_task::ContentTaskType;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use uuid::Uuid;
 
+// ContentIndexMetadata uses tagged variant serialization
+// When serialized to JSON, variants will include a "content_type" field indicating the variant type
+// {
+//   "content_type": "Video",
+//   ...VideoIndexMetadata fields...
+// }
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "content_type")]
 pub enum ContentIndexMetadata {
@@ -55,23 +59,6 @@ impl From<&ContentIndexMetadata> for ContentTaskType {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ContentIndexPayload {
-    pub file_identifier: String,
-    pub task_type: ContentTaskType,
-    pub metadata: ContentIndexMetadata,
-}
-
-impl ContentIndexPayload {
-    pub fn uuid(&self) -> Uuid {
-        Uuid::new_v5(&Uuid::NAMESPACE_OID, json!(self).to_string().as_bytes())
-    }
-
-    pub fn file_identifier(&self) -> &str {
-        &self.file_identifier
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SearchResultData {
     pub file_identifier: String,
@@ -83,18 +70,18 @@ pub struct SearchResultData {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RetrievalResultData {
     pub file_identifier: String,
-    pub task_type: ContentTaskType,
     pub score: f32,
     pub metadata: ContentIndexMetadata,
+    pub task_type: ContentTaskType,
 }
 
 impl From<SearchResultData> for RetrievalResultData {
     fn from(data: SearchResultData) -> Self {
         Self {
             file_identifier: data.file_identifier.clone(),
-            task_type: ContentTaskType::from(&data.metadata),
             score: data.score,
             metadata: data.metadata.clone(),
+            task_type: ContentTaskType::from(&data.metadata),
         }
     }
 }

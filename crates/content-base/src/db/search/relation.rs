@@ -248,12 +248,9 @@ impl DB {
 
 #[allow(unused_imports)]
 mod test {
-    use crate::{
-        db::{
-            model::{id::TB, ImageModel, TextModel},
-            shared::test::{gen_vector, setup},
-        },
-        query::payload::ContentIndexPayload,
+    use crate::db::{
+        model::{id::TB, ImageModel, TextModel},
+        shared::test::{gen_vector, setup},
     };
     use content_base_task::{
         web_page::{transform::WebPageTransformTask, WebPageTaskType},

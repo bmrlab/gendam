@@ -467,9 +467,6 @@ mod test {
     use crate::db::shared::test::{
         fake_file_identifier, fake_upsert_text_clause, fake_video_model, gen_vector, setup,
     };
-    use crate::query::payload::{ContentIndexMetadata, ContentIndexPayload};
-    use content_base_task::video::VideoTaskType;
-    use content_base_task::ContentTaskType;
     use itertools::Itertools;
     use std::process::id;
     use test_log::test;

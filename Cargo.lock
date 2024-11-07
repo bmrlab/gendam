@@ -1965,7 +1965,6 @@ dependencies = [
  "test-log",
  "tokio",
  "tracing",
- "uuid",
 ]
 
 [[package]]
