@@ -76,6 +76,7 @@ pub(crate) struct FilePathWithAssetObjectData {
 }
 
 impl From<asset_object::Data> for AssetObjectWithMediaData {
+    // 在这里实现了从数据库中读取 media_data 字符串并解析为 `ContentMetadata`
     fn from(value: asset_object::Data) -> Self {
         let media_data = match value.media_data {
             Some(v) => {

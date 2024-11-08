@@ -15,7 +15,7 @@ use web_page::WebPageMetadata;
 #[derive(Clone, Debug, Serialize, Deserialize, EnumDiscriminants)]
 #[strum_discriminants(derive(Serialize, Deserialize, strum_macros::Display))]
 #[strum_discriminants(name(ContentType))]
-#[serde(tag = "contentType")]
+#[serde(tag = "contentType")] // 用于 serialize 了以后写入数据库 assetObject.mediaData 里面的字段名
 #[non_exhaustive]
 pub enum ContentMetadata {
     Audio(AudioMetadata),
