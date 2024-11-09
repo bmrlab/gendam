@@ -39,15 +39,16 @@ impl ContentBase {
     pub fn tasks(metadata: &ContentMetadata) -> Vec<(ContentTaskType, TaskPriority)> {
         let mut tasks = vec![];
 
+        // TODO: 现在好像不支持有些是 Low 有些是 Normal，会导致 Low 的任务被 cancel 并且 Normal 的任务也不被执行...
+        // 比如先开始了 Video，优先级是 Low，然后开始了 Image 任务，优先级是 Normal，这时候 Video 任务会被 cancel，但是 Image 任务不会被执行
         match metadata {
             ContentMetadata::Video(metadata) => {
-                // TODO: 现在好像不支持有些是 Low 有些是 Normal，会导致 Low 的任务被 cancel 并且 Normal 的任务也不被执行...
                 if metadata.audio.is_some() {
-                    tasks.push((VideoTransChunkSumEmbedTask.into(), TaskPriority::Low));
+                    tasks.push((VideoTransChunkSumEmbedTask.into(), TaskPriority::Normal));
                 }
                 // tasks.push((VideoFrameTask.into(), TaskPriority::Low));
-                tasks.push((VideoFrameEmbeddingTask.into(), TaskPriority::Low));
-                tasks.push((VideoFrameDescEmbedTask.into(), TaskPriority::Low));
+                tasks.push((VideoFrameEmbeddingTask.into(), TaskPriority::Normal));
+                tasks.push((VideoFrameDescEmbedTask.into(), TaskPriority::Normal));
             }
             ContentMetadata::Audio(_metadata) => {
                 tasks.extend([
