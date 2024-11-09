@@ -3,10 +3,10 @@ use crate::db::{
         audio::{AudioFrameModel, AudioModel},
         document::DocumentModel,
         image::ImageModel,
+        page::PageModel,
         text::TextModel,
         video::{ImageFrameModel, VideoModel},
         web::WebPageModel,
-        PageModel,
     },
     DB,
 };

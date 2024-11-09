@@ -3,11 +3,12 @@ use crate::db::model::{
     document::DocumentModel,
     id::ID,
     image::ImageModel,
+    page::PageModel,
     payload::PayloadModel,
     text::TextModel,
     video::{ImageFrameModel, VideoModel},
     web::WebPageModel,
-    PageModel, SelectResultModel,
+    SelectResultModel,
 };
 use frame::{AudioFrameEntity, ImageFrameEntity};
 use page::PageEntity;

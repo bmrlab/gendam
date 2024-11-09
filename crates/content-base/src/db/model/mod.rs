@@ -2,39 +2,32 @@ pub mod audio;
 pub mod document;
 pub mod id;
 pub mod image;
+pub mod page;
 pub mod payload;
 pub mod text;
 pub mod video;
 pub mod web;
-
 use self::{
     audio::{AudioFrameModel, AudioModel},
     document::DocumentModel,
     id::ID,
     image::ImageModel,
+    page::PageModel,
     payload::PayloadModel,
     text::TextModel,
     video::{ImageFrameModel, VideoModel},
     web::WebPageModel,
 };
+use serde::Serialize;
 
-#[derive(Debug, Clone)]
-pub struct PageModel {
-    pub id: Option<ID>,
-    pub text: Vec<TextModel>,
-    pub image: Vec<ImageModel>,
-    pub start_index: i32,
-    pub end_index: i32,
-}
-
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ItemModel {
     pub id: Option<ID>,
     text: Vec<TextModel>,
     image: Vec<ImageModel>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub enum SelectResultModel {
     Text(TextModel),
     Image(ImageModel),
