@@ -150,7 +150,7 @@ export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownload
 
 export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string; Llm: string }
 
-export type ContentQueryHitReason = { reason: "TextMatch"; text: string } | { reason: "SemanticMatch"; text: string }
+export type ContentQueryHitReason = { reason: "TextMatch"; text: string } | { reason: "TranscriptMatch"; text: string } | { reason: "CaptionMatch"; text: string } | { reason: "SemanticTextMatch"; text: string } | { reason: "SemanticTranscriptMatch"; text: string } | { reason: "SemanticCaptionMatch"; text: string } | { reason: "VisionMatch" }
 
 export type DownloadModelPayload = { modelId: string }
 

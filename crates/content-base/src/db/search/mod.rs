@@ -78,7 +78,7 @@ impl DB {
                 tracing::debug!("hit words {hit_words:?}");
 
                 let mut vector_results = self
-                    .vector_search(text.text_vector, text.vision_vector, None)
+                    .vector_search(text.text_vector, text.vision_vector)
                     .await?;
                 tracing::debug!("{} found in vector search", vector_results.len());
 
@@ -122,7 +122,7 @@ impl DB {
                     hit_results = replace_with_highlight(full_text_results, hit_results);
                 }
 
-                tracing::debug!("hit result: {hit_results:?} with len {}", hit_results.len());
+                tracing::debug!("{} final hit results", hit_results.len());
                 Ok(hit_results)
             }
             _ => unimplemented!(),

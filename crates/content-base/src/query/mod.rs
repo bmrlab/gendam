@@ -1,7 +1,6 @@
 mod data_handler;
 pub mod model;
 pub mod payload;
-
 use crate::ContentBase;
 use content_base_task::{
     audio::transcript::{AudioTranscriptTask, AudioTranscriptTrait},
@@ -58,43 +57,17 @@ impl ContentBase {
         for hit_result in hit_results.iter() {
             let metadata_list = self.expand_hit_result_to_index_metadata(hit_result);
             let file_identifier = hit_result.payload.file_identifier();
-            for metadata in metadata_list.into_iter() {
-                let range: Option<(usize, usize)> = match &metadata {
-                    ContentIndexMetadata::Video(video) => {
-                        Some((video.start_timestamp as usize, video.end_timestamp as usize))
-                    }
-                    ContentIndexMetadata::Audio(audio) => {
-                        Some((audio.start_timestamp as usize, audio.end_timestamp as usize))
-                    }
-                    ContentIndexMetadata::Image(_) => None,
-                    ContentIndexMetadata::RawText(raw_text) => {
-                        Some((raw_text.start_index as usize, raw_text.end_index as usize))
-                    }
-                    ContentIndexMetadata::WebPage(web_page) => {
-                        Some((web_page.start_index as usize, web_page.end_index as usize))
-                    }
-                };
+            for metadata in metadata_list.iter() {
                 let mut query_result = ContentQueryResult {
                     file_identifier: file_identifier.clone(),
                     score: hit_result.score,
-                    metadata,
+                    metadata: metadata.clone(),
                     hit_reason: None,
                     reference_content: None,
                 };
 
                 if payload.with_hit_reason {
-                    // TODO: 可以进一步根据 metadata 的类型区分是什么数据上的文本或者向量匹配
-                    // TODO: TextMatch 和 SemanticMatch 是不是返回的 hit_text 应该不同？
-                    let hit_text = hit_result.hit_text(range).unwrap_or_default();
-                    let hit_reason = match hit_result.search_type {
-                        SearchType::FullText => ContentQueryHitReason::TextMatch(hit_text),
-                        SearchType::Vector(VectorSearchType::Text) => {
-                            ContentQueryHitReason::SemanticTextMatch(hit_text)
-                        }
-                        SearchType::Vector(VectorSearchType::Vision) => {
-                            ContentQueryHitReason::SemanticVisionMatch(hit_text)
-                        }
-                    };
+                    let hit_reason = self.hit_reason(hit_result, metadata);
                     query_result.hit_reason = Some(hit_reason);
                 }
 
@@ -108,6 +81,62 @@ impl ContentBase {
         }
 
         Ok(query_results)
+    }
+
+    fn hit_reason(
+        &self,
+        hit_result: &HitResult,
+        metadata: &ContentIndexMetadata,
+    ) -> ContentQueryHitReason {
+        // TODO: 可以进一步根据 metadata 的类型区分是什么数据上的文本或者向量匹配
+        // TODO: TextMatch 和 SemanticMatch 是不是返回的 hit_text 应该不同？
+        let range: Option<(usize, usize)> = match metadata {
+            ContentIndexMetadata::Video(video) => {
+                Some((video.start_timestamp as usize, video.end_timestamp as usize))
+            }
+            ContentIndexMetadata::Audio(audio) => {
+                Some((audio.start_timestamp as usize, audio.end_timestamp as usize))
+            }
+            ContentIndexMetadata::Image(_) => None,
+            ContentIndexMetadata::RawText(raw_text) => {
+                Some((raw_text.start_index as usize, raw_text.end_index as usize))
+            }
+            ContentIndexMetadata::WebPage(web_page) => {
+                Some((web_page.start_index as usize, web_page.end_index as usize))
+            }
+        };
+        let hit_text = hit_result.hit_text(range).unwrap_or_default();
+        match hit_result.search_type {
+            SearchType::FullText => match metadata {
+                ContentIndexMetadata::Video(metadata) => match metadata.slice_type {
+                    VideoSliceType::Visual => ContentQueryHitReason::CaptionMatch(hit_text),
+                    VideoSliceType::Audio => ContentQueryHitReason::TranscriptMatch(hit_text),
+                },
+                ContentIndexMetadata::Audio(metadata) => match metadata.slice_type {
+                    AudioSliceType::Transcript => ContentQueryHitReason::TranscriptMatch(hit_text),
+                },
+                ContentIndexMetadata::Image(_) => ContentQueryHitReason::CaptionMatch(hit_text),
+                _ => ContentQueryHitReason::TextMatch(hit_text),
+            },
+            SearchType::Vector(VectorSearchType::Text) => match metadata {
+                ContentIndexMetadata::Video(metadata) => match metadata.slice_type {
+                    VideoSliceType::Visual => ContentQueryHitReason::SemanticCaptionMatch(hit_text),
+                    VideoSliceType::Audio => {
+                        ContentQueryHitReason::SemanticTranscriptMatch(hit_text)
+                    }
+                },
+                ContentIndexMetadata::Audio(metadata) => match metadata.slice_type {
+                    AudioSliceType::Transcript => {
+                        ContentQueryHitReason::SemanticTranscriptMatch(hit_text)
+                    }
+                },
+                ContentIndexMetadata::Image(_) => {
+                    ContentQueryHitReason::SemanticCaptionMatch(hit_text)
+                }
+                _ => ContentQueryHitReason::SemanticTextMatch(hit_text),
+            },
+            SearchType::Vector(VectorSearchType::Vision) => ContentQueryHitReason::VisionMatch,
+        }
     }
 
     async fn reference_content(&self, query_result: &ContentQueryResult) -> anyhow::Result<String> {

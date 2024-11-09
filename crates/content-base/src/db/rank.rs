@@ -87,10 +87,8 @@ impl Rank {
     ) -> anyhow::Result<Vec<RankResult>> {
         let full_text_rank = Rank::full_text_rank(full_text_data, ScoreType::Average, None)?;
         let vector_rank = Rank::vector_rank(vector_data, None)?;
-
-        tracing::debug!("full_text_rank: {:?}", full_text_rank);
-        tracing::debug!("vector_rank: {:?}", vector_rank);
-
+        // tracing::debug!("full_text_rank: {:?}", full_text_rank);
+        // tracing::debug!("vector_rank: {:?}", vector_rank);
         let concat_arrays = concat_arrays!(full_text_rank.clone(), vector_rank.clone()).into_vec();
         let mut rank_result: Vec<RankResult> = Rank::rrf(vec![full_text_rank, vector_rank], None)
             .into_iter()
@@ -105,9 +103,7 @@ impl Rank {
                     })
             })
             .collect();
-
-        tracing::debug!("rank_result: {:?}", rank_result);
-
+        // tracing::debug!("rank_result: {:?}", rank_result);
         if remove_duplicate {
             let mut seen = HashSet::new();
             rank_result = rank_result
