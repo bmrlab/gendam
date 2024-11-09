@@ -14,3 +14,17 @@ pub struct ImageModel {
     #[educe(Debug(ignore))]
     pub prompt_vector: Vec<f32>,
 }
+
+const CREATE_STATEMENT: &'static str = r#"
+(CREATE ONLY image CONTENT {
+    prompt: $prompt,
+    vector: $vector,
+    prompt_vector: $prompt_vector
+}).id
+"#;
+
+impl ImageModel {
+    pub fn create_statement() -> &'static str {
+        CREATE_STATEMENT
+    }
+}

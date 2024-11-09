@@ -25,14 +25,7 @@ impl DB {
     ) -> anyhow::Result<ID> {
         let mut resp = self
             .client
-            .query(
-                "
-                (CREATE ONLY image CONTENT {
-                    prompt: $prompt,
-                    vector: $vector,
-                    prompt_vector: $prompt_vector
-                }).id",
-            )
+            .query(ImageModel::create_statement())
             .bind(image_model)
             .await?;
 
@@ -238,19 +231,11 @@ impl DB {
 
 /// inner functions
 impl DB {
-    pub(crate) async fn insert_text(&self, text: TextModel) -> anyhow::Result<ID> {
+    pub(crate) async fn insert_text(&self, text_model: TextModel) -> anyhow::Result<ID> {
         let mut resp = self
             .client
-            .query(
-                "
-            (CREATE ONLY text CONTENT {
-                data: $data,
-                vector: $vector,
-                en_data: $en_data,
-                en_vector: $en_vector
-            }).id",
-            )
-            .bind(text)
+            .query(TextModel::create_statement())
+            .bind(text_model)
             .await?;
 
         check_db_error_from_resp!(resp).map_err(|errors_map| {
@@ -266,13 +251,7 @@ impl DB {
     async fn create_payload(&self, payload: PayloadModel) -> anyhow::Result<ID> {
         let mut resp = self
             .client
-            .query(
-                "
-                (CREATE ONLY payload CONTENT {
-                    file_identifier: $file_identifier,
-                    url: $url
-                }).id",
-            )
+            .query(PayloadModel::create_statement())
             .bind(payload)
             .await?;
 
