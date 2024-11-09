@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use surrealdb::sql::Thing;
 
-use crate::query::model::full_text::FullTextSearchResult;
+use crate::query::model::FullTextSearchResult;
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct FullTextSearchEntity {

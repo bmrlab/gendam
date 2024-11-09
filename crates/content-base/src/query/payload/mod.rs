@@ -33,7 +33,8 @@ pub enum ContentIndexMetadata {
 #[cfg_attr(feature = "rspc", serde(tag = "reason", content = "text"))]
 pub enum ContentQueryHitReason {
     TextMatch(String),
-    SemanticMatch(String),
+    SemanticTextMatch(String),
+    SemanticVisionMatch(String),
 }
 
 #[derive(Debug, Serialize)]

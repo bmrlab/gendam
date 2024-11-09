@@ -1,6 +1,5 @@
-use crate::db::model::SelectResultModel;
-use crate::query::model::full_text::FullTextSearchResult;
-use crate::query::model::hit_result::HitResult;
+use super::model::SelectResultModel;
+use crate::query::model::{FullTextSearchResult, HitResult};
 
 #[macro_export]
 macro_rules! check_db_error_from_resp {

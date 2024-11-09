@@ -9,7 +9,7 @@ use content_base_task::{
     raw_text::chunk::{DocumentChunkTrait, RawTextChunkTask},
     video::{frame_description::VideoFrameDescriptionTask, transcript::VideoTranscriptTask},
 };
-use model::{hit_result::HitResult, SearchType};
+use model::{HitResult, SearchType, VectorSearchType};
 use payload::{
     audio::AudioSliceType, raw_text::RawTextChunkType, video::VideoSliceType, ContentIndexMetadata,
     ContentQueryHitReason, ContentQueryResult,
@@ -88,7 +88,12 @@ impl ContentBase {
                     let hit_text = hit_result.hit_text(range).unwrap_or_default();
                     let hit_reason = match hit_result.search_type {
                         SearchType::FullText => ContentQueryHitReason::TextMatch(hit_text),
-                        SearchType::Vector => ContentQueryHitReason::SemanticMatch(hit_text),
+                        SearchType::Vector(VectorSearchType::Text) => {
+                            ContentQueryHitReason::SemanticTextMatch(hit_text)
+                        }
+                        SearchType::Vector(VectorSearchType::Vision) => {
+                            ContentQueryHitReason::SemanticVisionMatch(hit_text)
+                        }
                     };
                     query_result.hit_reason = Some(hit_reason);
                 }
