@@ -68,9 +68,7 @@ export type VideoIndexMetadata = { sliceType: VideoSliceType; startTimestamp: nu
 
 export type WebPageIndexMetadata = { chunkType: WebPageChunkType; startIndex: number; endIndex: number }
 
-export type ContentMetadataWithType = ({ contentType: "Audio" } & AudioMetadata) | ({ contentType: "Video" } & VideoMetadata) | ({ contentType: "Image" } & ImageMetadata) | ({ contentType: "RawText" } & RawTextMetadata) | ({ contentType: "WebPage" } & WebPageMetadata) | { contentType: "Unknown" }
-
-export type AudioMetadata = { bitRate: string; duration: number }
+export type VideoAvgFrameRate = { numerator: number; denominator: number }
 
 export type ImageRequestPayload = { hash: string }
 
@@ -78,9 +76,7 @@ export type RecommendRequestPayload = { assetObjectHash: string; timestamp: numb
 
 export type SetModelPayload = { category: AIModelCategory; modelId: string }
 
-export type AssetObjectWithMediaData = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string; mediaData: ContentMetadataWithType | null }
-
-export type ImageMetadata = { width: number; height: number; color: string }
+export type AssetObjectWithMediaData = { id: number; hash: string; size: number; mimeType: string | null; createdAt: string; updatedAt: string; mediaData: ContentMetadata | null }
 
 export type FilePathGetPayload = { materializedPath: string; name: string }
 
@@ -90,9 +86,9 @@ export type TranscriptType = "Original" | "Summarization"
 
 export type ExportInput = { types: AudioType[]; hash: string; path: string; fileName?: string | null }
 
-export type RawTextMetadata = { textCount: string }
-
 export type RAGResult = { resultType: "Reference"; data: RetrievalResultPayload } | { resultType: "Response"; data: string } | { resultType: "Error"; data: string } | { resultType: "Done" }
+
+export type ImageMetadata = { width: number; height: number; color: string }
 
 export type LibrarySettingsThemeEnum = "light" | "dark"
 
@@ -120,88 +116,10 @@ export type ModelsListResult = { category: AIModelCategory; models: AIModelResul
 
 export type LibrariesListResult = { id: string; dir: string; title: string }
 
+export type VideoMetadata = { width: number; height: number; duration: number; bitRate: number; avgFrameRate: VideoAvgFrameRate; audio: AudioMetadata | null }
+
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
 export type FilePathWithAssetObjectData = { id: number; isDir: boolean; materializedPath: string; name: string; description: string | null; assetObjectId: number | null; assetObject?: AssetObjectWithMediaData | null; createdAt: string; updatedAt: string }
 
 export type FilePathRequestPayload = { id: number; isDir: boolean; materializedPath: string; name: string }
-
-export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
-
-export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
-
-export type TranscriptRequestPayload = { hash: string; startTimestamp: number; endTimestamp: number; requestType: TranscriptType }
-
-export type ConcreteModelType = "BLIP" | "CLIP" | "Moondream" | "OrtTextEmbedding" | "Whisper" | "Yolo" | "Qwen2" | "OpenAI" | "AzureOpenAI" | "LLaVAPhi3Mini"
-
-export type AcceptShareOutput = { fileList: string[] }
-
-export type WebPageChunkType = "Content"
-
-export type TaskCancelRequestPayload = { assetObjectId: number; taskTypes: string[] | null }
-
-export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
-
-export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string; Llm: string }
-
-export type DownloadModelPayload = { modelId: string }
-
-export type VideoAvgFrameRate = { numerator: string; denominator: string }
-
-export type VideoPlayerTsRequestPayload = { hash: string; index: number; size: number }
-
-export type LibraryLoadResult = { id: string; dir: string }
-
-export type FilePathRenamePayload = { id: number; isDir: boolean; materializedPath: string; oldName: string; newName: string }
-
-export type TranscriptResponse = { content: string }
-
-export type SearchResultPayload = { filePath: FilePathWithAssetObjectData; metadata: ContentIndexMetadata; score: number; highlight: string | null }
-
-export type RawTextIndexMetadata = { chunkType: RawTextChunkType; startIndex: number; endIndex: number }
-
-export type AudioType = "txt" | "srt" | "json" | "vtt" | "csv" | "ale" | "docx"
-
-export type VideoMetadata = { width: string; height: string; duration: number; bitRate: string; avgFrameRate: VideoAvgFrameRate; audio: AudioMetadata | null }
-
-export type AudioSliceType = "Transcript"
-
-export type RawTextRequestPayload = { hash: string; index: number }
-
-export type VideoSegmentExportPayload = { verboseFileName: string; outputDir: string; assetObjectId: number; millisecondsFrom: number; millisecondsTo: number }
-
-export type WebPageCreatePayload = { materializedPath: string; url: string }
-
-export type ImageIndexMetadata = { data: number }
-
-export type FilePathCreatePayload = { materializedPath: string; name: string }
-
-export type UploadPayload = { materializedPaths: string[]; hashes: string[] }
-
-export type TaskListRequestFilter = { assetObjectId?: number | null; assetObjectIds?: number[] | null }
-
-export type TaskRedoRequestPayload = { assetObjectId: number }
-
-export type SharePayload = { fileIdList: number[]; peerId: string }
-
-export type WebPageMetadata = { sourceUrl: string }
-
-export type TaskListRequestPayload = { filter: TaskListRequestFilter }
-
-export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
-
-export type AudioResp = { type: AudioType; content: string }
-
-export type AssetObjectReceivePayload = { hash: string; materializedPath: string }
-
-export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
-
-export type SearchRequestPayload = { text: string }
-
-export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
-
-export type LibrarySettingsExplorer = { layout: LibrarySettingsLayoutEnum; inspectorSize: number; inspectorShow: boolean }
-
-export type VideoSliceType = "Visual" | "Audio"
-
-export type RAGRequestPayload = { query: string }

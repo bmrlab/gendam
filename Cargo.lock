@@ -311,6 +311,7 @@ dependencies = [
  "content-base",
  "content-handler",
  "content-library",
+ "content-metadata",
  "cron 0.2.0",
  "csv",
  "dirs",
@@ -2085,6 +2086,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "specta",
  "strum",
  "strum_macros",
 ]

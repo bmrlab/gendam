@@ -12,6 +12,7 @@ use strum_macros::EnumDiscriminants;
 use video::VideoMetadata;
 use web_page::WebPageMetadata;
 
+#[cfg_attr(feature = "rspc", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize, Deserialize, EnumDiscriminants)]
 #[strum_discriminants(derive(Serialize, Deserialize, strum_macros::Display))]
 #[strum_discriminants(name(ContentType))]

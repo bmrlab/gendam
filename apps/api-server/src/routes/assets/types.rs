@@ -1,4 +1,4 @@
-use crate::{content_metadata::ContentMetadataWithType, validators};
+use crate::validators;
 use content_base::ContentMetadata;
 use prisma_lib::{asset_object, data_location, file_handler_task, file_path};
 use serde::{Deserialize, Serialize};
@@ -33,7 +33,7 @@ pub(crate) struct AssetObjectWithMediaData {
     pub updated_at:
         ::prisma_client_rust::chrono::DateTime<::prisma_client_rust::chrono::FixedOffset>,
     #[serde(rename = "mediaData")]
-    pub media_data: Option<ContentMetadataWithType>,
+    pub media_data: Option<ContentMetadata>,
     #[serde(rename = "filePaths")]
     #[specta(skip)]
     pub file_paths: Option<Vec<file_path::Data>>,
@@ -81,10 +81,11 @@ impl From<asset_object::Data> for AssetObjectWithMediaData {
         let media_data = match value.media_data {
             Some(v) => {
                 let content_metadata: Result<ContentMetadata, _> = serde_json::from_str(&v);
-                match content_metadata {
-                    Ok(content_metadata) => Some(ContentMetadataWithType::from(&content_metadata)),
-                    Err(_) => None,
-                }
+                content_metadata
+                    .map_err(|e| {
+                        tracing::error!("Failed to parse media_data from AssetObject: {:?}", e);
+                    })
+                    .ok()
             }
             _ => None,
         };
