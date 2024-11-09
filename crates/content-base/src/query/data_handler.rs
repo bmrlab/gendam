@@ -84,8 +84,8 @@ impl ContentBase {
                         if hit_result.hit_id.contains(frame_id) {
                             Some(ContentIndexMetadata::Audio(AudioIndexMetadata {
                                 slice_type: AudioSliceType::Transcript,
-                                start_timestamp: frame.start_timestamp as i32,
-                                end_timestamp: frame.end_timestamp as i32,
+                                start_timestamp: frame.start_timestamp as i64,
+                                end_timestamp: frame.end_timestamp as i64,
                             }))
                         } else {
                             None
@@ -102,8 +102,8 @@ impl ContentBase {
                             if hit_result.hit_id.contains(frame_id) {
                                 Some(ContentIndexMetadata::Video(VideoIndexMetadata {
                                     slice_type: VideoSliceType::Audio,
-                                    start_timestamp: frame.start_timestamp as i32,
-                                    end_timestamp: frame.end_timestamp as i32,
+                                    start_timestamp: frame.start_timestamp as i64,
+                                    end_timestamp: frame.end_timestamp as i64,
                                 }))
                             } else {
                                 None
@@ -119,8 +119,8 @@ impl ContentBase {
                             if hit_result.hit_id.contains(frame_id) {
                                 Some(ContentIndexMetadata::Video(VideoIndexMetadata {
                                     slice_type: VideoSliceType::Visual,
-                                    start_timestamp: frame.start_timestamp as i32,
-                                    end_timestamp: frame.end_timestamp as i32,
+                                    start_timestamp: frame.start_timestamp as i64,
+                                    end_timestamp: frame.end_timestamp as i64,
                                 }))
                             } else {
                                 None
@@ -139,8 +139,8 @@ impl ContentBase {
                         if hit_result.hit_id.contains(page_id) {
                             Some(ContentIndexMetadata::WebPage(WebPageIndexMetadata {
                                 chunk_type: WebPageChunkType::Content,
-                                start_index: page.start_index,
-                                end_index: page.end_index,
+                                start_index: page.start_index as usize,
+                                end_index: page.end_index as usize,
                             }))
                         } else {
                             None
@@ -156,8 +156,8 @@ impl ContentBase {
                         if hit_result.hit_id.contains(page_id) {
                             Some(ContentIndexMetadata::RawText(RawTextIndexMetadata {
                                 chunk_type: RawTextChunkType::Content,
-                                start_index: page.start_index,
-                                end_index: page.end_index,
+                                start_index: page.start_index as usize,
+                                end_index: page.end_index as usize,
                             }))
                         } else {
                             None

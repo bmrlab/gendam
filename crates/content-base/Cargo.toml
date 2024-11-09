@@ -5,6 +5,7 @@ edition = { workspace = true }
 
 [features]
 embedded-db = ["surrealdb/kv-rocksdb"]
+rspc = ["dep:specta"]
 
 [dependencies]
 tokio = { workspace = true, features = ["full"] }
@@ -24,7 +25,7 @@ content-base-task = { path = "../content-base-task" }
 content-base-pool = { path = "../content-base-pool" }
 content-handler = { path = "../content-handler" }
 content-metadata = { path = "../content-metadata" }
-specta = { workspace = true }
+specta = { workspace = true, optional = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
 regex = { workspace = true }

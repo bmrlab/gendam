@@ -1,20 +1,24 @@
 use super::ContentIndexMetadata;
 use serde::Serialize;
 
-#[derive(Debug, Clone, Serialize, specta::Type)]
+#[cfg_attr(feature = "rspc", derive(specta::Type))]
+#[derive(Debug, Clone, Serialize)]
 pub enum VideoSliceType {
     Visual, // 画面切片
     Audio,  // 语音切片
 }
 
-// rspc does not support exporting bigint types (i64, u64, i128, u128) because they are lossily decoded by `JSON.parse` on the frontend.
-// Tracking issue: https://github.com/oscartbeaumont/rspc/issues/93
-#[derive(Debug, Clone, Serialize, specta::Type)]
+#[cfg_attr(feature = "rspc", derive(specta::Type))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VideoIndexMetadata {
     pub slice_type: VideoSliceType,
-    pub start_timestamp: i32,
-    pub end_timestamp: i32,
+    // rspc does not support exporting bigint types (i64, u64, i128, u128) because they are lossily decoded by `JSON.parse` on the frontend.
+    // Tracking issue: https://github.com/oscartbeaumont/rspc/issues/93
+    #[cfg_attr(feature = "rspc", specta(type = u32))]
+    pub start_timestamp: i64,
+    #[cfg_attr(feature = "rspc", specta(type = u32))]
+    pub end_timestamp: i64,
 }
 
 impl TryFrom<ContentIndexMetadata> for VideoIndexMetadata {

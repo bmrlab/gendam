@@ -1,17 +1,21 @@
 use super::ContentIndexMetadata;
 use serde::Serialize;
 
-#[derive(Debug, Clone, Serialize, specta::Type)]
+#[cfg_attr(feature = "rspc", derive(specta::Type))]
+#[derive(Debug, Clone, Serialize)]
 pub enum AudioSliceType {
     Transcript, // 语音转写，目前暂时只有这一个
 }
 
-#[derive(Debug, Clone, Serialize, specta::Type)]
+#[cfg_attr(feature = "rspc", derive(specta::Type))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioIndexMetadata {
     pub slice_type: AudioSliceType,
-    pub start_timestamp: i32,
-    pub end_timestamp: i32,
+    #[cfg_attr(feature = "rspc", specta(type = u32))]
+    pub start_timestamp: i64,
+    #[cfg_attr(feature = "rspc", specta(type = u32))]
+    pub end_timestamp: i64,
 }
 
 impl TryFrom<ContentIndexMetadata> for AudioIndexMetadata {

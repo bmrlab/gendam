@@ -1,17 +1,21 @@
 use super::ContentIndexMetadata;
 use serde::Serialize;
 
-#[derive(Debug, Clone, Serialize, specta::Type)]
+#[cfg_attr(feature = "rspc", derive(specta::Type))]
+#[derive(Debug, Clone, Serialize)]
 pub enum WebPageChunkType {
     Content, // 正文内容，目前暂时只有这一个
 }
 
-#[derive(Debug, Clone, Serialize, specta::Type)]
+#[cfg_attr(feature = "rspc", derive(specta::Type))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WebPageIndexMetadata {
     pub chunk_type: WebPageChunkType,
-    pub start_index: i32,
-    pub end_index: i32,
+    #[cfg_attr(feature = "rspc", specta(type = u32))]
+    pub start_index: usize,
+    #[cfg_attr(feature = "rspc", specta(type = u32))]
+    pub end_index: usize,
 }
 
 impl TryFrom<ContentIndexMetadata> for WebPageIndexMetadata {

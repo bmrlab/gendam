@@ -77,8 +77,8 @@ impl ContentBase {
                             .frame_description_content(
                                 file_identifier,
                                 ctx,
-                                metadata.start_timestamp as i64,
-                                metadata.end_timestamp as i64,
+                                metadata.start_timestamp,
+                                metadata.end_timestamp,
                             )
                             .await?;
                         frame_description
@@ -92,8 +92,8 @@ impl ContentBase {
                             .transcriptions
                             .iter()
                             .filter(|item| {
-                                item.start_timestamp >= metadata.start_timestamp as i64
-                                    && item.end_timestamp <= metadata.end_timestamp as i64
+                                item.start_timestamp >= metadata.start_timestamp
+                                    && item.end_timestamp <= metadata.end_timestamp
                             })
                             .map(|item| item.text.clone())
                             .collect::<Vec<String>>();
@@ -109,8 +109,8 @@ impl ContentBase {
                             .transcriptions
                             .iter()
                             .filter(|item| {
-                                item.start_timestamp >= metadata.start_timestamp as i64
-                                    && item.end_timestamp <= metadata.end_timestamp as i64
+                                item.start_timestamp >= metadata.start_timestamp
+                                    && item.end_timestamp <= metadata.end_timestamp
                             })
                             .map(|item| item.text.clone())
                             .collect::<Vec<String>>();

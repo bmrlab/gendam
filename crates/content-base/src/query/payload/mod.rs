@@ -13,10 +13,11 @@ use serde::Serialize;
 // ContentIndexMetadata uses tagged variant serialization
 // When serialized to JSON, variants will include a "content_type" field indicating the variant type
 // {
-//   "content_type": "Video",
+//   "contentType": "Video",
 //   ...VideoIndexMetadata fields...
 // }
-#[derive(Debug, Clone, Serialize, specta::Type)]
+#[cfg_attr(feature = "rspc", derive(specta::Type))]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "contentType")]
 pub enum ContentIndexMetadata {
     Video(VideoIndexMetadata),

@@ -34,8 +34,8 @@ where
             #[serde(rename_all = "camelCase")]
             struct TranscriptRequestPayload {
                 hash: String,
-                start_timestamp: i32,
-                end_timestamp: i32,
+                start_timestamp: i64,
+                end_timestamp: i64,
                 request_type: TranscriptType,
             }
             #[derive(Serialize, Type, Debug)]
@@ -57,10 +57,10 @@ where
                                 Ok(transcript) => {
                                     let mut transcript_vec = vec![];
                                     for item in transcript.transcriptions {
-                                        if item.start_timestamp < input.start_timestamp as i64 {
+                                        if item.start_timestamp < input.start_timestamp {
                                             continue;
                                         }
-                                        if item.end_timestamp > input.end_timestamp as i64 {
+                                        if item.end_timestamp > input.end_timestamp {
                                             break;
                                         }
                                         transcript_vec.push(item.text);
@@ -75,8 +75,8 @@ where
                                     .sum_content(
                                         &input.hash,
                                         content_base.ctx(),
-                                        input.start_timestamp as i64,
-                                        input.end_timestamp as i64,
+                                        input.start_timestamp,
+                                        input.end_timestamp,
                                     )
                                     .await
                             }

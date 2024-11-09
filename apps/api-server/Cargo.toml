@@ -16,6 +16,7 @@ prisma-lib = { path = "../../crates/prisma" }
 content-library = { path = "../../crates/content-library" }
 content-base = { path = "../../crates/content-base", features = [
     "embedded-db",
+    "rspc",
 ] }
 content-metadata = { path = "../../crates/content-metadata", features = [
     "rspc",
