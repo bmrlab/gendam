@@ -20,7 +20,7 @@ const MAX_RETRIEVAL_COUNT: usize = 20;
 pub struct ContentQueryPayload {
     pub query: String,
     pub max_count: Option<usize>,
-    pub with_highlight: bool,
+    pub with_hit_text: bool,
     pub with_reference_content: bool,
 }
 
@@ -29,7 +29,7 @@ impl Default for ContentQueryPayload {
         Self {
             query: String::new(),
             max_count: None,
-            with_highlight: true,
+            with_hit_text: true,
             with_reference_content: true,
         }
     }
@@ -47,37 +47,58 @@ impl ContentBase {
     ) -> anyhow::Result<Vec<ContentQueryResult>> {
         let search_model = self.query_payload_to_model(&payload).await?;
         let max_count = payload.max_count.unwrap_or(MAX_RETRIEVAL_COUNT);
-        let with_highlight = payload.with_highlight;
 
-        let hit_result = self
+        let hit_results = self
             .db
             .try_read()?
-            .search(search_model, with_highlight, max_count)
+            .search(search_model, true, max_count)
             .await?;
 
-        let mut search_results = hit_result
-            .into_iter()
-            .filter_map(|hit| self.expand_hit_result(hit).ok())
-            .flatten()
-            .collect::<Vec<ContentQueryResult>>();
-
-        if payload.with_reference_content {
-            for search_result in search_results.iter_mut() {
-                let reference_content = self.reference_content(&search_result).await?;
-                search_result.reference_content = Some(reference_content);
+        let mut query_results: Vec<ContentQueryResult> = vec![];
+        for hit_result in hit_results.iter() {
+            let metadata_list = self.expand_hit_result_to_index_metadata(hit_result);
+            let file_identifier = hit_result.payload.file_identifier();
+            for metadata in metadata_list.into_iter() {
+                let range: Option<(usize, usize)> = match &metadata {
+                    ContentIndexMetadata::Video(video) => {
+                        Some((video.start_timestamp as usize, video.end_timestamp as usize))
+                    }
+                    ContentIndexMetadata::Audio(audio) => {
+                        Some((audio.start_timestamp as usize, audio.end_timestamp as usize))
+                    }
+                    ContentIndexMetadata::Image(_) => None,
+                    ContentIndexMetadata::RawText(raw_text) => {
+                        Some((raw_text.start_index as usize, raw_text.end_index as usize))
+                    }
+                    ContentIndexMetadata::WebPage(web_page) => {
+                        Some((web_page.start_index as usize, web_page.end_index as usize))
+                    }
+                };
+                let mut query_result = ContentQueryResult {
+                    file_identifier: file_identifier.clone(),
+                    score: hit_result.score,
+                    metadata,
+                    hit_text: None,
+                    reference_content: None,
+                };
+                if payload.with_hit_text {
+                    query_result.hit_text = hit_result.hit_text(range);
+                }
+                if payload.with_reference_content {
+                    let reference_content = self.reference_content(&query_result).await?;
+                    query_result.reference_content = Some(reference_content);
+                }
+                query_results.push(query_result);
             }
         }
 
-        Ok(search_results)
+        Ok(query_results)
     }
 
-    async fn reference_content(
-        &self,
-        search_result: &ContentQueryResult,
-    ) -> anyhow::Result<String> {
+    async fn reference_content(&self, query_result: &ContentQueryResult) -> anyhow::Result<String> {
         let ctx = self.ctx();
-        let file_identifier = search_result.file_identifier.as_ref();
-        let reference_content = match &search_result.metadata {
+        let file_identifier = query_result.file_identifier.as_ref();
+        let reference_content = match &query_result.metadata {
             ContentIndexMetadata::Video(metadata) => match metadata.slice_type {
                 VideoSliceType::Visual => {
                     let frame_description = VideoFrameDescriptionTask

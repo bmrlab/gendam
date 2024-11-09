@@ -58,7 +58,7 @@ function SearchPage() {
           filePaths: [item.filePath],
           assetObject: item.filePath.assetObject!,
           metadata: item.metadata,
-          highlight: item.highlight,
+          hitText: item.hitText,
         }))
       : null,
     settings: {

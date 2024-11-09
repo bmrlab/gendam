@@ -22,7 +22,8 @@ pub struct SearchResultData {
     pub file_path: FilePathWithAssetObjectData,
     pub metadata: ContentIndexMetadata,
     pub score: f32,
-    pub highlight: String,
+    pub hit_text: String,
+    pub reference_content: String,
 }
 
 pub async fn search_all(
@@ -32,8 +33,8 @@ pub async fn search_all(
 ) -> Result<Vec<SearchResultData>, rspc::Error> {
     let query_payload = ContentQueryPayload {
         query: input.text.clone(),
-        with_highlight: true,
-        with_reference_content: false,
+        with_hit_text: true,
+        with_reference_content: true,
         ..Default::default()
     };
     let res = content_base.query(query_payload).await;
@@ -55,7 +56,8 @@ pub async fn search_all(
             file_path: file_path.clone().into(),
             metadata: item.metadata.clone(),
             score: item.score,
-            highlight: item.highlight.clone().unwrap_or_default(),
+            hit_text: item.hit_text.clone().unwrap_or_default(),
+            reference_content: item.reference_content.clone().unwrap_or_default(),
         }
     })
     .await?;

@@ -1,11 +1,14 @@
 import { ExtractExplorerItem } from '@/Explorer/types'
 import { useCurrentLibrary } from '@/lib/library'
-import { rspc } from '@/lib/rspc'
 import Image from 'next/image'
 
-export default function ImageRetrievalItem({ assetObject, metadata }: ExtractExplorerItem<'RetrievalResult', 'Image'>) {
+export default function ImageRetrievalItem({
+  assetObject,
+  metadata,
+  referenceContent,
+}: ExtractExplorerItem<'RetrievalResult', 'Image'>) {
   const currentLibrary = useCurrentLibrary()
-  const { data } = rspc.useQuery(['assets.artifacts.image.description', { hash: assetObject.hash }])
+  // const { data } = rspc.useQuery(['assets.artifacts.image.description', { hash: assetObject.hash }])
 
   return (
     <div className="flex items-start justify-between space-x-4 rounded-md">
@@ -23,7 +26,7 @@ export default function ImageRetrievalItem({ assetObject, metadata }: ExtractExp
 
       <div className="w-full flex-1">
         <div className="font-semibold">Description</div>
-        <div>{data}</div>
+        <div>{referenceContent}</div>
       </div>
     </div>
   )

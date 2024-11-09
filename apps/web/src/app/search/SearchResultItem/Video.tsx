@@ -8,7 +8,8 @@ import { useMemo } from 'react'
 export default function VideoSearchItem({
   assetObject,
   metadata,
-}: ExtractExplorerItem<'SearchResult' | 'RetrievalResult', 'Video'>) {
+  hitText,
+}: ExtractExplorerItem<'SearchResult', 'Video'>) {
   const currentLibrary = useCurrentLibrary()
 
   const frames = useMemo(() => {

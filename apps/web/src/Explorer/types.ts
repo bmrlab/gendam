@@ -35,7 +35,7 @@ type SearchResultItem = {
   filePaths: RawFilePath[]
   assetObject: AssetObject
   metadata: ContentIndexMetadata
-  highlight: string | null
+  hitText: string | null
 }
 
 type RetrievalResultItem = {

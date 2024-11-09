@@ -116,7 +116,7 @@ export type LibrariesListResult = { id: string; dir: string; title: string }
 
 export type VideoMetadata = { width: number; height: number; duration: number; bitRate: number; avgFrameRate: VideoAvgFrameRate; audio: AudioMetadata | null }
 
-export type SearchResultData = { filePath: FilePathWithAssetObjectData; metadata: ContentIndexMetadata; score: number; highlight: string }
+export type SearchResultData = { filePath: FilePathWithAssetObjectData; metadata: ContentIndexMetadata; score: number; hitText: string; referenceContent: string }
 
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
@@ -135,8 +135,6 @@ export type AudioMetadata = { bitRate: number; duration: number }
 export type LibrarySettingsLayoutEnum = "list" | "grid" | "media"
 
 export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
-
-export type ContentIndexMetadata = ({ contentType: "Video" } & VideoIndexMetadata) | ({ contentType: "Audio" } & AudioIndexMetadata) | ({ contentType: "Image" } & ImageIndexMetadata) | ({ contentType: "RawText" } & RawTextIndexMetadata) | ({ contentType: "WebPage" } & WebPageIndexMetadata)
 
 export type TranscriptRequestPayload = { hash: string; startTimestamp: number; endTimestamp: number; requestType: TranscriptType }
 
@@ -189,6 +187,8 @@ export type SharePayload = { fileIdList: number[]; peerId: string }
 export type VideoIndexMetadata = { sliceType: VideoSliceType; startTimestamp: number; endTimestamp: number }
 
 export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
+
+export type ContentIndexMetadata = ({ contentType: "Video" } & VideoIndexMetadata) | ({ contentType: "Audio" } & AudioIndexMetadata) | ({ contentType: "Image" } & ImageIndexMetadata) | ({ contentType: "RawText" } & RawTextIndexMetadata) | ({ contentType: "WebPage" } & WebPageIndexMetadata)
 
 export type AssetObjectReceivePayload = { hash: string; materializedPath: string }
 

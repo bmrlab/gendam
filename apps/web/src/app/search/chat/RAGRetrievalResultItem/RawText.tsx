@@ -27,23 +27,12 @@ function RawTextSummarizationItem({
 }: ExtractExplorerItem<'RetrievalResult', 'RawText', { chunkType: 'Content' }>) {
   const { data: summarization } = rspc.useQuery([
     'assets.artifacts.raw_text.chunk.summarization',
-    {
-      hash: assetObject.hash,
-      index: metadata.startIndex,
-    },
+    { hash: assetObject.hash, index: metadata.startIndex },
   ])
-
   const { data: content } = rspc.useQuery(
-    [
-      'assets.artifacts.raw_text.chunk.content',
-      {
-        hash: assetObject.hash,
-        index: metadata.startIndex,
-      },
-    ],
-    {
-      enabled: true, // TODO only retrieve when transcript is enabled
-    },
+    ['assets.artifacts.raw_text.chunk.content', { hash: assetObject.hash, index: metadata.startIndex }],
+    // TODO only retrieve when transcript is enabled
+    { enabled: true },
   )
 
   return (

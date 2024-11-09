@@ -5,10 +5,8 @@ import Icon from '@gendam/ui/icons'
 // import Image from 'next/image'
 import { useMemo } from 'react'
 
-export default function RawTextSearchItem(
-  itemData: ExtractExplorerItem<'SearchResult' | 'RetrievalResult', 'RawText'>,
-) {
-  const { assetObject, metadata } = itemData
+export default function RawTextSearchItem(itemData: ExtractExplorerItem<'SearchResult', 'RawText'>) {
+  const { assetObject, metadata, hitText } = itemData
   const title = useMemo(() => {
     if (itemData.type === 'SearchResult') {
       return itemData.filePaths[0]?.name ?? ''

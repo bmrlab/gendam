@@ -6,7 +6,7 @@ use crate::query::payload::{
     raw_text::{RawTextChunkType, RawTextIndexMetadata},
     video::{VideoIndexMetadata, VideoSliceType},
     web_page::{WebPageChunkType, WebPageIndexMetadata},
-    ContentIndexMetadata, ContentQueryResult,
+    ContentIndexMetadata,
 };
 use crate::{
     concat_arrays,
@@ -67,12 +67,12 @@ impl ContentBase {
         Ok(deduplicate(tokens))
     }
 
-    pub fn expand_hit_result(
+    /// 搜索结果的命中数据展开为片段的 index metadata，针对每个命中的ID提取对应的时间戳、索引范围等信息
+    pub fn expand_hit_result_to_index_metadata(
         &self,
-        hit_result: HitResult,
-    ) -> anyhow::Result<Vec<ContentQueryResult>> {
-        let file_identifier = hit_result.payload.file_identifier();
-        let metadata = match hit_result.result.clone() {
+        hit_result: &HitResult,
+    ) -> Vec<ContentIndexMetadata> {
+        match hit_result.result.clone() {
             SelectResultModel::Image(_) => {
                 vec![ContentIndexMetadata::Image(ImageIndexMetadata { data: 0 })]
             }
@@ -168,34 +168,6 @@ impl ContentBase {
             _ => {
                 vec![]
             }
-        };
-        Ok(metadata
-            .into_iter()
-            .map(|metadata| {
-                let range: Option<(usize, usize)> = match &metadata {
-                    ContentIndexMetadata::Video(video) => {
-                        Some((video.start_timestamp as usize, video.end_timestamp as usize))
-                    }
-                    ContentIndexMetadata::Audio(audio) => {
-                        Some((audio.start_timestamp as usize, audio.end_timestamp as usize))
-                    }
-                    ContentIndexMetadata::Image(_) => None,
-                    ContentIndexMetadata::RawText(raw_text) => {
-                        Some((raw_text.start_index as usize, raw_text.end_index as usize))
-                    }
-                    ContentIndexMetadata::WebPage(web_page) => {
-                        Some((web_page.start_index as usize, web_page.end_index as usize))
-                    }
-                };
-
-                ContentQueryResult {
-                    file_identifier: file_identifier.clone(),
-                    score: hit_result.score,
-                    metadata,
-                    highlight: hit_result.hit_text(range),
-                    reference_content: None,
-                }
-            })
-            .collect())
+        }
     }
 }
