@@ -1,6 +1,6 @@
 use crate::db::{
     entity::{ImageEntity, TextEntity},
-    model::{image::ImageModel, text::TextModel, PageModel},
+    model::{image::ImageModel, page::PageModel, text::TextModel},
 };
 use serde::Deserialize;
 use surrealdb::sql::Thing;

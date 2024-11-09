@@ -89,8 +89,8 @@ pub fn fake_image_frame_model() -> ImageFrameModel {
     }
 }
 
-pub fn fake_page_model() -> crate::db::model::PageModel {
-    crate::db::model::PageModel {
+pub fn fake_page_model() -> crate::db::model::page::PageModel {
+    crate::db::model::page::PageModel {
         id: None,
         text: vec![fake_text_model()],
         image: vec![fake_image_model()],

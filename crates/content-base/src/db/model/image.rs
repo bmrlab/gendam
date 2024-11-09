@@ -22,8 +22,43 @@ const CREATE_STATEMENT: &'static str = r#"
 "#;
 
 impl ImageModel {
-    pub fn create_statement() -> &'static str {
-        CREATE_STATEMENT
+    // pub fn create_statement() -> &'static str {
+    //     CREATE_STATEMENT
+    // }
+
+    pub async fn create_only<T>(
+        client: &surrealdb::Surreal<T>,
+        image_model: &Self,
+    ) -> anyhow::Result<surrealdb::sql::Thing>
+    where
+        T: surrealdb::Connection,
+    {
+        let mut resp = client
+            .query(CREATE_STATEMENT)
+            .bind(image_model.clone())
+            .await?;
+        if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
+            anyhow::bail!("Failed to insert image, errors: {:?}", errors_map);
+        };
+        let Some(thing) = resp.take::<Option<surrealdb::sql::Thing>>(0)? else {
+            anyhow::bail!("Failed to insert image, no id returned");
+        };
+        Ok(thing)
+    }
+
+    pub async fn create_batch<T>(
+        client: &surrealdb::Surreal<T>,
+        image_models: &Vec<Self>,
+    ) -> anyhow::Result<Vec<surrealdb::sql::Thing>>
+    where
+        T: surrealdb::Connection,
+    {
+        let futures = image_models
+            .into_iter()
+            .map(|image_model| Self::create_only(client, image_model))
+            .collect::<Vec<_>>();
+        let results = crate::collect_async_results!(futures);
+        results
     }
 
     pub fn table() -> &'static str {
