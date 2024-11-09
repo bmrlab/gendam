@@ -8,7 +8,7 @@ import { useMemo } from 'react'
 export default function VideoSearchItem({
   assetObject,
   metadata,
-  hitText,
+  hitReason,
 }: ExtractExplorerItem<'SearchResult', 'Video'>) {
   const currentLibrary = useCurrentLibrary()
 

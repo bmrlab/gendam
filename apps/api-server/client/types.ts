@@ -116,7 +116,7 @@ export type LibrariesListResult = { id: string; dir: string; title: string }
 
 export type VideoMetadata = { width: number; height: number; duration: number; bitRate: number; avgFrameRate: VideoAvgFrameRate; audio: AudioMetadata | null }
 
-export type SearchResultData = { filePath: FilePathWithAssetObjectData; metadata: ContentIndexMetadata; score: number; hitText: string; referenceContent: string }
+export type SearchResultData = { filePath: FilePathWithAssetObjectData; metadata: ContentIndexMetadata; score: number; hitReason: ContentQueryHitReason; referenceContent: string }
 
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
@@ -149,6 +149,8 @@ export type RawTextMetadata = { textCount: number }
 export type AIModelStatus = { downloaded: boolean; downloadStatus: ModelDownloadStatus | null }
 
 export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string; Llm: string }
+
+export type ContentQueryHitReason = { reason: "TextMatch"; text: string } | { reason: "SemanticMatch"; text: string }
 
 export type DownloadModelPayload = { modelId: string }
 

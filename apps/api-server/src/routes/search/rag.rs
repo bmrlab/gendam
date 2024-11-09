@@ -43,7 +43,7 @@ pub async fn rag(
 ) -> anyhow::Result<()> {
     let query_payload = ContentQueryPayload {
         query: input.query.clone(),
-        with_hit_text: false,
+        with_hit_reason: false,
         with_reference_content: true,
         ..Default::default()
     };

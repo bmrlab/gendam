@@ -7,7 +7,7 @@ import Image from 'next/image'
 export default function AudioSearchItem({
   assetObject,
   metadata,
-  hitText,
+  hitReason,
 }: ExtractExplorerItem<'SearchResult', 'Audio'>) {
   const currentLibrary = useCurrentLibrary()
 

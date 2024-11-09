@@ -9,10 +9,10 @@ use content_base_task::{
     raw_text::chunk::{DocumentChunkTrait, RawTextChunkTask},
     video::{frame_description::VideoFrameDescriptionTask, transcript::VideoTranscriptTask},
 };
-use model::hit_result::HitResult;
+use model::{hit_result::HitResult, SearchType};
 use payload::{
     audio::AudioSliceType, raw_text::RawTextChunkType, video::VideoSliceType, ContentIndexMetadata,
-    ContentQueryResult,
+    ContentQueryHitReason, ContentQueryResult,
 };
 
 const MAX_RETRIEVAL_COUNT: usize = 20;
@@ -20,7 +20,7 @@ const MAX_RETRIEVAL_COUNT: usize = 20;
 pub struct ContentQueryPayload {
     pub query: String,
     pub max_count: Option<usize>,
-    pub with_hit_text: bool,
+    pub with_hit_reason: bool,
     pub with_reference_content: bool,
 }
 
@@ -29,7 +29,7 @@ impl Default for ContentQueryPayload {
         Self {
             query: String::new(),
             max_count: None,
-            with_hit_text: true,
+            with_hit_reason: true,
             with_reference_content: true,
         }
     }
@@ -78,16 +78,26 @@ impl ContentBase {
                     file_identifier: file_identifier.clone(),
                     score: hit_result.score,
                     metadata,
-                    hit_text: None,
+                    hit_reason: None,
                     reference_content: None,
                 };
-                if payload.with_hit_text {
-                    query_result.hit_text = hit_result.hit_text(range);
+
+                if payload.with_hit_reason {
+                    // TODO: 可以进一步根据 metadata 的类型区分是什么数据上的文本或者向量匹配
+                    // TODO: TextMatch 和 SemanticMatch 是不是返回的 hit_text 应该不同？
+                    let hit_text = hit_result.hit_text(range).unwrap_or_default();
+                    let hit_reason = match hit_result.search_type {
+                        SearchType::FullText => ContentQueryHitReason::TextMatch(hit_text),
+                        SearchType::Vector => ContentQueryHitReason::SemanticMatch(hit_text),
+                    };
+                    query_result.hit_reason = Some(hit_reason);
                 }
+
                 if payload.with_reference_content {
                     let reference_content = self.reference_content(&query_result).await?;
                     query_result.reference_content = Some(reference_content);
                 }
+
                 query_results.push(query_result);
             }
         }

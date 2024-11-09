@@ -57,12 +57,15 @@ const SearchViewItem: React.FC<ItemWithSize> = ({ data, width, height }) => {
             <Tooltip.Trigger asChild>
               <div className="bg-app-line/75 text-ink/60 flex w-full items-center justify-start gap-1 px-1 py-1 text-xs">
                 <Icon.File className="h-4 w-4" />
-                <div className="flex-1 origin-left scale-90 truncate">{data.hitText}</div>
+                <div className="flex-1 origin-left scale-90 truncate">{data.hitReason.reason}</div>
               </div>
             </Tooltip.Trigger>
             <Tooltip.Portal>
               <Tooltip.Content sideOffset={5}>
-                <div className="max-h-64 max-w-80 overflow-auto whitespace-pre-line break-words">{data.hitText}</div>
+                <div
+                  className="max-h-64 max-w-80 overflow-auto whitespace-pre-line break-words"
+                  dangerouslySetInnerHTML={{ __html: data.hitReason.text }}
+                ></div>
                 <Tooltip.Arrow />
               </Tooltip.Content>
             </Tooltip.Portal>

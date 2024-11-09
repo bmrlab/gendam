@@ -28,13 +28,21 @@ pub enum ContentIndexMetadata {
     WebPage(WebPageIndexMetadata),
 }
 
+#[cfg_attr(feature = "rspc", derive(specta::Type))]
+#[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "rspc", serde(tag = "reason", content = "text"))]
+pub enum ContentQueryHitReason {
+    TextMatch(String),
+    SemanticMatch(String),
+}
+
 #[derive(Debug, Serialize)]
 pub struct ContentQueryResult {
     pub file_identifier: String,
     pub score: f32,
     pub metadata: ContentIndexMetadata,
-    pub hit_text: Option<String>,          // 命中的索引内容
-    pub reference_content: Option<String>, // 根据 metadata 提取出来的内容片段
+    pub hit_reason: Option<ContentQueryHitReason>, // 命中的索引内容
+    pub reference_content: Option<String>,         // 根据 metadata 提取出来的内容片段
 }
 
 // #[derive(Debug, Serialize)]

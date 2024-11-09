@@ -1,7 +1,7 @@
 use crate::routes::assets::types::FilePathWithAssetObjectData;
 use content_base::{
     query::{
-        payload::{ContentIndexMetadata, ContentQueryResult},
+        payload::{ContentIndexMetadata, ContentQueryHitReason, ContentQueryResult},
         ContentQueryPayload,
     },
     ContentBase,
@@ -22,7 +22,7 @@ pub struct SearchResultData {
     pub file_path: FilePathWithAssetObjectData,
     pub metadata: ContentIndexMetadata,
     pub score: f32,
-    pub hit_text: String,
+    pub hit_reason: ContentQueryHitReason,
     pub reference_content: String,
 }
 
@@ -33,12 +33,12 @@ pub async fn search_all(
 ) -> Result<Vec<SearchResultData>, rspc::Error> {
     let query_payload = ContentQueryPayload {
         query: input.text.clone(),
-        with_hit_text: true,
+        with_hit_reason: true,
         with_reference_content: true,
         ..Default::default()
     };
     let res = content_base.query(query_payload).await;
-    tracing::debug!("search result: {:?}", res);
+    // tracing::debug!("search result: {:?}", res);
 
     let search_results = match res {
         Ok(res) => res,
@@ -52,15 +52,22 @@ pub async fn search_all(
     };
 
     let result = retrieve_assets_for_search(library, &search_results, |item, file_path| {
-        SearchResultData {
+        let hit_reason = match &item.hit_reason {
+            Some(hit_reason) => hit_reason.clone(),
+            None => return None,
+        };
+        Some(SearchResultData {
             file_path: file_path.clone().into(),
             metadata: item.metadata.clone(),
             score: item.score,
-            hit_text: item.hit_text.clone().unwrap_or_default(),
+            hit_reason,
             reference_content: item.reference_content.clone().unwrap_or_default(),
-        }
+        })
     })
-    .await?;
+    .await?
+    .into_iter()
+    .filter_map(|x| x)
+    .collect();
     Ok(result)
 }
 

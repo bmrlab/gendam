@@ -1,4 +1,4 @@
-import type { AssetObject, AudioSliceType, ContentIndexMetadata, FilePath } from '@/lib/bindings'
+import type { AssetObject, AudioSliceType, ContentIndexMetadata, ContentQueryHitReason, FilePath } from '@/lib/bindings'
 import { AssetObjectType } from '@/lib/library'
 import { RawTextChunkType, VideoSliceType, WebPageChunkType } from 'api-server/client/types'
 import { match } from 'ts-pattern'
@@ -35,7 +35,7 @@ type SearchResultItem = {
   filePaths: RawFilePath[]
   assetObject: AssetObject
   metadata: ContentIndexMetadata
-  hitText: string | null
+  hitReason: ContentQueryHitReason
 }
 
 type RetrievalResultItem = {

@@ -4,7 +4,7 @@ import { useCurrentLibrary } from '@/lib/library'
 // import classNames from 'classnames'
 import Image from 'next/image'
 
-export default function ImageSearchItem({ assetObject, hitText }: ExtractExplorerItem<'SearchResult', 'Image'>) {
+export default function ImageSearchItem({ assetObject, hitReason }: ExtractExplorerItem<'SearchResult', 'Image'>) {
   const currentLibrary = useCurrentLibrary()
   // const { data: description } = rspc.useQuery(['assets.artifacts.image.description', { hash: assetObject.hash }])
 
