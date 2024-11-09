@@ -14,11 +14,11 @@ export function matchFilePath<T extends AssetObjectType>(contentType: T) {
   }
 }
 
+// filter with assetObject.mediaData.contentType on search result
 export function matchSearchResult<T extends AssetObjectType>(contentType: T) {
   return {
     ...matchFilePath(contentType),
     type: 'SearchResult' as const,
-    contentType,
     metadata: { contentType },
   }
 }
@@ -27,7 +27,6 @@ export function matchRetrievalResult<T extends AssetObjectType>(
   contentType: T,
 ): Omit<ReturnType<typeof matchSearchResult<T>>, 'type'> & {
   type: 'RetrievalResult'
-  contentType: T
 }
 
 export function matchRetrievalResult<T extends AssetObjectType, U extends ValidMetadataType<T>>(
@@ -35,10 +34,10 @@ export function matchRetrievalResult<T extends AssetObjectType, U extends ValidM
   metadataType: U,
 ): Omit<ReturnType<typeof matchSearchResult<T>>, 'type'> & {
   type: 'RetrievalResult'
-  contentType: T
   metadata: ContentIndexMetadata & { contentType: T } & U
 }
 
+// filter with assetObject.mediaData.contentType and content specific metadata on retrieval result
 export function matchRetrievalResult<T extends AssetObjectType, U extends ValidMetadataType<T>>(
   contentType: T,
   metadata?: U,
@@ -46,7 +45,6 @@ export function matchRetrievalResult<T extends AssetObjectType, U extends ValidM
   return {
     ...matchSearchResult(contentType),
     type: 'RetrievalResult' as const,
-    contentType,
     metadata: metadata ?? P.any,
   }
 }
