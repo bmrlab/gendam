@@ -2,9 +2,11 @@ use crate::db::{
     model::{
         audio::{AudioFrameModel, AudioModel},
         document::DocumentModel,
+        image::ImageModel,
+        text::TextModel,
         video::{ImageFrameModel, VideoModel},
         web::WebPageModel,
-        ImageModel, PageModel, TextModel,
+        PageModel,
     },
     DB,
 };

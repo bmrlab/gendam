@@ -1,46 +1,22 @@
-use crate::db::model::audio::{AudioFrameModel, AudioModel};
-use crate::db::model::document::DocumentModel;
-use crate::db::model::id::ID;
-use crate::db::model::payload::PayloadModel;
-use crate::db::model::video::VideoModel;
-use crate::db::model::web::WebPageModel;
-use educe::Educe;
-use serde::Serialize;
-
 pub mod audio;
 pub mod document;
 pub mod id;
+pub mod image;
 pub mod payload;
+pub mod text;
 pub mod video;
 pub mod web;
 
-#[derive(Serialize, Educe, Clone)]
-#[educe(Debug)]
-pub struct ImageModel {
-    pub id: Option<ID>,
-    pub prompt: String,
-
-    #[educe(Debug(ignore))]
-    pub vector: Vec<f32>,
-
-    #[educe(Debug(ignore))]
-    pub prompt_vector: Vec<f32>,
-}
-
-#[derive(Serialize, Educe, Clone)]
-#[educe(Debug)]
-pub struct TextModel {
-    pub id: Option<ID>,
-    pub data: String,
-
-    #[educe(Debug(ignore))]
-    pub vector: Vec<f32>,
-    #[educe(Debug(ignore))]
-    pub en_data: String,
-
-    #[educe(Debug(ignore))]
-    pub en_vector: Vec<f32>,
-}
+use self::{
+    audio::{AudioFrameModel, AudioModel},
+    document::DocumentModel,
+    id::ID,
+    image::ImageModel,
+    payload::PayloadModel,
+    text::TextModel,
+    video::{ImageFrameModel, VideoModel},
+    web::WebPageModel,
+};
 
 #[derive(Debug, Clone)]
 pub struct PageModel {
@@ -89,6 +65,14 @@ impl SelectResultModel {
         T: PartialOrd + Copy,
     {
         start >= range.0 && end <= range.1
+    }
+
+    fn collect_hit_text_from_image_frame(
+        _frame: &Vec<ImageFrameModel>,
+        _range: (usize, usize),
+    ) -> Vec<String> {
+        // TODO: Implement this function
+        unimplemented!()
     }
 
     fn collect_hit_text_from_audio_frame(

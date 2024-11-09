@@ -1,14 +1,18 @@
-use super::model::id::ID;
-use crate::db::model::audio::{AudioFrameModel, AudioModel};
-use crate::db::model::document::DocumentModel;
-use crate::db::model::video::{ImageFrameModel, VideoModel};
-use crate::db::model::web::WebPageModel;
-use crate::db::model::{ImageModel, PageModel, SelectResultModel, TextModel};
+use crate::db::model::{
+    audio::{AudioFrameModel, AudioModel},
+    document::DocumentModel,
+    id::ID,
+    image::ImageModel,
+    payload::PayloadModel,
+    text::TextModel,
+    video::{ImageFrameModel, VideoModel},
+    web::WebPageModel,
+    PageModel, SelectResultModel,
+};
 use frame::{AudioFrameEntity, ImageFrameEntity};
 use page::PageEntity;
 use serde::Deserialize;
 use surrealdb::sql::Thing;
-use crate::db::model::payload::PayloadModel;
 
 pub(crate) mod frame;
 pub(crate) mod full_text;

@@ -249,7 +249,7 @@ impl DB {
 #[allow(unused_imports)]
 mod test {
     use crate::db::{
-        model::{id::TB, ImageModel, TextModel},
+        model::{id::TB, image::ImageModel, text::TextModel},
         shared::test::{gen_vector, setup},
     };
     use content_base_task::{

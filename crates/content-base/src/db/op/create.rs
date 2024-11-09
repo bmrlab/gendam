@@ -2,13 +2,17 @@ use anyhow::bail;
 use surrealdb::sql::Thing;
 use tracing::{debug, error};
 
-use crate::db::model::audio::{AudioFrameModel, AudioModel};
-use crate::db::model::document::DocumentModel;
-use crate::db::model::id::ID;
-use crate::db::model::payload::PayloadModel;
-use crate::db::model::video::{ImageFrameModel, VideoModel};
-use crate::db::model::web::WebPageModel;
-use crate::db::model::{ImageModel, PageModel, TextModel};
+use crate::db::model::{
+    audio::{AudioFrameModel, AudioModel},
+    document::DocumentModel,
+    id::ID,
+    image::ImageModel,
+    payload::PayloadModel,
+    text::TextModel,
+    video::{ImageFrameModel, VideoModel},
+    web::WebPageModel,
+    PageModel,
+};
 use crate::db::DB;
 use crate::{check_db_error_from_resp, collect_async_results, concat_arrays};
 
@@ -479,7 +483,7 @@ mod test {
     use crate::check_db_error_from_resp;
     use crate::db::entity::TextEntity;
     use crate::db::model::id::{ID, TB};
-    use crate::db::model::{ImageModel, TextModel};
+    use crate::db::model::{image::ImageModel, text::TextModel};
     use crate::db::shared::test::{
         fake_audio_model, fake_document, fake_file_identifier, fake_image_model, fake_page_model,
         fake_video_model, fake_web_page_model, gen_vector, setup,

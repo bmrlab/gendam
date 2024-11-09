@@ -1,8 +1,11 @@
-use crate::db::model::audio::{AudioFrameModel, AudioModel};
-use crate::db::model::document::DocumentModel;
-use crate::db::model::video::{ImageFrameModel, VideoModel};
-use crate::db::model::web::WebPageModel;
-use crate::db::model::{ImageModel, TextModel};
+use crate::db::model::{
+    audio::{AudioFrameModel, AudioModel},
+    document::DocumentModel,
+    image::ImageModel,
+    text::TextModel,
+    video::{ImageFrameModel, VideoModel},
+    web::WebPageModel,
+};
 use crate::db::DB;
 use fake::faker::internet::en::Username;
 use fake::faker::lorem::en::Sentence;

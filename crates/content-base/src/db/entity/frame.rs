@@ -1,7 +1,7 @@
 use super::{ImageEntity, TextEntity};
-use crate::db::model::audio::AudioFrameModel;
-use crate::db::model::video::ImageFrameModel;
-use crate::db::model::{ImageModel, TextModel};
+use crate::db::model::{
+    audio::AudioFrameModel, image::ImageModel, text::TextModel, video::ImageFrameModel,
+};
 use serde::Deserialize;
 use surrealdb::sql::Thing;
 

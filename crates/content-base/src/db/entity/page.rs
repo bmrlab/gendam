@@ -1,5 +1,7 @@
-use super::{ImageEntity, TextEntity};
-use crate::db::model::{ImageModel, PageModel, TextModel};
+use crate::db::{
+    entity::{ImageEntity, TextEntity},
+    model::{image::ImageModel, text::TextModel, PageModel},
+};
 use serde::Deserialize;
 use surrealdb::sql::Thing;
 
