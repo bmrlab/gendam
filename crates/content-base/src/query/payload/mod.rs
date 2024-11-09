@@ -28,22 +28,15 @@ pub enum ContentIndexMetadata {
 }
 
 #[derive(Debug, Serialize)]
-pub struct SearchResultData {
+pub struct ContentQueryResult {
     pub file_identifier: String,
     pub score: f32,
     pub metadata: ContentIndexMetadata,
-    pub highlight: Option<String>,
+    pub highlight: Option<String>,         // 全文检索的高亮关键词
+    pub reference_content: Option<String>, // 检索到的相关内容片段
 }
 
-#[derive(Debug, Serialize)]
-pub struct RetrievalResultData {
-    pub file_identifier: String,
-    pub score: f32,
-    pub metadata: ContentIndexMetadata,
-    pub reference_content: String, // 检索到的相关内容片段
-}
-
-#[derive(Debug, Serialize)]
-pub struct SearchRequest {
-    pub text: String,
-}
+// #[derive(Debug, Serialize)]
+// pub struct SearchRequest {
+//     pub text: String,
+// }

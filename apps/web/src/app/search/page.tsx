@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import SearchForm, { type SearchFormRef } from './SearchForm'
 import SearchItemContextMenu from './SearchItemContextMenu'
 import SearchResults from './SearchResults'
-import { SearchPageContextProvider, useSearchPageContext, type SearchResultPayload } from './context'
+import { SearchPageContextProvider, useSearchPageContext, type SearchResultData } from './context'
 
 function SearchPage() {
   const searchQuery = useSearchPageContext()
@@ -50,7 +50,7 @@ function SearchPage() {
   }, [requestPayload])
 
   const [groupFrames, setGroupFrames] = useState(false)
-  const [items, setItems] = useState<SearchResultPayload[] | null>(null)
+  const [items, setItems] = useState<SearchResultData[] | null>(null)
   const explorer = useExplorerValue({
     items: items
       ? items.map((item) => ({

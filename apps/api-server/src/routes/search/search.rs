@@ -1,8 +1,8 @@
 use crate::routes::assets::types::FilePathWithAssetObjectData;
 use content_base::{
     query::{
-        payload::{ContentIndexMetadata, RetrievalResultData, SearchResultData},
-        QueryPayload,
+        payload::{ContentIndexMetadata, ContentQueryResult},
+        ContentQueryPayload,
     },
     ContentBase,
 };
@@ -18,22 +18,25 @@ pub struct SearchRequestPayload {
 
 #[derive(Serialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct SearchResultPayload {
+pub struct SearchResultData {
     pub file_path: FilePathWithAssetObjectData,
     pub metadata: ContentIndexMetadata,
     pub score: f32,
-    pub highlight: Option<String>,
+    pub highlight: String,
 }
 
 pub async fn search_all(
     library: &Library,
     content_base: &ContentBase,
     input: SearchRequestPayload,
-) -> Result<Vec<SearchResultPayload>, rspc::Error> {
-    let text = input.text.clone();
-
-    let payload = QueryPayload::new(&text);
-    let res = content_base.query(payload, None).await;
+) -> Result<Vec<SearchResultData>, rspc::Error> {
+    let query_payload = ContentQueryPayload {
+        query: input.text.clone(),
+        with_highlight: true,
+        with_reference_content: false,
+        ..Default::default()
+    };
+    let res = content_base.query(query_payload).await;
     tracing::debug!("search result: {:?}", res);
 
     let search_results = match res {
@@ -48,18 +51,18 @@ pub async fn search_all(
     };
 
     let result = retrieve_assets_for_search(library, &search_results, |item, file_path| {
-        SearchResultPayload {
+        SearchResultData {
             file_path: file_path.clone().into(),
             metadata: item.metadata.clone(),
             score: item.score,
-            highlight: item.highlight.clone(),
+            highlight: item.highlight.clone().unwrap_or_default(),
         }
     })
     .await?;
     Ok(result)
 }
 
-/// 以下是 search 和 rag 共用的辅助函数，实现一个 trait 用于统一处理两种类型的搜索结果
+/// 以下是 search 和 rag 共用的辅助函数，实现一个 trait 用于统一处理不同类型的搜索结果，目前只有一种类型
 #[allow(dead_code)]
 pub(super) trait ContentQueryResultTrait: std::fmt::Debug {
     fn file_identifier(&self) -> &str;
@@ -67,19 +70,7 @@ pub(super) trait ContentQueryResultTrait: std::fmt::Debug {
     fn score(&self) -> f32;
 }
 
-impl ContentQueryResultTrait for SearchResultData {
-    fn file_identifier(&self) -> &str {
-        &self.file_identifier
-    }
-    fn metadata(&self) -> &ContentIndexMetadata {
-        &self.metadata
-    }
-    fn score(&self) -> f32 {
-        self.score
-    }
-}
-
-impl ContentQueryResultTrait for RetrievalResultData {
+impl ContentQueryResultTrait for ContentQueryResult {
     fn file_identifier(&self) -> &str {
         &self.file_identifier
     }
@@ -162,7 +153,7 @@ where
                 }
             };
 
-            // let result = SearchResultPayload {
+            // let result = SearchResultData {
             //     file_path: file_path.into(),
             //     metadata: search_result.metadata().into(),
             //     score: search_result.score(),

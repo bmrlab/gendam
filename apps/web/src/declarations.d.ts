@@ -11,7 +11,7 @@ declare module '@/lib/bindings' {
 
   export type ContentTaskType = T.ContentTaskTypeSpecta
 
-  export type SearchResultPayload = Omit<T.SearchResultPayload, 'filePath'> & {
+  export type SearchResultData = Omit<T.SearchResultData, 'filePath'> & {
     filePath: FilePath
   }
 

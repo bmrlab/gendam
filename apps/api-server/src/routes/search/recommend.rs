@@ -1,4 +1,4 @@
-use super::search::SearchResultPayload;
+use super::search::SearchResultData;
 use content_base::ContentBase;
 use content_library::Library;
 use serde::Deserialize;
@@ -16,7 +16,7 @@ pub async fn recommend_frames(
     _content_base: &ContentBase,
     _asset_object_hash: &str,
     _timestamp: i32,
-) -> Result<Vec<SearchResultPayload>, rspc::Error> {
+) -> Result<Vec<SearchResultData>, rspc::Error> {
     // let payload = RecommendVideoFramePayload::new(asset_object_hash, timestamp as i64);
     // let search_results = content_base
     //     .recommend_video_frame(payload)

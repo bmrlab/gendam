@@ -1,4 +1,4 @@
-use crate::content_metadata::ContentMetadataWithType;
+use crate::content_metadata::ContentMetadata;
 use crate::CtxWithLibrary;
 use content_base::task::CancelTaskPayload;
 use content_base::upsert::UpsertPayload;
@@ -58,7 +58,7 @@ pub struct VideoWithTasksResult {
     pub materialized_path: String,
     pub asset_object: asset_object::Data,
     pub tasks: Vec<file_handler_task::Data>,
-    pub media_data: Option<ContentMetadataWithType>,
+    pub media_data: Option<ContentMetadata>,
 }
 
 #[derive(Serialize, Type)]

@@ -34,7 +34,9 @@ where
             #[serde(rename_all = "camelCase")]
             struct TranscriptRequestPayload {
                 hash: String,
+                #[specta(type = u32)]
                 start_timestamp: i64,
+                #[specta(type = u32)]
                 end_timestamp: i64,
                 request_type: TranscriptType,
             }

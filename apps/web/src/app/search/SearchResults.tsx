@@ -2,7 +2,7 @@
 import { useExplorerContext } from '@/Explorer/hooks'
 import { uniqueId, type ExtractExplorerItem } from '@/Explorer/types'
 import useDebouncedCallback from '@/hooks/useDebouncedCallback'
-import type { SearchResultPayload } from '@/lib/bindings'
+import type { SearchResultData } from '@/lib/bindings'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import SearchViewItem from './SearchViewItem'
 
@@ -50,7 +50,7 @@ export default function SearchResults() {
     }
   }, [debounceSetContainerWidth])
 
-  const framesWidth = useCallback((metadata: SearchResultPayload['metadata'], singleWidth: number) => {
+  const framesWidth = useCallback((metadata: SearchResultData['metadata'], singleWidth: number) => {
     // const startTime = Math.floor(metadata.startTime / 1e3)
     // const endTime = Math.floor(metadata.endTime / 1e3)
     // const duration = endTime - startTime

@@ -1,7 +1,7 @@
 import type {
   // RecommendRequestPayload,
   // SearchRequestPayload,
-  SearchResultPayload,
+  SearchResultData,
 } from '@/lib/bindings'
 import { client } from '@/lib/rspc'
 import { useSearchParams } from 'next/navigation'
@@ -23,12 +23,12 @@ export type SearchPayload =
     }
   | {
       api: 'search.recommend'
-      filePath?: SearchResultPayload['filePath'] // FilePath
+      filePath?: SearchResultData['filePath'] // FilePath
       assetObjectHash: string
       timestamp: number
     }
 
-export { type SearchResultPayload } from '@/lib/bindings'
+export { type SearchResultData } from '@/lib/bindings'
 
 function useSearchPayloadInURL(): {
   searchPayloadInURL: SearchPayload | null
@@ -62,7 +62,7 @@ function useSearchPayloadInURL(): {
 
 type TSearchPageContext = {
   requestPayload: SearchPayload | null
-  data: SearchResultPayload[]
+  data: SearchResultData[]
   fetch: (payload: SearchPayload | null) => void
   isLoading: boolean
   isSuccess: boolean
@@ -80,7 +80,7 @@ export function SearchPageContextProvider({ children }: PropsWithChildren<{}>) {
   const [requestPayload, setRequestPayload] = useState<SearchPayload | null>(searchPayloadInURL)
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
-  const [data, setData] = useState<SearchResultPayload[]>([])
+  const [data, setData] = useState<SearchResultData[]>([])
 
   const fetch = useCallback(
     async (payload: SearchPayload | null) => {

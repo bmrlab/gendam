@@ -1,4 +1,4 @@
-import { ContentIndexMetadata, ContentMetadataWithType, LibrarySettings } from '@/lib/bindings'
+import { ContentIndexMetadata, ContentMetadata, LibrarySettings } from '@/lib/bindings'
 import { ContextType, createContext, useContext } from 'react'
 
 export type Library = {
@@ -6,7 +6,7 @@ export type Library = {
   dir: string
 }
 
-export type AssetObjectType = ContentMetadataWithType['contentType'] | ContentIndexMetadata['contentType']
+export type AssetObjectType = ContentMetadata['contentType'] | ContentIndexMetadata['contentType']
 
 export type AssetPreviewMetadata = {
   (assetObjectHash: string, contentType: 'Audio'): string

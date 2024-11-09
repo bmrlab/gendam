@@ -1,4 +1,4 @@
-use super::{model::SearchModel, HitResult, QueryPayload};
+use super::{model::SearchModel, ContentQueryPayload, HitResult};
 use crate::db::model::SelectResultModel;
 use crate::query::payload::{
     audio::{AudioIndexMetadata, AudioSliceType},
@@ -6,7 +6,7 @@ use crate::query::payload::{
     raw_text::{RawTextChunkType, RawTextIndexMetadata},
     video::{VideoIndexMetadata, VideoSliceType},
     web_page::{WebPageChunkType, WebPageIndexMetadata},
-    ContentIndexMetadata, SearchResultData,
+    ContentIndexMetadata, ContentQueryResult,
 };
 use crate::{
     concat_arrays,
@@ -24,7 +24,7 @@ impl ContentBase {
     /// 2. query 文字 -> 文本向量 + 图片向量
     pub async fn query_payload_to_model(
         &self,
-        payload: QueryPayload,
+        payload: &ContentQueryPayload,
     ) -> anyhow::Result<SearchModel> {
         let multi_modal_embedding: TextEmbeddingModel = self.ctx.multi_modal_embedding()?.0.into();
         let clip_text_embedding = multi_modal_embedding
@@ -70,7 +70,7 @@ impl ContentBase {
     pub fn expand_hit_result(
         &self,
         hit_result: HitResult,
-    ) -> anyhow::Result<Vec<SearchResultData>> {
+    ) -> anyhow::Result<Vec<ContentQueryResult>> {
         let file_identifier = hit_result.payload.file_identifier();
         let metadata = match hit_result.result.clone() {
             SelectResultModel::Image(_) => {
@@ -188,11 +188,12 @@ impl ContentBase {
                     }
                 };
 
-                SearchResultData {
+                ContentQueryResult {
                     file_identifier: file_identifier.clone(),
                     score: hit_result.score,
                     metadata,
                     highlight: hit_result.hit_text(range),
+                    reference_content: None,
                 }
             })
             .collect())

@@ -1,9 +1,6 @@
-use full_text::FullTextSearchResult;
-use vector::VectorSearchResult;
-
 pub mod full_text;
-pub mod vector;
 pub mod hit_result;
+pub mod vector;
 
 pub struct TextToken(pub Vec<String>);
 
@@ -31,13 +28,15 @@ pub enum SearchModel {
     // TODO: 其他类型待补充
 }
 
-pub enum SearchResult {
-    Vector(VectorSearchResult),
-    FullText(FullTextSearchResult),
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum SearchType {
     Vector,
     FullText,
 }
+
+// use full_text::FullTextSearchResult;
+// use vector::VectorSearchResult;
+// pub enum SearchResult {
+//     Vector(VectorSearchResult),
+//     FullText(FullTextSearchResult),
+// }

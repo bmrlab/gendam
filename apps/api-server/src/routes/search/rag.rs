@@ -2,7 +2,7 @@ use super::search::retrieve_assets_for_search;
 use crate::{ai::AIHandler, routes::assets::types::FilePathWithAssetObjectData};
 use ai::llm::{LLMInferenceParams, LLMMessage};
 use content_base::{
-    query::{payload::ContentIndexMetadata, QueryPayload},
+    query::{payload::ContentIndexMetadata, ContentQueryPayload},
     ContentBase,
 };
 use content_library::Library;
@@ -18,7 +18,7 @@ pub struct RAGRequestPayload {
 
 #[derive(Serialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct RetrievalResultPayload {
+pub struct RetrievalResultData {
     pub file_path: FilePathWithAssetObjectData,
     pub metadata: ContentIndexMetadata,
     pub score: f32,
@@ -28,7 +28,7 @@ pub struct RetrievalResultPayload {
 #[derive(Serialize, Type)]
 #[serde(tag = "resultType", content = "data")]
 pub enum RAGResult {
-    Reference(RetrievalResultPayload),
+    Reference(RetrievalResultData),
     Response(String),
     Error(String),
     Done,
@@ -41,15 +41,19 @@ pub async fn rag(
     input: RAGRequestPayload,
     tx: Sender<RAGResult>,
 ) -> anyhow::Result<()> {
-    let retrieval_results = content_base
-        .retrieve(QueryPayload::new(&input.query))
-        .await?;
+    let query_payload = ContentQueryPayload {
+        query: input.query.clone(),
+        with_highlight: false,
+        with_reference_content: true,
+        ..Default::default()
+    };
+    let retrieval_results = content_base.query(query_payload).await?;
     let results = retrieve_assets_for_search(library, &retrieval_results, |item, file_path| {
-        RetrievalResultPayload {
+        RetrievalResultData {
             file_path: file_path.clone().into(),
             metadata: item.metadata.clone(),
             score: item.score,
-            reference_content: item.reference_content.clone(),
+            reference_content: item.reference_content.clone().unwrap_or_default(),
         }
     })
     .await?;
@@ -64,9 +68,14 @@ pub async fn rag(
         .collect::<Vec<_>>();
 
     let mut reference_content = String::new();
-    references_content.iter().enumerate().for_each(|(idx, v)| {
-        reference_content.push_str(&format!("Document {}:\n{}\n\n", idx + 1, v));
-    });
+    references_content
+        .iter()
+        .enumerate()
+        // 过滤掉没有内容的文档
+        .filter_map(|(idx, v)| v.as_ref().map(|content| (idx, content)))
+        .for_each(|(idx, v)| {
+            reference_content.push_str(&format!("Document {}:\n{}\n\n", idx + 1, v));
+        });
 
     let system_prompt = r#"You are an assistant good at answer questions according to some pieces from different document.
 You should try to answer user question according to the provided document pieces.
