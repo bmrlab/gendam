@@ -13,13 +13,7 @@ use crate::db::DB;
 pub use content_base_context::ContentBaseCtx;
 use content_base_pool::TaskPool;
 pub use content_base_pool::{TaskNotification, TaskStatus};
-pub use content_base_task::*;
-pub use content_metadata::ContentMetadata;
 use tokio::sync::RwLock;
-
-pub mod metadata {
-    pub use content_metadata::*;
-}
 
 #[derive(Clone)]
 pub struct ContentBase {

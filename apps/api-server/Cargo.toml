@@ -14,12 +14,13 @@ path = "src/bin/main.rs"
 [dependencies]
 prisma-lib = { path = "../../crates/prisma" }
 content-library = { path = "../../crates/content-library" }
-content-metadata = { path = "../../crates/content-metadata", features = [
-    "rspc",
-] }
 content-base = { path = "../../crates/content-base", features = [
     "embedded-db",
 ] }
+content-metadata = { path = "../../crates/content-metadata", features = [
+    "rspc",
+] }
+content-base-task = { path = "../../crates/content-base-task" }
 content-handler = { path = "../../crates/content-handler" }
 analytics-tracing = { path = "../../crates/analytics-tracing" }
 ai = { path = "../../crates/ai" }

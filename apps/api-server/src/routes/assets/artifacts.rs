@@ -1,5 +1,5 @@
 use crate::CtxWithLibrary;
-use content_base::{
+use content_base_task::{
     audio::{trans_chunk_sum::AudioTransChunkSumTrait, transcript::AudioTranscriptTrait},
     image::description::ImageDescriptionTask,
     raw_text::{

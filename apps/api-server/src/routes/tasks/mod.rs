@@ -1,7 +1,8 @@
 pub(crate) mod types;
 use super::assets::process::process_asset;
 use crate::CtxWithLibrary;
-use content_base::{delete::DeletePayload, task::CancelTaskPayload, ContentTaskType};
+use content_base::{delete::DeletePayload, task::CancelTaskPayload};
+use content_base_task::ContentTaskType;
 use prisma_lib::{asset_object, file_handler_task};
 use rspc::{Router, RouterBuilder};
 use serde::Deserialize;

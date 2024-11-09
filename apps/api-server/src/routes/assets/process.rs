@@ -1,11 +1,12 @@
 use crate::CtxWithLibrary;
-use content_base::{
+use content_base::{upsert::UpsertPayload, ContentBase};
+use content_base_task::{
     audio::thumbnail::AudioThumbnailTask, image::thumbnail::ImageThumbnailTask,
-    upsert::UpsertPayload, video::thumbnail::VideoThumbnailTask, ContentBase, ContentMetadata,
-    ContentTask, FileInfo,
+    video::thumbnail::VideoThumbnailTask, ContentTask, FileInfo,
 };
 use content_handler::{file_metadata, video::VideoDecoder};
 use content_library::Library;
+use content_metadata::ContentMetadata;
 use prisma_lib::{asset_object, file_handler_task};
 use tracing::Instrument;
 

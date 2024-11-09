@@ -2,7 +2,7 @@
 
 use crate::validators;
 use blake3::Hasher;
-use content_base::{metadata::web_page::WebPageMetadata, ContentMetadata};
+use content_metadata::{web_page::WebPageMetadata, ContentMetadata};
 // use content_handler::web_page::fetch_url;
 use content_library::Library;
 use global_variable::get_current_fs_storage;

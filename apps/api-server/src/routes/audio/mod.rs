@@ -3,10 +3,13 @@ pub(crate) mod reader;
 
 use crate::routes::audio::{downloader::DownloadHelper, reader::AudioReader};
 use crate::CtxWithLibrary;
-use content_base::audio::transcript::AudioTranscriptTask;
-use content_base::video::transcript::VideoTranscriptTask;
-use content_base::{ContentBase, ContentMetadata, ContentTask};
+use content_base::ContentBase;
+use content_base_task::{
+    ContentTask,
+    {audio::transcript::AudioTranscriptTask, video::transcript::VideoTranscriptTask},
+};
 use content_library::Library;
+use content_metadata::ContentMetadata;
 use prisma_lib::asset_object;
 use rspc::{Router, RouterBuilder};
 use serde::{Deserialize, Serialize};

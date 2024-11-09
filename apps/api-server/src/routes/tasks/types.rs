@@ -1,4 +1,4 @@
-use content_base::{
+use content_base_task::{
     audio::AudioTaskType, image::ImageTaskType, raw_text::RawTextTaskType, video::VideoTaskType,
     web_page::WebPageTaskType, ContentTaskType,
 };

@@ -309,6 +309,7 @@ dependencies = [
  "blake3",
  "chrono",
  "content-base",
+ "content-base-task",
  "content-handler",
  "content-library",
  "content-metadata",

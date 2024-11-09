@@ -1,5 +1,5 @@
 use crate::validators;
-use content_base::ContentMetadata;
+use content_metadata::ContentMetadata;
 use prisma_lib::{asset_object, data_location, file_handler_task, file_path};
 use serde::{Deserialize, Serialize};
 use specta::Type;
