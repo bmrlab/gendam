@@ -1,8 +1,6 @@
+use super::model::id::ID;
 use crate::concat_arrays;
-use crate::db::model::id::ID;
-use crate::query::model::full_text::FullTextSearchResult;
-use crate::query::model::vector::VectorSearchResult;
-use crate::query::model::SearchType;
+use crate::query::model::{FullTextSearchResult, SearchType, VectorSearchResult};
 use std::collections::{HashMap, HashSet};
 
 pub struct Rank;
@@ -25,12 +23,12 @@ impl Rank {
     /// 按照分数之和排序
     /// 越大越靠前
     pub fn full_text_rank(
-        data: Vec<FullTextSearchResult>,
+        data: &mut Vec<FullTextSearchResult>,
         score_type: ScoreType,
         drain: Option<usize>,
     ) -> anyhow::Result<Vec<RankResult>> {
         let drain = std::cmp::min(drain.unwrap_or(data.len()), data.len());
-        let mut res = data;
+        let res = data;
         res.sort_by(|a, b| {
             let a_score = Self::calculate_score(a.score.iter().map(|x| x.1).collect(), &score_type);
             let b_score = Self::calculate_score(b.score.iter().map(|x| x.1).collect(), &score_type);
@@ -58,11 +56,11 @@ impl Rank {
     /// 按照 distance 值排序
     /// 越小越靠前
     pub fn vector_rank(
-        data: Vec<VectorSearchResult>,
+        data: &mut Vec<VectorSearchResult>,
         drain: Option<usize>,
     ) -> anyhow::Result<Vec<RankResult>> {
         let drain = std::cmp::min(drain.unwrap_or(data.len()), data.len());
-        let mut res = data;
+        let res = data;
         res.sort_by(|a, b| {
             a.distance
                 .partial_cmp(&b.distance)
@@ -74,14 +72,17 @@ impl Rank {
             .map(|x| RankResult {
                 id: x.id.clone(),
                 score: if x.distance < 0.0 { 0.0 } else { x.distance },
-                search_type: SearchType::Vector,
+                search_type: SearchType::Vector(x.vector_type),
             })
             .collect())
     }
 
     pub fn rank(
-        (full_text_data, vector_data): (Vec<FullTextSearchResult>, Vec<VectorSearchResult>),
-        remove_duplicate: Option<bool>,
+        (full_text_data, vector_data): (
+            &mut Vec<FullTextSearchResult>,
+            &mut Vec<VectorSearchResult>,
+        ),
+        remove_duplicate: bool,
         drain: Option<usize>,
     ) -> anyhow::Result<Vec<RankResult>> {
         let full_text_rank = Rank::full_text_rank(full_text_data, ScoreType::Average, None)?;
@@ -107,7 +108,7 @@ impl Rank {
 
         tracing::debug!("rank_result: {:?}", rank_result);
 
-        if remove_duplicate.unwrap_or(true) {
+        if remove_duplicate {
             let mut seen = HashSet::new();
             rank_result = rank_result
                 .into_iter()
@@ -166,28 +167,32 @@ impl Rank {
 
 #[cfg(test)]
 mod test {
-    use crate::db::model::id::ID;
-    use crate::db::rank::{Rank, Rankable, ScoreType};
-    use crate::query::model::full_text::FullTextSearchResult;
-    use crate::query::model::vector::VectorSearchResult;
+    use crate::db::{
+        model::id::ID,
+        rank::{Rank, Rankable, ScoreType},
+    };
+    use crate::query::model::{FullTextSearchResult, VectorSearchResult, VectorSearchType};
 
     #[test]
     fn test_vector_rank() {
-        let data = vec![
+        let mut data = vec![
             VectorSearchResult {
                 id: ID::new("1".to_string(), "text"),
                 distance: 0.1,
+                vector_type: VectorSearchType::Text,
             },
             VectorSearchResult {
                 id: ID::new("2".to_string(), "text"),
                 distance: 0.2,
+                vector_type: VectorSearchType::Text,
             },
             VectorSearchResult {
                 id: ID::new("3".to_string(), "text"),
                 distance: 0.3,
+                vector_type: VectorSearchType::Text,
             },
         ];
-        let res = Rank::vector_rank(data, None).unwrap();
+        let res = Rank::vector_rank(&mut data, None).unwrap();
         assert_eq!(res.len(), 3);
         assert_eq!(res[0].id.id(), "1");
         assert_eq!(res[1].id.id(), "2");
@@ -196,7 +201,7 @@ mod test {
 
     #[test]
     fn test_full_text_rank() {
-        let data = vec![
+        let mut data = vec![
             FullTextSearchResult {
                 id: ID::new("1".to_string(), "text"),
                 score: vec![
@@ -215,7 +220,7 @@ mod test {
                 score: vec![("e".to_string(), 0.3), ("f".to_string(), 0.4)],
             },
         ];
-        let res = Rank::full_text_rank(data, ScoreType::Average, None);
+        let res = Rank::full_text_rank(&mut data, ScoreType::Average, None);
         assert_eq!(res.is_ok(), true);
         let res = res.unwrap();
         assert_eq!(res.len(), 3);
@@ -223,7 +228,7 @@ mod test {
         assert_eq!(res[1].id.id_with_table(), "text:2");
         assert_eq!(res[2].id.id_with_table(), "text:1");
 
-        let data = vec![
+        let mut data = vec![
             FullTextSearchResult {
                 id: ID::new("1".to_string(), "text"),
                 score: vec![
@@ -242,7 +247,7 @@ mod test {
                 score: vec![("e".to_string(), 0.5), ("f".to_string(), 0.4)],
             },
         ];
-        let res = Rank::full_text_rank(data, ScoreType::Maximum, None);
+        let res = Rank::full_text_rank(&mut data, ScoreType::Maximum, None);
         assert_eq!(res.is_ok(), true);
         let res = res.unwrap();
         assert_eq!(res[0].id.id_with_table(), "text:2");
