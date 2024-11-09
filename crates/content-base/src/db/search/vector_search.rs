@@ -12,6 +12,10 @@ use std::convert::Into;
 
 const VECTOR_QUERY_LIMIT: usize = 100;
 
+// TODO: vision 和 text 向量现在采用了不同的命中范围，这个要继续调整
+const VISION_VECTOR_RANGE: &str = "<|2,20|>";
+const TEXT_VECTOR_RANGE: &str = "<|10,40|>";
+
 fn vector_query_statement(table: &str, vector_column: &str, range: &str) -> String {
     format!(
         r#"
@@ -69,21 +73,19 @@ impl DB {
         &self,
         text_vector: Vec<f32>,
         vision_vector: Vec<f32>,
-        range: Option<&str>,
     ) -> anyhow::Result<Vec<VectorSearchResult>> {
         if text_vector.is_empty() || vision_vector.is_empty() {
             anyhow::bail!("data is empty in vector search");
         }
-        let range = range.unwrap_or_else(|| "<|10,40|>").to_owned();
 
         // 组装 (table, column, vector_value) 的元组数组，给后面使用
         let params = vector_search_columns();
         let futures = params.into_iter().map(|(table, column, vector_type)| {
-            let query_statement = vector_query_statement(table, column, range.as_str());
-            let vector_value = match vector_type {
-                VectorSearchType::Text => text_vector.clone(),
-                VectorSearchType::Vision => vision_vector.clone(),
+            let (vector_value, range) = match vector_type {
+                VectorSearchType::Text => (text_vector.clone(), TEXT_VECTOR_RANGE),
+                VectorSearchType::Vision => (vision_vector.clone(), VISION_VECTOR_RANGE),
             };
+            let query_statement = vector_query_statement(table, column, range);
             async move {
                 let mut res = self
                     .client
