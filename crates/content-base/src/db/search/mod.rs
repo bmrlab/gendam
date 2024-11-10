@@ -66,7 +66,7 @@ impl DB {
             SearchModel::Text(text) => {
                 tracing::debug!("search tokens: {:?}", text.tokens.0);
 
-                let mut full_text_results =
+                let full_text_results =
                     self.full_text_search(text.tokens.0, with_highlight).await?;
                 tracing::debug!("{} found in full text search", full_text_results.len());
 
@@ -77,17 +77,18 @@ impl DB {
                     .collect::<Vec<String>>();
                 tracing::debug!("hit words {hit_words:?}");
 
-                let mut vector_results = self
+                let vector_results = self
                     .vector_search(text.text_vector, text.vision_vector)
                     .await?;
                 tracing::debug!("{} found in vector search", vector_results.len());
 
+                // 需要复制一下 full_text_results 和 vector_results，rank 方法会清空这两个 vec
                 let rank_result = Rank::rank(
-                    (&mut full_text_results, &mut vector_results),
+                    (full_text_results.clone(), vector_results.clone()),
                     false,
                     Some(max_count),
                 )?;
-                tracing::debug!("{} results after rank", rank_result.len());
+                tracing::debug!("{} results after rank", rank_result.len(),);
 
                 let backtrace_results = {
                     // 从 text 和 image 表回溯到关联的实体的结果，视频、音频、文档、网页、等
