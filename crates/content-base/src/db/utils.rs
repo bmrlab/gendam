@@ -45,6 +45,7 @@ macro_rules! replace_in_pages {
 }
 
 // TODO: 没有考虑 en_data 的情况
+// 没必要这样，直接在 hitresult 上加一个 highlight 就行了
 pub fn replace_with_highlight(
     full_text: Vec<FullTextSearchResult>,
     hit_results: Vec<HitResult>,
