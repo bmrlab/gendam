@@ -14,6 +14,7 @@ use std::convert::Into;
 pub const MAX_FULLTEXT_TOKEN: usize = 100;
 pub const FULL_TEXT_QUERY_LIMIT: usize = 100;
 
+// 使用 $query var 就不需要在两边加引号了，sueeral 会自动处理类型，加了引号就搜索不出来了
 fn full_text_query_statement(table: &str, column: &str) -> String {
     format!(
         r#"
@@ -22,7 +23,7 @@ SELECT
     search::score(0) as score,
     search::highlight('{mark_left}', '{mark_right}', 0) AS highlight
 FROM {table}
-WHERE {column} @0@ '$query'
+WHERE {column} @0@ $query
 LIMIT {limit};"#,
         table = table,
         column = column,
