@@ -12,13 +12,13 @@ pub(crate) struct FullTextSearchEntity {
 }
 
 impl FullTextSearchEntity {
-    pub fn convert_to_result(&self, data: &Vec<String>) -> FullTextSearchResult {
-        let score = data
+    pub fn convert_to_result(&self, words: &Vec<String>) -> FullTextSearchResult {
+        let score = words
             .iter()
             .enumerate()
-            .map(|(i, d)| {
+            .map(|(i, word)| {
                 (
-                    d.clone(),
+                    word.clone(),
                     self.scores
                         .get(&format!("score_{}", i))
                         .unwrap_or(&0.0)

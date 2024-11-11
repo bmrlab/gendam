@@ -58,6 +58,14 @@ impl From<&Thing> for ID {
     }
 }
 
+impl From<&ID> for Thing {
+    fn from(value: &ID) -> Self {
+        let tb = value.table_name().to_string();
+        let id = value.id.clone();
+        Thing::from((tb, id))
+    }
+}
+
 impl From<&str> for ID {
     fn from(value: &str) -> Self {
         let mut iter = value.split(':');

@@ -35,12 +35,35 @@ impl Default for ContentQueryPayload {
 }
 
 impl ContentBase {
+    pub async fn query(
+        &self,
+        payload: ContentQueryPayload,
+    ) -> anyhow::Result<Vec<ContentQueryResult>> {
+        let search_model = self.query_payload_to_model(&payload).await?;
+        let max_count = payload.max_count.unwrap_or(MAX_RETRIEVAL_COUNT);
+
+        let mut query_results = self
+            .db
+            .try_read()?
+            .new_search(search_model, true, max_count)
+            .await?;
+
+        if payload.with_reference_content {
+            for query_result in query_results.iter_mut() {
+                let reference_content = self.reference_content(&query_result).await?;
+                query_result.reference_content = Some(reference_content);
+            }
+        }
+
+        Ok(query_results)
+    }
+
     /// - 文本搜索流程
     ///     1. 获取全文搜索和向量搜索的结果（全文搜索和向量搜索只会搜索文本和图片）
     ///     2. 将上述结果进行 rank
     ///     3. 对上述 rank 的结果进行向上回溯
     ///     4. 填充 payload 信息
-    pub async fn query(
+    pub async fn _query(
         &self,
         payload: ContentQueryPayload,
     ) -> anyhow::Result<Vec<ContentQueryResult>> {

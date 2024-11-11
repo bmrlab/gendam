@@ -3,7 +3,7 @@ mod tests {
     use crate::db::model::id::ID;
     use crate::db::model::video::VideoModel;
     use crate::db::shared::test::{
-        fake_file_identifier, fake_upsert_text_clause, fake_video_model, gen_vector, setup,
+        fake_file_identifier, fake_upsert_text_clause, fake_video_model, setup,
     };
     // use itertools::Itertools;
     // use std::process::id;
