@@ -64,6 +64,7 @@ impl DB {
                 let query_results = self
                     .lookup_payload_by_ids(&rank_result, &full_text_results)
                     .await?;
+                tracing::debug!("{} results after lookup", query_results.len());
 
                 Ok(query_results)
             }
@@ -175,8 +176,8 @@ impl DB {
             .chain(res_text.into_iter())
             .collect::<Vec<PayloadLookupResult>>();
         let mut query_results: Vec<ContentQueryResult> = Vec::new();
-        for record_value in res {
-            let id: ID = record_value.id.into();
+        for record in res {
+            let id: ID = record.id.into();
             let rank_result = rank_results_map
                 .get(&id)
                 .ok_or_else(|| anyhow::anyhow!("Missing rank result"))?;
@@ -184,7 +185,8 @@ impl DB {
                 Some(r) => r.score[0].0.clone(),
                 None => "".to_string(),
             };
-            let metadata = match (record_value.asset_id.tb.as_str(), &record_value.segment) {
+            let reference_text = record.reference_text.clone();
+            let metadata = match (record.asset_id.tb.as_str(), &record.segment) {
                 ("image", None) => {
                     let metadata = ImageIndexMetadata { data: 0 };
                     ContentIndexMetadata::Image(metadata)
@@ -232,8 +234,8 @@ impl DB {
                 _ => {
                     anyhow::bail!(
                         "unexpected asset type {:?} or segment type {:?}",
-                        &record_value.asset_id,
-                        &record_value.segment
+                        &record.asset_id,
+                        &record.segment
                     );
                 }
             };
@@ -256,30 +258,30 @@ impl DB {
                 SearchType::Vector(VectorSearchType::Text) => match &metadata {
                     ContentIndexMetadata::Video(metadata) => match metadata.slice_type {
                         VideoSliceType::Visual => {
-                            ContentQueryHitReason::SemanticCaptionMatch(highlight)
+                            ContentQueryHitReason::SemanticCaptionMatch(reference_text)
                         }
                         VideoSliceType::Audio => {
-                            ContentQueryHitReason::SemanticTranscriptMatch(highlight)
+                            ContentQueryHitReason::SemanticTranscriptMatch(reference_text)
                         }
                     },
                     ContentIndexMetadata::Audio(metadata) => match metadata.slice_type {
                         AudioSliceType::Transcript => {
-                            ContentQueryHitReason::SemanticTranscriptMatch(highlight)
+                            ContentQueryHitReason::SemanticTranscriptMatch(reference_text)
                         }
                     },
                     ContentIndexMetadata::Image(_) => {
-                        ContentQueryHitReason::SemanticCaptionMatch(highlight)
+                        ContentQueryHitReason::SemanticCaptionMatch(reference_text)
                     }
-                    _ => ContentQueryHitReason::SemanticTextMatch(highlight),
+                    _ => ContentQueryHitReason::SemanticTextMatch(reference_text),
                 },
                 SearchType::Vector(VectorSearchType::Vision) => ContentQueryHitReason::VisionMatch,
             };
             query_results.push(ContentQueryResult {
-                file_identifier: record_value.file_identifier,
+                file_identifier: record.file_identifier,
                 score: rank_result.score,
                 metadata,
                 hit_reason: Some(hit_reasone),
-                reference_content: None,
+                reference_content: Some(record.reference_text),
             });
         }
         Ok(query_results)
@@ -290,6 +292,7 @@ impl DB {
 #[derive(Debug, Deserialize)]
 struct PayloadLookupResult {
     pub id: surrealdb::sql::Thing,
+    pub reference_text: String,
     pub asset_id: surrealdb::sql::Thing,
     pub segment: Option<SegmentLookup>,
     pub file_identifier: String,
@@ -321,6 +324,7 @@ const PAYLOAD_LOOKUP_SQL: &'static str = r#"
     (IF <-contains {
         {
             id: id,
+            reference_text: prompt,
             asset_id: <-contains[0].in<-contains[0].in,
             segment: {
                 table: record::tb(<-contains[0].in),
@@ -331,6 +335,7 @@ const PAYLOAD_LOOKUP_SQL: &'static str = r#"
     } ELSE {
         {
             id: id,
+            reference_text: prompt,
             asset_id: id,
             frame: None,
             file_identifier: ->with[0].out.file_identifier
@@ -342,6 +347,7 @@ WHERE id in $ids).A;
     (IF <-contains {
         {
             id: id,
+            reference_text: data,
             asset_id: <-contains[0].in<-contains[0].in,
             segment: {
                 table: record::tb(<-contains[0].in),
@@ -352,6 +358,7 @@ WHERE id in $ids).A;
     } ELSE {
         {
             id: id,
+            reference_text: data,
             asset_id: id,
             frame: None,
             file_identifier: ->with[0].out.file_identifier
