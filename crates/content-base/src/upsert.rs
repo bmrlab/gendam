@@ -49,7 +49,6 @@ use std::{
 };
 use tokio::sync::mpsc::{self, Receiver};
 use tokio::sync::RwLock;
-use tracing::{debug, warn};
 
 #[derive(Serialize, Deserialize)]
 pub struct UpsertPayload {
@@ -93,7 +92,7 @@ impl ContentBase {
         let (inner_tx, mut inner_rx) = mpsc::channel(512);
 
         if let Err(e) = task_record.set_metadata(&self.ctx, &payload.metadata).await {
-            warn!("failed to set metadata: {e:?}");
+            tracing::warn!("failed to set metadata: {e:?}");
         }
 
         let file_info = FileInfo {
@@ -156,9 +155,11 @@ async fn run_task(
         )
         .await
     {
-        warn!(
+        tracing::warn!(
             "failed to add task {}{}: {}",
-            &file_info.file_identifier, &task_type, e
+            &file_info.file_identifier,
+            &task_type,
+            e
         );
     }
 }
@@ -266,7 +267,7 @@ async fn task_post_process(
                 task_type,
                 RawTextChunkTask.chunk_content(file_identifier, ctx).await?
             );
-            debug!("pages: {pages:?}");
+            // debug!("pages: {pages:?}");
             db.try_read()?
                 .insert_document(DocumentModel::new(pages?), file_identifier.to_string())
                 .await?;
@@ -278,7 +279,7 @@ async fn task_post_process(
                 task_type,
                 WebPageChunkTask.chunk_content(file_identifier, ctx).await?
             );
-            debug!("pages: {pages:?}");
+            // debug!("pages: {pages:?}");
             db.try_read()?
                 .insert_web_page(WebPageModel::new(pages?), file_identifier.to_string())
                 .await?;
