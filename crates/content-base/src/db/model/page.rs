@@ -1,4 +1,6 @@
+use super::ModelCreate;
 use super::{id::ID, ImageModel, TextModel};
+use async_trait::async_trait;
 use serde::Serialize;
 
 #[derive(Serialize, Debug, Clone)]
@@ -15,19 +17,20 @@ const PAGE_CREATE_STATEMENT: &'static str = r#"
 }}).id
 "#;
 
-impl PageModel {
-    pub async fn create_only<T>(
+#[async_trait]
+impl<T> ModelCreate<T, (Self, Vec<TextModel>, Vec<ImageModel>)> for PageModel
+where
+    T: surrealdb::Connection,
+{
+    async fn create_only(
         client: &surrealdb::Surreal<T>,
-        page_model: &Self,
-    ) -> anyhow::Result<surrealdb::sql::Thing>
-    where
-        T: surrealdb::Connection,
-    {
-        let text_records = TextModel::create_batch(client, &page_model.text).await?;
-        let image_records = ImageModel::create_batch(client, &page_model.image).await?;
+        (page, page_texts, page_images): &(Self, Vec<TextModel>, Vec<ImageModel>),
+    ) -> anyhow::Result<surrealdb::sql::Thing> {
+        let text_records = TextModel::create_batch(client, page_texts).await?;
+        let image_records = ImageModel::create_batch(client, page_images).await?;
         let mut resp = client
             .query(PAGE_CREATE_STATEMENT)
-            .bind(page_model.clone())
+            .bind(page.clone())
             .await?;
         if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
             anyhow::bail!("Failed to insert video, errors: {:?}", errors_map);
@@ -47,22 +50,9 @@ impl PageModel {
             .await?;
         Ok(page_record)
     }
+}
 
-    pub async fn create_batch<T>(
-        client: &surrealdb::Surreal<T>,
-        pages_models: &Vec<Self>,
-    ) -> anyhow::Result<Vec<surrealdb::sql::Thing>>
-    where
-        T: surrealdb::Connection,
-    {
-        let futures = pages_models
-            .into_iter()
-            .map(|page_model| Self::create_only(client, page_model))
-            .collect::<Vec<_>>();
-        let results = crate::collect_async_results!(futures);
-        results
-    }
-
+impl PageModel {
     pub fn table() -> &'static str {
         "page"
     }

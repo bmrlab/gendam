@@ -2,6 +2,7 @@ use crate::db::model::{
     audio::{AudioFrameModel, AudioModel},
     document::DocumentModel,
     image::ImageModel,
+    page::PageModel,
     text::TextModel,
     video::{ImageFrameModel, VideoModel},
     web::WebPageModel,
@@ -64,61 +65,77 @@ pub fn fake_image_model() -> ImageModel {
     }
 }
 
-pub fn fake_audio_frame_model() -> AudioFrameModel {
-    AudioFrameModel {
-        id: None,
-        data: vec![fake_text_model()],
-        start_timestamp: (1..10).fake::<u32>() as f32,
-        end_timestamp: (10..20).fake::<u32>() as f32,
-    }
+pub fn fake_audio_frame_model() -> (AudioFrameModel, Vec<TextModel>) {
+    (
+        AudioFrameModel {
+            id: None,
+            start_timestamp: (1..10).fake::<u32>() as f32,
+            end_timestamp: (10..20).fake::<u32>() as f32,
+        },
+        vec![fake_text_model()],
+    )
 }
 
-pub fn fake_audio_model() -> AudioModel {
-    AudioModel {
-        id: None,
-        audio_frame: (1..10).map(|_| fake_audio_frame_model()).collect(),
-    }
+pub fn fake_audio_model() -> (AudioModel, Vec<(AudioFrameModel, Vec<TextModel>)>) {
+    (
+        AudioModel { id: None },
+        (1..10).map(|_| fake_audio_frame_model()).collect(),
+    )
 }
 
-pub fn fake_image_frame_model() -> ImageFrameModel {
-    ImageFrameModel {
-        id: None,
-        data: vec![fake_image_model()],
-        start_timestamp: (1..10).fake::<u32>() as f32,
-        end_timestamp: (10..20).fake::<u32>() as f32,
-    }
+pub fn fake_image_frame_model() -> (ImageFrameModel, Vec<ImageModel>) {
+    (
+        ImageFrameModel {
+            id: None,
+            start_timestamp: (1..10).fake::<u32>() as f32,
+            end_timestamp: (10..20).fake::<u32>() as f32,
+        },
+        vec![fake_image_model()],
+    )
 }
 
-pub fn fake_page_model() -> crate::db::model::page::PageModel {
-    crate::db::model::page::PageModel {
-        id: None,
-        text: vec![fake_text_model()],
-        image: vec![fake_image_model()],
-        start_index: (1..10).fake(),
-        end_index: (10..20).fake(),
-    }
+pub fn fake_page_model() -> (PageModel, Vec<TextModel>, Vec<ImageModel>) {
+    (
+        PageModel {
+            id: None,
+            start_index: (1..10).fake(),
+            end_index: (10..20).fake(),
+        },
+        vec![fake_text_model()],
+        vec![fake_image_model()],
+    )
 }
 
-pub fn fake_web_page_model() -> WebPageModel {
-    WebPageModel {
-        id: None,
-        page: (1..10).map(|_| fake_page_model()).collect(),
-    }
+pub fn fake_web_page_model() -> (
+    WebPageModel,
+    Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>,
+) {
+    (
+        WebPageModel { id: None },
+        (1..10).map(|_| fake_page_model()).collect(),
+    )
 }
 
-pub fn fake_video_model() -> VideoModel {
-    VideoModel {
-        id: None,
-        image_frame: (1..10).map(|_| fake_image_frame_model()).collect(),
-        audio_frame: (1..10).map(|_| fake_audio_frame_model()).collect(),
-    }
+pub fn fake_video_model() -> (
+    VideoModel,
+    Vec<(ImageFrameModel, Vec<ImageModel>)>,
+    Vec<(AudioFrameModel, Vec<TextModel>)>,
+) {
+    (
+        VideoModel { id: None },
+        (1..10).map(|_| fake_image_frame_model()).collect(),
+        (1..10).map(|_| fake_audio_frame_model()).collect(),
+    )
 }
 
-pub fn fake_document() -> DocumentModel {
-    DocumentModel {
-        id: None,
-        page: (1..10).map(|_| fake_page_model()).collect(),
-    }
+pub fn fake_document() -> (
+    DocumentModel,
+    Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>,
+) {
+    (
+        DocumentModel { id: None },
+        (1..10).map(|_| fake_page_model()).collect(),
+    )
 }
 
 pub fn fake_file_identifier() -> String {

@@ -1,4 +1,5 @@
-use crate::db::model::{id::ID, AudioFrameModel, ImageModel};
+use super::{id::ID, AudioFrameModel, ImageModel, ModelCreate, TextModel};
+use async_trait::async_trait;
 use educe::Educe;
 use serde::Serialize;
 
@@ -20,22 +21,23 @@ const IMAGE_FRAME_CREATE_STATEMENT: &'static str = r#"
 }}).id
 "#;
 
-impl ImageFrameModel {
-    pub async fn create_only<T>(
+#[async_trait]
+impl<T> ModelCreate<T, (Self, Vec<ImageModel>)> for ImageFrameModel
+where
+    T: surrealdb::Connection,
+{
+    async fn create_only(
         client: &surrealdb::Surreal<T>,
-        image_frame_model: &Self,
-    ) -> anyhow::Result<surrealdb::sql::Thing>
-    where
-        T: surrealdb::Connection,
-    {
-        let image_records = ImageModel::create_batch(client, &image_frame_model.data).await?;
+        (image_frame, frame_images): &(Self, Vec<ImageModel>),
+    ) -> anyhow::Result<surrealdb::sql::Thing> {
+        let image_records = ImageModel::create_batch(client, frame_images).await?;
         if image_records.is_empty() {
             anyhow::bail!("Failed to insert frame images, images is empty");
         }
         let mut resp = client
             .query(IMAGE_FRAME_CREATE_STATEMENT)
             // .bind(("images", image_records.clone()))
-            .bind(image_frame_model.clone())
+            .bind(image_frame.clone())
             .await?;
         if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
             anyhow::bail!("Failed to insert image frame, errors: {:?}", errors_map);
@@ -50,22 +52,9 @@ impl ImageFrameModel {
             .await?;
         Ok(image_frame_record)
     }
+}
 
-    pub async fn create_batch<T>(
-        client: &surrealdb::Surreal<T>,
-        image_frame_models: &Vec<Self>,
-    ) -> anyhow::Result<Vec<surrealdb::sql::Thing>>
-    where
-        T: surrealdb::Connection,
-    {
-        let futures = image_frame_models
-            .into_iter()
-            .map(|image_frame_model| Self::create_only(client, image_frame_model))
-            .collect::<Vec<_>>();
-        let results = crate::collect_async_results!(futures);
-        results
-    }
-
+impl ImageFrameModel {
     pub fn table() -> &'static str {
         "image_frame"
     }
@@ -81,18 +70,29 @@ const VIDEO_CREATE_STATEMENT: &'static str = r#"
 (CREATE ONLY video CONTENT {{}}).id
 "#;
 
-impl VideoModel {
-    pub async fn create_only<T>(
+#[async_trait]
+impl<T>
+    ModelCreate<
+        T,
+        (
+            Self,
+            Vec<(ImageFrameModel, Vec<ImageModel>)>,
+            Vec<(AudioFrameModel, Vec<TextModel>)>,
+        ),
+    > for VideoModel
+where
+    T: surrealdb::Connection,
+{
+    async fn create_only(
         client: &surrealdb::Surreal<T>,
-        video_model: &Self,
-    ) -> anyhow::Result<surrealdb::sql::Thing>
-    where
-        T: surrealdb::Connection,
-    {
-        let image_frame_records =
-            ImageFrameModel::create_batch(client, &video_model.image_frame).await?;
-        let audio_frame_records =
-            AudioFrameModel::create_batch(client, &video_model.audio_frame).await?;
+        (_video, image_frames, audio_frames): &(
+            Self,
+            Vec<(ImageFrameModel, Vec<ImageModel>)>,
+            Vec<(AudioFrameModel, Vec<TextModel>)>,
+        ),
+    ) -> anyhow::Result<surrealdb::sql::Thing> {
+        let image_frame_records = ImageFrameModel::create_batch(client, image_frames).await?;
+        let audio_frame_records = AudioFrameModel::create_batch(client, audio_frames).await?;
         let mut resp = client.query(VIDEO_CREATE_STATEMENT).await?;
         if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
             anyhow::bail!("Failed to insert video, errors: {:?}", errors_map);
@@ -112,7 +112,9 @@ impl VideoModel {
             .await?;
         Ok(video_record)
     }
+}
 
+impl VideoModel {
     pub fn table() -> &'static str {
         "video"
     }

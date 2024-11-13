@@ -12,12 +12,12 @@ use self::{
     document::DocumentModel,
     id::ID,
     image::ImageModel,
-    page::PageModel,
     payload::PayloadModel,
     text::TextModel,
-    video::{ImageFrameModel, VideoModel},
+    video::VideoModel,
     web::WebPageModel,
 };
+use async_trait::async_trait;
 use serde::Serialize;
 
 #[derive(Serialize, Debug, Clone)]
@@ -50,83 +50,28 @@ impl SelectResultModel {
     {
         start >= range.0 && end <= range.1
     }
+}
 
-    fn collect_hit_text_from_image_frame(
-        _frame: &Vec<ImageFrameModel>,
-        _range: (usize, usize),
-    ) -> Vec<String> {
-        // TODO: Implement this function
-        unimplemented!()
-    }
+#[async_trait]
+pub trait ModelCreate<T, TItem>
+where
+    T: surrealdb::Connection,
+    TItem: Serialize + Clone + Send + Sync + 'static,
+{
+    async fn create_only(
+        client: &surrealdb::Surreal<T>,
+        item: &TItem,
+    ) -> anyhow::Result<surrealdb::sql::Thing>;
 
-    fn collect_hit_text_from_audio_frame(
-        frame: &Vec<AudioFrameModel>,
-        range: (usize, usize),
-    ) -> Vec<String> {
-        let mut text = vec![];
-        for frame in frame {
-            if Self::is_within_range(
-                frame.start_timestamp as usize,
-                frame.end_timestamp as usize,
-                range,
-            ) {
-                for data in &frame.data {
-                    text.push(data.data.clone());
-                }
-            }
-        }
-        text
-    }
-
-    fn collect_hit_text_from_page(page: &Vec<PageModel>, range: (usize, usize)) -> Vec<String> {
-        let mut text = vec![];
-        for data in page {
-            if Self::is_within_range(data.start_index as usize, data.end_index as usize, range) {
-                text.extend(
-                    data.text
-                        .iter()
-                        .map(|x| x.data.clone())
-                        .collect::<Vec<String>>(),
-                );
-            }
-        }
-        text
-    }
-
-    pub fn hit_text(&self, range: Option<(usize, usize)>) -> Option<String> {
-        let range = range.unwrap_or((0, u128::MAX as usize));
-        match self {
-            SelectResultModel::Text(text) => Some(text.data.clone()),
-            SelectResultModel::Image(image) => Some(image.prompt.clone()),
-            SelectResultModel::Audio(audio) => {
-                Some(Self::collect_hit_text_from_audio_frame(&audio.audio_frame, range).join("\n"))
-            }
-            SelectResultModel::Video(video) => {
-                let mut text = vec![];
-                text.extend(Self::collect_hit_text_from_audio_frame(
-                    &video.audio_frame,
-                    range,
-                ));
-                for frame in &video.image_frame {
-                    if Self::is_within_range(
-                        frame.start_timestamp as usize,
-                        frame.end_timestamp as usize,
-                        range,
-                    ) {
-                        for data in &frame.data {
-                            text.push(data.prompt.clone());
-                        }
-                    }
-                }
-                Some(text.join("\n"))
-            }
-            SelectResultModel::WebPage(web) => {
-                Some(Self::collect_hit_text_from_page(&web.page, range).join("\n"))
-            }
-            SelectResultModel::Document(document) => {
-                Some(Self::collect_hit_text_from_page(&document.page, range).join("\n"))
-            }
-            _ => None,
-        }
+    async fn create_batch(
+        client: &surrealdb::Surreal<T>,
+        items: &Vec<TItem>,
+    ) -> anyhow::Result<Vec<surrealdb::sql::Thing>> {
+        let futures = items
+            .into_iter()
+            .map(|item| Self::create_only(client, item))
+            .collect::<Vec<_>>();
+        let results = crate::collect_async_results!(futures);
+        results
     }
 }
