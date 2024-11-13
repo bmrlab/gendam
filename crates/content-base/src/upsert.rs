@@ -40,7 +40,7 @@ use content_base_task::{
     web_page::{chunk::WebPageChunkTask, WebPageTaskType},
     ContentTaskType, FileInfo, TaskRecord,
 };
-use content_metadata::ContentMetadata;
+use content_metadata::{video::VideoMetadata, ContentMetadata};
 use futures_util::future::try_join_all;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -127,8 +127,14 @@ impl ContentBase {
                 let _ = notification_tx.send(notification).await;
                 // 对完成的任务进行后处理
                 if let TaskStatus::Finished = task_status {
-                    let _ = task_post_process(&ctx, &file_identifier_clone, &task_type, db.clone())
-                        .await;
+                    let _ = task_post_process(
+                        &ctx,
+                        &file_identifier_clone,
+                        &payload.metadata,
+                        &task_type,
+                        db.clone(),
+                    )
+                    .await;
                 }
             }
         });
@@ -196,28 +202,33 @@ macro_rules! chunk_to_page {
 async fn task_post_process(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
+    metadata: &ContentMetadata,
     task_type: &ContentTaskType,
     db: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
-    match task_type {
-        ContentTaskType::Video(
-            VideoTaskType::TransChunkSumEmbed(_)
-            | VideoTaskType::FrameEmbedding(_)
-            | VideoTaskType::FrameDescEmbed(_),
+    match (task_type, metadata) {
+        (
+            ContentTaskType::Video(
+                VideoTaskType::TransChunkSumEmbed(_)
+                | VideoTaskType::FrameEmbedding(_)
+                | VideoTaskType::FrameDescEmbed(_),
+            ),
+            ContentMetadata::Video(metadata),
         ) => {
             // TransChunkSumEmbed, FrameDescEmbed 和 FrameEmbedding 结束后都触发 upsert_video_index_to_surrealdb
             // 如果有一个任务没完成，upsert_video_index_to_surrealdb 会报错
-            upsert_video_index_to_surrealdb(ctx, file_identifier, db).await.map_err(|e| {
+            // 但如果 video 没有音频，则直接跳过 TransChunkSumEmbed
+            upsert_video_index_to_surrealdb(ctx, file_identifier, metadata, db).await.map_err(|e| {
                 tracing::warn!("either TransChunkSumEmbed or FrameEmbedding or FrameDescEmbed task not finished yet: {:?}", e);
                 e
             })?;
             tracing::info!("video index upserted to surrealdb");
         }
-        ContentTaskType::Audio(AudioTaskType::TransChunkSumEmbed(_)) => {
+        (ContentTaskType::Audio(AudioTaskType::TransChunkSumEmbed(_)), _) => {
             upsert_audio_index_to_surrealdb(ctx, file_identifier, db).await?;
             tracing::info!("audio index upserted to surrealdb");
         }
-        ContentTaskType::Image(ImageTaskType::DescEmbed(_) | ImageTaskType::Embedding(_)) => {
+        (ContentTaskType::Image(ImageTaskType::DescEmbed(_) | ImageTaskType::Embedding(_)), _) => {
             // DescEmbed 和 Embedding 结束后都触发 upsert_image_index_to_surrealdb
             // 如果有一个任务没完成，upsert_image_index_to_surrealdb 会报错
             upsert_image_index_to_surrealdb(ctx, file_identifier, db).await.map_err(|e| {
@@ -226,7 +237,7 @@ async fn task_post_process(
             })?;
             tracing::info!("image index upserted to surrealdb");
         }
-        ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(task_type)) => {
+        (ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(task_type)), _) => {
             let pages: anyhow::Result<Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>> = chunk_to_page!(
                 file_identifier,
                 ctx,
@@ -241,7 +252,7 @@ async fn task_post_process(
                 .await?;
             tracing::info!("document index upserted to surrealdb");
         }
-        ContentTaskType::WebPage(WebPageTaskType::ChunkSumEmbed(task_type)) => {
+        (ContentTaskType::WebPage(WebPageTaskType::ChunkSumEmbed(task_type)), _) => {
             let pages: anyhow::Result<Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>> = chunk_to_page!(
                 file_identifier,
                 ctx,
@@ -257,7 +268,7 @@ async fn task_post_process(
             tracing::info!("web page index upserted to surrealdb");
         }
         _ => {}
-    }
+    };
     Ok(())
 }
 
@@ -312,9 +323,10 @@ async fn upsert_audio_index_to_surrealdb(
 async fn upsert_video_index_to_surrealdb(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
+    metadata: &VideoMetadata,
     db: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
-    let audio_frames: Vec<(AudioFrameModel, Vec<TextModel>)> = {
+    let audio_frames: Vec<(AudioFrameModel, Vec<TextModel>)> = if metadata.audio.is_some() {
         let chunks = VideoTransChunkTask
             .chunk_content(file_identifier, ctx)
             .await?;
@@ -348,6 +360,8 @@ async fn upsert_video_index_to_surrealdb(
             })
             .collect::<Vec<_>>();
         try_join_all(future).await?
+    } else {
+        vec![]
     };
 
     let image_frames: Vec<(ImageFrameModel, Vec<ImageModel>)> = {
