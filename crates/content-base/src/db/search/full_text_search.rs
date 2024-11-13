@@ -2,17 +2,64 @@ use crate::{
     check_db_error_from_resp,
     constant::HIGHLIGHT_MARK,
     db::{
-        entity::full_text::{FullTextSearchEntity, FullTextWithHighlightSearchEntity},
         model::{image::ImageModel, text::TextModel},
         DB,
     },
     query::model::FullTextSearchResult,
 };
 use futures::future::join_all;
+use serde::Deserialize;
+use std::collections::HashMap;
 use std::convert::Into;
+use surrealdb::sql::Thing;
 
 pub const MAX_FULLTEXT_TOKEN: usize = 100;
 pub const FULL_TEXT_QUERY_LIMIT: usize = 100;
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct FullTextSearchEntity {
+    id: Thing,
+    #[serde(flatten)]
+    scores: HashMap<String, f32>,
+}
+
+impl FullTextSearchEntity {
+    pub fn convert_to_result(&self, words: &Vec<String>) -> FullTextSearchResult {
+        let score = words
+            .iter()
+            .enumerate()
+            .map(|(i, word)| {
+                (
+                    word.clone(),
+                    self.scores
+                        .get(&format!("score_{}", i))
+                        .unwrap_or(&0.0)
+                        .clone(),
+                )
+            })
+            .collect();
+        FullTextSearchResult {
+            id: self.id.clone().into(),
+            score,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct FullTextWithHighlightSearchEntity {
+    id: Thing,
+    score: f32,
+    highlight: String,
+}
+
+impl From<FullTextWithHighlightSearchEntity> for FullTextSearchResult {
+    fn from(value: FullTextWithHighlightSearchEntity) -> Self {
+        FullTextSearchResult {
+            id: value.id.clone().into(),
+            score: vec![(value.highlight, value.score)],
+        }
+    }
+}
 
 // 使用 $query var 就不需要在两边加引号了，sueeral 会自动处理类型，加了引号就搜索不出来了
 fn full_text_query_statement(table: &str, column: &str) -> String {

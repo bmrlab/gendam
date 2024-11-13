@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
     use crate::check_db_error_from_resp;
-    use crate::db::entity::TextEntity;
     use crate::db::model::id::{ID, TB};
     use crate::db::model::text::TextModel;
     use crate::db::shared::test::{
@@ -170,16 +169,15 @@ mod tests {
         )
         .await
         .unwrap();
-
         let mut resp = db
             .client
-            .query(format!("SELECT * FROM {};", "text:11232131"))
+            .query(format!("(SELECT * FROM {}).id", "text:11232131"))
             .await
             .unwrap();
         check_db_error_from_resp!(resp)
             .map_err(|errors_map| anyhow::anyhow!("select text error: {:?}", errors_map))
             .unwrap();
-        let result = resp.take::<Vec<TextEntity>>(0).unwrap();
+        let result = resp.take::<Vec<surrealdb::sql::Thing>>(0).unwrap();
         assert_eq!(result.len(), 1);
     }
 }

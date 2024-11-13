@@ -52,6 +52,12 @@ pub struct ID {
     tb: TB,
 }
 
+impl From<Thing> for ID {
+    fn from(value: surrealdb::sql::Thing) -> Self {
+        ID::new(value.id.to_raw(), value.tb.as_str().into())
+    }
+}
+
 impl From<&Thing> for ID {
     fn from(value: &Thing) -> Self {
         ID::new(value.id.to_raw(), value.tb.as_str().into())
