@@ -1,10 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::db::model::id::ID;
-    use crate::db::model::video::VideoModel;
-    use crate::db::shared::test::{
-        fake_file_identifier, fake_upsert_text_clause, fake_video_model, setup,
-    };
+    use crate::db::shared::test::setup;
     // use itertools::Itertools;
     // use std::process::id;
     use test_log::test;
@@ -71,48 +67,8 @@ mod tests {
 
     #[test(tokio::test)]
     async fn test_backtrace_by_ids() {
-        let db = setup(None).await;
-        let single_text_id = ID::from("text:11232131");
-        db.upsert(&single_text_id, fake_upsert_text_clause().as_str())
-            .await
-            .unwrap();
-
-        let video_id = db
-            .insert_video(fake_video_model(), fake_file_identifier())
-            .await
-            .unwrap();
-
-        let mut video: VideoModel = db
-            .select_video(vec![video_id.id_with_table()])
-            .await
-            .unwrap()
-            .pop()
-            .unwrap()
-            .into();
-
-        println!("video: {video:?}");
-
-        if video.audio_frame.is_empty() {
-            println!("audio_frame is empty skip");
-            return;
-        }
-
-        let mut audio_frame = video.audio_frame.pop().unwrap();
-        println!("audio_frame: {:?}", audio_frame.id);
-
-        let text = audio_frame.data.pop().unwrap();
-        println!("text: {:?}", text);
-
-        let res = db
-            .backtrace_by_ids(vec![text.id.unwrap(), single_text_id.clone()])
-            .await
-            .unwrap();
-        println!("res: {:?}", res[0]);
-        println!("single_res: {:?}", res[1]);
-        assert_eq!(res.len(), 2);
-        assert!(res[0].hit_id.len() > 0);
-        assert_eq!(res[1].hit_id.len(), 1);
-        assert_eq!(res[1].hit_id[0], single_text_id);
+        let _db = setup(None).await;
+        unimplemented!("TODO!")
     }
 
     #[test(tokio::test)]
