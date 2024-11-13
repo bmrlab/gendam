@@ -260,7 +260,7 @@ mod test {
     #[tokio::test]
     async fn test_delete_text() {
         let db = local_db().await;
-        let text = db.insert_text(fake_text_model()).await.unwrap();
+        let text = db.insert_text(None, fake_text_model()).await.unwrap();
         db.delete(&text).await.expect("delete text");
         let select_text_res = db.select_text(vec![&text.id_with_table()]).await.unwrap();
         assert!(select_text_res.is_empty());
@@ -270,7 +270,7 @@ mod test {
     async fn test_delete_image() {
         let db = local_db().await;
         let image = db
-            .insert_image(fake_image_model(), Some(fake_file_identifier()))
+            .insert_image(Some(fake_file_identifier()), fake_image_model())
             .await
             .unwrap();
         db.delete(&image).await.expect("delete image");
@@ -282,7 +282,7 @@ mod test {
     async fn test_delete_audio() {
         let db = local_db().await;
         let audio = db
-            .insert_audio(fake_audio_model(), fake_file_identifier())
+            .insert_audio(fake_file_identifier(), fake_audio_model())
             .await
             .unwrap();
         db.delete(&audio).await.expect("delete audio");
@@ -294,7 +294,7 @@ mod test {
     async fn test_delete_video() {
         let db = local_db().await;
         let video_id = db
-            .insert_video(fake_video_model(), fake_file_identifier())
+            .insert_video(fake_file_identifier(), fake_video_model())
             .await
             .unwrap();
         println!("video_id: {:?}", video_id);

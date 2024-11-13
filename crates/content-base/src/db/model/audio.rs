@@ -1,4 +1,5 @@
-use crate::db::model::{id::ID, TextModel};
+use super::{id::ID, ModelCreate, TextModel};
+use async_trait::async_trait;
 use educe::Educe;
 use serde::Serialize;
 
@@ -17,21 +18,22 @@ const AUDIO_FRAME_CREATE_STATEMENT: &'static str = r#"
 }}).id
 "#;
 
-impl AudioFrameModel {
-    pub async fn create_only<T>(
+#[async_trait]
+impl<T> ModelCreate<T, (Self, Vec<TextModel>)> for AudioFrameModel
+where
+    T: surrealdb::Connection,
+{
+    async fn create_only(
         client: &surrealdb::Surreal<T>,
-        audio_frame_model: &Self,
-    ) -> anyhow::Result<surrealdb::sql::Thing>
-    where
-        T: surrealdb::Connection,
-    {
-        let text_records = TextModel::create_batch(client, &audio_frame_model.data).await?;
+        (audio_frame, transcript_texts): &(Self, Vec<TextModel>),
+    ) -> anyhow::Result<surrealdb::sql::Thing> {
+        let text_records = TextModel::create_batch(client, transcript_texts).await?;
         if text_records.is_empty() {
             anyhow::bail!("Failed to insert frame texts, texts is empty");
         }
         let mut resp = client
             .query(AUDIO_FRAME_CREATE_STATEMENT)
-            .bind(audio_frame_model.clone())
+            .bind(audio_frame.clone())
             .await?;
         if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
             anyhow::bail!("Failed to insert audio frame, errors: {:?}", errors_map);
@@ -46,22 +48,9 @@ impl AudioFrameModel {
             .await?;
         Ok(audio_frame_record)
     }
+}
 
-    pub async fn create_batch<T>(
-        client: &surrealdb::Surreal<T>,
-        audio_frame_models: &Vec<Self>,
-    ) -> anyhow::Result<Vec<surrealdb::sql::Thing>>
-    where
-        T: surrealdb::Connection,
-    {
-        let futures = audio_frame_models
-            .into_iter()
-            .map(|audio_frame_model| Self::create_only(client, audio_frame_model))
-            .collect::<Vec<_>>();
-        let results = crate::collect_async_results!(futures);
-        results
-    }
-
+impl AudioFrameModel {
     pub fn table() -> &'static str {
         "audio_frame"
     }
@@ -76,16 +65,16 @@ const AUDIO_CREATE_STATEMENT: &'static str = r#"
 (CREATE ONLY audio CONTENT {{}}).id
 "#;
 
-impl AudioModel {
-    pub async fn create_only<T>(
+#[async_trait]
+impl<T> ModelCreate<T, (Self, Vec<(AudioFrameModel, Vec<TextModel>)>)> for AudioModel
+where
+    T: surrealdb::Connection,
+{
+    async fn create_only(
         client: &surrealdb::Surreal<T>,
-        audio_model: &Self,
-    ) -> anyhow::Result<surrealdb::sql::Thing>
-    where
-        T: surrealdb::Connection,
-    {
-        let audio_frame_records =
-            AudioFrameModel::create_batch(client, &audio_model.audio_frame).await?;
+        (_audio_model, audio_frames): &(Self, Vec<(AudioFrameModel, Vec<TextModel>)>),
+    ) -> anyhow::Result<surrealdb::sql::Thing> {
+        let audio_frame_records = AudioFrameModel::create_batch(client, audio_frames).await?;
         if audio_frame_records.is_empty() {
             anyhow::bail!("Failed to insert audio frames, frames is empty");
         }
@@ -103,7 +92,9 @@ impl AudioModel {
             .await?;
         Ok(audio_record)
     }
+}
 
+impl AudioModel {
     pub fn table() -> &'static str {
         "audio"
     }

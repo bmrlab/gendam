@@ -1,4 +1,5 @@
-use crate::db::model::{id::ID, PageModel};
+use super::{id::ID, image::ImageModel, page::PageModel, text::TextModel, ModelCreate};
+use async_trait::async_trait;
 use serde::Serialize;
 
 #[derive(Serialize, Debug, Clone)]
@@ -10,19 +11,16 @@ const WEB_PAGE_CREATE_STATEMENT: &'static str = r#"
 (CREATE ONLY web CONTENT {{}}).id
 "#;
 
-impl WebPageModel {
-    pub fn new(page: Vec<PageModel>) -> Self {
-        Self { id: None, page }
-    }
-
-    pub async fn create_only<T>(
+#[async_trait]
+impl<T> ModelCreate<T, (Self, Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>)> for WebPageModel
+where
+    T: surrealdb::Connection,
+{
+    async fn create_only(
         client: &surrealdb::Surreal<T>,
-        web_page_model: &Self,
-    ) -> anyhow::Result<surrealdb::sql::Thing>
-    where
-        T: surrealdb::Connection,
-    {
-        let page_records = PageModel::create_batch(client, &web_page_model.page).await?;
+        (_web_page, pages): &(Self, Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>),
+    ) -> anyhow::Result<surrealdb::sql::Thing> {
+        let page_records = PageModel::create_batch(client, pages).await?;
         let mut resp = client.query(WEB_PAGE_CREATE_STATEMENT).await?;
         if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
             anyhow::bail!("Failed to insert web page, errors: {:?}", errors_map);
@@ -37,7 +35,9 @@ impl WebPageModel {
             .await?;
         Ok(web_page_record)
     }
+}
 
+impl WebPageModel {
     pub fn table() -> &'static str {
         "web"
     }

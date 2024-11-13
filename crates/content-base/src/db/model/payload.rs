@@ -1,4 +1,6 @@
+use super::ModelCreate;
 use crate::db::model::id::ID;
+use async_trait::async_trait;
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Clone)]
@@ -25,24 +27,18 @@ const PAYLOAD_CREATE_STATEMENT: &'static str = r#"
 }).id
 "#;
 
-impl PayloadModel {
-    pub fn url(&self) -> String {
-        self.url.clone().unwrap_or_default()
-    }
-    pub fn file_identifier(&self) -> String {
-        self.file_identifier.clone().unwrap_or_default()
-    }
-
-    pub async fn create_only<T>(
+#[async_trait]
+impl<T> ModelCreate<T, Self> for PayloadModel
+where
+    T: surrealdb::Connection,
+{
+    async fn create_only(
         client: &surrealdb::Surreal<T>,
-        payload_model: &Self,
-    ) -> anyhow::Result<surrealdb::sql::Thing>
-    where
-        T: surrealdb::Connection,
-    {
+        payload: &Self,
+    ) -> anyhow::Result<surrealdb::sql::Thing> {
         let mut resp = client
             .query(PAYLOAD_CREATE_STATEMENT)
-            .bind(payload_model.clone())
+            .bind(payload.clone())
             .await?;
         if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
             anyhow::bail!("Failed to insert payload, errors: {:?}", errors_map);
@@ -51,6 +47,15 @@ impl PayloadModel {
             anyhow::bail!("Failed to insert payload, no id returned");
         };
         Ok(thing)
+    }
+}
+
+impl PayloadModel {
+    pub fn url(&self) -> String {
+        self.url.clone().unwrap_or_default()
+    }
+    pub fn file_identifier(&self) -> String {
+        self.file_identifier.clone().unwrap_or_default()
     }
 
     pub async fn create_for_model<T>(
