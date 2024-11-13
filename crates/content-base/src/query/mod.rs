@@ -8,10 +8,10 @@ use content_base_task::{
     raw_text::chunk::{DocumentChunkTrait, RawTextChunkTask},
     video::{frame_description::VideoFrameDescriptionTask, transcript::VideoTranscriptTask},
 };
-use model::{HitResult, SearchType, VectorSearchType};
+use model::HitResult;
 use payload::{
     audio::AudioSliceType, raw_text::RawTextChunkType, video::VideoSliceType, ContentIndexMetadata,
-    ContentQueryHitReason, ContentQueryResult,
+    ContentQueryResult,
 };
 
 const MAX_RETRIEVAL_COUNT: usize = 20;
@@ -35,6 +35,11 @@ impl Default for ContentQueryPayload {
 }
 
 impl ContentBase {
+    /// - 文本搜索流程
+    ///     1. 获取全文搜索和向量搜索的结果（全文搜索和向量搜索只会搜索文本和图片）
+    ///     2. 将上述结果进行 rank
+    ///     3. 对上述 rank 的结果进行向上回溯
+    ///     4. 填充 payload 信息
     pub async fn query(
         &self,
         payload: ContentQueryPayload,
@@ -45,7 +50,7 @@ impl ContentBase {
         let query_results = self
             .db
             .try_read()?
-            .new_search(search_model, true, max_count)
+            .search(search_model, true, max_count)
             .await?;
 
         // if payload.with_reference_content {
@@ -58,111 +63,10 @@ impl ContentBase {
         Ok(query_results)
     }
 
-    /// - 文本搜索流程
-    ///     1. 获取全文搜索和向量搜索的结果（全文搜索和向量搜索只会搜索文本和图片）
-    ///     2. 将上述结果进行 rank
-    ///     3. 对上述 rank 的结果进行向上回溯
-    ///     4. 填充 payload 信息
-    pub async fn _query(
+    async fn _reference_content(
         &self,
-        payload: ContentQueryPayload,
-    ) -> anyhow::Result<Vec<ContentQueryResult>> {
-        let search_model = self.query_payload_to_model(&payload).await?;
-        let max_count = payload.max_count.unwrap_or(MAX_RETRIEVAL_COUNT);
-
-        let hit_results = self
-            .db
-            .try_read()?
-            .search(search_model, true, max_count)
-            .await?;
-
-        let mut query_results: Vec<ContentQueryResult> = vec![];
-        for hit_result in hit_results.iter() {
-            let metadata_list = self.expand_hit_result_to_index_metadata(hit_result);
-            let file_identifier = hit_result.payload.file_identifier();
-            for metadata in metadata_list.iter() {
-                let mut query_result = ContentQueryResult {
-                    file_identifier: file_identifier.clone(),
-                    score: hit_result.score,
-                    metadata: metadata.clone(),
-                    hit_reason: None,
-                    reference_content: None,
-                };
-
-                if payload.with_hit_reason {
-                    let hit_reason = self.hit_reason(hit_result, metadata);
-                    query_result.hit_reason = Some(hit_reason);
-                }
-
-                if payload.with_reference_content {
-                    let reference_content = self.reference_content(&query_result).await?;
-                    query_result.reference_content = Some(reference_content);
-                }
-
-                query_results.push(query_result);
-            }
-        }
-
-        Ok(query_results)
-    }
-
-    fn hit_reason(
-        &self,
-        hit_result: &HitResult,
-        metadata: &ContentIndexMetadata,
-    ) -> ContentQueryHitReason {
-        // TODO: 可以进一步根据 metadata 的类型区分是什么数据上的文本或者向量匹配
-        // TODO: TextMatch 和 SemanticMatch 是不是返回的 hit_text 应该不同？
-        let range: Option<(usize, usize)> = match metadata {
-            ContentIndexMetadata::Video(video) => {
-                Some((video.start_timestamp as usize, video.end_timestamp as usize))
-            }
-            ContentIndexMetadata::Audio(audio) => {
-                Some((audio.start_timestamp as usize, audio.end_timestamp as usize))
-            }
-            ContentIndexMetadata::Image(_) => None,
-            ContentIndexMetadata::RawText(raw_text) => {
-                Some((raw_text.start_index as usize, raw_text.end_index as usize))
-            }
-            ContentIndexMetadata::WebPage(web_page) => {
-                Some((web_page.start_index as usize, web_page.end_index as usize))
-            }
-        };
-        let hit_text = hit_result.hit_text(range).unwrap_or_default();
-        match hit_result.search_type {
-            SearchType::FullText => match metadata {
-                ContentIndexMetadata::Video(metadata) => match metadata.slice_type {
-                    VideoSliceType::Visual => ContentQueryHitReason::CaptionMatch(hit_text),
-                    VideoSliceType::Audio => ContentQueryHitReason::TranscriptMatch(hit_text),
-                },
-                ContentIndexMetadata::Audio(metadata) => match metadata.slice_type {
-                    AudioSliceType::Transcript => ContentQueryHitReason::TranscriptMatch(hit_text),
-                },
-                ContentIndexMetadata::Image(_) => ContentQueryHitReason::CaptionMatch(hit_text),
-                _ => ContentQueryHitReason::TextMatch(hit_text),
-            },
-            SearchType::Vector(VectorSearchType::Text) => match metadata {
-                ContentIndexMetadata::Video(metadata) => match metadata.slice_type {
-                    VideoSliceType::Visual => ContentQueryHitReason::SemanticCaptionMatch(hit_text),
-                    VideoSliceType::Audio => {
-                        ContentQueryHitReason::SemanticTranscriptMatch(hit_text)
-                    }
-                },
-                ContentIndexMetadata::Audio(metadata) => match metadata.slice_type {
-                    AudioSliceType::Transcript => {
-                        ContentQueryHitReason::SemanticTranscriptMatch(hit_text)
-                    }
-                },
-                ContentIndexMetadata::Image(_) => {
-                    ContentQueryHitReason::SemanticCaptionMatch(hit_text)
-                }
-                _ => ContentQueryHitReason::SemanticTextMatch(hit_text),
-            },
-            SearchType::Vector(VectorSearchType::Vision) => ContentQueryHitReason::VisionMatch,
-        }
-    }
-
-    async fn reference_content(&self, query_result: &ContentQueryResult) -> anyhow::Result<String> {
+        query_result: &ContentQueryResult,
+    ) -> anyhow::Result<String> {
         let ctx = self.ctx();
         let file_identifier = query_result.file_identifier.as_ref();
         let reference_content = match &query_result.metadata {

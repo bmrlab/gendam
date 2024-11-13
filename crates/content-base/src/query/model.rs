@@ -1,7 +1,4 @@
-use crate::db::{
-    model::{id::ID, payload::PayloadModel, SelectResultModel},
-    search::BacktrackResult,
-};
+use crate::db::model::{id::ID, payload::PayloadModel, SelectResultModel};
 
 pub struct TextToken(pub Vec<String>);
 
@@ -71,21 +68,6 @@ pub struct HitResult {
     pub payload: PayloadModel,
     pub search_type: SearchType,
     pub result: SelectResultModel,
-}
-
-impl From<(BacktrackResult, f32, SearchType, PayloadModel)> for HitResult {
-    fn from(
-        (bt, score, search_type, payload): (BacktrackResult, f32, SearchType, PayloadModel),
-    ) -> Self {
-        HitResult {
-            origin_id: bt.origin_id,
-            score,
-            hit_id: bt.hit_id,
-            payload,
-            result: bt.result,
-            search_type,
-        }
-    }
 }
 
 impl HitResult {
