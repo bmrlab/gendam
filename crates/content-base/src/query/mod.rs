@@ -8,7 +8,6 @@ use content_base_task::{
     raw_text::chunk::{DocumentChunkTrait, RawTextChunkTask},
     video::{frame_description::VideoFrameDescriptionTask, transcript::VideoTranscriptTask},
 };
-use model::HitResult;
 use payload::{
     audio::AudioSliceType, raw_text::RawTextChunkType, video::VideoSliceType, ContentIndexMetadata,
     ContentQueryResult,
