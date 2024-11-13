@@ -15,6 +15,14 @@ A crate for managing and processing various types of content (video, audio, imag
   - `upsert.rs`: Handling content insertion and updating
   - `lib.rs`: Main library file exporting public interfaces
 
+## Testing
+
+Example of running tests with the remote-db feature enabled:
+
+```bash
+cargo test -p content-base db::op::create --features remote-db -- --nocapture
+```
+
 ## Usage
 
 1. Initialize a `ContentBase` instance:

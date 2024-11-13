@@ -124,7 +124,6 @@ pub async fn load_library(
     let db_dir = library_dir.join("databases");
     let artifacts_dir = library_dir.join("artifacts");
     let files_dir = library_dir.join("files");
-    let surreal_dir = library_dir.join("surreal");
 
     let client = database::migrate_library(&db_dir).await?;
 
@@ -134,9 +133,19 @@ pub async fn load_library(
 
     global_variable::set_global_current_library!(library_id.to_string(), dir);
 
-    let surrealdb_client = DB::new(surreal_dir).await.map_err(|e| {
+    #[cfg(feature = "embedded-search")]
+    let surrealdb_client = {
+        let surreal_dir = library_dir.join("surreal");
+        DB::new(surreal_dir).await.map_err(|e| {
+            tracing::error!("Failed to create surrealdb client: {}", e);
+        })?
+    };
+
+    #[cfg(feature = "remote-search")]
+    let surrealdb_client = DB::new().await.map_err(|e| {
         tracing::error!("Failed to create surrealdb client: {}", e);
     })?;
+
     let library = Library {
         id: library_id.to_string(),
         dir: library_dir.clone(),

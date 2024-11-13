@@ -20,7 +20,8 @@ pub struct DB {
     #[cfg(feature = "embedded-db")]
     pub client: Surreal<surrealdb::engine::local::Db>,
 
-    #[cfg(not(feature = "embedded-db"))]
+    // #[cfg(not(feature = "embedded-db"))]
+    #[cfg(feature = "remote-db")]
     pub client: Surreal<surrealdb::engine::remote::ws::Client>,
 }
 

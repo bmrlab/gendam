@@ -46,13 +46,12 @@ tauri = { version = "1.5.4", features = [
 tauri-plugin-store = { git = "https://github.com/tauri-apps/plugins-workspace", rev = "dbe0277824676b978ed616ddb28f988689df6f7e" } # branch = "v1" }
 prisma-lib = { path = "../../../crates/prisma" }
 file-downloader = { path = "../../../crates/file-downloader" }
-content-library = { path = "../../../crates/content-library" }
+content-library = { path = "../../../crates/content-library", default-features = false }
 api-server = { path = "../../api-server" }
 analytics-tracing = { path = "../../../crates/analytics-tracing" }
 p2p = { path = "../../../crates/p2p" }
 storage = { path = "../../../crates/storage" }
 global-variable = { path = "../../../crates/global-variable" }
-
 rspc = { workspace = true }
 rspc-tauri = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -75,3 +74,6 @@ url = { version = "2.3" }
 # If you use cargo directly instead of tauri's cli you can use this feature flag to switch between tauri's `dev` and `build` modes.
 # DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+embedded-search = ["content-library/embedded-search"]
+remote-search = ["content-library/remote-search"]
+default = ["embedded-search"]
