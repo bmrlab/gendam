@@ -1,11 +1,6 @@
-use surrealdb::Surreal;
-
 pub mod client;
-
 #[allow(dead_code)]
 mod constant;
-#[allow(dead_code)]
-pub mod entity;
 #[allow(dead_code)]
 pub mod model;
 mod op;
@@ -18,11 +13,11 @@ pub mod utils;
 #[derive(Clone, Debug)]
 pub struct DB {
     #[cfg(feature = "embedded-db")]
-    pub client: Surreal<surrealdb::engine::local::Db>,
+    pub client: surrealdb::Surreal<surrealdb::engine::local::Db>,
 
     // #[cfg(not(feature = "embedded-db"))]
     #[cfg(feature = "remote-db")]
-    pub client: Surreal<surrealdb::engine::remote::ws::Client>,
+    pub client: surrealdb::Surreal<surrealdb::engine::remote::ws::Client>,
 }
 
 #[allow(unused_imports, dead_code)]

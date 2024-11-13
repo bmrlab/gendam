@@ -1,13 +1,13 @@
 use crate::{
     check_db_error_from_resp,
     db::{
-        entity::vector::VectorSearchEntity,
         model::{image::ImageModel, text::TextModel},
         DB,
     },
     query::model::{VectorSearchResult, VectorSearchType},
 };
 use futures::future::join_all;
+use serde::Deserialize;
 use std::convert::Into;
 
 const VECTOR_QUERY_LIMIT: usize = 100;
@@ -15,6 +15,12 @@ const VECTOR_QUERY_LIMIT: usize = 100;
 // TODO: vision 和 text 向量现在采用了不同的命中范围，这个要继续调整
 const VISION_VECTOR_RANGE: &str = "<|2,20|>";
 const TEXT_VECTOR_RANGE: &str = "<|10,40|>";
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct VectorSearchEntity {
+    pub id: surrealdb::sql::Thing,
+    pub distance: f32,
+}
 
 fn vector_query_statement(table: &str, vector_column: &str, range: &str) -> String {
     format!(
