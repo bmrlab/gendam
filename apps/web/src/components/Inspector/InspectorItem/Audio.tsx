@@ -52,7 +52,7 @@ export default function AudioDetail({
         </div>
         <div className="mt-2 flex justify-between">
           <div className="text-ink/50">Search</div>
-          {sortedTasks.some((item) => item.taskType === 'audio-trans-chunk-sum-embed' && item.exitCode === 0) ? (
+          {sortedTasks.every((item) => item.exitCode === 0) ? (
             <div className="rounded-full bg-green-100 px-2 text-xs text-green-600">Ready</div>
           ) : (
             <div className="rounded-full bg-orange-100 px-2 text-xs text-orange-600">Not ready</div>

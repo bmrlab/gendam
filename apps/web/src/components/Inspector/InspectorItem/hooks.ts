@@ -2,15 +2,15 @@ import { FilePath } from '@/lib/bindings'
 import { queryClient, rspc } from '@/lib/rspc'
 import { useCallback, useMemo } from 'react'
 
-export const TaskItemType: Record<string, [string, number]> = {
-  'frame': ['Visual Processing', 1],
-  'frame-content-embedding': ['Visual Indexing', 2],
-  'frame-caption': ['Description Recognition', 3],
-  'frame-caption-embedding': ['Description Indexing', 4],
-  'audio': ['Audio Processing', 5],
-  'transcript': ['Speech Recognition', 6],
-  'transcript-embedding': ['Transcript Indexing', 7],
-}
+// export const TaskItemType: Record<string, [string, number]> = {
+//   'frame': ['Visual Processing', 1],
+//   'frame-content-embedding': ['Visual Indexing', 2],
+//   'frame-caption': ['Description Recognition', 3],
+//   'frame-caption-embedding': ['Description Indexing', 4],
+//   'audio': ['Audio Processing', 5],
+//   'transcript': ['Speech Recognition', 6],
+//   'transcript-embedding': ['Transcript Indexing', 7],
+// }
 
 export function useSortedTasks(data: FilePath['assetObject']) {
   const tasksQueryParams = useMemo(() => {
@@ -39,12 +39,14 @@ export function useSortedTasks(data: FilePath['assetObject']) {
   const sortedTasks = useMemo(() => {
     if (!tasksQuery.data) {
       return []
+    } else {
+      return [...tasksQuery.data]
     }
-    return tasksQuery.data.sort((a, b) => {
-      const [, indexA] = TaskItemType[a.taskType] ?? [, 0]
-      const [, indexB] = TaskItemType[b.taskType] ?? [, 0]
-      return indexA - indexB
-    })
+    // return tasksQuery.data.sort((a, b) => {
+    //   const [, indexA] = TaskItemType[a.taskType] ?? [, 0]
+    //   const [, indexB] = TaskItemType[b.taskType] ?? [, 0]
+    //   return indexA - indexB
+    // })
   }, [tasksQuery.data])
 
   return {
