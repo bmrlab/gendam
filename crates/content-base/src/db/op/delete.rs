@@ -1,19 +1,72 @@
 use crate::check_db_error_from_resp;
-use crate::db::entity::relation::RelationEntity;
-use crate::db::model::id::{ID, TB};
-use crate::db::DB;
-use anyhow::bail;
+use crate::db::{
+    entity::relation::RelationEntity,
+    model::{
+        audio::AudioModel,
+        document::DocumentModel,
+        id::{ID, TB},
+        image::ImageModel,
+        video::VideoModel,
+        web::WebPageModel,
+        ModelDelete,
+    },
+    DB,
+};
 use async_recursion::async_recursion;
-use tracing::error;
+
+const CONTENT_TYPE_LOOKUP_QUERY: &'static str = r#"
+(
+    SELECT
+    <-with[0].in.id as id
+    FROM ONLY payload
+    WHERE file_identifier = $file_identifier LIMIT 1
+).id;
+"#;
 
 impl DB {
     pub async fn delete_by_file_identifier(&self, file_identifier: &str) -> anyhow::Result<()> {
-        let records = self
-            .select_record_by_file_identifier(file_identifier)
+        let mut resp = self
+            .client
+            .query(CONTENT_TYPE_LOOKUP_QUERY)
+            .bind(("file_identifier", file_identifier.to_string()))
             .await?;
-        for record in records {
-            self.delete(&record).await?;
-        }
+        check_db_error_from_resp!(resp)
+            .map_err(|errors_map| anyhow::anyhow!("content_type lookup error: {:?}", errors_map))?;
+        let record = match resp.take::<Option<surrealdb::sql::Thing>>(0)? {
+            Some(record) => record,
+            _ => {
+                tracing::warn!("No record found for file_identifier: {}", file_identifier);
+                return Ok(());
+            }
+        };
+        match record.tb.as_str() {
+            "image" => {
+                ImageModel::delete_cascade(&self.client, &record).await?;
+            }
+            "audio" => {
+                AudioModel::delete_cascade(&self.client, &record).await?;
+            }
+            "video" => {
+                VideoModel::delete_cascade(&self.client, &record).await?;
+            }
+            "document" => {
+                DocumentModel::delete_cascade(&self.client, &record).await?;
+            }
+            "web" => {
+                WebPageModel::delete_cascade(&self.client, &record).await?;
+            }
+            _ => {
+                tracing::warn!("unexpected content type: {}", record.tb.as_str());
+                return Ok(());
+            }
+        };
+
+        // let records = self
+        //     .select_record_by_file_identifier(file_identifier)
+        //     .await?;
+        // for record in records {
+        //     self.delete(&record).await?;
+        // }
         Ok(())
     }
 
@@ -45,7 +98,7 @@ impl DB {
             TB::Web => self.delete_web(id).await,
             TB::Document => self.delete_document(id).await,
             TB::Payload => self.delete_payload(id).await,
-            _ => bail!("not implemented"),
+            _ => anyhow::bail!("not implemented"),
         }
     }
 
@@ -126,7 +179,7 @@ impl DB {
     async fn batch_delete_payload(&self, ids: Vec<&ID>) -> anyhow::Result<()> {
         for id in ids {
             if let Err(e) = self.delete_payload(id).await {
-                error!("failed to delete payload {id:?}: {e}");
+                tracing::error!("failed to delete payload {id:?}: {e}");
             }
         }
         Ok(())
@@ -150,9 +203,10 @@ impl DB {
     async fn delete_by_id_with_table(&self, id: &str) -> anyhow::Result<()> {
         let mut resp = self.client.query(format!("DELETE {};", id)).await?;
         check_db_error_from_resp!(resp).map_err(|errors_map| {
-            error!(
+            tracing::error!(
                 "delete_by_id_with_table id: {} errors: {:?}",
-                id, errors_map
+                id,
+                errors_map
             );
             anyhow::anyhow!("Failed to delete id: {} errors: {:?}", id, errors_map)
         })
@@ -161,7 +215,7 @@ impl DB {
     async fn batch_delete_with_relation(&self, ids: Vec<ID>) -> anyhow::Result<()> {
         for id in ids {
             if let Err(e) = self.delete_with_relation(&id).await {
-                error!("failed to delete with relation {id:?}: {e}");
+                tracing::error!("failed to delete with relation {id:?}: {e}");
             }
         }
         Ok(())
@@ -228,7 +282,7 @@ impl DB {
             TB::Page => {
                 self.delete_page(&subrecord_id).await?;
             }
-            _ => bail!("can not reach here"),
+            _ => anyhow::bail!("can not reach here"),
         }
         Ok(())
     }

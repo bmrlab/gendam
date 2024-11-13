@@ -1,4 +1,4 @@
-use super::{id::ID, AudioFrameModel, ImageModel, ModelCreate, TextModel};
+use super::{id::ID, AudioFrameModel, ImageModel, ModelCreate, ModelDelete, TextModel};
 use async_trait::async_trait;
 use educe::Educe;
 use serde::Serialize;
@@ -111,6 +111,41 @@ where
             .bind(("relation_outs", all_frames))
             .await?;
         Ok(video_record)
+    }
+}
+
+const VIDEO_DELETE_STATEMENT: &'static str = r#"
+LET $v = (
+    SELECT
+        ->contains->image_frame AS image_frames,
+        ->contains->image_frame->contains->image AS images,
+        ->contains->audio_frame AS audio_frames,
+        ->contains->audio_frame->contains->text AS texts,
+        ->with->payload AS payload,
+        id
+    FROM ONLY $record
+);
+let $ids = array::flatten([$v.images, $v.texts, $v.image_frames, $v.audio_frames, $v.payload, $v.id]);
+DELETE $ids;
+"#;
+
+#[async_trait]
+impl<T> ModelDelete<T> for VideoModel
+where
+    T: surrealdb::Connection,
+{
+    async fn delete_cascade(
+        client: &surrealdb::Surreal<T>,
+        record: &surrealdb::sql::Thing,
+    ) -> anyhow::Result<()> {
+        let mut resp = client
+            .query(VIDEO_DELETE_STATEMENT)
+            .bind(("record", record.clone()))
+            .await?;
+        if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
+            anyhow::bail!("Failed to delete video, errors: {:?}", errors_map);
+        };
+        Ok(())
     }
 }
 
