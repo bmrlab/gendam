@@ -1,5 +1,4 @@
 mod full_text_search;
-mod relation;
 mod test;
 mod vector_search;
 use crate::{
