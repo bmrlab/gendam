@@ -7,8 +7,8 @@ use serde::Serialize;
 #[educe(Debug)]
 pub struct AudioFrameModel {
     pub id: Option<ID>,
-    pub start_timestamp: f32,
-    pub end_timestamp: f32,
+    pub start_timestamp: i64,
+    pub end_timestamp: i64,
 }
 
 const AUDIO_FRAME_CREATE_STATEMENT: &'static str = r#"

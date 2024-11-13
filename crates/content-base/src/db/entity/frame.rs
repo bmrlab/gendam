@@ -7,16 +7,16 @@ use surrealdb::sql::Thing;
 pub struct AudioFrameEntity {
     id: Thing,
     data: Vec<TextEntity>,
-    start_timestamp: usize,
-    end_timestamp: usize,
+    start_timestamp: i64,
+    end_timestamp: i64,
 }
 
 impl From<AudioFrameEntity> for AudioFrameModel {
     fn from(value: AudioFrameEntity) -> Self {
         Self {
             id: Some(value.id.into()),
-            start_timestamp: value.start_timestamp as f32,
-            end_timestamp: value.end_timestamp as f32,
+            start_timestamp: value.start_timestamp,
+            end_timestamp: value.end_timestamp,
         }
     }
 }
@@ -25,16 +25,16 @@ impl From<AudioFrameEntity> for AudioFrameModel {
 pub struct ImageFrameEntity {
     id: Thing,
     data: Vec<ImageEntity>,
-    start_timestamp: usize,
-    end_timestamp: usize,
+    start_timestamp: i64,
+    end_timestamp: i64,
 }
 
 impl From<ImageFrameEntity> for ImageFrameModel {
     fn from(value: ImageFrameEntity) -> Self {
         Self {
             id: Some(value.id.into()),
-            start_timestamp: value.start_timestamp as f32,
-            end_timestamp: value.end_timestamp as f32,
+            start_timestamp: value.start_timestamp,
+            end_timestamp: value.end_timestamp,
         }
     }
 }

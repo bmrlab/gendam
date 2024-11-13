@@ -181,8 +181,8 @@ macro_rules! chunk_to_page {
                 let images: Vec<ImageModel> = vec![];
                 let page = PageModel {
                     id: None,
-                    start_index: i as i32,
-                    end_index: i as i32,
+                    start_index: i,
+                    end_index: i,
                 };
                 anyhow::Result::<(PageModel, Vec<TextModel>, Vec<ImageModel>)>::Ok((
                     page, texts, images,
@@ -291,8 +291,8 @@ async fn upsert_audio_index_to_surrealdb(
             }];
             let audio_frame = AudioFrameModel {
                 id: None,
-                start_timestamp: chunk.start_timestamp as f32,
-                end_timestamp: chunk.end_timestamp as f32,
+                start_timestamp: chunk.start_timestamp,
+                end_timestamp: chunk.end_timestamp,
             };
             anyhow::Result::<(AudioFrameModel, Vec<TextModel>)>::Ok((audio_frame, texts))
         })
@@ -318,7 +318,7 @@ async fn upsert_video_index_to_surrealdb(
         let chunks = VideoTransChunkTask
             .chunk_content(file_identifier, ctx)
             .await?;
-        tracing::debug!("video chunks: {chunks:?}");
+        // tracing::debug!("video chunks: {chunks:?}");
         let future = chunks
             .into_iter()
             .map(|chunk| async move {
@@ -330,11 +330,11 @@ async fn upsert_video_index_to_surrealdb(
                         chunk.end_timestamp,
                     )
                     .await?;
-                tracing::debug!("chunk: {chunk:?}, embedding: {:?}", embedding.len());
+                // tracing::debug!("chunk: {chunk:?}, embedding: {:?}", embedding.len());
                 let audio_frame = AudioFrameModel {
                     id: None,
-                    start_timestamp: chunk.start_timestamp as f32,
-                    end_timestamp: chunk.end_timestamp as f32,
+                    start_timestamp: chunk.start_timestamp,
+                    end_timestamp: chunk.end_timestamp,
                 };
                 let texts = vec![TextModel {
                     id: None,
@@ -352,7 +352,7 @@ async fn upsert_video_index_to_surrealdb(
 
     let image_frames: Vec<(ImageFrameModel, Vec<ImageModel>)> = {
         let frames = VideoFrameTask.frame_content(file_identifier, ctx).await?;
-        tracing::debug!("video frames: {frames:?}");
+        // tracing::debug!("video frames: {frames:?}");
         let future = frames
             .chunks(VIDEO_FRAME_SUMMARY_BATCH_SIZE)
             .into_iter()
@@ -381,8 +381,8 @@ async fn upsert_video_index_to_surrealdb(
                     .await?;
                 let image_frame = ImageFrameModel {
                     id: None,
-                    start_timestamp: first_frame.timestamp as f32,
-                    end_timestamp: last_frame.timestamp as f32,
+                    start_timestamp: first_frame.timestamp,
+                    end_timestamp: last_frame.timestamp,
                 };
                 let images = vec![ImageModel {
                     id: None,
