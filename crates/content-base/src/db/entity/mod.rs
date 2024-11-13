@@ -1,14 +1,6 @@
 use crate::db::model::{
-    audio::{AudioFrameModel, AudioModel},
-    document::DocumentModel,
-    id::ID,
-    image::ImageModel,
-    page::PageModel,
-    payload::PayloadModel,
-    text::TextModel,
-    video::{ImageFrameModel, VideoModel},
-    web::WebPageModel,
-    SelectResultModel,
+    audio::AudioModel, document::DocumentModel, id::ID, image::ImageModel, payload::PayloadModel,
+    text::TextModel, video::VideoModel, web::WebPageModel, SelectResultModel,
 };
 use frame::{AudioFrameEntity, ImageFrameEntity};
 use page::PageEntity;
@@ -91,16 +83,6 @@ impl From<VideoEntity> for VideoModel {
     fn from(value: VideoEntity) -> Self {
         Self {
             id: Some(ID::from(&value.id)),
-            image_frame: value
-                .image_frame
-                .into_iter()
-                .map(ImageFrameModel::from)
-                .collect(),
-            audio_frame: value
-                .audio_frame
-                .into_iter()
-                .map(AudioFrameModel::from)
-                .collect(),
         }
     }
 }
@@ -115,7 +97,6 @@ impl From<WebPageEntity> for WebPageModel {
     fn from(value: WebPageEntity) -> Self {
         Self {
             id: Some(ID::from(&value.id)),
-            page: value.page.into_iter().map(PageModel::from).collect(),
         }
     }
 }
@@ -130,7 +111,6 @@ impl From<DocumentEntity> for DocumentModel {
     fn from(value: DocumentEntity) -> Self {
         Self {
             id: Some(ID::from(&value.id)),
-            page: value.page.into_iter().map(PageModel::from).collect(),
         }
     }
 }
@@ -180,7 +160,6 @@ impl From<SelectResultEntity> for SelectResultModel {
             SelectResultEntity::Image(image) => SelectResultModel::Image(ImageModel::from(image)),
             SelectResultEntity::Audio(audio) => SelectResultModel::Audio(AudioModel {
                 id: Some(ID::from(&audio.id)),
-                audio_frame: audio.frame.into_iter().map(AudioFrameModel::from).collect(),
             }),
             SelectResultEntity::Video(video) => SelectResultModel::Video(VideoModel::from(video)),
             SelectResultEntity::WebPage(web) => SelectResultModel::WebPage(WebPageModel::from(web)),

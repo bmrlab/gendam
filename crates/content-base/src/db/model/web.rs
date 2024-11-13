@@ -4,13 +4,10 @@ use serde::Serialize;
 #[derive(Serialize, Debug, Clone)]
 pub struct WebPageModel {
     pub id: Option<ID>,
-    pub page: Vec<PageModel>,
 }
 
 const WEB_PAGE_CREATE_STATEMENT: &'static str = r#"
-(CREATE ONLY web CONTENT {{
-    page: $pages,
-}}).id
+(CREATE ONLY web CONTENT {{}}).id
 "#;
 
 impl WebPageModel {
@@ -26,10 +23,7 @@ impl WebPageModel {
         T: surrealdb::Connection,
     {
         let page_records = PageModel::create_batch(client, &web_page_model.page).await?;
-        let mut resp = client
-            .query(WEB_PAGE_CREATE_STATEMENT)
-            .bind(("pages", page_records.clone()))
-            .await?;
+        let mut resp = client.query(WEB_PAGE_CREATE_STATEMENT).await?;
         if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
             anyhow::bail!("Failed to insert web page, errors: {:?}", errors_map);
         };
