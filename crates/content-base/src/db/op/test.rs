@@ -135,8 +135,8 @@ mod tests {
     async fn test_delete_video() {
         let _guard = get_test_lock().await.lock().await;
         let db = setup(None).await;
-        // let file_identifier = fake_file_identifier();
-        let file_identifier = "test_delete_video".to_string();
+        let file_identifier = fake_file_identifier();
+        // let file_identifier = "test_delete_video".to_string();
         let _video_id = db
             .insert_video(file_identifier.clone(), fake_video_model())
             .await
