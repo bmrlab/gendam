@@ -6,8 +6,8 @@ use serde::Serialize;
 #[derive(Serialize, Debug, Clone)]
 pub struct PageModel {
     pub id: Option<ID>,
-    pub start_index: i32,
-    pub end_index: i32,
+    pub start_index: usize,
+    pub end_index: usize,
 }
 
 const PAGE_CREATE_STATEMENT: &'static str = r#"

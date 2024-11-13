@@ -69,8 +69,8 @@ pub fn fake_audio_frame_model() -> (AudioFrameModel, Vec<TextModel>) {
     (
         AudioFrameModel {
             id: None,
-            start_timestamp: (1..10).fake::<u32>() as f32,
-            end_timestamp: (10..20).fake::<u32>() as f32,
+            start_timestamp: (1..10).fake::<i64>(),
+            end_timestamp: (10..20).fake::<i64>(),
         },
         vec![fake_text_model()],
     )
@@ -87,8 +87,8 @@ pub fn fake_image_frame_model() -> (ImageFrameModel, Vec<ImageModel>) {
     (
         ImageFrameModel {
             id: None,
-            start_timestamp: (1..10).fake::<u32>() as f32,
-            end_timestamp: (10..20).fake::<u32>() as f32,
+            start_timestamp: (1..10).fake::<i64>(),
+            end_timestamp: (10..20).fake::<i64>(),
         },
         vec![fake_image_model()],
     )

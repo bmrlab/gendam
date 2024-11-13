@@ -9,8 +9,8 @@ pub struct ImageFrameModel {
     pub id: Option<ID>,
     // #[educe(Debug(ignore))]
     // pub data: Vec<ImageModel>,
-    pub start_timestamp: f32,
-    pub end_timestamp: f32,
+    pub start_timestamp: i64,
+    pub end_timestamp: i64,
 }
 
 const IMAGE_FRAME_CREATE_STATEMENT: &'static str = r#"

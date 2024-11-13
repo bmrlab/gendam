@@ -18,8 +18,8 @@ impl From<PageEntity> for PageModel {
     fn from(value: PageEntity) -> Self {
         Self {
             id: Some(value.id.into()),
-            start_index: value.start_index as i32,
-            end_index: value.end_index as i32,
+            start_index: value.start_index,
+            end_index: value.end_index,
         }
     }
 }
