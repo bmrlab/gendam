@@ -6,22 +6,12 @@ use serde::Serialize;
 #[educe(Debug)]
 pub struct AudioFrameModel {
     pub id: Option<ID>,
-
-    #[educe(Debug(ignore))]
-    pub data: Vec<TextModel>,
     pub start_timestamp: f32,
     pub end_timestamp: f32,
 }
 
-#[derive(Serialize, Debug, Clone)]
-pub struct AudioModel {
-    pub id: Option<ID>,
-    pub audio_frame: Vec<AudioFrameModel>,
-}
-
 const AUDIO_FRAME_CREATE_STATEMENT: &'static str = r#"
 (CREATE ONLY audio_frame CONTENT {{
-    data: $texts,
     start_timestamp: $start_timestamp,
     end_timestamp: $end_timestamp
 }}).id
@@ -41,7 +31,6 @@ impl AudioFrameModel {
         }
         let mut resp = client
             .query(AUDIO_FRAME_CREATE_STATEMENT)
-            .bind(("texts", text_records.clone()))
             .bind(audio_frame_model.clone())
             .await?;
         if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
@@ -78,11 +67,13 @@ impl AudioFrameModel {
     }
 }
 
-// `audio_frame` 字段在数据库 audio table 里叫 `frame`
+#[derive(Serialize, Debug, Clone)]
+pub struct AudioModel {
+    pub id: Option<ID>,
+}
+
 const AUDIO_CREATE_STATEMENT: &'static str = r#"
-(CREATE ONLY audio CONTENT {{
-    frame: $audio_frames
-}}).id
+(CREATE ONLY audio CONTENT {{}}).id
 "#;
 
 impl AudioModel {
@@ -98,10 +89,7 @@ impl AudioModel {
         if audio_frame_records.is_empty() {
             anyhow::bail!("Failed to insert audio frames, frames is empty");
         }
-        let mut resp = client
-            .query(AUDIO_CREATE_STATEMENT)
-            .bind(("audio_frames", audio_frame_records.clone()))
-            .await?;
+        let mut resp = client.query(AUDIO_CREATE_STATEMENT).await?;
         if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
             anyhow::bail!("Failed to insert audio, errors: {:?}", errors_map);
         };

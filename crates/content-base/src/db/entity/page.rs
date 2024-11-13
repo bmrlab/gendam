@@ -1,6 +1,6 @@
 use crate::db::{
     entity::{ImageEntity, TextEntity},
-    model::{image::ImageModel, page::PageModel, text::TextModel},
+    model::page::PageModel,
 };
 use serde::Deserialize;
 use surrealdb::sql::Thing;
@@ -18,8 +18,6 @@ impl From<PageEntity> for PageModel {
     fn from(value: PageEntity) -> Self {
         Self {
             id: Some(value.id.into()),
-            text: value.text.into_iter().map(TextModel::from).collect(),
-            image: value.image.into_iter().map(ImageModel::from).collect(),
             start_index: value.start_index as i32,
             end_index: value.end_index as i32,
         }

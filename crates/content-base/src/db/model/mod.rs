@@ -21,17 +21,9 @@ use self::{
 use serde::Serialize;
 
 #[derive(Serialize, Debug, Clone)]
-pub struct ItemModel {
-    pub id: Option<ID>,
-    text: Vec<TextModel>,
-    image: Vec<ImageModel>,
-}
-
-#[derive(Serialize, Debug, Clone)]
 pub enum SelectResultModel {
     Text(TextModel),
     Image(ImageModel),
-    Item(ItemModel),
     Audio(AudioModel),
     Video(VideoModel),
     WebPage(WebPageModel),
@@ -44,7 +36,6 @@ impl SelectResultModel {
         match self {
             SelectResultModel::Text(data) => data.id.clone(),
             SelectResultModel::Image(data) => data.id.clone(),
-            SelectResultModel::Item(data) => data.id.clone(),
             SelectResultModel::Audio(data) => data.id.clone(),
             SelectResultModel::Video(data) => data.id.clone(),
             SelectResultModel::WebPage(data) => data.id.clone(),

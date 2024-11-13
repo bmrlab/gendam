@@ -6,28 +6,15 @@ use serde::Serialize;
 #[educe(Debug)]
 pub struct ImageFrameModel {
     pub id: Option<ID>,
-
-    #[educe(Debug(ignore))]
-    pub data: Vec<ImageModel>,
+    // #[educe(Debug(ignore))]
+    // pub data: Vec<ImageModel>,
     pub start_timestamp: f32,
     pub end_timestamp: f32,
 }
 
-#[derive(Serialize, Educe, Clone)]
-#[educe(Debug)]
-pub struct VideoModel {
-    pub id: Option<ID>,
-
-    #[educe(Debug(ignore))]
-    pub image_frame: Vec<ImageFrameModel>,
-
-    #[educe(Debug(ignore))]
-    pub audio_frame: Vec<AudioFrameModel>,
-}
-
 const IMAGE_FRAME_CREATE_STATEMENT: &'static str = r#"
 (CREATE ONLY image_frame CONTENT {{
-    data: $images,
+    -- data: $images,
     start_timestamp: $start_timestamp,
     end_timestamp: $end_timestamp
 }}).id
@@ -47,7 +34,7 @@ impl ImageFrameModel {
         }
         let mut resp = client
             .query(IMAGE_FRAME_CREATE_STATEMENT)
-            .bind(("images", image_records.clone()))
+            // .bind(("images", image_records.clone()))
             .bind(image_frame_model.clone())
             .await?;
         if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
@@ -84,11 +71,14 @@ impl ImageFrameModel {
     }
 }
 
+#[derive(Serialize, Educe, Clone)]
+#[educe(Debug)]
+pub struct VideoModel {
+    pub id: Option<ID>,
+}
+
 const VIDEO_CREATE_STATEMENT: &'static str = r#"
-(CREATE ONLY video CONTENT {{
-    image_frame: $image_frames,
-    audio_frame: $audio_frames
-}}).id
+(CREATE ONLY video CONTENT {{}}).id
 "#;
 
 impl VideoModel {
@@ -103,11 +93,7 @@ impl VideoModel {
             ImageFrameModel::create_batch(client, &video_model.image_frame).await?;
         let audio_frame_records =
             AudioFrameModel::create_batch(client, &video_model.audio_frame).await?;
-        let mut resp = client
-            .query(VIDEO_CREATE_STATEMENT)
-            .bind(("image_frames", image_frame_records.clone()))
-            .bind(("audio_frames", audio_frame_records.clone()))
-            .await?;
+        let mut resp = client.query(VIDEO_CREATE_STATEMENT).await?;
         if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
             anyhow::bail!("Failed to insert video, errors: {:?}", errors_map);
         };

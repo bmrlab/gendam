@@ -4,16 +4,12 @@ use serde::Serialize;
 #[derive(Serialize, Debug, Clone)]
 pub struct PageModel {
     pub id: Option<ID>,
-    pub text: Vec<TextModel>,
-    pub image: Vec<ImageModel>,
     pub start_index: i32,
     pub end_index: i32,
 }
 
 const PAGE_CREATE_STATEMENT: &'static str = r#"
 (CREATE ONLY page CONTENT {{
-    text: $texts,
-    image: $images,
     start_index: $start_index,
     end_index: $end_index
 }}).id
@@ -31,8 +27,6 @@ impl PageModel {
         let image_records = ImageModel::create_batch(client, &page_model.image).await?;
         let mut resp = client
             .query(PAGE_CREATE_STATEMENT)
-            .bind(("texts", text_records.clone()))
-            .bind(("images", image_records.clone()))
             .bind(page_model.clone())
             .await?;
         if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
