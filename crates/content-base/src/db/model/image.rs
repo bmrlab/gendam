@@ -1,4 +1,4 @@
-use super::ModelCreate;
+use super::{ModelCreate, ModelDelete};
 use crate::db::model::id::ID;
 use async_trait::async_trait;
 use educe::Educe;
@@ -40,6 +40,37 @@ where
             anyhow::bail!("Failed to insert image, no id returned");
         };
         Ok(thing)
+    }
+}
+
+const IMAGE_DELETE_STATEMENT: &'static str = r#"
+LET $v = (
+    SELECT
+        ->with->payload AS payload,
+        id
+    FROM ONLY $record
+);
+let $ids = array::flatten([$v.payload, $v.id]);
+DELETE $ids;
+"#;
+
+#[async_trait]
+impl<T> ModelDelete<T> for ImageModel
+where
+    T: surrealdb::Connection,
+{
+    async fn delete_cascade(
+        client: &surrealdb::Surreal<T>,
+        record: &surrealdb::sql::Thing,
+    ) -> anyhow::Result<()> {
+        let mut resp = client
+            .query(IMAGE_DELETE_STATEMENT)
+            .bind(("record", record.clone()))
+            .await?;
+        if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
+            anyhow::bail!("Failed to delete image, errors: {:?}", errors_map);
+        };
+        Ok(())
     }
 }
 

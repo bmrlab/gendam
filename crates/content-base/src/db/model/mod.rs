@@ -75,3 +75,14 @@ where
         results
     }
 }
+
+#[async_trait]
+pub trait ModelDelete<T>
+where
+    T: surrealdb::Connection,
+{
+    async fn delete_cascade(
+        client: &surrealdb::Surreal<T>,
+        record: &surrealdb::sql::Thing,
+    ) -> anyhow::Result<()>;
+}

@@ -1,4 +1,4 @@
-use super::{id::ID, ModelCreate, TextModel};
+use super::{id::ID, ModelCreate, ModelDelete, TextModel};
 use async_trait::async_trait;
 use educe::Educe;
 use serde::Serialize;
@@ -91,6 +91,39 @@ where
             .bind(("relation_outs", audio_frame_records.clone()))
             .await?;
         Ok(audio_record)
+    }
+}
+
+const AUDIO_DELETE_STATEMENT: &'static str = r#"
+LET $v = (
+    SELECT
+        ->contains->audio_frame AS audio_frames,
+        ->contains->audio_frame->contains->text AS texts,
+        ->with->payload AS payload,
+        id
+    FROM ONLY $record
+);
+let $ids = array::flatten([$v.texts, $v.audio_frames, $v.payload, $v.id]);
+DELETE $ids;
+"#;
+
+#[async_trait]
+impl<T> ModelDelete<T> for AudioModel
+where
+    T: surrealdb::Connection,
+{
+    async fn delete_cascade(
+        client: &surrealdb::Surreal<T>,
+        record: &surrealdb::sql::Thing,
+    ) -> anyhow::Result<()> {
+        let mut resp = client
+            .query(AUDIO_DELETE_STATEMENT)
+            .bind(("record", record.clone()))
+            .await?;
+        if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
+            anyhow::bail!("Failed to delete audio, errors: {:?}", errors_map);
+        };
+        Ok(())
     }
 }
 

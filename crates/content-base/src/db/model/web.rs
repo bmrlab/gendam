@@ -1,4 +1,6 @@
-use super::{id::ID, image::ImageModel, page::PageModel, text::TextModel, ModelCreate};
+use super::{
+    id::ID, image::ImageModel, page::PageModel, text::TextModel, ModelCreate, ModelDelete,
+};
 use async_trait::async_trait;
 use serde::Serialize;
 
@@ -34,6 +36,40 @@ where
             .bind(("relation_outs", page_records.clone()))
             .await?;
         Ok(web_page_record)
+    }
+}
+
+const WEB_PAGE_DELETE_STATEMENT: &'static str = r#"
+LET $v = (
+    SELECT
+        ->contains->page AS pages,
+        ->contains->page->contains->text AS texts,
+        ->contains->page->contains->image AS images,
+        ->with->payload AS payload,
+        id
+    FROM ONLY $record
+);
+let $ids = array::flatten([$v.images, $v.texts, $v.pages, $v.payload, $v.id]);
+DELETE $ids;
+"#;
+
+#[async_trait]
+impl<T> ModelDelete<T> for WebPageModel
+where
+    T: surrealdb::Connection,
+{
+    async fn delete_cascade(
+        client: &surrealdb::Surreal<T>,
+        record: &surrealdb::sql::Thing,
+    ) -> anyhow::Result<()> {
+        let mut resp = client
+            .query(WEB_PAGE_DELETE_STATEMENT)
+            .bind(("record", record.clone()))
+            .await?;
+        if let Err(errors_map) = crate::check_db_error_from_resp!(resp) {
+            anyhow::bail!("Failed to delete web page, errors: {:?}", errors_map);
+        };
+        Ok(())
     }
 }
 
