@@ -9,9 +9,16 @@ pnpm dev:prep
 ```
 
 会依次执行
+
 - `bash scripts/download-sidecar.sh` 下载 sidecars: qdrant, ffmpeg, ffprobe, whisper 等
+- `bash scripts/copy-sidecar-to-target.sh` 复制 tauri 下的 sidecar 和 resources 到 target/debug，供单独运行 api_server 用
 - `cargo prisma generate` 生成 prisma 的代码 crates/prisma/src/prisma.rs
-- `pnpm tauri build --debug` 仅用于复制 tauri 下的 sidecar 和 resources 到 target/debug，供单独运行 api_server 用
+
+模型下载需要单独执行，这个取决于 library 的模型配置，模型下载目录在 `apps/desktop/src-tauri/resources`
+
+```bash
+pnpm dev:model
+```
 
 ### 运行 tauri
 
@@ -28,8 +35,13 @@ pnpm dev:web
 ```
 
 ### 单独运行 rspc 服务
+
 ```bash
 pnpm dev:api-server
+
+# or
+cargo run -p api-server
+cargo run -p api-server --no-default-features --features remote-search # 使用 remote surrealdb 进行搜索，方便调试
 ```
 
 **单独运行 api_server 需要设置环境变量指定本地目录和资源目录, 比如**
@@ -82,7 +94,6 @@ cargo test -p api-server test_check_materialized_path_exists -- --nocapture
 
 使用 cargo test 进行测试，最好通过 `-p` 参数指定测试的 crate，如果要指定测试函数，可以加上函数名，比如 `test_check_materialized_path_exists`，最后使用 `-- --nocapture` 参数可以显示 `println!` 的输出
 
-
 ## 内容处理的流程
 
 1. 初始导入：
@@ -92,10 +103,12 @@ cargo test -p api-server test_check_materialized_path_exists -- --nocapture
 2. 任务生成：
 
 在 `upsert` 方法中，系统会：
+
 - 创建或更新 `TaskRecord`（在 `src/record.rs` 中定义）
 - 调用 `ContentBase::tasks` 方法（在 `src/core.rs` 中）来生成适合视频的任务列表
 
 对于视频，通常会生成以下任务：
+
 - `VideoFrameTask`：提取视频帧
 - `VideoTransChunkTask`：生成视频转录并分块
 - `VideoTransChunkSumTask`：对转录块进行摘要
@@ -113,6 +126,7 @@ cargo test -p api-server test_check_materialized_path_exists -- --nocapture
 4. AI 模型调用：
 
 在执行这些任务时，系统会调用各种 AI 模型：
+
 - 使用音频转录模型（如 Whisper）生成转录
 - 使用语言模型（如 GPT）生成摘要
 - 使用文本嵌入模型生成向量
@@ -138,7 +152,6 @@ cargo test -p api-server test_check_materialized_path_exists -- --nocapture
 9. 完成：
 
 所有任务完成后，`upsert` 方法返回，视频导入过程结束。
-
 
 ## 日志
 

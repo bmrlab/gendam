@@ -5,7 +5,9 @@ edition = { workspace = true }
 
 [features]
 embedded-db = ["surrealdb/kv-rocksdb"]
+remote-db = ["surrealdb/protocol-ws"]
 rspc = ["dep:specta"]
+default = []
 
 [dependencies]
 tokio = { workspace = true, features = ["full"] }
@@ -29,7 +31,9 @@ specta = { workspace = true, optional = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
 regex = { workspace = true }
-surrealdb = { version = "=2.0.2" }
+surrealdb = { version = "=2.0.2", default-features = false, features = [
+    "rustls",
+] }
 futures = { workspace = true }
 futures-util = "0.3.30"
 itertools = "0.13.0"

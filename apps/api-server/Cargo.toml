@@ -11,11 +11,18 @@ path = "src/lib.rs"
 name = "api-server"
 path = "src/bin/main.rs"
 
+[features]
+embedded-search = [
+    "content-base/embedded-db",
+    "content-library/embedded-search",
+]
+remote-search = ["content-base/remote-db", "content-library/remote-search"]
+default = ["embedded-search"]
+
 [dependencies]
 prisma-lib = { path = "../../crates/prisma" }
-content-library = { path = "../../crates/content-library" }
-content-base = { path = "../../crates/content-base", features = [
-    "embedded-db",
+content-library = { path = "../../crates/content-library", default-features = false }
+content-base = { path = "../../crates/content-base", default-features = false, features = [
     "rspc",
 ] }
 content-metadata = { path = "../../crates/content-metadata", features = [

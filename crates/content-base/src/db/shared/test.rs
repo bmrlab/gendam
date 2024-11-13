@@ -24,7 +24,8 @@ pub async fn setup(path: Option<&Path>) -> DB {
         .await
         .unwrap();
 
-    #[cfg(not(feature = "embedded-db"))]
+    // #[cfg(not(feature = "embedded-db"))]
+    #[cfg(feature = "remote-db")]
     let db = DB::new().await.unwrap();
 
     db
