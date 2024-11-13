@@ -1,4 +1,4 @@
-use crate::db::model::{id::ID, payload::PayloadModel, SelectResultModel};
+use crate::db::model::id::ID;
 
 pub struct TextToken(pub Vec<String>);
 
@@ -58,20 +58,4 @@ pub struct FullTextSearchResult {
     /// 分词，分数
     /// 如果是 with highlight，则 score 只有一个元素
     pub score: Vec<(String, f32)>,
-}
-
-#[derive(Debug, Clone)]
-pub struct HitResult {
-    pub origin_id: ID,
-    pub score: f32,
-    pub hit_id: Vec<ID>,
-    pub payload: PayloadModel,
-    pub search_type: SearchType,
-    pub result: SelectResultModel,
-}
-
-impl HitResult {
-    pub fn hit_text(&self, range: Option<(usize, usize)>) -> Option<String> {
-        self.result.hit_text(range)
-    }
 }
