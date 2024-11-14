@@ -2,7 +2,6 @@ use super::model::id::ID;
 use crate::concat_arrays;
 use crate::query::model::{FullTextSearchResult, SearchType, VectorSearchResult};
 use std::collections::{HashMap, HashSet};
-
 pub struct Rank;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -19,6 +18,16 @@ pub enum ScoreType {
     Maximum,
 }
 
+fn calculate_score(score: Vec<f32>, score_type: &ScoreType) -> f32 {
+    match score_type {
+        ScoreType::Average => score.iter().sum::<f32>() / score.len() as f32,
+        ScoreType::Maximum => score
+            .into_iter()
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .unwrap_or(0.0),
+    }
+}
+
 impl Rank {
     /// 按照分数之和排序
     /// 越大越靠前
@@ -30,11 +39,11 @@ impl Rank {
         let drain = std::cmp::min(drain.unwrap_or(data.len()), data.len());
         let mut res = data;
         res.sort_by(|a, b| {
-            let a_score = Self::calculate_score(
+            let a_score = calculate_score(
                 a.score.iter().map(|(_, score)| *score).collect(),
                 &score_type,
             );
-            let b_score = Self::calculate_score(
+            let b_score = calculate_score(
                 b.score.iter().map(|(_, score)| *score).collect(),
                 &score_type,
             );
@@ -49,17 +58,18 @@ impl Rank {
                     .as_str(),
                 )
         });
-        Ok(res
+        let rank_results = res
             .drain(..drain)
             .map(|x| RankResult {
                 id: x.id.clone(),
-                score: Self::calculate_score(
+                score: calculate_score(
                     x.score.iter().map(|(_, score)| *score).collect(),
                     &score_type,
                 ),
                 search_type: SearchType::FullText,
             })
-            .collect())
+            .collect();
+        Ok(rank_results)
     }
 
     /// 按照 distance 值排序
@@ -121,16 +131,6 @@ impl Rank {
 
         Ok(rank_result.drain(..drain).collect())
     }
-
-    fn calculate_score(score: Vec<f32>, score_type: &ScoreType) -> f32 {
-        match score_type {
-            ScoreType::Average => score.iter().sum::<f32>() / score.len() as f32,
-            ScoreType::Maximum => score
-                .into_iter()
-                .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
-                .unwrap_or(0.0),
-        }
-    }
 }
 
 trait Rankable {
@@ -151,7 +151,7 @@ impl Rank {
         for ranking in rankings {
             for (rank, item) in ranking.into_iter().enumerate() {
                 let doc_id = item.id();
-                let score = rrf_scores.entry(doc_id).or_insert(0.0);
+                let score = rrf_scores.entry(doc_id.clone()).or_insert(0.0);
                 *score += 1.0 / (k as f64 + rank as f64 + 1.0);
             }
         }

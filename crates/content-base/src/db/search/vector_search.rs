@@ -14,7 +14,7 @@ const VECTOR_QUERY_LIMIT: usize = 100;
 
 // TODO: vision 和 text 向量现在采用了不同的命中范围，这个要继续调整
 const VISION_VECTOR_RANGE: &str = "<|2,20|>";
-const TEXT_VECTOR_RANGE: &str = "<|10,40|>";
+const TEXT_VECTOR_RANGE: &str = "<|2,20|>";
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct VectorSearchEntity {
