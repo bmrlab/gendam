@@ -116,30 +116,43 @@ impl Library {
     }
 }
 
+fn _dirs(
+    local_data_root: impl AsRef<Path>,
+    library_id: &str,
+) -> (PathBuf, PathBuf, PathBuf, PathBuf, PathBuf) {
+    let library_dir = local_data_root.as_ref().join("libraries").join(&library_id);
+    let db_dir = library_dir.join("databases");
+    let surrealdb_dir = library_dir.join("surrealdb");
+    let artifacts_dir = library_dir.join("artifacts");
+    let files_dir = library_dir.join("files");
+    std::fs::create_dir_all(&db_dir).unwrap();
+    std::fs::create_dir_all(&surrealdb_dir).unwrap();
+    std::fs::create_dir_all(&artifacts_dir).unwrap();
+    std::fs::create_dir_all(&files_dir).unwrap();
+    (library_dir, db_dir, surrealdb_dir, artifacts_dir, files_dir)
+}
+
 pub async fn load_library(
     local_data_root: impl AsRef<Path>,
     library_id: &str,
 ) -> Result<Library, ()> {
-    let library_dir = local_data_root.as_ref().join("libraries").join(library_id);
-    let db_dir = library_dir.join("databases");
-    let artifacts_dir = library_dir.join("artifacts");
-    let files_dir = library_dir.join("files");
+    let (library_dir, db_dir, surrealdb_dir, artifacts_dir, files_dir) =
+        _dirs(local_data_root, library_id);
 
-    let client = database::migrate_library(&db_dir).await?;
+    {
+        let dir = library_dir.to_str().ok_or(())?.to_string();
+        global_variable::set_global_current_library!(library_id.to_string(), dir);
+    }
 
-    let prisma_client = Arc::new(client);
-
-    let dir = library_dir.to_str().ok_or(())?.to_string();
-
-    global_variable::set_global_current_library!(library_id.to_string(), dir);
+    let prisma_client = {
+        let client = database::migrate_library(&db_dir).await?;
+        Arc::new(client)
+    };
 
     #[cfg(feature = "embedded-search")]
-    let surrealdb_client = {
-        let surreal_dir = library_dir.join("surreal");
-        DB::new(surreal_dir).await.map_err(|e| {
-            tracing::error!("Failed to create surrealdb client: {}", e);
-        })?
-    };
+    let surrealdb_client = DB::new(surrealdb_dir).await.map_err(|e| {
+        tracing::error!("Failed to create surrealdb client: {}", e);
+    })?;
 
     #[cfg(feature = "remote-search")]
     let surrealdb_client = DB::new().await.map_err(|e| {
@@ -160,13 +173,7 @@ pub async fn load_library(
 
 pub async fn create_library(local_data_root: impl AsRef<Path>) -> PathBuf {
     let library_id = uuid::Uuid::new_v4().to_string();
-    let library_dir = local_data_root.as_ref().join("libraries").join(&library_id);
-    let db_dir = library_dir.join("databases");
-    let artifacts_dir = library_dir.join("artifacts");
-    let files_dir = library_dir.join("files");
-    std::fs::create_dir_all(&db_dir).unwrap();
-    std::fs::create_dir_all(&artifacts_dir).unwrap();
-    std::fs::create_dir_all(&files_dir).unwrap();
+    let (library_dir, _, _, _, _) = _dirs(local_data_root, &library_id);
     library_dir
 }
 
