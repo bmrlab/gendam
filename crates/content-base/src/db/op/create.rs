@@ -10,7 +10,7 @@ use crate::{
             payload::PayloadModel,
             text::TextModel,
             video::{ImageFrameModel, VideoModel},
-            web::WebPageModel,
+            web_page::WebPageModel,
             ModelCreate,
         },
         DB,

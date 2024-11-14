@@ -6,7 +6,7 @@ use crate::db::{
         page::PageModel,
         text::TextModel,
         video::{ImageFrameModel, VideoModel},
-        web::WebPageModel,
+        web_page::WebPageModel,
     },
     DB,
 };

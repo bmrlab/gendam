@@ -29,8 +29,8 @@ impl ContentBase {
         Ok(SearchModel::Text(TextSearchModel {
             data: payload.query.clone(),
             tokens: TextToken(self.tokenizer(&payload.query).await?),
-            text_vector: text_model_embedding,
-            vision_vector: clip_text_embedding,
+            text_embedding: text_model_embedding,
+            vision_embedding: clip_text_embedding,
         }))
     }
 

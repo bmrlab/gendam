@@ -77,10 +77,10 @@ impl DB {
     /// if not vision_vector, please input text_vector
     pub async fn vector_search(
         &self,
-        text_vector: Vec<f32>,
-        vision_vector: Vec<f32>,
+        text_embedding: Vec<f32>,
+        vision_embedding: Vec<f32>,
     ) -> anyhow::Result<Vec<VectorSearchResult>> {
-        if text_vector.is_empty() || vision_vector.is_empty() {
+        if text_embedding.is_empty() || vision_embedding.is_empty() {
             anyhow::bail!("data is empty in vector search");
         }
 
@@ -88,8 +88,8 @@ impl DB {
         let params = vector_search_columns();
         let futures = params.into_iter().map(|(table, column, vector_type)| {
             let (vector_value, range) = match vector_type {
-                VectorSearchType::Text => (text_vector.clone(), TEXT_VECTOR_RANGE),
-                VectorSearchType::Vision => (vision_vector.clone(), VISION_VECTOR_RANGE),
+                VectorSearchType::Text => (text_embedding.clone(), TEXT_VECTOR_RANGE),
+                VectorSearchType::Vision => (vision_embedding.clone(), VISION_VECTOR_RANGE),
             };
             let query_statement = vector_query_statement(table, column, range);
             async move {

@@ -44,7 +44,7 @@ impl DB {
                 tracing::debug!("hit words {hit_words:?}");
 
                 let vector_results = self
-                    .vector_search(text.text_vector, text.vision_vector)
+                    .vector_search(text.text_embedding, text.vision_embedding)
                     .await?;
                 tracing::debug!("{} found in vector search", vector_results.len());
 
@@ -246,7 +246,7 @@ const PAYLOAD_LOOKUP_SQL: &'static str = r#"
     (IF <-contains {
         {
             id: id,
-            reference_text: prompt,
+            reference_text: caption,
             asset_id: <-contains[0].in<-contains[0].in,
             segment: {
                 table: record::tb(<-contains[0].in),
@@ -257,7 +257,7 @@ const PAYLOAD_LOOKUP_SQL: &'static str = r#"
     } ELSE {
         {
             id: id,
-            reference_text: prompt,
+            reference_text: caption,
             asset_id: id,
             frame: None,
             file_identifier: ->with[0].out.file_identifier
@@ -269,7 +269,7 @@ WHERE id in $ids).A;
     (IF <-contains {
         {
             id: id,
-            reference_text: data,
+            reference_text: content,
             asset_id: <-contains[0].in<-contains[0].in,
             segment: {
                 table: record::tb(<-contains[0].in),
@@ -280,7 +280,7 @@ WHERE id in $ids).A;
     } ELSE {
         {
             id: id,
-            reference_text: data,
+            reference_text: content,
             asset_id: id,
             frame: None,
             file_identifier: ->with[0].out.file_identifier

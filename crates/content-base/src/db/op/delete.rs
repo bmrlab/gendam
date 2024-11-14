@@ -2,7 +2,7 @@ use crate::check_db_error_from_resp;
 use crate::db::{
     model::{
         audio::AudioModel, document::DocumentModel, image::ImageModel, video::VideoModel,
-        web::WebPageModel, ModelDelete,
+        web_page::WebPageModel, ModelDelete,
     },
     DB,
 };

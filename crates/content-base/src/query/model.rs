@@ -6,18 +6,18 @@ pub struct TextSearchModel {
     pub data: String,
     pub tokens: TextToken,
     /// 用于查询文本向量
-    pub text_vector: Vec<f32>,
+    pub text_embedding: Vec<f32>,
     /// 用于查询图像向量
-    pub vision_vector: Vec<f32>,
+    pub vision_embedding: Vec<f32>,
 }
 
 pub struct ImageSearchModel {
     pub prompt: String,
     pub prompt_search_model: TextSearchModel,
     /// 用于查询文本向量
-    pub text_vector: Vec<f32>,
+    pub text_embedding: Vec<f32>,
     /// 用于查询图像向量
-    pub vision_vector: Vec<f32>,
+    pub vision_embedding: Vec<f32>,
 }
 
 pub enum SearchModel {

@@ -6,7 +6,7 @@ pub mod page;
 pub mod payload;
 pub mod text;
 pub mod video;
-pub mod web;
+pub mod web_page;
 use self::{
     audio::{AudioFrameModel, AudioModel},
     document::DocumentModel,
@@ -15,7 +15,7 @@ use self::{
     payload::PayloadModel,
     text::TextModel,
     video::VideoModel,
-    web::WebPageModel,
+    web_page::WebPageModel,
 };
 use async_trait::async_trait;
 use serde::Serialize;

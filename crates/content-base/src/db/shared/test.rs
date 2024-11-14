@@ -5,7 +5,7 @@ use crate::db::model::{
     page::PageModel,
     text::TextModel,
     video::{ImageFrameModel, VideoModel},
-    web::WebPageModel,
+    web_page::WebPageModel,
 };
 use crate::db::DB;
 use fake::faker::internet::en::Username;
