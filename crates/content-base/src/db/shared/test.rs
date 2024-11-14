@@ -50,19 +50,19 @@ pub fn fake_text_model() -> TextModel {
     let vector = gen_text_vector();
     TextModel {
         id: None,
-        data: data.clone(),
-        vector: vector.clone(),
-        en_data: data,
-        en_vector: vector,
+        content: data.clone(),
+        embedding: vector.clone(),
+        // en_content: data,
+        // en_embedding: vector,
     }
 }
 
 pub fn fake_image_model() -> ImageModel {
     ImageModel {
         id: None,
-        prompt: Sentence(5..10).fake(),
-        vector: gen_image_vector(),
-        prompt_vector: gen_text_vector(),
+        caption: Sentence(5..10).fake(),
+        embedding: gen_image_vector(),
+        caption_embedding: gen_text_vector(),
     }
 }
 
@@ -146,16 +146,11 @@ pub fn fake_file_identifier() -> String {
 pub fn fake_upsert_text_clause() -> String {
     let fake_data = (4..8).fake::<String>();
     format!(
-        "data = '{}', vector = [{}], en_data = '{}', en_vector = [{}]",
+        "content = '{}', embedding = [{}]", // , en_content = '{}', en_embedding = [{}]",
         fake_data,
         gen_text_vector()
             .into_iter()
             .map(|v| v.to_string())
             .join(","),
-        fake_data,
-        gen_text_vector()
-            .into_iter()
-            .map(|v| v.to_string())
-            .join(",")
     )
 }

@@ -8,18 +8,20 @@ use serde::Serialize;
 #[educe(Debug)]
 pub struct ImageModel {
     pub id: Option<ID>,
-    pub prompt: String,
+
     #[educe(Debug(ignore))]
-    pub vector: Vec<f32>,
+    pub embedding: Vec<f32>,
+
+    pub caption: String,
     #[educe(Debug(ignore))]
-    pub prompt_vector: Vec<f32>,
+    pub caption_embedding: Vec<f32>,
 }
 
 const CREATE_STATEMENT: &'static str = r#"
 (CREATE ONLY image CONTENT {
-    prompt: $prompt,
-    vector: $vector,
-    prompt_vector: $prompt_vector
+    embedding: $embedding,
+    caption: $caption,
+    caption_embedding: $caption_embedding
 }).id
 "#;
 
@@ -79,15 +81,15 @@ impl ImageModel {
         "image"
     }
 
-    pub fn text_vector_columns() -> Vec<&'static str> {
-        vec!["prompt_vector"]
+    pub fn text_embedding_columns() -> Vec<&'static str> {
+        vec!["caption_embedding"]
     }
 
-    pub fn vision_vector_columns() -> Vec<&'static str> {
-        vec!["vector"]
+    pub fn vision_embedding_columns() -> Vec<&'static str> {
+        vec!["embedding"]
     }
 
     pub fn full_text_columns() -> Vec<&'static str> {
-        vec!["prompt"]
+        vec!["caption"]
     }
 }

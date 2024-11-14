@@ -25,10 +25,10 @@ mod tests {
                 None,
                 TextModel {
                     id: None,
-                    data: "data".to_string(),
-                    vector: gen_vector(1024),
-                    en_data: "en_data".to_string(),
-                    en_vector: gen_vector(1024),
+                    content: "测试".to_string(),
+                    embedding: gen_vector(1024),
+                    // en_content: "test".to_string(),
+                    // en_embedding: gen_vector(1024),
                 },
             )
             .await
@@ -155,15 +155,11 @@ mod tests {
         db.upsert(
             &ID::from("text:11232131"),
             format!(
-                "data = 't-1', vector = [{}], en_data = 't-1', en_vector = [{}]",
+                "content = 't-1', embedding = [{}]", // , en_content = 't-1', en_embedding = [{}]",
                 gen_vector(1024)
                     .into_iter()
                     .map(|v| v.to_string())
                     .join(","),
-                gen_vector(1024)
-                    .into_iter()
-                    .map(|v| v.to_string())
-                    .join(",")
             )
             .as_str(),
         )

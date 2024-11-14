@@ -179,10 +179,10 @@ macro_rules! chunk_to_page {
                 let embedding = $task_type.embed_content($file_identifier, $ctx, i).await?;
                 let texts = vec![TextModel {
                     id: None,
-                    data: chunk.clone(),
-                    vector: embedding.clone(),
-                    en_data: "".to_string(),
-                    en_vector: vec![],
+                    content: chunk.clone(),
+                    embedding: embedding.clone(),
+                    // en_content: "".to_string(),
+                    // en_embedding: vec![],
                 }];
                 let images: Vec<ImageModel> = vec![];
                 let page = PageModel {
@@ -294,11 +294,10 @@ async fn upsert_audio_index_to_surrealdb(
                 .await?;
             let texts = vec![TextModel {
                 id: None,
-                data: chunk.text.clone(),
-                vector: embedding.clone(),
-                // TODO: 是否需要英文
-                en_data: "".to_string(),
-                en_vector: vec![],
+                content: chunk.text.clone(),
+                embedding: embedding.clone(),
+                // en_content: "".to_string(),
+                // en_embedding: vec![],
             }];
             let audio_frame = AudioFrameModel {
                 id: None,
@@ -350,11 +349,10 @@ async fn upsert_video_index_to_surrealdb(
                 };
                 let texts = vec![TextModel {
                     id: None,
-                    data: chunk.text.clone(),
-                    vector: embedding.clone(),
-                    // TODO: 是否需要英文
-                    en_data: "".to_string(),
-                    en_vector: vec![],
+                    content: chunk.text.clone(),
+                    embedding: embedding.clone(),
+                    // en_content: "".to_string(),
+                    // en_embedding: vec![],
                 }];
                 Result::<(AudioFrameModel, Vec<TextModel>), anyhow::Error>::Ok((audio_frame, texts))
             })
@@ -400,9 +398,9 @@ async fn upsert_video_index_to_surrealdb(
                 };
                 let images = vec![ImageModel {
                     id: None,
-                    prompt: description,
-                    vector: embedding,
-                    prompt_vector: desc_embedding,
+                    caption: description,
+                    embedding: embedding,
+                    caption_embedding: desc_embedding,
                 }];
                 Result::<(ImageFrameModel, Vec<ImageModel>), anyhow::Error>::Ok((
                     image_frame,
@@ -442,52 +440,11 @@ async fn upsert_image_index_to_surrealdb(
             Some(file_identifier.to_string()),
             ImageModel {
                 id: None,
-                prompt: description,
-                vector: embedding,
-                prompt_vector: desc_embedding,
+                caption: description,
+                embedding: embedding,
+                caption_embedding: desc_embedding,
             },
         )
         .await?;
     Ok(())
 }
-
-// #[tracing::instrument(skip_all)]
-// async fn transcript_sum_embed_post_process<T, TFn>(
-//     ctx: &ContentBaseCtx,
-//     qdrant: Arc<Qdrant>,
-//     collection_name: &str,
-//     file_info: &FileInfo,
-//     chunk_task: impl AudioTranscriptChunkTrait,
-//     embed_task: impl AudioTransChunkSumEmbedTrait + ContentTask,
-//     fn_search_metadata: TFn,
-// ) -> anyhow::Result<()>
-// where
-//     T: Into<SearchMetadata>,
-//     TFn: Fn(i64, i64) -> T,
-// {
-//     let chunks = chunk_task.chunk_content(file_info, ctx).await?;
-//
-//     for chunk in chunks.iter() {
-//         let metadata = fn_search_metadata(chunk.start_timestamp, chunk.end_timestamp);
-//         let payload = SearchPayload {
-//             file_identifier: file_info.file_identifier.clone(),
-//             task_type: embed_task.clone().into(),
-//             metadata: metadata.into(),
-//         };
-//         let embedding = embed_task
-//             .embed_content(file_info, ctx, chunk.start_timestamp, chunk.end_timestamp)
-//             .await?;
-//
-//         let point = PointStruct::new(payload.uuid().to_string(), embedding, payload);
-//
-//         // TODO 这里其实可以直接用 upsert_points_chunked，但是似乎有点问题，后续再优化下
-//         if let Err(e) = qdrant
-//             .upsert_points(UpsertPointsBuilder::new(collection_name, vec![point]).wait(true))
-//             .await
-//         {
-//             warn!("failed to upsert points: {e:?}");
-//         }
-//     }
-//
-//     Ok(())
-// }

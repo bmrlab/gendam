@@ -8,21 +8,19 @@ use serde::Serialize;
 #[educe(Debug)]
 pub struct TextModel {
     pub id: Option<ID>,
-    pub data: String,
+    pub content: String,
     #[educe(Debug(ignore))]
-    pub vector: Vec<f32>,
-    #[educe(Debug(ignore))]
-    pub en_data: String,
-    #[educe(Debug(ignore))]
-    pub en_vector: Vec<f32>,
+    pub embedding: Vec<f32>,
+    // #[educe(Debug(ignore))]
+    // pub en_content: String,
+    // #[educe(Debug(ignore))]
+    // pub en_embedding: Vec<f32>,
 }
 
 const CREATE_STATEMENT: &'static str = r#"
 (CREATE ONLY text CONTENT {
-    data: $data,
-    vector: $vector,
-    en_data: $en_data,
-    en_vector: $en_vector
+    content: $content,
+    embedding: $embedding
 }).id
 "#;
 
@@ -51,11 +49,11 @@ impl TextModel {
         "text"
     }
 
-    pub fn text_vector_columns() -> Vec<&'static str> {
-        vec!["vector", "en_vector"]
+    pub fn text_embedding_columns() -> Vec<&'static str> {
+        vec!["embedding"] // , "en_embedding"]
     }
 
     pub fn full_text_columns() -> Vec<&'static str> {
-        vec!["data", "en_data"]
+        vec!["content"] // , "en_content"]
     }
 }

@@ -45,17 +45,17 @@ fn vector_search_columns() -> Vec<(&'static str, &'static str, &'static VectorSe
     let params = vec![
         (
             ImageModel::table(),
-            ImageModel::text_vector_columns(),
+            ImageModel::text_embedding_columns(),
             &VectorSearchType::Text,
         ), // 向量搜索 Image 的 prompt 文本特征
         (
             TextModel::table(),
-            TextModel::text_vector_columns(),
+            TextModel::text_embedding_columns(),
             &VectorSearchType::Text,
         ), // 向量搜索 Text 的文本特征
         (
             ImageModel::table(),
-            ImageModel::vision_vector_columns(),
+            ImageModel::vision_embedding_columns(),
             &VectorSearchType::Vision,
         ), // 向量搜索 Image 的图像特征
     ]

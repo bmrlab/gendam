@@ -10,7 +10,7 @@ pub struct WebPageModel {
 }
 
 const WEB_PAGE_CREATE_STATEMENT: &'static str = r#"
-(CREATE ONLY web CONTENT {{}}).id
+(CREATE ONLY web_page CONTENT {{}}).id
 "#;
 
 #[async_trait]
@@ -75,6 +75,6 @@ where
 
 impl WebPageModel {
     pub fn table() -> &'static str {
-        "web"
+        "web_page"
     }
 }

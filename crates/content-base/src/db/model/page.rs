@@ -38,7 +38,7 @@ where
         let Some(page_record) = resp.take::<Option<surrealdb::sql::Thing>>(0)? else {
             anyhow::bail!("Failed to insert video, no id returned");
         };
-        let all_frames = Vec::new()
+        let all_records = Vec::new()
             .into_iter()
             .chain(text_records.into_iter())
             .chain(image_records.into_iter())
@@ -46,7 +46,7 @@ where
         client
             .query("RELATE $relation_in -> contains -> $relation_outs;")
             .bind(("relation_in", page_record.clone()))
-            .bind(("relation_outs", all_frames))
+            .bind(("relation_outs", all_records))
             .await?;
         Ok(page_record)
     }

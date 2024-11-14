@@ -9,20 +9,17 @@ DEFINE FIELD IF NOT EXISTS url ON TABLE payload TYPE option<string>;
 -- 创建 "text" 表
 DEFINE TABLE IF NOT EXISTS text;
 -- 定义 "text" 表的字段
-DEFINE FIELD IF NOT EXISTS data ON TABLE text TYPE string;
-DEFINE FIELD IF NOT EXISTS vector ON TABLE text TYPE array;
--- 翻译成英文
-DEFINE FIELD IF NOT EXISTS en_data ON TABLE text TYPE string;
-DEFINE FIELD IF NOT EXISTS en_vector ON TABLE text TYPE array;
+DEFINE FIELD IF NOT EXISTS content ON TABLE text TYPE string;
+DEFINE FIELD IF NOT EXISTS embedding ON TABLE text TYPE array;
 
 
 -- 创建 "image" 表
 DEFINE TABLE IF NOT EXISTS image;
 -- 定义 "image" 表的字段
 -- image vector
-DEFINE FIELD IF NOT EXISTS vector ON TABLE image TYPE array;
-DEFINE FIELD IF NOT EXISTS prompt ON TABLE image TYPE string;
-DEFINE FIELD IF NOT EXISTS prompt_vector ON TABLE image TYPE array;
+DEFINE FIELD IF NOT EXISTS embedding ON TABLE image TYPE array;
+DEFINE FIELD IF NOT EXISTS caption ON TABLE image TYPE string;
+DEFINE FIELD IF NOT EXISTS caption_embedding ON TABLE image TYPE array;
 
 
 -- 创建 "image frame" 表
@@ -58,9 +55,9 @@ DEFINE FIELD IF NOT EXISTS start_index ON TABLE page TYPE number;
 DEFINE FIELD IF NOT EXISTS end_index ON TABLE page TYPE number;
 
 
--- 创建 "web" 表
-DEFINE TABLE IF NOT EXISTS web;
--- 定义 "web" 表的字段
+-- 创建 "web_page" 表
+DEFINE TABLE IF NOT EXISTS web_page;
+-- 定义 "web_page" 表的字段
 -- 无，只有 relate 和 with 关系
 
 
@@ -71,9 +68,9 @@ DEFINE TABLE IF NOT EXISTS document;
 
 
 -- 定义向量索引
-DEFINE INDEX IF NOT EXISTS idx_text_vector_hnsw_d1024 ON text FIELDS vector HNSW DIMENSION 1024 DIST EUCLIDEAN;
-DEFINE INDEX IF NOT EXISTS idx_image_prompt_vector_hnsw_d1024 ON image FIELDS prompt_vector HNSW DIMENSION 1024 DIST EUCLIDEAN;
-DEFINE INDEX IF NOT EXISTS idx_image_vector_hnsw_d512 ON image FIELDS vector HNSW DIMENSION 512 DIST COSINE;
+DEFINE INDEX IF NOT EXISTS idx_text_embedding_hnsw_d1024 ON text FIELDS embedding HNSW DIMENSION 1024 DIST EUCLIDEAN;
+DEFINE INDEX IF NOT EXISTS idx_image_embedding_hnsw_d512 ON image FIELDS embedding HNSW DIMENSION 512 DIST COSINE;
+DEFINE INDEX IF NOT EXISTS idx_image_caption_embedding_hnsw_d1024 ON image FIELDS caption_embedding HNSW DIMENSION 1024 DIST EUCLIDEAN;
 
 
 -- 定义分词器
@@ -85,7 +82,6 @@ DEFINE INDEX IF NOT EXISTS idx_image_vector_hnsw_d512 ON image FIELDS vector HNS
 DEFINE ANALYZER IF NOT EXISTS mixed_analyzer TOKENIZERS blank, class, punct FILTERS lowercase, ascii, snowball(english);
 
 -- 定义索引
-DEFINE INDEX IF NOT EXISTS mixed_index_text_data ON text FIELDS data SEARCH ANALYZER mixed_analyzer BM25 HIGHLIGHTS;
-DEFINE INDEX IF NOT EXISTS mixed_index_text_en_data ON text FIELDS en_data SEARCH ANALYZER mixed_analyzer BM25 HIGHLIGHTS;
-DEFINE INDEX IF NOT EXISTS mixed_index_image_prompt ON image FIELDS prompt SEARCH ANALYZER mixed_analyzer BM25 HIGHLIGHTS;
+DEFINE INDEX IF NOT EXISTS mixed_index_text_content ON text FIELDS content SEARCH ANALYZER mixed_analyzer BM25 HIGHLIGHTS;
+DEFINE INDEX IF NOT EXISTS mixed_index_image_caption ON image FIELDS caption SEARCH ANALYZER mixed_analyzer BM25 HIGHLIGHTS;
 "#;
