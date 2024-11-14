@@ -82,6 +82,6 @@ DEFINE INDEX IF NOT EXISTS idx_image_caption_embedding_hnsw_d1024 ON image FIELD
 DEFINE ANALYZER IF NOT EXISTS mixed_analyzer TOKENIZERS blank, class, punct FILTERS lowercase, ascii, snowball(english);
 
 -- 定义索引
-DEFINE INDEX IF NOT EXISTS mixed_index_text_content ON text FIELDS content SEARCH ANALYZER mixed_analyzer BM25 HIGHLIGHTS;
-DEFINE INDEX IF NOT EXISTS mixed_index_image_caption ON image FIELDS caption SEARCH ANALYZER mixed_analyzer BM25 HIGHLIGHTS;
+DEFINE INDEX IF NOT EXISTS mixed_index_text_content ON text FIELDS content SEARCH ANALYZER mixed_analyzer BM25(1.2, 0.75) HIGHLIGHTS;
+DEFINE INDEX IF NOT EXISTS mixed_index_image_caption ON image FIELDS caption SEARCH ANALYZER mixed_analyzer BM25(1.2, 0.75) HIGHLIGHTS;
 "#;

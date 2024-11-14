@@ -30,8 +30,14 @@ impl Rank {
         let drain = std::cmp::min(drain.unwrap_or(data.len()), data.len());
         let mut res = data;
         res.sort_by(|a, b| {
-            let a_score = Self::calculate_score(a.score.iter().map(|x| x.1).collect(), &score_type);
-            let b_score = Self::calculate_score(b.score.iter().map(|x| x.1).collect(), &score_type);
+            let a_score = Self::calculate_score(
+                a.score.iter().map(|(_, score)| *score).collect(),
+                &score_type,
+            );
+            let b_score = Self::calculate_score(
+                b.score.iter().map(|(_, score)| *score).collect(),
+                &score_type,
+            );
             b_score
                 .partial_cmp(&a_score)
                 .ok_or(std::cmp::Ordering::Equal)
@@ -47,7 +53,10 @@ impl Rank {
             .drain(..drain)
             .map(|x| RankResult {
                 id: x.id.clone(),
-                score: Self::calculate_score(x.score.iter().map(|x| x.1).collect(), &score_type),
+                score: Self::calculate_score(
+                    x.score.iter().map(|(_, score)| *score).collect(),
+                    &score_type,
+                ),
                 search_type: SearchType::FullText,
             })
             .collect())
