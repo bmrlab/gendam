@@ -42,7 +42,7 @@ impl ContentBase {
             file_full_path_on_disk: PathBuf::new(), // this filed is not used in delete
         };
 
-        let tasks = Self::tasks(task_record.metadata());
+        let tasks = Self::get_content_processing_tasks(task_record.metadata());
         for (task, _) in tasks {
             delete_task(&file_info, &task, self.ctx()).await;
         }

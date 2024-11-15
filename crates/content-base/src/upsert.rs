@@ -100,18 +100,19 @@ impl ContentBase {
             file_full_path_on_disk: payload.file_full_path_on_disk.clone(),
         };
 
-        let tasks = Self::tasks(&payload.metadata);
-
-        tokio::spawn(async move {
-            for (task, priority) in tasks {
-                run_task(
-                    &task_pool,
-                    &file_info,
-                    task,
-                    Some(priority),
-                    Some(inner_tx.clone()),
-                )
-                .await;
+        tokio::spawn({
+            let tasks = Self::get_content_processing_tasks(&payload.metadata);
+            async move {
+                for (task, priority) in tasks {
+                    run_task(
+                        &task_pool,
+                        &file_info,
+                        task,
+                        Some(priority),
+                        Some(inner_tx.clone()),
+                    )
+                    .await;
+                }
             }
         });
 
@@ -426,10 +427,10 @@ async fn upsert_image_index_to_surrealdb(
     db: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     // 不用 task_type.desc_embed_content，用 ImageDescEmbedTask 创建个空实例，统一写法
-    let desc_embedding = ImageDescEmbedTask
+    let caption_embedding = ImageDescEmbedTask
         .desc_embed_content(file_identifier, ctx)
         .await?;
-    let description = ImageDescriptionTask
+    let caption = ImageDescriptionTask
         .description_content(file_identifier, ctx)
         .await?;
     let embedding = ImageEmbeddingTask
@@ -440,9 +441,9 @@ async fn upsert_image_index_to_surrealdb(
             Some(file_identifier.to_string()),
             ImageModel {
                 id: None,
-                caption: description,
-                embedding: embedding,
-                caption_embedding: desc_embedding,
+                caption,
+                embedding,
+                caption_embedding,
             },
         )
         .await?;

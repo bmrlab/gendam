@@ -36,7 +36,10 @@ impl ContentBase {
         &self.ctx
     }
 
-    pub fn tasks(metadata: &ContentMetadata) -> Vec<(ContentTaskType, TaskPriority)> {
+    /// 列出每种类型的内容处理需要执行的所有任务，因为有任务依赖关系，只需要列出最顶层的任务
+    pub fn get_content_processing_tasks(
+        metadata: &ContentMetadata,
+    ) -> Vec<(ContentTaskType, TaskPriority)> {
         let mut tasks = vec![];
 
         // TODO: 现在好像不支持有些是 Low 有些是 Normal，会导致 Low 的任务被 cancel 并且 Normal 的任务也不被执行...

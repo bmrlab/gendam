@@ -82,7 +82,7 @@ content_base.delete(delete_payload).await?;
    - For audio: generate waveform, transcripts, embeddings.
    - For images: generate descriptions, embeddings.
    - For text: chunk content, generate summaries, embeddings.
-   - **The specific tasks for each content type are defined in `ContentBase::tasks` in the `content-base/src/core.rs` file**
+   - **The specific tasks for each content type are defined in `ContentBase::get_content_processing_tasks` in the `content-base/src/core.rs` file**
 5. Processed data is stored in Qdrant.
 6. Search indexes are updated.
 
