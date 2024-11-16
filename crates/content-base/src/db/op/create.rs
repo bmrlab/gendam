@@ -19,24 +19,21 @@ use crate::{
 
 /// insert api
 impl DB {
-    pub async fn insert_image(
-        &self,
-        file_identifier: Option<String>,
-        image: ImageModel,
-    ) -> anyhow::Result<ID> {
-        let record = ImageModel::create_only(&self.client, &image).await?;
-        if let Some(file_identifier) = file_identifier {
-            PayloadModel::create_for_model(&self.client, &record, &file_identifier.into()).await?;
+    /// 在创建之前清空已有的索引
+    async fn _purge_index_before_create(&self, file_identifier: &str) {
+        if let Err(e) = self.delete_by_file_identifier(file_identifier).await {
+            tracing::warn!("delete_by_file_identifier error: {:?}", e);
         }
-        Ok(ID::from(record))
     }
 
-    pub async fn insert_text(
+    pub async fn insert_image(
         &self,
-        _file_identifier: Option<String>,
-        text: TextModel,
+        file_identifier: String,
+        image: ImageModel,
     ) -> anyhow::Result<ID> {
-        let record = TextModel::create_only(&self.client, &text).await?;
+        self._purge_index_before_create(&file_identifier).await;
+        let record = ImageModel::create_only(&self.client, &image).await?;
+        PayloadModel::create_for_model(&self.client, &record, &file_identifier.into()).await?;
         Ok(ID::from(record))
     }
 
@@ -45,6 +42,7 @@ impl DB {
         file_identifier: String,
         (audio_model, audio_frames): (AudioModel, Vec<(AudioFrameModel, Vec<TextModel>)>),
     ) -> anyhow::Result<ID> {
+        self._purge_index_before_create(&file_identifier).await;
         let record = AudioModel::create_only(&self.client, &(audio_model, audio_frames)).await?;
         PayloadModel::create_for_model(&self.client, &record, &file_identifier.into()).await?;
         Ok(ID::from(record))
@@ -59,6 +57,7 @@ impl DB {
             Vec<(AudioFrameModel, Vec<TextModel>)>,
         ),
     ) -> anyhow::Result<ID> {
+        self._purge_index_before_create(&file_identifier).await;
         let record =
             VideoModel::create_only(&self.client, &(video, image_frames, audio_frames)).await?;
         PayloadModel::create_for_model(&self.client, &record, &file_identifier.into()).await?;
@@ -73,6 +72,7 @@ impl DB {
             Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>,
         ),
     ) -> anyhow::Result<ID> {
+        self._purge_index_before_create(&file_identifier).await;
         let record = WebPageModel::create_only(&self.client, &(web_page, pages)).await?;
         PayloadModel::create_for_model(&self.client, &record, &file_identifier.into()).await?;
         Ok(ID::from(record))
@@ -86,8 +86,18 @@ impl DB {
             Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>,
         ),
     ) -> anyhow::Result<ID> {
+        self._purge_index_before_create(&file_identifier).await;
         let record = DocumentModel::create_only(&self.client, &(document, pages)).await?;
         PayloadModel::create_for_model(&self.client, &record, &file_identifier.into()).await?;
+        Ok(ID::from(record))
+    }
+
+    pub async fn _insert_text(
+        &self,
+        _file_identifier: Option<String>,
+        text: TextModel,
+    ) -> anyhow::Result<ID> {
+        let record = TextModel::create_only(&self.client, &text).await?;
         Ok(ID::from(record))
     }
 }

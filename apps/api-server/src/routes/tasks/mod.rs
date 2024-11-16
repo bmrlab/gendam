@@ -1,9 +1,7 @@
 pub(crate) mod types;
-use super::assets::process::process_asset;
 use crate::CtxWithLibrary;
-use content_base::{delete::DeletePayload, task::CancelTaskPayload};
+use content_base::task::CancelTaskPayload;
 use content_base_task::ContentTaskType;
-use prisma_lib::{asset_object, file_handler_task};
 use rspc::{Router, RouterBuilder};
 use serde::Deserialize;
 use specta::Type;
@@ -28,12 +26,6 @@ struct TaskListRequestPayload {
 struct TaskCancelRequestPayload {
     asset_object_id: i32,
     task_types: Option<Vec<String>>,
-}
-
-#[derive(Deserialize, Type, Debug)]
-#[serde(rename_all = "camelCase")]
-struct TaskRedoRequestPayload {
-    asset_object_id: i32,
 }
 
 pub fn get_routes<TCtx>() -> RouterBuilder<TCtx>
@@ -111,7 +103,9 @@ where
                 let asset_object = library
                     .prisma_client()
                     .asset_object()
-                    .find_first(vec![asset_object::id::equals(input.asset_object_id)])
+                    .find_first(vec![prisma_lib::asset_object::id::equals(
+                        input.asset_object_id,
+                    )])
                     .exec()
                     .await?
                     .ok_or_else(|| {
@@ -138,58 +132,6 @@ where
                         format!("failed to cancel task: {:?}", e),
                     )
                 })?;
-
-                Ok(())
-            })
-        })
-        .mutation("regenerate", |t| {
-            t(|ctx: TCtx, input: TaskRedoRequestPayload| async move {
-                let library = ctx.library()?;
-                let asset_object_data = library
-                    .prisma_client()
-                    .asset_object()
-                    .find_unique(asset_object::id::equals(input.asset_object_id))
-                    .exec()
-                    .await?
-                    .ok_or_else(|| {
-                        rspc::Error::new(
-                            rspc::ErrorCode::NotFound,
-                            format!("failed to find asset_object"),
-                        )
-                    })?;
-
-                library
-                    .prisma_client()
-                    .file_handler_task()
-                    .delete_many(vec![file_handler_task::asset_object_id::equals(
-                        input.asset_object_id,
-                    )])
-                    .exec()
-                    .await?;
-
-                // delete existed artifacts and search indexes
-                let content_base = ctx.content_base()?;
-                let hash = asset_object_data.hash.as_str();
-                content_base
-                    .delete_search_indexes(DeletePayload::new(hash))
-                    .await
-                    .map_err(|e| {
-                        rspc::Error::new(
-                            rspc::ErrorCode::InternalServerError,
-                            format!("failed to delete search indexes of {}: {}", hash, e),
-                        )
-                    })?;
-                content_base
-                    .delete_artifacts(DeletePayload::new(hash))
-                    .await
-                    .map_err(|e| {
-                        rspc::Error::new(
-                            rspc::ErrorCode::InternalServerError,
-                            format!("failed to delete artifacts for {}: {}", hash, e),
-                        )
-                    })?;
-
-                process_asset(&library, &ctx, hash.to_owned(), None).await?;
 
                 Ok(())
             })

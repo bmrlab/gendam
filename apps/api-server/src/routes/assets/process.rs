@@ -1,5 +1,5 @@
 use crate::CtxWithLibrary;
-use content_base::{upsert::UpsertPayload, ContentBase};
+use content_base::{delete::DeletePayload, upsert::UpsertPayload, ContentBase, TaskStatus};
 use content_base_task::{
     audio::thumbnail::AudioThumbnailTask, image::thumbnail::ImageThumbnailTask,
     video::thumbnail::VideoThumbnailTask, ContentTask, FileInfo,
@@ -7,22 +7,23 @@ use content_base_task::{
 use content_handler::{file_metadata, video::VideoDecoder};
 use content_library::Library;
 use content_metadata::ContentMetadata;
-use prisma_lib::{asset_object, file_handler_task};
 use tracing::Instrument;
 
-#[tracing::instrument(skip(library, ctx, _with_existing_artifacts))]
-pub async fn process_asset(
+#[tracing::instrument(skip(library, ctx))]
+pub async fn build_content_index(
     library: &Library,
     ctx: &impl CtxWithLibrary,
-    asset_object_hash: String, // 为了更好的 tracing, 这里用 hash 而不是用 id
-    _with_existing_artifacts: Option<bool>,
+    asset_object_hash: &str, // 为了更好的 tracing, 这里用 hash 而不是用 id
+    with_existing_artifacts: bool,
 ) -> Result<(), rspc::Error> {
-    tracing::info!("processing asset");
+    tracing::info!("building content index for");
 
     let asset_object_data = library
         .prisma_client()
         .asset_object()
-        .find_unique(asset_object::hash::equals(asset_object_hash))
+        .find_unique(prisma_lib::asset_object::hash::equals(
+            asset_object_hash.to_string(),
+        ))
         .exec()
         .await?
         .ok_or_else(|| {
@@ -32,65 +33,97 @@ pub async fn process_asset(
             )
         })?;
 
+    library
+        .prisma_client()
+        .file_handler_task()
+        .delete_many(vec![
+            prisma_lib::file_handler_task::asset_object_id::equals(asset_object_data.id),
+        ])
+        .exec()
+        .await?;
+
+    let content_base = ctx.content_base()?;
+    content_base
+        .delete(
+            DeletePayload::new(asset_object_hash)
+                // 重建的时候无需删除已有索引，创建之前会自动删除 (`content_base::db::_purge_index_before_create`)，这样在处理的过程中索引依然可用
+                .keep_search_indexes(true)
+                // 如果 with_existing_artifacts 是 true，重建的时候无需删除已经完成的任务的 artifacts，这样任务执行的时候会字节跳过
+                .keep_completed_tasks(with_existing_artifacts),
+        )
+        .await
+        .map_err(|e| {
+            rspc::Error::new(
+                rspc::ErrorCode::InternalServerError,
+                format!(
+                    "failed to delete artifacts for {}: {}",
+                    asset_object_hash, e
+                ),
+            )
+        })?;
+
     tracing::debug!("asset media data: {:?}", &asset_object_data.media_data);
 
     let content_metadata = {
-        if let Some(v) = asset_object_data.media_data {
-            serde_json::from_str::<ContentMetadata>(&v).unwrap_or_default()
+        if let Some(v) = asset_object_data.media_data.as_deref() {
+            serde_json::from_str::<ContentMetadata>(v).unwrap_or_default()
         } else {
             ContentMetadata::default()
         }
     };
 
-    let cb = ctx.content_base()?;
     let payload = UpsertPayload::new(
         &asset_object_data.hash,
         library.file_full_path_on_disk(&asset_object_data.hash),
         &content_metadata,
     );
-    match cb.upsert(payload).await {
+
+    match content_base.upsert(payload).await {
         Ok(mut rx) => {
-            let library = library.clone();
+            let prisma_client = library.prisma_client();
             // 接收来自 content_base 的任务状态通知
             // TODO 任务状态通知的实现还需要进一步优化
             tokio::spawn(
                 async move {
                     while let Some(msg) = rx.recv().await {
                         tracing::info!("{:?}", msg);
-
                         let update = match msg.status {
-                            content_base::TaskStatus::Started => {
+                            TaskStatus::Started => {
                                 vec![
-                                    file_handler_task::exit_code::set(None),
-                                    file_handler_task::exit_message::set(None),
-                                    file_handler_task::ends_at::set(None),
-                                    file_handler_task::starts_at::set(Some(
+                                    prisma_lib::file_handler_task::exit_code::set(None),
+                                    prisma_lib::file_handler_task::exit_message::set(None),
+                                    prisma_lib::file_handler_task::ends_at::set(None),
+                                    prisma_lib::file_handler_task::starts_at::set(Some(
                                         chrono::Utc::now().into(),
                                     )),
                                 ]
                             }
-                            content_base::TaskStatus::Error => {
+                            TaskStatus::Error => {
                                 vec![
-                                    file_handler_task::exit_code::set(Some(1)),
-                                    file_handler_task::exit_message::set(msg.message),
-                                    file_handler_task::ends_at::set(Some(
+                                    prisma_lib::file_handler_task::exit_code::set(Some(1)),
+                                    prisma_lib::file_handler_task::exit_message::set(
+                                        msg.message.clone(),
+                                    ),
+                                    prisma_lib::file_handler_task::ends_at::set(Some(
                                         chrono::Utc::now().into(),
                                     )),
                                 ]
                             }
-                            content_base::TaskStatus::Finished => {
+                            TaskStatus::Finished => {
                                 vec![
-                                    file_handler_task::exit_code::set(Some(0)),
-                                    file_handler_task::ends_at::set(Some(
+                                    prisma_lib::file_handler_task::exit_code::set(Some(0)),
+                                    prisma_lib::file_handler_task::ends_at::set(Some(
                                         chrono::Utc::now().into(),
                                     )),
                                 ]
                             }
-                            content_base::TaskStatus::Cancelled => {
+                            TaskStatus::Cancelled => {
                                 vec![
-                                    file_handler_task::exit_code::set(Some(1)),
-                                    file_handler_task::exit_message::set(Some("cancelled".into())),
-                                    file_handler_task::ends_at::set(Some(
+                                    prisma_lib::file_handler_task::exit_code::set(Some(1)),
+                                    prisma_lib::file_handler_task::exit_message::set(Some(
+                                        "cancelled".into(),
+                                    )),
+                                    prisma_lib::file_handler_task::ends_at::set(Some(
                                         chrono::Utc::now().into(),
                                     )),
                                 ]
@@ -100,15 +133,14 @@ pub async fn process_asset(
                             }
                         };
 
-                        let x = library
-                            .prisma_client()
+                        let x = prisma_client
                             .file_handler_task()
                             .upsert(
-                                file_handler_task::asset_object_id_task_type(
+                                prisma_lib::file_handler_task::asset_object_id_task_type(
                                     asset_object_data.id,
                                     msg.task_type.to_string(),
                                 ),
-                                file_handler_task::create(
+                                prisma_lib::file_handler_task::create(
                                     asset_object_data.id,
                                     msg.task_type.to_string(),
                                     vec![],
@@ -125,7 +157,6 @@ pub async fn process_asset(
                 }
                 .instrument(tracing::Span::current()), // 把 span 信息带到 acync block 里，这样可以在 log 里看到
             );
-
             Ok(())
         }
         Err(_) => Err(rspc::Error::new(
@@ -167,12 +198,14 @@ pub async fn generate_thumbnail(
 pub async fn process_asset_metadata(
     library: &Library,
     content_base: &ContentBase,
-    asset_object_id: i32,
+    asset_object_hash: &str, // 为了更好的 tracing, 这里用 hash 而不是用 id
 ) -> Result<(), rspc::Error> {
     let asset_object_data = match library
         .prisma_client()
         .asset_object()
-        .find_unique(asset_object::id::equals(asset_object_id))
+        .find_unique(prisma_lib::asset_object::hash::equals(
+            asset_object_hash.to_string(),
+        ))
         .exec()
         .await?
     {
@@ -204,10 +237,10 @@ pub async fn process_asset_metadata(
     let prisma_handle = prisma_client
         .asset_object()
         .update(
-            asset_object::id::equals(asset_object_data.id),
+            prisma_lib::asset_object::id::equals(asset_object_data.id),
             vec![
-                asset_object::media_data::set(metadata_json),
-                asset_object::mime_type::set(Some(mime)),
+                prisma_lib::asset_object::media_data::set(metadata_json),
+                prisma_lib::asset_object::mime_type::set(Some(mime)),
             ],
         )
         .exec();
@@ -237,7 +270,7 @@ pub async fn export_video_segment(
     let asset_object_data = library
         .prisma_client()
         .asset_object()
-        .find_unique(asset_object::id::equals(asset_object_id))
+        .find_unique(prisma_lib::asset_object::id::equals(asset_object_id))
         .exec()
         .await?
         .ok_or_else(|| {

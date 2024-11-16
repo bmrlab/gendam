@@ -19,7 +19,7 @@ function withProcessMetadataExplorerItem(BaseComponent: BaseContextMenuItem) {
       async (e: Event) => {
         for (let item of validAssetObjects) {
           try {
-            await metadataMut.mutateAsync(item.id)
+            await metadataMut.mutateAsync(item.hash)
           } catch (error) {}
           queryClient.invalidateQueries({
             queryKey: ['assets.list', { materializedPath: explorer.materializedPath }],

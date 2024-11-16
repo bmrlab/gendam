@@ -19,7 +19,7 @@ use tokio::sync::RwLock;
 pub struct ContentBase {
     ctx: ContentBaseCtx,
     task_pool: TaskPool,
-    pub db: Arc<RwLock<DB>>,
+    db: Arc<RwLock<DB>>,
 }
 
 #[cfg(test)]

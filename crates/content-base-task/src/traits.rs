@@ -32,7 +32,7 @@ pub trait ContentTask: Into<ContentTaskType> + Clone + Storage {
         Ok(())
     }
 
-    /// Delete all task run record and related artifacts.
+    /// Delete run records of a task in artifacts.json, and its output file or folder.
     async fn delete_artifacts(
         &self,
         file_info: &FileInfo,

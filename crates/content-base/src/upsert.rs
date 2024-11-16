@@ -100,6 +100,7 @@ impl ContentBase {
             file_full_path_on_disk: payload.file_full_path_on_disk.clone(),
         };
 
+        // 内容被处理的入口
         tokio::spawn({
             let tasks = Self::get_content_processing_tasks(&payload.metadata);
             async move {
@@ -438,7 +439,7 @@ async fn upsert_image_index_to_surrealdb(
         .await?;
     db.try_read()?
         .insert_image(
-            Some(file_identifier.to_string()),
+            file_identifier.to_string(),
             ImageModel {
                 id: None,
                 caption,

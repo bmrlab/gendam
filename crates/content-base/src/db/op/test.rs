@@ -21,7 +21,7 @@ mod tests {
         let _guard = get_test_lock().await.lock().await;
         let id = setup(None)
             .await
-            .insert_text(
+            ._insert_text(
                 None,
                 TextModel {
                     id: None,
@@ -42,7 +42,7 @@ mod tests {
         let _guard = get_test_lock().await.lock().await;
         let db = setup(None).await;
         let _ = db
-            .insert_image(Some(fake_file_identifier()), fake_image_model())
+            .insert_image(fake_file_identifier(), fake_image_model())
             .await;
     }
 
@@ -104,7 +104,7 @@ mod tests {
         let db = setup(None).await;
         let file_identifier = fake_file_identifier();
         let _image = db
-            .insert_image(Some(file_identifier.clone()), fake_image_model())
+            .insert_image(file_identifier.clone(), fake_image_model())
             .await
             .unwrap();
         db.delete_by_file_identifier(&file_identifier)

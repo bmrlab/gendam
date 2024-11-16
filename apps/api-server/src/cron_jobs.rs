@@ -81,16 +81,14 @@ pub async fn delete_unlinked_assets(library: Arc<Library>, content_base: Arc<Con
         }
 
         let delete_payload = DeletePayload::new(&asset.hash);
-        if let Err(e) = content_base.delete_search_indexes(delete_payload).await {
-            tracing::error!("failed to delete search indexes of {}: {}", asset.hash, e);
+        if let Err(e) = content_base.delete(delete_payload).await {
+            tracing::error!(
+                "failed to delete search indexes and artifacts of {} from content base: {}",
+                asset.hash,
+                e
+            );
             continue;
         }
-
-        let delete_payload = DeletePayload::new(&asset.hash);
-        if let Err(e) = content_base.delete_artifacts(delete_payload).await {
-            tracing::error!("failed to delete artifacts for {}: {}", asset.hash, e);
-            continue;
-        };
 
         // 在没有错误地删除了任务记录后，
         // 删除 artifacts 目录中留下的的 thumbnail 和 artifacts.json 文件，以及 artifacts 目录

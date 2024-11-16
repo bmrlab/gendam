@@ -4,11 +4,11 @@ import { ContextMenu } from '@gendam/ui/v2/context-menu'
 import { useCallback, useMemo } from 'react'
 import { BaseContextMenuItem } from './types'
 
-function withReprocessExplorerItem(BaseComponent: BaseContextMenuItem) {
+function withRebuildIndexExplorerItem(BaseComponent: BaseContextMenuItem) {
   return function ContextMenuReprocess() {
     const explorer = useExplorerContext()
 
-    const processJobsMut = rspc.useMutation(['tasks.regenerate'])
+    const rebuildIndexMut = rspc.useMutation(['assets.rebuild_content_index'])
 
     const validAssetObjects = useMemo(() => {
       return Array.from(explorer.selectedItems)
@@ -20,14 +20,14 @@ function withReprocessExplorerItem(BaseComponent: BaseContextMenuItem) {
       async (e: Event) => {
         for (let item of validAssetObjects) {
           try {
-            await processJobsMut.mutateAsync({ assetObjectId: item.id })
+            await rebuildIndexMut.mutateAsync({ assetObjectHash: item.hash, withExistingArtifacts: false })
           } catch (error) {}
           queryClient.invalidateQueries({
             queryKey: ['tasks.list', { filter: { assetObjectId: item.id } }],
           })
         }
       },
-      [validAssetObjects, processJobsMut],
+      [validAssetObjects, rebuildIndexMut],
     )
 
     return (
@@ -38,4 +38,4 @@ function withReprocessExplorerItem(BaseComponent: BaseContextMenuItem) {
   }
 }
 
-export default withReprocessExplorerItem(() => <div>Re-process jobs</div>)
+export default withRebuildIndexExplorerItem(() => <div>Rebuild index</div>)
