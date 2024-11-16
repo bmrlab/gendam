@@ -26,6 +26,7 @@ impl DB {
         }
     }
 
+    #[tracing::instrument(skip_all, fields(file_identifier))]
     pub async fn insert_image(
         &self,
         file_identifier: String,
@@ -37,6 +38,7 @@ impl DB {
         Ok(ID::from(record))
     }
 
+    #[tracing::instrument(skip_all, fields(file_identifier))]
     pub async fn insert_audio(
         &self,
         file_identifier: String,
@@ -48,6 +50,7 @@ impl DB {
         Ok(ID::from(record))
     }
 
+    #[tracing::instrument(skip_all, fields(file_identifier))]
     pub async fn insert_video(
         &self,
         file_identifier: String,
@@ -64,6 +67,7 @@ impl DB {
         Ok(ID::from(record))
     }
 
+    #[tracing::instrument(skip_all, fields(file_identifier))]
     pub async fn insert_web_page(
         &self,
         file_identifier: String,
@@ -78,6 +82,7 @@ impl DB {
         Ok(ID::from(record))
     }
 
+    #[tracing::instrument(skip_all, fields(file_identifier))]
     pub async fn insert_document(
         &self,
         file_identifier: String,

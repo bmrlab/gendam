@@ -13,6 +13,7 @@ use tokio::sync::{
     Notify, RwLock, Semaphore,
 };
 use tokio_util::sync::CancellationToken;
+use tracing::Instrument;
 
 #[derive(Clone, Debug)]
 pub struct TaskPool {
@@ -100,6 +101,7 @@ impl TaskPool {
         let io_ctx_clone = io_task_ctx.clone();
 
         // loop for message
+        // 这里是从队列里 pop 出来下一个要执行的任务，丢入 queue 里
         tokio::spawn(async move {
             while let Some(payload) = rx.recv().await {
                 match payload {
@@ -234,12 +236,12 @@ impl TaskPool {
         // loop for task execution
         let cb = content_base.clone();
         tokio::spawn(async move {
-            cpu_task_ctx.run(&cb).await;
+            cpu_task_ctx.loop_for_task_execution(&cb).await;
         });
 
         let cb = content_base.clone();
         tokio::spawn(async move {
-            io_task_ctx.run(&cb).await;
+            io_task_ctx.loop_for_task_execution(&cb).await;
         });
 
         Ok(Self { tx })
@@ -298,219 +300,261 @@ async fn get_task_bound(_task_type: &ContentTaskType) -> TaskBound {
 }
 
 impl TaskPoolContext {
-    async fn run(&self, content_base: &ContentBaseCtx) {
+    pub async fn loop_for_task_execution(&self, content_base: &ContentBaseCtx) {
+        // 为了更好的 tracing 把方法分成 pop_next_task 和 async_exec_task
+        // 这是个无限循环，需要每次 pop 新任务的时候创建一个 span
+        // 但 run 是个 async 方法，async 代码中的 span 需要额外小心，最好都用 tracing::instrument
+        // https://docs.rs/tracing/latest/tracing/struct.Span.html#in-asynchronous-code
+        //
+        // 如果是 run 方法里面直接用 tracing::info_span!，需要创建一个 span 然后立即 enter，
+        // 接下来用 `async {}.instrument(span)` 和 `span.in_scope(|| {})` 来执行 async 和 sync 的代码，有点麻烦
+        let mut count: usize = 1;
         loop {
-            let permit = self.semaphore.acquire().await.expect("semaphore acquired");
+            let (task_id, priority, current_task) = match self.pop_next_task(count).await {
+                Some(v) => {
+                    count += 1;
+                    v
+                }
+                None => continue,
+            };
+
+            self.async_exec_task(content_base, task_id, priority, current_task)
+                .await;
+        }
+    }
+
+    #[tracing::instrument(level = "info", skip(self))]
+    async fn pop_next_task(
+        &self,
+        _count: usize, // 仅用于 tracing
+    ) -> Option<(TaskId, OrderedTaskPriority, Arc<TaskInQueue>)> {
+        let permit = self.semaphore.acquire().await.expect("semaphore acquired");
+
+        // 这里是执行下一个任务的入口，从 queue 里取出来
+        let (task_id, priority) = match {
             let task = self.task_queue.write().await.pop();
+            task
+        } {
+            Some((task_id, priority)) => (task_id, priority),
+            None => {
+                drop(permit);
+                return None;
+            }
+        };
 
-            if let Some((task_id, priority)) = task {
-                let semaphore = self.semaphore.clone();
+        let current_task = match self.task_mapping.read().await.get(&task_id.to_store_key()) {
+            Some(current_task) => current_task.clone(),
+            _ => {
+                tracing::error!("task not found: {}", &task_id);
+                drop(permit);
+                return None;
+            }
+        };
 
-                let current_task = match self.task_mapping.read().await.get(&task_id.to_store_key())
-                {
-                    Some(current_task) => current_task.clone(),
-                    _ => {
-                        tracing::error!("task not found: {}", &task_id);
-                        drop(permit);
-                        continue;
-                    }
-                };
+        tracing::info!("Task popped");
 
-                tracing::debug!("Task popped: {}", &task_id);
+        let deps = current_task.task.task_type.task_dependencies();
+        // If task has dependencies, add dependencies to task queue,
+        // and record them in subscription and dispatch.
+        if deps.len() > 0 {
+            // 同时 lock subscription 和 dispatch
+            // 避免 deadlock
+            let mut task_subscription = self.task_subscription.write().await;
+            let mut task_dispatch = self.task_dispatch.write().await;
+            let mut task_priority = self.task_priority.write().await;
 
-                let deps = current_task.task.task_type.task_dependencies();
-                // If task has dependencies, add dependencies to task queue,
-                // and record them in subscription and dispatch.
-                if deps.len() > 0 {
-                    // 同时 lock subscription 和 dispatch
-                    // 避免 deadlock
-                    let mut task_subscription = self.task_subscription.write().await;
-                    let mut task_dispatch = self.task_dispatch.write().await;
-                    let mut task_priority = self.task_priority.write().await;
+            let subscription = task_subscription.get(&task_id);
 
-                    let subscription = task_subscription.get(&task_id);
+            match subscription {
+                Some(v) if v.len() == 0 => {
+                    // 说明 deps 都已经完成了
+                    task_subscription.remove(&task_id);
+                }
+                _ => {
+                    let deps: Vec<TaskId> = deps
+                        .iter()
+                        .map(|v| TaskId::new(task_id.file_identifier(), v))
+                        .collect();
 
-                    match subscription {
-                        Some(v) if v.len() == 0 => {
-                            // 说明 deps 都已经完成了
-                            task_subscription.remove(&task_id);
+                    match task_subscription.get_mut(&task_id) {
+                        Some(v) => {
+                            v.extend(deps.clone());
                         }
                         _ => {
-                            let deps: Vec<TaskId> = deps
-                                .iter()
-                                .map(|v| TaskId::new(task_id.file_identifier(), v))
-                                .collect();
-
-                            match task_subscription.get_mut(&task_id) {
-                                Some(v) => {
-                                    v.extend(deps.clone());
-                                }
-                                _ => {
-                                    task_subscription.insert(task_id.clone(), deps.clone());
-                                }
-                            }
-                            for dep in deps.iter() {
-                                match task_dispatch.get_mut(&dep) {
-                                    Some(v) => {
-                                        v.push(task_id.clone());
-                                    }
-                                    _ => {
-                                        task_dispatch.insert(dep.clone(), vec![task_id.clone()]);
-                                    }
-                                }
-
-                                // create new dependent tasks
-                                let mut payload = NewTaskPayload::new(
-                                    dep.file_identifier(),
-                                    &current_task.task.file_full_path_on_disk,
-                                    dep.task_type(),
-                                );
-                                payload.with_priority(Some(current_task.priority.into()));
-                                payload.with_notifier(current_task.notifier.clone());
-
-                                if let Err(e) = self.tx.send(TaskPayload::Task(payload)).await {
-                                    tracing::error!("Failed to add dependent task: {}", e);
-                                }
-                            }
-
-                            // 不执行任务了
-                            drop(permit);
-
-                            task_priority.remove(&task_id);
-
-                            continue;
+                            task_subscription.insert(task_id.clone(), deps.clone());
                         }
                     }
-                }
+                    for dep in deps.iter() {
+                        match task_dispatch.get_mut(&dep) {
+                            Some(v) => {
+                                v.push(task_id.clone());
+                            }
+                            _ => {
+                                task_dispatch.insert(dep.clone(), vec![task_id.clone()]);
+                            }
+                        }
 
-                // Here we can just forget the permit, and increase permit after task is finished
-                // by calling `add_permits` on semaphore.
-                permit.forget();
+                        // create new dependent tasks
+                        let mut payload = NewTaskPayload::new(
+                            dep.file_identifier(),
+                            &current_task.task.file_full_path_on_disk,
+                            dep.task_type(),
+                        );
+                        payload.with_priority(Some(current_task.priority.into()));
+                        payload.with_notifier(current_task.notifier.clone());
 
-                let content_base = content_base.clone();
-                let task_mapping = self.task_mapping.clone();
-                let task_priority = self.task_priority.clone();
-                let task_dispatch = self.task_dispatch.clone();
-                let task_subscription = self.task_subscription.clone();
-                let task_queue = self.task_queue.clone();
-
-                tokio::spawn(async move {
-                    {
-                        let mut task_priority = task_priority.write().await;
-                        task_priority.insert(task_id.clone(), priority);
+                        if let Err(e) = self.tx.send(TaskPayload::Task(payload)).await {
+                            tracing::error!("Failed to add dependent task: {}", e);
+                        }
                     }
 
-                    let task_id = current_task.task.id();
+                    // 不执行任务了
+                    drop(permit);
 
-                    let file_info = FileInfo {
-                        file_identifier: task_id.file_identifier().to_string(),
-                        file_full_path_on_disk: current_task.task.file_full_path_on_disk.clone(),
+                    task_priority.remove(&task_id);
+
+                    return None;
+                }
+            }
+        }
+
+        // Here we can just forget the permit, and increase permit after task is finished
+        // by calling `add_permits` on semaphore.
+        permit.forget();
+
+        Some((task_id, priority, current_task))
+    }
+
+    #[tracing::instrument(skip_all, fields(file_identifier = %task_id.file_identifier(), task_type = %task_id.task_type()))]
+    async fn async_exec_task(
+        &self,
+        content_base: &ContentBaseCtx,
+        task_id: TaskId,
+        priority: OrderedTaskPriority,
+        current_task: Arc<TaskInQueue>,
+    ) {
+        let content_base = content_base.clone();
+        let semaphore = self.semaphore.clone();
+        let task_mapping = self.task_mapping.clone();
+        let task_priority = self.task_priority.clone();
+        let task_dispatch = self.task_dispatch.clone();
+        let task_subscription = self.task_subscription.clone();
+        let task_queue = self.task_queue.clone();
+
+        tokio::spawn(async move {
+            {
+                let mut task_priority = task_priority.write().await;
+                task_priority.insert(task_id.clone(), priority);
+            }
+
+            let task_id = current_task.task.id();
+
+            let file_info = FileInfo {
+                file_identifier: task_id.file_identifier().to_string(),
+                file_full_path_on_disk: current_task.task.file_full_path_on_disk.clone(),
+            };
+
+            if let Some(tx) = current_task.notifier.clone() {
+                if let Err(_) = tx
+                    .send(TaskNotification::new(
+                        task_id.task_type(),
+                        TaskStatus::Started,
+                        None,
+                    ))
+                    .await
+                {
+                    tracing::error!("Failed to send task start notification");
+                }
+            }
+
+            tracing::info!("Task started");
+            tokio::select! {
+                // 真的开始执行一个任务了
+                result = current_task.task.task_type.run(&file_info, &content_base) => {
+                    let notification = match &result {
+                        Err(e) => {
+                            tracing::error!("Task error: {}", e);
+                            TaskNotification::new(
+                                task_id.task_type(),
+                                TaskStatus::Error,
+                                Some(e.to_string().as_str()),
+                            )
+                        }
+                        _ => {
+                            tracing::info!("Task finished");
+                            TaskNotification::new(
+                                task_id.task_type(),
+                                TaskStatus::Finished,
+                                None
+                            )
+                        }
                     };
 
                     if let Some(tx) = current_task.notifier.clone() {
-                        if let Err(_) = tx
-                            .send(TaskNotification::new(
-                                task_id.task_type(),
-                                TaskStatus::Started,
-                                None,
-                            ))
+                        if let Err(_) = tx.send(notification).await {
+                            tracing::error!("Failed to send task result");
+                        }
+                    }
+                }
+                _ = current_task.cancel_token.cancelled() => {
+                    if let Some(tx) = &current_task.notifier {
+                        if let Err(e) = tx
+                            .send(TaskNotification {
+                                task_type: current_task.task.task_type.clone(),
+                                status: TaskStatus::Cancelled,
+                                message: None,
+                            })
                             .await
                         {
-                            tracing::error!("Failed to send task start notification");
+                            tracing::error!("Failed to send task cancelled notification: {}", e);
                         }
                     }
 
-                    tokio::select! {
-                        result = current_task.task.task_type.run(&file_info, &content_base) => {
-                            let notification = match &result {
-                                Err(e) => {
-                                    tracing::error!("Task error: {} {}", &task_id, e);
-                                    TaskNotification::new(
-                                        task_id.task_type(),
-                                        TaskStatus::Error,
-                                        Some(e.to_string().as_str()),
-                                    )
-                                }
-                                _ => {
-                                    tracing::info!("Task finished: {}", &task_id);
-                                    TaskNotification::new(
-                                        task_id.task_type(),
-                                        TaskStatus::Finished,
-                                        None
-                                    )
-                                }
-                            };
-
-                            if let Some(tx) = current_task.notifier.clone() {
-                                if let Err(_) = tx.send(notification).await {
-                                    tracing::error!("Failed to send task result");
-                                }
-                            }
-                        }
-                        _ = current_task.cancel_token.cancelled() => {
-                            if let Some(tx) = &current_task.notifier {
-                                if let Err(e) = tx
-                                    .send(TaskNotification {
-                                        task_type: current_task.task.task_type.clone(),
-                                        status: TaskStatus::Cancelled,
-                                        message: None,
-                                    })
-                                    .await
-                                {
-                                    tracing::error!("Failed to send task cancelled notification: {}", e);
-                                }
-                            }
-
-                            tracing::info!("Spawned task has been cancelled: {}", &task_id);
-                        }
-                    }
-
-                    // add permit back
-                    semaphore.add_permits(1);
-
-                    {
-                        let mut task_mapping = task_mapping.write().await;
-                        task_mapping.remove(&task_id.to_store_key());
-                    }
-
-                    {
-                        let mut task_priority = task_priority.write().await;
-                        task_priority.remove(&task_id);
-                    }
-
-                    {
-                        // 同时 lock subscription 和 dispatch
-                        // 避免 deadlock
-                        let mut task_subscription = task_subscription.write().await;
-                        let mut task_dispatch = task_dispatch.write().await;
-                        let mut task_queue = task_queue.write().await;
-                        let task_mapping = task_mapping.read().await;
-
-                        if let Some(targets) = task_dispatch.remove(&task_id) {
-                            // targets are the tasks that should be awaked
-                            for target in targets.iter() {
-                                match task_subscription.get_mut(target) {
-                                    Some(v) => {
-                                        v.retain(|x| x != &task_id);
-
-                                        // if subscription is empty, the target task can be executed safely
-                                        if v.is_empty() {
-                                            if let Some(task) =
-                                                task_mapping.get(&target.to_store_key())
-                                            {
-                                                task_queue.push(task.task.id(), task.priority);
-                                            }
-                                        }
-                                    }
-                                    _ => {}
-                                }
-                            }
-                        }
-                    }
-                });
-            } else {
-                drop(permit);
+                    tracing::info!("Spawned task has been cancelled: {}", &task_id);
+                }
             }
-        }
+
+            // add permit back
+            semaphore.add_permits(1);
+
+            {
+                let mut task_mapping = task_mapping.write().await;
+                task_mapping.remove(&task_id.to_store_key());
+            }
+
+            {
+                let mut task_priority = task_priority.write().await;
+                task_priority.remove(&task_id);
+            }
+
+            {
+                // 同时 lock subscription 和 dispatch
+                // 避免 deadlock
+                let mut task_subscription = task_subscription.write().await;
+                let mut task_dispatch = task_dispatch.write().await;
+                let mut task_queue = task_queue.write().await;
+                let task_mapping = task_mapping.read().await;
+
+                if let Some(targets) = task_dispatch.remove(&task_id) {
+                    // targets are the tasks that should be awaked
+                    for target in targets.iter() {
+                        match task_subscription.get_mut(target) {
+                            Some(v) => {
+                                v.retain(|x| x != &task_id);
+
+                                // if subscription is empty, the target task can be executed safely
+                                if v.is_empty() {
+                                    if let Some(task) = task_mapping.get(&target.to_store_key()) {
+                                        task_queue.push(task.task.id(), task.priority);
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }.instrument(tracing::Span::current()));
+        // 把 span 信息带到 acync block 里
     }
 }

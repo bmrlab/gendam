@@ -200,7 +200,7 @@ macro_rules! chunk_to_page {
     }};
 }
 
-#[tracing::instrument(level = "info", skip(ctx, db))]
+#[tracing::instrument(level = "info", skip(ctx, metadata, db))]
 async fn task_post_process(
     ctx: &ContentBaseCtx,
     file_identifier: &str,

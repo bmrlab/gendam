@@ -86,9 +86,13 @@ pub async fn build_content_index(
             tokio::spawn(
                 async move {
                     while let Some(msg) = rx.recv().await {
-                        tracing::info!("{:?}", msg);
+                        let log_msg = format!(
+                            r#"TaskNotification: "{}""#,
+                            msg.message.as_deref().unwrap_or("")
+                        );
                         let update = match msg.status {
                             TaskStatus::Started => {
+                                tracing::info!(status = ?msg.status, task_type = ?msg.task_type, "{}", &log_msg);
                                 vec![
                                     prisma_lib::file_handler_task::exit_code::set(None),
                                     prisma_lib::file_handler_task::exit_message::set(None),
@@ -99,6 +103,7 @@ pub async fn build_content_index(
                                 ]
                             }
                             TaskStatus::Error => {
+                                tracing::error!(status = ?msg.status, task_type = ?msg.task_type, "{}", &log_msg);
                                 vec![
                                     prisma_lib::file_handler_task::exit_code::set(Some(1)),
                                     prisma_lib::file_handler_task::exit_message::set(
@@ -110,6 +115,7 @@ pub async fn build_content_index(
                                 ]
                             }
                             TaskStatus::Finished => {
+                                tracing::info!(status = ?msg.status, task_type = ?msg.task_type, "{}", &log_msg);
                                 vec![
                                     prisma_lib::file_handler_task::exit_code::set(Some(0)),
                                     prisma_lib::file_handler_task::ends_at::set(Some(
@@ -118,6 +124,7 @@ pub async fn build_content_index(
                                 ]
                             }
                             TaskStatus::Cancelled => {
+                                tracing::warn!(status = ?msg.status, task_type = ?msg.task_type, "{}", &log_msg);
                                 vec![
                                     prisma_lib::file_handler_task::exit_code::set(Some(1)),
                                     prisma_lib::file_handler_task::exit_message::set(Some(
@@ -129,6 +136,7 @@ pub async fn build_content_index(
                                 ]
                             }
                             _ => {
+                                tracing::info!(status = ?msg.status, task_type = ?msg.task_type, "{}", &log_msg);
                                 vec![]
                             }
                         };

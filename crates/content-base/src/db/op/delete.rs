@@ -25,6 +25,7 @@ const CONTENT_TYPE_LOOKUP_QUERY: &'static str = r#"
 "#;
 
 impl DB {
+    #[tracing::instrument(skip(self))]
     pub async fn delete_by_file_identifier(&self, file_identifier: &str) -> anyhow::Result<()> {
         let mut resp = self
             .client

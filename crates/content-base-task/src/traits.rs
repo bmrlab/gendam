@@ -15,8 +15,7 @@ pub trait ContentTask: Into<ContentTaskType> + Clone + Storage {
 
         if let Some(target_task_run) = task_record.target_run(ctx, &task_type) {
             if target_task_run.is_completed() {
-                tracing::info!("Completed task run found, finish task.");
-
+                tracing::info!("A task run record already exists and is completed, skip and return as success.");
                 return Ok(());
             }
         }

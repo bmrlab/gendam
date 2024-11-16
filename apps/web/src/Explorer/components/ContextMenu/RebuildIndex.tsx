@@ -20,7 +20,7 @@ function withRebuildIndexExplorerItem(BaseComponent: BaseContextMenuItem) {
       async (e: Event) => {
         for (let item of validAssetObjects) {
           try {
-            await rebuildIndexMut.mutateAsync({ assetObjectHash: item.hash, withExistingArtifacts: false })
+            await rebuildIndexMut.mutateAsync({ assetObjectHash: item.hash, withExistingArtifacts: true })
           } catch (error) {}
           queryClient.invalidateQueries({
             queryKey: ['tasks.list', { filter: { assetObjectId: item.id } }],
