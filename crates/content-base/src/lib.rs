@@ -125,7 +125,7 @@ mod test {
         let content_base = content_base
             .with_audio_transcript(Arc::new(whisper), "whisper")
             .with_llm(Arc::new(llm), "qwen2")
-            .with_text_tokenizer(tokenizer, "qwen2")
+            .with_text_tokenizer(Arc::new(tokenizer), "qwen2")
             .with_text_embedding(Arc::new(text_embedding), "puff");
 
         let file_identifier = "abcdefghijklmn";
@@ -207,7 +207,7 @@ mod test {
         let ctx = ctx
             .with_audio_transcript(Arc::new(whisper), "whisper")
             .with_llm(Arc::new(llm), "qwen2")
-            .with_text_tokenizer(tokenizer, "qwen2")
+            .with_text_tokenizer(Arc::new(tokenizer), "qwen2")
             .with_text_embedding(Arc::new(text_embedding), "stella");
 
         let file_identifier = "abcdefghijklmn";

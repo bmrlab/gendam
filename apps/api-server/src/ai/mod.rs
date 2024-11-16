@@ -1,7 +1,6 @@
 pub(crate) mod models;
-
 use self::models::{get_model_info_by_id, ConcreteModelType};
-use crate::{library::get_library_settings, CtxWithLibrary};
+use crate::{ctx::traits::CtxWithLibrary, library::get_library_settings};
 use ai::{
     blip::BLIP,
     clip::{CLIPModel, CLIP},
@@ -12,7 +11,6 @@ use ai::{
     AIModel, AudioTranscriptModel, ImageCaptionModel, LLMModel, MultiModalEmbeddingModel,
     TextEmbeddingModel,
 };
-use anyhow::{anyhow, bail};
 use serde_json::Value;
 use std::{fmt, time::Duration};
 
@@ -27,8 +25,8 @@ use std::{fmt, time::Duration};
 /// Available models and their configurations are defined in the `model_list.json` file
 /// located in the resources directory.
 ///
-/// The actual model selection and instantiation occurs in the corresponding `get_*` methods
-/// (e.g., `get_image_caption`, `get_multi_modal_embedding`, etc.) based on the following priority:
+/// The actual model selection and instantiation occurs in the corresponding `build_*_model` methods
+/// (e.g., `build_image_caption_model`, `build_multi_modal_embedding_model`, etc.) based on the following priority:
 /// 1. User-specified settings in the library settings file
 /// 2. Default values from `impl Default for LibraryModels`
 /// 3. Model configurations from `model_list.json`
@@ -49,25 +47,24 @@ impl fmt::Debug for AIHandler {
     }
 }
 
-fn get_str_from_params<'a>(params: &'a Value, name: &str) -> Result<&'a str, rspc::Error> {
+fn get_str_from_params<'a>(params: &'a Value, name: &str) -> anyhow::Result<&'a str> {
     match params[name].as_str() {
         Some(s) => Ok(s),
-        _ => Err(rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("invalid {}", name),
-        )),
+        _ => Err(anyhow::anyhow!("Invalid model config {}", name)),
     }
 }
 
 impl AIHandler {
-    pub fn new(ctx: &dyn CtxWithLibrary) -> Result<Self, rspc::Error> {
-        let multi_modal_embedding = Self::get_multi_modal_embedding(ctx)?;
-        let text_embedding =
-            Self::get_text_embedding(ctx, (&multi_modal_embedding.0, &multi_modal_embedding.1))?;
-        let llm = Self::get_llm(ctx)?;
-        let text_tokenizer = Self::get_text_tokenizer(ctx)?;
-        let image_caption = Self::get_image_caption(ctx)?;
-        let audio_transcript = Self::get_audio_transcript(ctx)?;
+    pub fn new(ctx: &dyn CtxWithLibrary) -> anyhow::Result<Self> {
+        let multi_modal_embedding = Self::build_multi_modal_embedding_model(ctx)?;
+        let text_embedding = Self::build_text_embedding_model(
+            ctx,
+            (&multi_modal_embedding.0, &multi_modal_embedding.1),
+        )?;
+        let llm = Self::build_llm_model(ctx)?;
+        let text_tokenizer = Self::build_text_tokenizer(ctx)?;
+        let image_caption = Self::build_image_caption_model(ctx)?;
+        let audio_transcript = Self::build_audio_transcript_model(ctx)?;
 
         Ok(Self {
             multi_modal_embedding,
@@ -79,9 +76,9 @@ impl AIHandler {
         })
     }
 
-    fn get_image_caption(
+    fn build_image_caption_model(
         ctx: &dyn CtxWithLibrary,
-    ) -> Result<(ImageCaptionModel, String), rspc::Error> {
+    ) -> anyhow::Result<(ImageCaptionModel, String)> {
         let resources_dir = ctx.get_resources_dir().to_path_buf();
         let library = ctx.library()?;
         let settings = get_library_settings(&library.dir);
@@ -104,8 +101,7 @@ impl AIHandler {
                     }
                 },
                 Some(Duration::from_secs(30)),
-            )
-            .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
+            )?;
 
             // 这里是使用 LLM 进行 image caption 的系统提示词
             // const LLM_IMAGE_CAPTION_SYSTEM_PROMPT: &'static str = r#"Describe People (including famous individuals), Actions, Objects, Animals or pets, Nature, Sounds (excluding human speech) in the image."#;
@@ -135,7 +131,7 @@ impl AIHandler {
                         }
                     },
                     Some(Duration::from_secs(30)),
-                ),
+                )?,
                 ConcreteModelType::LLaVAPhi3Mini => AIModel::new(
                     move || {
                         let resources_dir_clone = resources_dir.clone();
@@ -162,13 +158,12 @@ impl AIHandler {
                         }
                     },
                     Some(Duration::from_secs(30)),
-                ),
-                _ => Err(anyhow!(
+                )?,
+                _ => anyhow::bail!(
                     "unsupported model {} for image caption",
                     model.model_type.as_ref(),
-                )),
-            }
-            .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
+                ),
+            };
 
             handler
         };
@@ -176,9 +171,9 @@ impl AIHandler {
         Ok((handler, model_name))
     }
 
-    fn get_multi_modal_embedding(
+    fn build_multi_modal_embedding_model(
         ctx: &dyn CtxWithLibrary,
-    ) -> Result<(MultiModalEmbeddingModel, String), rspc::Error> {
+    ) -> anyhow::Result<(MultiModalEmbeddingModel, String)> {
         let resources_dir = ctx.get_resources_dir().to_path_buf();
         let library = ctx.library()?;
         let settings = get_library_settings(&library.dir);
@@ -209,7 +204,7 @@ impl AIHandler {
                             .await
                         }
                         _ => {
-                            bail!(
+                            anyhow::bail!(
                                 "unsupported model {} for multi modal embedding",
                                 model_clone.model_type.as_ref()
                             )
@@ -218,15 +213,14 @@ impl AIHandler {
                 }
             },
             Some(Duration::from_secs(600)),
-        )
-        .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
+        )?;
 
         Ok((handler, model_name))
     }
 
-    fn get_audio_transcript(
+    fn build_audio_transcript_model(
         ctx: &dyn CtxWithLibrary,
-    ) -> Result<(AudioTranscriptModel, String), rspc::Error> {
+    ) -> anyhow::Result<(AudioTranscriptModel, String)> {
         let resources_dir = ctx.get_resources_dir().to_path_buf();
         let library = ctx.library()?;
         let settings = get_library_settings(&library.dir);
@@ -246,7 +240,7 @@ impl AIHandler {
                             Whisper::new(model_path).await
                         }
                         _ => {
-                            bail!(
+                            anyhow::bail!(
                                 "unsupported model {} for multi modal embedding",
                                 model_clone.model_type.as_ref()
                             )
@@ -255,8 +249,7 @@ impl AIHandler {
                 }
             },
             Some(Duration::from_secs(30)),
-        )
-        .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
+        )?;
 
         Ok((handler, model_name))
     }
@@ -264,10 +257,10 @@ impl AIHandler {
     /// Get text embedding model.
     ///
     /// ⚠️ 因为 multi_modal_embedding_model 也能完成 text_embedding，所以这里也传入他，避免重复加载同样的模型
-    fn get_text_embedding(
+    fn build_text_embedding_model(
         ctx: &dyn CtxWithLibrary,
         multi_modal_handler: (&MultiModalEmbeddingModel, &str),
-    ) -> Result<(TextEmbeddingModel, String), rspc::Error> {
+    ) -> anyhow::Result<(TextEmbeddingModel, String)> {
         let resources_dir = ctx.get_resources_dir().to_path_buf();
         let library = ctx.library()?;
         let settings = get_library_settings(&library.dir);
@@ -283,7 +276,7 @@ impl AIHandler {
         let model_name = model.id.clone();
 
         if model.model_type == ConcreteModelType::CLIP {
-            let (handler, name) = Self::get_multi_modal_embedding(ctx)?;
+            let (handler, name) = Self::build_multi_modal_embedding_model(ctx)?;
             return Ok(((&handler).into(), name));
         }
 
@@ -302,7 +295,7 @@ impl AIHandler {
                             OrtTextEmbedding::new(model_path, tokenizer_config_path).await
                         }
                         _ => {
-                            bail!(
+                            anyhow::bail!(
                                 "unsupported model {} for multi modal embedding",
                                 model_clone.model_type.as_ref()
                             )
@@ -311,16 +304,15 @@ impl AIHandler {
                 }
             },
             Some(Duration::from_secs(600)),
-        )
-        .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
+        )?;
 
         Ok((handler, model_name))
     }
 
     /// 目前这个是专门给 audio transcript 和 raw text 的 chunking 用的
-    fn get_text_tokenizer(
+    fn build_text_tokenizer(
         ctx: &dyn CtxWithLibrary,
-    ) -> Result<(ai::tokenizers::Tokenizer, String), rspc::Error> {
+    ) -> anyhow::Result<(ai::tokenizers::Tokenizer, String)> {
         let resources_dir = ctx.get_resources_dir().to_path_buf();
         let library = ctx.library()?;
         let settings = get_library_settings(&library.dir);
@@ -338,11 +330,13 @@ impl AIHandler {
             _ => ("./qwen2/tokenizer.json", "default"),
         };
         let tokenizer = ai::tokenizers::Tokenizer::from_file(resources_dir.join(tokenizer_path))
-            .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
+            .map_err(|e| {
+                anyhow::anyhow!("Failed to load tokenizer from {}: {}", tokenizer_path, e)
+            })?;
         Ok((tokenizer, name.to_string()))
     }
 
-    fn get_llm(ctx: &dyn CtxWithLibrary) -> Result<(LLMModel, String), rspc::Error> {
+    fn build_llm_model(ctx: &dyn CtxWithLibrary) -> anyhow::Result<(LLMModel, String)> {
         let resources_dir = ctx.get_resources_dir().to_path_buf();
         let library = ctx.library()?;
         let settings = get_library_settings(&library.dir);
@@ -385,7 +379,7 @@ impl AIHandler {
                                 .map(|v| LLM::OpenAI(v))
                         }
                         _ => {
-                            bail!(
+                            anyhow::bail!(
                                 "unsupported model {} for LLM",
                                 model_clone.model_type.as_ref()
                             )
@@ -394,32 +388,43 @@ impl AIHandler {
                 }
             },
             Some(Duration::from_secs(30)),
-        )
-        .map_err(|e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()))?;
+        )?;
 
         Ok((handler, model_name))
     }
 
-    pub fn update_multi_modal_embedding(&mut self, ctx: &dyn CtxWithLibrary) {
-        self.multi_modal_embedding =
-            Self::get_multi_modal_embedding(ctx).expect("failed to get multi modal embedding");
-        self.update_text_embedding(ctx);
+    pub fn rebuild_multi_modal_embedding_model(
+        &mut self,
+        ctx: &dyn CtxWithLibrary,
+    ) -> anyhow::Result<()> {
+        self.multi_modal_embedding = Self::build_multi_modal_embedding_model(ctx)?;
+        self.rebuild_text_embedding_model(ctx)?;
+        Ok(())
     }
 
-    pub fn update_text_embedding(&mut self, ctx: &dyn CtxWithLibrary) {
-        self.text_embedding = Self::get_text_embedding(
+    pub fn rebuild_text_embedding_model(&mut self, ctx: &dyn CtxWithLibrary) -> anyhow::Result<()> {
+        self.text_embedding = Self::build_text_embedding_model(
             ctx,
             (&self.multi_modal_embedding.0, &self.multi_modal_embedding.1),
-        )
-        .expect("failed to get text embedding");
+        )?;
+        Ok(())
     }
 
-    pub fn update_image_caption(&mut self, ctx: &dyn CtxWithLibrary) {
-        self.image_caption = Self::get_image_caption(ctx).expect("");
+    pub fn rebuild_llm_model(&mut self, ctx: &dyn CtxWithLibrary) -> anyhow::Result<()> {
+        self.llm = Self::build_llm_model(ctx)?;
+        Ok(())
     }
 
-    pub fn update_audio_transcript(&mut self, ctx: &dyn CtxWithLibrary) {
-        self.audio_transcript =
-            Self::get_audio_transcript(ctx).expect("failed to get audio transcript");
+    pub fn rebuild_image_caption_model(&mut self, ctx: &dyn CtxWithLibrary) -> anyhow::Result<()> {
+        self.image_caption = Self::build_image_caption_model(ctx)?;
+        Ok(())
+    }
+
+    pub fn rebuild_audio_transcript_model(
+        &mut self,
+        ctx: &dyn CtxWithLibrary,
+    ) -> anyhow::Result<()> {
+        self.audio_transcript = Self::build_audio_transcript_model(ctx)?;
+        Ok(())
     }
 }

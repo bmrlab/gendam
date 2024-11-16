@@ -1,5 +1,9 @@
-use crate::download::{file_name_from_url, SimpleReporter};
-use crate::{download::DownloadReporter, CtxWithLibrary};
+use crate::{
+    ctx::traits::CtxWithLibrary,
+    download::{
+        DownloadReporter, {file_name_from_url, SimpleReporter},
+    },
+};
 use downloader::{Download, Downloader};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -16,7 +20,7 @@ pub struct ModelArtifact {
 
 #[derive(Serialize, Deserialize, AsRefStr, EnumString, PartialEq, Eq, Hash, Clone, Type, Debug)]
 pub enum AIModelCategory {
-    ImageEmbedding,
+    // ImageEmbedding,
     MultiModalEmbedding,
     ImageCaption,
     AudioTranscript,
@@ -75,41 +79,27 @@ pub struct AIModelResult {
     pub status: AIModelStatus,
 }
 
-pub fn load_model_list(resources_dir: impl AsRef<Path>) -> Result<Vec<AIModel>, rspc::Error> {
+pub fn load_model_list(resources_dir: impl AsRef<Path>) -> anyhow::Result<Vec<AIModel>> {
     let resources_dir = resources_dir.as_ref();
     let model_list_file = resources_dir.join("model_list.json");
 
     // read json from model_list_file
-    let model_list = std::fs::read_to_string(model_list_file).map_err(|e| {
-        rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("Failed to read model list: {}", e),
-        )
-    })?;
+    let model_list = std::fs::read_to_string(model_list_file)
+        .map_err(|e| anyhow::anyhow!("Failed to read model list: {}", e))?;
 
-    let model_list: Vec<AIModel> = serde_json::from_str(&model_list).map_err(|e| {
-        rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("invalid model list format: {}", e),
-        )
-    })?;
+    let model_list: Vec<AIModel> = serde_json::from_str(&model_list)
+        .map_err(|e| anyhow::anyhow!("Invalid model list format: {}", e))?;
 
     Ok(model_list)
 }
 
-pub fn get_model_info_by_id(
-    ctx: &dyn CtxWithLibrary,
-    model_id: &str,
-) -> Result<AIModel, rspc::Error> {
+pub fn get_model_info_by_id(ctx: &dyn CtxWithLibrary, model_id: &str) -> anyhow::Result<AIModel> {
     let model_list = load_model_list(ctx.get_resources_dir())?;
 
     let model = model_list
         .iter()
         .find(|v| v.id == model_id)
-        .ok_or(rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("model not found: {}", model_id),
-        ))?;
+        .ok_or(anyhow::anyhow!("model not found: {}", model_id))?;
 
     Ok(model.to_owned())
 }
@@ -173,25 +163,16 @@ pub fn trigger_model_download(
     resources_dir: impl AsRef<Path>,
     model: &AIModel,
     reporter: DownloadReporter,
-) -> Result<(), rspc::Error> {
+) -> anyhow::Result<()> {
     let target_dir = resources_dir.as_ref().join(&model.artifacts_dir);
-    std::fs::create_dir_all(&target_dir).map_err(|e| {
-        rspc::Error::new(
-            rspc::ErrorCode::InternalServerError,
-            format!("Failed to create directory: {}", e),
-        )
-    })?;
+    std::fs::create_dir_all(&target_dir)
+        .map_err(|e| anyhow::anyhow!("Failed to create directory: {}", e))?;
 
     let mut downloader = Downloader::builder()
         .download_folder(&target_dir)
         .parallel_requests(4)
         .build()
-        .map_err(|e| {
-            rspc::Error::new(
-                rspc::ErrorCode::InternalServerError,
-                format!("Failed to create downloader: {}", e),
-            )
-        })?;
+        .map_err(|e| anyhow::anyhow!("Failed to create downloader: {}", e))?;
 
     let downloads = model
         .artifacts

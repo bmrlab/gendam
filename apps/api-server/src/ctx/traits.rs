@@ -42,8 +42,8 @@ impl From<CtxError> for rspc::Error {
 }
 
 impl From<CtxError> for anyhow::Error {
-    fn from(error: CtxError) -> Self {
-        match error {
+    fn from(value: CtxError) -> Self {
+        match value {
             CtxError::BadRequest(msg) => anyhow::anyhow!("Bad Request: {}", msg),
             CtxError::Internal(msg) => anyhow::anyhow!("Internal Error: {}", msg),
             CtxError::Conflict(msg) => anyhow::anyhow!("Conflict: {}", msg),

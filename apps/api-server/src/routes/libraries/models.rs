@@ -18,7 +18,9 @@ where
         .query("list", |t| {
             t(|ctx, _: ()| {
                 let resources_dir = ctx.get_resources_dir();
-                let model_list = load_model_list(&resources_dir)?;
+                let model_list = load_model_list(&resources_dir).map_err(|e| {
+                    rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string())
+                })?;
 
                 // 按类别分组
                 let mut models_by_category: std::collections::HashMap<
@@ -88,20 +90,25 @@ where
                 let ai_handler = ctx.ai_handler_mutex();
                 let mut ai_handler = ai_handler.lock().unwrap();
                 if let Some(ai_handler) = &mut *ai_handler {
-                    match payload.category {
+                    if let Err(res) = match payload.category {
                         AIModelCategory::TextEmbedding => {
-                            ai_handler.update_text_embedding(&ctx);
+                            ai_handler.rebuild_text_embedding_model(&ctx)
                         }
                         AIModelCategory::MultiModalEmbedding => {
-                            ai_handler.update_multi_modal_embedding(&ctx);
+                            ai_handler.rebuild_multi_modal_embedding_model(&ctx)
                         }
                         AIModelCategory::ImageCaption => {
-                            ai_handler.update_image_caption(&ctx);
+                            ai_handler.rebuild_image_caption_model(&ctx)
                         }
                         AIModelCategory::AudioTranscript => {
-                            ai_handler.update_audio_transcript(&ctx);
+                            ai_handler.rebuild_audio_transcript_model(&ctx)
                         }
-                        _ => {}
+                        AIModelCategory::LLM => ai_handler.rebuild_llm_model(&ctx),
+                    } {
+                        return Err(rspc::Error::new(
+                            rspc::ErrorCode::InternalServerError,
+                            format!("Failed to rebuild model: {}", res),
+                        ));
                     }
                 }
 
@@ -117,7 +124,9 @@ where
             t(|ctx, payload: DownloadModelPayload| async move {
                 let resources_dir = ctx.get_resources_dir();
 
-                let model_list = load_model_list(&resources_dir)?;
+                let model_list = load_model_list(&resources_dir).map_err(|e| {
+                    rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string())
+                })?;
 
                 let model = model_list
                     .into_iter()
@@ -129,7 +138,9 @@ where
                         )
                     })?;
 
-                trigger_model_download(&resources_dir, &model, ctx.download_reporter()?)?;
+                trigger_model_download(&resources_dir, &model, ctx.download_reporter()?).map_err(
+                    |e| rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string()),
+                )?;
 
                 // 确保信息可以查到了再返回
                 // TODO 这里有点影响性能，最简单的办法其实是在前端做个延迟
@@ -160,7 +171,9 @@ where
         .query("get_model", |t| {
             t(|ctx, model_id: String| async move {
                 let resources_dir = ctx.get_resources_dir();
-                let model_list = load_model_list(&resources_dir)?;
+                let model_list = load_model_list(&resources_dir).map_err(|e| {
+                    rspc::Error::new(rspc::ErrorCode::InternalServerError, e.to_string())
+                })?;
 
                 let model_info = model_list
                     .iter()

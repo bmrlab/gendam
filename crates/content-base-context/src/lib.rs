@@ -19,7 +19,7 @@ pub struct ContentBaseCtx {
     audio_transcript: Option<(Arc<AudioTranscriptModel>, String)>,
     image_caption: Option<(Arc<ImageCaptionModel>, String)>,
     llm: Option<(Arc<LLMModel>, String)>,
-    text_tokenizer: Option<(ai::tokenizers::Tokenizer, String)>,
+    text_tokenizer: Option<(Arc<ai::tokenizers::Tokenizer>, String)>,
 }
 
 impl ContentBaseCtx {
@@ -85,7 +85,7 @@ impl ContentBaseCtx {
     /// 目前这个是专门给 audio transcript 和 raw text 的 chunking 用的
     pub fn with_text_tokenizer(
         mut self,
-        tokenizer: ai::tokenizers::Tokenizer,
+        tokenizer: Arc<ai::tokenizers::Tokenizer>,
         tokenizer_name: &str,
     ) -> Self {
         self.text_tokenizer = Some((tokenizer, tokenizer_name.into()));

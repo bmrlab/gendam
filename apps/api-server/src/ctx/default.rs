@@ -393,26 +393,30 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         let content_base = {
             let cb_ctx = ContentBaseCtx::new(&library.artifacts_dir_name(), &self.temp_dir)
                 .with_audio_transcript(
-                    Arc::new(ai_handler.audio_transcript.0.clone()),
+                    Arc::new(ai_handler.audio_transcript.0),
                     &ai_handler.audio_transcript.1,
                 )
-                .with_llm(Arc::new(ai_handler.llm.0.clone()), &ai_handler.llm.1)
+                .with_llm(
+                    Arc::new(ai_handler.llm.0),
+                    &ai_handler.llm.1, // this comment is just for for alignment and better readability
+                )
                 .with_text_tokenizer(
-                    ai_handler.text_tokenizer.0.clone(),
+                    Arc::new(ai_handler.text_tokenizer.0),
                     &ai_handler.text_tokenizer.1,
                 )
                 .with_multi_modal_embedding(
-                    Arc::new(ai_handler.multi_modal_embedding.0.clone()),
+                    Arc::new(ai_handler.multi_modal_embedding.0),
                     &ai_handler.multi_modal_embedding.1,
                 )
                 .with_text_embedding(
-                    Arc::new(ai_handler.text_embedding.0.clone()),
+                    Arc::new(ai_handler.text_embedding.0),
                     &ai_handler.text_embedding.1,
                 )
                 .with_image_caption(
-                    Arc::new(ai_handler.image_caption.0.clone()),
+                    Arc::new(ai_handler.image_caption.0),
                     &ai_handler.image_caption.1,
                 );
+            // 这个 block 后面不再使用 ai_handler 了，上面 with 函数里不需要 clone 直接 move 就行
             let cb = ContentBase::new(&cb_ctx, library.db()).map_err(|e| {
                 tracing::error!(task = "init content base", "Failed: {}", e);
                 CtxError::Internal(format!("Failed to init content base: {}", e))
