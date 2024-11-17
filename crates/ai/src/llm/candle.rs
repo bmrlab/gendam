@@ -96,7 +96,7 @@ pub(crate) trait CandleLLMModel: LLMModel + LocalLLMModel {
         params: LLMInferenceParams,
         tx: Option<Sender<anyhow::Result<Option<String>>>>,
     ) -> anyhow::Result<String> {
-        let tos = TokenOutputStream::new(self.tokenizers());
+        let mut tos = TokenOutputStream::new(self.tokenizers());
 
         let prompt_str = input.to_string();
         let tokens = tos
@@ -124,20 +124,39 @@ pub(crate) trait CandleLLMModel: LLMModel + LocalLLMModel {
             LogitsProcessor::from_sampling(params.seed.unwrap_or(rand::random()), sampling)
         };
 
-        let input = Tensor::new(prompt_tokens.as_slice(), &device)?.unsqueeze(0)?;
-
-        let logits = self.next_token_logits(&input, 0)?;
-        let logits = logits.squeeze(0)?;
-        let mut next_token = logits_processor.sample(&logits)?;
-        all_tokens.push(next_token);
-
-        if let Some(tx) = tx.clone() {
-            tx.send(Ok(Some(tos.decode(&[next_token])?))).await?;
+        #[cfg(debug_assertions)]
+        {
+            println!("");
         }
+        let mut next_token = {
+            let input = Tensor::new(prompt_tokens.as_slice(), &device)?.unsqueeze(0)?;
 
-        let eos_token = self.end_of_turn();
-        let eos_token = *tos.tokenizer().get_vocab(true).get(&eos_token).unwrap();
+            let logits = self.next_token_logits(&input, 0)?;
+            let logits = logits.squeeze(0)?;
+            let next_token = logits_processor.sample(&logits)?;
+            all_tokens.push(next_token);
 
+            if let Some(token) = tos.next_token(next_token)? {
+                #[cfg(debug_assertions)]
+                {
+                    use std::io::Write;
+                    print!("{}", token);
+                    std::io::stdout().flush()?;
+                }
+                if let Some(tx) = tx.clone() {
+                    tx.send(Ok(Some(token))).await?;
+                }
+            }
+            // if let Some(tx) = tx.clone() {
+            //     tx.send(Ok(Some(tos.decode(&[next_token])?))).await?;
+            // }
+            next_token
+        };
+
+        let eos_token = {
+            let eos_token = self.end_of_turn();
+            *tos.tokenizer().get_vocab(true).get(&eos_token).unwrap()
+        };
         let mut index = 0;
         loop {
             let input = Tensor::new(&[next_token], &device)?.unsqueeze(0)?;
@@ -166,9 +185,20 @@ pub(crate) trait CandleLLMModel: LLMModel + LocalLLMModel {
                 break;
             }
 
-            if let Some(tx) = tx.clone() {
-                tx.send(Ok(Some(tos.decode(&[next_token])?))).await?;
+            if let Some(token) = tos.next_token(next_token)? {
+                #[cfg(debug_assertions)]
+                {
+                    use std::io::Write;
+                    print!("{}", token);
+                    std::io::stdout().flush()?;
+                }
+                if let Some(tx) = tx.clone() {
+                    tx.send(Ok(Some(token))).await?;
+                }
             }
+            // if let Some(tx) = tx.clone() {
+            //     tx.send(Ok(Some(tos.decode(&[next_token])?))).await?;
+            // }
 
             if let Some(max_tokens) = params.max_tokens {
                 if index >= max_tokens {
@@ -176,8 +206,13 @@ pub(crate) trait CandleLLMModel: LLMModel + LocalLLMModel {
                 }
             }
         }
+        #[cfg(debug_assertions)]
+        {
+            println!("\n");
+        }
 
-        tos.decode(&all_tokens).map_err(|err| anyhow::anyhow!(err))
+        tos.decode_all().map_err(|err| anyhow::anyhow!(err))
+        // tos.decode(&all_tokens).map_err(|err| anyhow::anyhow!(err))
     }
 
     fn next_token_logits(&self, input: &Tensor, index_pos: usize) -> anyhow::Result<Tensor>;

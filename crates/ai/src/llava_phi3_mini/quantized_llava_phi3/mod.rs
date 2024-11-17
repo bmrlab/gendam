@@ -77,6 +77,10 @@ impl LLaVAPhi3Mini {
         let mut logits_processor = LogitsProcessor::from_sampling(seed, sampling.clone());
         let mut index_pos = 0;
         let mut all_tokens = vec![];
+        #[cfg(debug_assertions)]
+        {
+            println!("");
+        }
         for index in 0..SAMPLE_LEN.saturating_sub(1) {
             let (_, input_embeds_len, _) = input_embeds.dims3()?;
             // use kv cache, it is implemented in quantized llama
@@ -124,6 +128,7 @@ impl LLaVAPhi3Mini {
         {
             println!("\n");
         }
+
         let result = tos.decode_all()?;
         Ok(result)
     }
