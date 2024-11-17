@@ -2,11 +2,10 @@ use super::{
     clip::{ClipVisionConfig, ClipVisionTransformer},
     config::LLAVA_PHI3_CONFIG,
     linear::QLinear,
-    quantized_llama::{self, LlamaTextConfig},
     sequential::{seq, QSequential, QSequentialLayer},
 };
+use crate::llava_phi3_mini::quantized_llama::{self, LlamaTextConfig};
 use candle_core::{quantized::gguf_file, Device, IndexOp, Module, Tensor};
-
 use candle_transformers::quantized_var_builder;
 use std::path::Path;
 use tokenizers::Tokenizer;
@@ -253,7 +252,11 @@ impl QLLaVAPhi3 {
 
     /// Input prompt: "A photo of <image> next to <image>"
     /// Output: [bos_token_id, ...(tokens for "A photo of"), image_token_id, ...(tokens for " next to "), image_token_id]
-    pub fn tokenizer_image_token(&self, prompt: &str) -> candle_core::Result<Tensor> {
+    pub fn tokenizer_image_token(
+        &self,
+        device: &Device,
+        prompt: &str,
+    ) -> candle_core::Result<Tensor> {
         let prompt_chunks = prompt
             .split("<image>")
             .map(|s| {
@@ -287,7 +290,7 @@ impl QLLaVAPhi3 {
         }
         // println!("input_ids: {:?}", input_ids);
         let input_len = input_ids.len();
-        Tensor::from_vec(input_ids, (1, input_len), &Device::Cpu)
+        Tensor::from_vec(input_ids, (1, input_len), device)
     }
 }
 
