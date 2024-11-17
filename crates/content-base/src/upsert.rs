@@ -25,7 +25,7 @@ use content_base_task::{
     },
     raw_text::{
         chunk::{DocumentChunkTrait, RawTextChunkTask},
-        chunk_sum_embed::DocumentChunkSumEmbedTrait,
+        chunk_sum_embed::{DocumentChunkSumEmbedTrait, RawTextChunkSumEmbedTask},
         RawTextTaskType,
     },
     video::{
@@ -37,7 +37,9 @@ use content_base_task::{
         trans_chunk_sum_embed::VideoTransChunkSumEmbedTask,
         VideoTaskType,
     },
-    web_page::{chunk::WebPageChunkTask, WebPageTaskType},
+    web_page::{
+        chunk::WebPageChunkTask, chunk_sum_embed::WebPageChunkSumEmbedTask, WebPageTaskType,
+    },
     ContentTaskType, FileInfo, TaskRecord,
 };
 use content_metadata::{video::VideoMetadata, ContentMetadata};
@@ -49,6 +51,7 @@ use std::{
 };
 use tokio::sync::mpsc::{self, Receiver};
 use tokio::sync::RwLock;
+use tracing::Instrument;
 
 #[derive(Serialize, Deserialize)]
 pub struct UpsertPayload {
@@ -172,34 +175,6 @@ async fn run_task(
     }
 }
 
-macro_rules! chunk_to_page {
-    ($file_identifier:expr, $ctx:expr, $task_type:expr, $chunks:expr) => {{
-        collect_async_results!($chunks
-            .into_iter()
-            .enumerate()
-            .map(|(i, chunk)| async move {
-                let embedding = $task_type.embed_content($file_identifier, $ctx, i).await?;
-                let texts = vec![TextModel {
-                    id: None,
-                    content: chunk.clone(),
-                    embedding: embedding.clone(),
-                    // en_content: "".to_string(),
-                    // en_embedding: vec![],
-                }];
-                let images: Vec<ImageModel> = vec![];
-                let page = PageModel {
-                    id: None,
-                    start_index: i,
-                    end_index: i,
-                };
-                anyhow::Result::<(PageModel, Vec<TextModel>, Vec<ImageModel>)>::Ok((
-                    page, texts, images,
-                ))
-            })
-            .collect::<Vec<_>>())
-    }};
-}
-
 #[tracing::instrument(level = "info", skip(ctx, metadata, db))]
 async fn task_post_process(
     ctx: &ContentBaseCtx,
@@ -220,10 +195,7 @@ async fn task_post_process(
             // TransChunkSumEmbed, FrameDescEmbed 和 FrameEmbedding 结束后都触发 upsert_video_index_to_surrealdb
             // 如果有一个任务没完成，upsert_video_index_to_surrealdb 会报错
             // 但如果 video 没有音频，则直接跳过 TransChunkSumEmbed
-            upsert_video_index_to_surrealdb(ctx, file_identifier, metadata, db).await.map_err(|e| {
-                tracing::warn!("either TransChunkSumEmbed or FrameEmbedding or FrameDescEmbed task not finished yet: {:?}", e);
-                e
-            })?;
+            upsert_video_index_to_surrealdb(ctx, file_identifier, metadata, db).await?;
             tracing::info!("video index upserted to surrealdb");
         }
         (ContentTaskType::Audio(AudioTaskType::TransChunkSumEmbed(_)), _) => {
@@ -233,45 +205,27 @@ async fn task_post_process(
         (ContentTaskType::Image(ImageTaskType::DescEmbed(_) | ImageTaskType::Embedding(_)), _) => {
             // DescEmbed 和 Embedding 结束后都触发 upsert_image_index_to_surrealdb
             // 如果有一个任务没完成，upsert_image_index_to_surrealdb 会报错
-            upsert_image_index_to_surrealdb(ctx, file_identifier, db).await.map_err(|e| {
-                tracing::warn!("either image embedding or description embedding task not finished yet: {:?}", e);
-                e
-            })?;
+            upsert_image_index_to_surrealdb(ctx, file_identifier, db).await?;
             tracing::info!("image index upserted to surrealdb");
         }
-        (ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(task_type)), _) => {
-            let pages: anyhow::Result<Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>> = chunk_to_page!(
-                file_identifier,
-                ctx,
-                task_type,
-                RawTextChunkTask.chunk_content(file_identifier, ctx).await?
-            );
-            db.try_read()?
-                .insert_document(
-                    file_identifier.to_string(),
-                    (DocumentModel { id: None }, pages?),
-                )
-                .await?;
+        (ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(_)), _) => {
+            upsert_document_index_to_surrealdb(ctx, file_identifier, db).await?;
             tracing::info!("document index upserted to surrealdb");
         }
-        (ContentTaskType::WebPage(WebPageTaskType::ChunkSumEmbed(task_type)), _) => {
-            let pages: anyhow::Result<Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>> = chunk_to_page!(
-                file_identifier,
-                ctx,
-                task_type,
-                WebPageChunkTask.chunk_content(file_identifier, ctx).await?
-            );
-            db.try_read()?
-                .insert_web_page(
-                    file_identifier.to_string(),
-                    (WebPageModel { id: None }, pages?),
-                )
-                .await?;
+        (ContentTaskType::WebPage(WebPageTaskType::ChunkSumEmbed(_)), _) => {
+            upsert_web_page_index_to_surrealdb(ctx, file_identifier, db).await?;
             tracing::info!("web page index upserted to surrealdb");
         }
         _ => {}
     };
     Ok(())
+}
+
+fn warn_and_skip(msg: &'static str) -> impl FnOnce(anyhow::Error) -> anyhow::Error {
+    move |e: anyhow::Error| {
+        tracing::warn!(error = ?e, "Failed to read {} output, skip ... ", msg); // error = %e
+        e
+    }
 }
 
 #[tracing::instrument(skip_all)]
@@ -282,31 +236,36 @@ async fn upsert_audio_index_to_surrealdb(
 ) -> anyhow::Result<()> {
     let chunks = AudioTransChunkTask
         .chunk_content(file_identifier, ctx)
-        .await?;
+        .await
+        .map_err(warn_and_skip("audio chunks"))?;
     let future = chunks
         .into_iter()
-        .map(|chunk| async move {
-            let embedding = AudioTransChunkSumEmbedTask
-                .embed_content(
-                    file_identifier,
-                    ctx,
-                    chunk.start_timestamp,
-                    chunk.end_timestamp,
-                )
-                .await?;
-            let texts = vec![TextModel {
-                id: None,
-                content: chunk.text.clone(),
-                embedding: embedding.clone(),
-                // en_content: "".to_string(),
-                // en_embedding: vec![],
-            }];
-            let audio_frame = AudioFrameModel {
-                id: None,
-                start_timestamp: chunk.start_timestamp,
-                end_timestamp: chunk.end_timestamp,
-            };
-            anyhow::Result::<(AudioFrameModel, Vec<TextModel>)>::Ok((audio_frame, texts))
+        .map(|chunk| {
+            async move {
+                let embedding = AudioTransChunkSumEmbedTask
+                    .embed_content(
+                        file_identifier,
+                        ctx,
+                        chunk.start_timestamp,
+                        chunk.end_timestamp,
+                    )
+                    .await
+                    .map_err(warn_and_skip("audio chunk embedding"))?;
+                let texts = vec![TextModel {
+                    id: None,
+                    content: chunk.text.clone(),
+                    embedding: embedding.clone(),
+                    // en_content: "".to_string(),
+                    // en_embedding: vec![],
+                }];
+                let audio_frame = AudioFrameModel {
+                    id: None,
+                    start_timestamp: chunk.start_timestamp,
+                    end_timestamp: chunk.end_timestamp,
+                };
+                anyhow::Result::<(AudioFrameModel, Vec<TextModel>)>::Ok((audio_frame, texts))
+            }
+            .instrument(tracing::Span::current())
         })
         .collect::<Vec<_>>();
     let audio_frames: anyhow::Result<Vec<(AudioFrameModel, Vec<TextModel>)>> =
@@ -330,33 +289,37 @@ async fn upsert_video_index_to_surrealdb(
     let audio_frames: Vec<(AudioFrameModel, Vec<TextModel>)> = if metadata.audio.is_some() {
         let chunks = VideoTransChunkTask
             .chunk_content(file_identifier, ctx)
-            .await?;
+            .await
+            .map_err(warn_and_skip("video's audio chunks"))?;
         // tracing::debug!("video chunks: {chunks:?}");
         let future = chunks
             .into_iter()
-            .map(|chunk| async move {
-                let embedding = VideoTransChunkSumEmbedTask
-                    .embed_content(
-                        file_identifier,
-                        ctx,
-                        chunk.start_timestamp,
-                        chunk.end_timestamp,
-                    )
-                    .await?;
-                // tracing::debug!("chunk: {chunk:?}, embedding: {:?}", embedding.len());
-                let audio_frame = AudioFrameModel {
-                    id: None,
-                    start_timestamp: chunk.start_timestamp,
-                    end_timestamp: chunk.end_timestamp,
-                };
-                let texts = vec![TextModel {
-                    id: None,
-                    content: chunk.text.clone(),
-                    embedding: embedding.clone(),
-                    // en_content: "".to_string(),
-                    // en_embedding: vec![],
-                }];
-                Result::<(AudioFrameModel, Vec<TextModel>), anyhow::Error>::Ok((audio_frame, texts))
+            .map(|chunk| {
+                async move {
+                    let start_timestamp = chunk.start_timestamp;
+                    let end_timestamp = chunk.end_timestamp;
+                    let embedding = VideoTransChunkSumEmbedTask
+                        .embed_content(file_identifier, ctx, start_timestamp, end_timestamp)
+                        .await
+                        .map_err(warn_and_skip("video chunk embedding"))?;
+                    let audio_frame = AudioFrameModel {
+                        id: None,
+                        start_timestamp,
+                        end_timestamp,
+                    };
+                    let texts = vec![TextModel {
+                        id: None,
+                        content: chunk.text.clone(),
+                        embedding: embedding,
+                        // en_content: "".to_string(),
+                        // en_embedding: vec![],
+                    }];
+                    Result::<(AudioFrameModel, Vec<TextModel>), anyhow::Error>::Ok((
+                        audio_frame,
+                        texts,
+                    ))
+                }
+                .instrument(tracing::Span::current())
             })
             .collect::<Vec<_>>();
         try_join_all(future).await?
@@ -365,49 +328,60 @@ async fn upsert_video_index_to_surrealdb(
     };
 
     let image_frames: Vec<(ImageFrameModel, Vec<ImageModel>)> = {
-        let frames = VideoFrameTask.frame_content(file_identifier, ctx).await?;
+        let frames = VideoFrameTask
+            .frame_content(file_identifier, ctx)
+            .await
+            .map_err(warn_and_skip("video's image frames"))?;
         // tracing::debug!("video frames: {frames:?}");
         let future = frames
             .chunks(VIDEO_FRAME_SUMMARY_BATCH_SIZE)
             .into_iter()
-            .map(|frame_infos_chunk| async move {
-                let first_frame = frame_infos_chunk.first().expect("first chunk should exist");
-                let last_frame = frame_infos_chunk.last().expect("last chunk should exist");
-                let desc_embedding = VideoFrameDescEmbedTask
-                    .frame_desc_embed_content(
-                        file_identifier,
-                        ctx,
-                        first_frame.timestamp,
-                        last_frame.timestamp,
-                    )
-                    .await?;
-                let description = VideoFrameDescriptionTask
-                    .frame_description_content(
-                        file_identifier,
-                        ctx,
-                        first_frame.timestamp,
-                        last_frame.timestamp,
-                    )
-                    .await?;
-                // TODO: 优化?, 目前 embedding 只取第一个 chunk 的，description 取的是一个片段的
-                let embedding = VideoFrameEmbeddingTask
-                    .frame_embedding_content(file_identifier, ctx, first_frame.timestamp)
-                    .await?;
-                let image_frame = ImageFrameModel {
-                    id: None,
-                    start_timestamp: first_frame.timestamp,
-                    end_timestamp: last_frame.timestamp,
-                };
-                let images = vec![ImageModel {
-                    id: None,
-                    caption: description,
-                    embedding: embedding,
-                    caption_embedding: desc_embedding,
-                }];
-                Result::<(ImageFrameModel, Vec<ImageModel>), anyhow::Error>::Ok((
-                    image_frame,
-                    images,
-                ))
+            .map(|frame_infos_chunk| {
+                async move {
+                    let first_frame = frame_infos_chunk.first().expect("first chunk should exist");
+                    let last_frame = frame_infos_chunk.last().expect("last chunk should exist");
+                    let start_timestamp = first_frame.timestamp;
+                    let end_timestamp = last_frame.timestamp;
+                    let caption_embedding = VideoFrameDescEmbedTask
+                        .frame_desc_embed_content(
+                            file_identifier,
+                            ctx,
+                            start_timestamp,
+                            end_timestamp,
+                        )
+                        .await
+                        .map_err(warn_and_skip("video frame desc embedding"))?;
+                    let caption = VideoFrameDescriptionTask
+                        .frame_description_content(
+                            file_identifier,
+                            ctx,
+                            start_timestamp,
+                            end_timestamp,
+                        )
+                        .await
+                        .map_err(warn_and_skip("video frame description"))?;
+                    // TODO: 优化?, 目前 embedding 只取第一个 chunk 的，description 取的是一个片段的
+                    let embedding = VideoFrameEmbeddingTask
+                        .frame_embedding_content(file_identifier, ctx, start_timestamp)
+                        .await
+                        .map_err(warn_and_skip("video frame embedding"))?;
+                    let image_frame = ImageFrameModel {
+                        id: None,
+                        start_timestamp,
+                        end_timestamp,
+                    };
+                    let images = vec![ImageModel {
+                        id: None,
+                        caption,
+                        embedding,
+                        caption_embedding,
+                    }];
+                    Result::<(ImageFrameModel, Vec<ImageModel>), anyhow::Error>::Ok((
+                        image_frame,
+                        images,
+                    ))
+                }
+                .instrument(tracing::Span::current())
             });
         try_join_all(future).await?
     };
@@ -430,13 +404,16 @@ async fn upsert_image_index_to_surrealdb(
     // 不用 task_type.desc_embed_content，用 ImageDescEmbedTask 创建个空实例，统一写法
     let caption_embedding = ImageDescEmbedTask
         .desc_embed_content(file_identifier, ctx)
-        .await?;
+        .await
+        .map_err(warn_and_skip("image desc embedding"))?;
     let caption = ImageDescriptionTask
         .description_content(file_identifier, ctx)
-        .await?;
+        .await
+        .map_err(warn_and_skip("image description"))?;
     let embedding = ImageEmbeddingTask
         .embedding_content(file_identifier, ctx)
-        .await?;
+        .await
+        .map_err(warn_and_skip("image embedding"))?;
     db.try_read()?
         .insert_image(
             file_identifier.to_string(),
@@ -446,6 +423,103 @@ async fn upsert_image_index_to_surrealdb(
                 embedding,
                 caption_embedding,
             },
+        )
+        .await?;
+    Ok(())
+}
+
+#[tracing::instrument(skip_all)]
+async fn upsert_document_index_to_surrealdb(
+    ctx: &ContentBaseCtx,
+    file_identifier: &str,
+    db: Arc<RwLock<DB>>,
+) -> anyhow::Result<()> {
+    let chunks = RawTextChunkTask
+        .chunk_content(file_identifier, ctx)
+        .await
+        .map_err(warn_and_skip("document chunk"))?;
+    let futures = chunks
+        .into_iter()
+        .enumerate()
+        .map(|(i, content)| {
+            async move {
+                let embedding = RawTextChunkSumEmbedTask
+                    .embed_content(file_identifier, ctx, i)
+                    .await
+                    .map_err(warn_and_skip("document chunk summary embedding"))?;
+                let texts = vec![TextModel {
+                    id: None,
+                    content,
+                    embedding,
+                    // en_content: "".to_string(),
+                    // en_embedding: vec![],
+                }];
+                let images: Vec<ImageModel> = vec![];
+                let page = PageModel {
+                    id: None,
+                    start_index: i,
+                    end_index: i,
+                };
+                anyhow::Result::<(PageModel, Vec<TextModel>, Vec<ImageModel>)>::Ok((
+                    page, texts, images,
+                ))
+            }
+            .instrument(tracing::Span::current())
+        })
+        .collect::<Vec<_>>();
+    let pages: anyhow::Result<Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>> =
+        collect_async_results!(futures);
+    db.try_read()?
+        .insert_document(
+            file_identifier.to_string(),
+            (DocumentModel { id: None }, pages?),
+        )
+        .await?;
+    Ok(())
+}
+
+#[tracing::instrument(skip_all)]
+async fn upsert_web_page_index_to_surrealdb(
+    ctx: &ContentBaseCtx,
+    file_identifier: &str,
+    db: Arc<RwLock<DB>>,
+) -> anyhow::Result<()> {
+    let chunks = WebPageChunkTask.chunk_content(file_identifier, ctx).await?;
+    let futures = chunks
+        .into_iter()
+        .enumerate()
+        .map(|(i, content)| {
+            async move {
+                let embedding = WebPageChunkSumEmbedTask
+                    .embed_content(file_identifier, ctx, i)
+                    .await
+                    .map_err(warn_and_skip("web page chunk summary embedding"))?;
+                let texts = vec![TextModel {
+                    id: None,
+                    content,
+                    embedding,
+                    // en_content: "".to_string(),
+                    // en_embedding: vec![],
+                }];
+                let images: Vec<ImageModel> = vec![];
+                let page = PageModel {
+                    id: None,
+                    start_index: i,
+                    end_index: i,
+                };
+                anyhow::Result::<(PageModel, Vec<TextModel>, Vec<ImageModel>)>::Ok((
+                    page, texts, images,
+                ))
+            }
+            .instrument(tracing::Span::current())
+        })
+        .collect::<Vec<_>>();
+    let pages: anyhow::Result<Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>> =
+        collect_async_results!(futures);
+    db.try_read()?
+        .insert_web_page(
+            file_identifier.to_string(),
+            (WebPageModel { id: None }, pages?),
         )
         .await?;
     Ok(())
