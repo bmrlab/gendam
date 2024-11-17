@@ -300,26 +300,37 @@ async fn get_task_bound(_task_type: &ContentTaskType) -> TaskBound {
 }
 
 impl TaskPoolContext {
+    /// 为了更好的 tracing 把方法分成 pop_next_task 和 async_exec_task
+    /// 这是个无限循环，需要每次 pop 新任务的时候创建一个 span
+    /// 但 run 是个 async 方法，async 代码中的 span 需要额外小心，最好都用 tracing::instrument
+    /// https://docs.rs/tracing/latest/tracing/struct.Span.html#in-asynchronous-code
+    ///
+    /// 如果是 run 方法里面直接用 tracing::info_span!，需要创建一个 span 然后立即 enter，
+    /// 接下来用 `async {}.instrument(span)` 和 `span.in_scope(|| {})` 来执行 async 和 sync 的代码，有点麻烦
     pub async fn loop_for_task_execution(&self, content_base: &ContentBaseCtx) {
-        // 为了更好的 tracing 把方法分成 pop_next_task 和 async_exec_task
-        // 这是个无限循环，需要每次 pop 新任务的时候创建一个 span
-        // 但 run 是个 async 方法，async 代码中的 span 需要额外小心，最好都用 tracing::instrument
-        // https://docs.rs/tracing/latest/tracing/struct.Span.html#in-asynchronous-code
-        //
-        // 如果是 run 方法里面直接用 tracing::info_span!，需要创建一个 span 然后立即 enter，
-        // 接下来用 `async {}.instrument(span)` 和 `span.in_scope(|| {})` 来执行 async 和 sync 的代码，有点麻烦
-        let mut count: usize = 1;
+        let mut count: usize = 0;
+        let mut task_interval = tokio::time::interval(std::time::Duration::from_secs(1));
+        let mut status_interval = tokio::time::interval(std::time::Duration::from_secs(60));
         loop {
-            let (task_id, priority, current_task) = match self.pop_next_task(count).await {
-                Some(v) => {
+            tokio::select! {
+                // 任务执行
+                _ = task_interval.tick() => {
+                    let Some((task_id, priority, current_task)) = self.pop_next_task(count + 1).await else {
+                        continue
+                    };
+                    self.async_exec_task(content_base, task_id, priority, current_task).await;
                     count += 1;
-                    v
                 }
-                None => continue,
-            };
-
-            self.async_exec_task(content_base, task_id, priority, current_task)
-                .await;
+                // 状态打印
+                _ = status_interval.tick() => {
+                    let len = self.task_queue.read().await.len();
+                    let bound = match self.task_bound {
+                        TaskBound::CPU => "CPU",
+                        TaskBound::IO => "IO",
+                    };
+                    tracing::info!(queue=%bound, length=%len, processed=%count, "loop_for_task_execution");
+                }
+            }
         }
     }
 
@@ -328,7 +339,13 @@ impl TaskPoolContext {
         &self,
         _count: usize, // 仅用于 tracing
     ) -> Option<(TaskId, OrderedTaskPriority, Arc<TaskInQueue>)> {
-        let permit = self.semaphore.acquire().await.expect("semaphore acquired");
+        let permit = match self.semaphore.acquire().await {
+            Ok(permit) => permit,
+            Err(e) => {
+                tracing::error!(error = ?e, "semaphore acquire failed");
+                return None;
+            }
+        };
 
         // 这里是执行下一个任务的入口，从 queue 里取出来
         let (task_id, priority) = match {
@@ -337,6 +354,7 @@ impl TaskPoolContext {
         } {
             Some((task_id, priority)) => (task_id, priority),
             None => {
+                // tracing::warn!("task queue is empty");  // 会一直输出，因为是个 loop
                 drop(permit);
                 return None;
             }
@@ -516,6 +534,7 @@ impl TaskPoolContext {
 
             // add permit back
             semaphore.add_permits(1);
+            tracing::info!("semaphore permits is added back");
 
             {
                 let mut task_mapping = task_mapping.write().await;
