@@ -6,7 +6,7 @@ use crate::cron_jobs::delete_unlinked_assets;
 use crate::{
     ai::AIHandler,
     download::{DownloadHub, DownloadReporter, DownloadStatus},
-    routes::p2p::info::ShareInfo,
+    routes::{assets::process::build_content_index, p2p::info::ShareInfo},
 };
 use async_trait::async_trait;
 use content_base::{ContentBase, ContentBaseCtx};
@@ -198,10 +198,33 @@ impl<T> From<std::sync::PoisonError<T>> for CtxError {
 
 impl<S: CtxStore + Send> Ctx<S> {
     async fn trigger_unfinished_tasks(&self) -> () {
-        if let Ok(_library) = self.library() {
-            //
-        } else {
-            //
+        let Ok(library) = self.library() else {
+            return;
+        };
+        let asset_object_data_list = match library
+            .prisma_client()
+            .asset_object()
+            .find_many(vec![prisma_lib::asset_object::tasks::some(vec![
+                prisma_lib::file_handler_task::exit_code::equals(None),
+            ])])
+            .exec()
+            .await
+        {
+            Ok(asset_object_data_list) => asset_object_data_list,
+            Err(e) => {
+                tracing::error!("Failed to fetch unfinished tasks: {}", e);
+                return;
+            }
+        };
+        tracing::info!(
+            "Found {} assets with unfinished tasks",
+            asset_object_data_list.len()
+        );
+        for asset_object_data in asset_object_data_list {
+            if let Err(e) = build_content_index(&library, self, &asset_object_data.hash, true).await
+            {
+                tracing::error!(error = ?e, "Failed trigger content index rebuild for asset {}", asset_object_data.hash);
+            }
         }
     }
 }
@@ -431,7 +454,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
         /* trigger unfinished tasks */
         {
             self.trigger_unfinished_tasks().await;
-            tracing::warn!(task = "trigger unfinished tasks", "Not implemented");
+            tracing::info!(task = "trigger unfinished tasks", "Success");
         }
 
         // init cron

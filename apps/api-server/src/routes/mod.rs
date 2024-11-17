@@ -1,4 +1,3 @@
-mod assets;
 mod audio;
 mod libraries;
 mod search;
@@ -6,6 +5,7 @@ mod tasks;
 mod users;
 mod video;
 
+pub(crate) mod assets;
 pub(crate) mod localhost;
 pub(crate) mod p2p;
 pub(crate) mod storage;

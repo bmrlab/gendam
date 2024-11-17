@@ -1,12 +1,14 @@
 mod artifacts;
 mod create;
 mod delete;
-mod process;
 mod read;
-pub(crate) mod types;
 mod update;
 mod utils;
 mod web_page;
+
+pub(crate) mod process;
+pub(super) mod types;
+
 use self::{
     create::{create_asset_object, create_dir},
     delete::delete_file_path,
