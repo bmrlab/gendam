@@ -16,6 +16,7 @@ use content_base_pool::{TaskNotification, TaskPool, TaskPriority, TaskStatus};
 use content_base_task::{
     audio::{
         trans_chunk::{AudioTransChunkTask, AudioTranscriptChunkTrait},
+        trans_chunk_sum::{AudioTransChunkSumTask, AudioTransChunkSumTrait},
         trans_chunk_sum_embed::{AudioTransChunkSumEmbedTask, AudioTransChunkSumEmbedTrait},
         AudioTaskType,
     },
@@ -34,6 +35,7 @@ use content_base_task::{
         frame_description::VideoFrameDescriptionTask,
         frame_embedding::VideoFrameEmbeddingTask,
         trans_chunk::VideoTransChunkTask,
+        trans_chunk_sum::VideoTransChunkSumTask,
         trans_chunk_sum_embed::VideoTransChunkSumEmbedTask,
         VideoTaskType,
     },
@@ -237,31 +239,35 @@ async fn upsert_audio_index_to_surrealdb(
     let chunks = AudioTransChunkTask
         .chunk_content(file_identifier, ctx)
         .await
-        .map_err(warn_and_skip("audio chunks"))?;
+        .map_err(warn_and_skip("audio transcript chunks"))?;
     let future = chunks
         .into_iter()
         .map(|chunk| {
             async move {
-                let embedding = AudioTransChunkSumEmbedTask
-                    .embed_content(
-                        file_identifier,
-                        ctx,
-                        chunk.start_timestamp,
-                        chunk.end_timestamp,
-                    )
+                let start_timestamp = chunk.start_timestamp;
+                let end_timestamp = chunk.end_timestamp;
+                // let content = chunk.text;
+                // 不直接使用 transcript 文本，使用 transcript summary 文本，和 embedding 对应
+                // 另一个原因是现在中文的全文搜索不大好，所以都用英文总结的 transcript summary
+                let content = AudioTransChunkSumTask
+                    .sum_content(file_identifier, ctx, start_timestamp, end_timestamp)
                     .await
-                    .map_err(warn_and_skip("audio chunk embedding"))?;
+                    .map_err(warn_and_skip("audio transcript chunk summary"))?;
+                let embedding = AudioTransChunkSumEmbedTask
+                    .embed_content(file_identifier, ctx, start_timestamp, end_timestamp)
+                    .await
+                    .map_err(warn_and_skip("audio transcript chunk summary embedding"))?;
                 let texts = vec![TextModel {
                     id: None,
-                    content: chunk.text.clone(),
-                    embedding: embedding.clone(),
+                    content,
+                    embedding,
                     // en_content: "".to_string(),
                     // en_embedding: vec![],
                 }];
                 let audio_frame = AudioFrameModel {
                     id: None,
-                    start_timestamp: chunk.start_timestamp,
-                    end_timestamp: chunk.end_timestamp,
+                    start_timestamp,
+                    end_timestamp,
                 };
                 anyhow::Result::<(AudioFrameModel, Vec<TextModel>)>::Ok((audio_frame, texts))
             }
@@ -290,7 +296,7 @@ async fn upsert_video_index_to_surrealdb(
         let chunks = VideoTransChunkTask
             .chunk_content(file_identifier, ctx)
             .await
-            .map_err(warn_and_skip("video's audio chunks"))?;
+            .map_err(warn_and_skip("video transcript chunks"))?;
         // tracing::debug!("video chunks: {chunks:?}");
         let future = chunks
             .into_iter()
@@ -298,10 +304,17 @@ async fn upsert_video_index_to_surrealdb(
                 async move {
                     let start_timestamp = chunk.start_timestamp;
                     let end_timestamp = chunk.end_timestamp;
+                    // let content = chunk.text;
+                    // 不直接使用 transcript 文本，使用 transcript summary 文本，和 embedding 对应
+                    // 另一个原因是现在中文的全文搜索不大好，所以都用英文总结的 transcript summary
+                    let content = VideoTransChunkSumTask
+                        .sum_content(file_identifier, ctx, start_timestamp, end_timestamp)
+                        .await
+                        .map_err(warn_and_skip("video transcript chunk summary"))?;
                     let embedding = VideoTransChunkSumEmbedTask
                         .embed_content(file_identifier, ctx, start_timestamp, end_timestamp)
                         .await
-                        .map_err(warn_and_skip("video chunk embedding"))?;
+                        .map_err(warn_and_skip("video transcript summary embedding"))?;
                     let audio_frame = AudioFrameModel {
                         id: None,
                         start_timestamp,
@@ -309,8 +322,8 @@ async fn upsert_video_index_to_surrealdb(
                     };
                     let texts = vec![TextModel {
                         id: None,
-                        content: chunk.text.clone(),
-                        embedding: embedding,
+                        content,
+                        embedding,
                         // en_content: "".to_string(),
                         // en_embedding: vec![],
                     }];
@@ -331,7 +344,7 @@ async fn upsert_video_index_to_surrealdb(
         let frames = VideoFrameTask
             .frame_content(file_identifier, ctx)
             .await
-            .map_err(warn_and_skip("video's image frames"))?;
+            .map_err(warn_and_skip("video image frames"))?;
         // tracing::debug!("video frames: {frames:?}");
         let future = frames
             .chunks(VIDEO_FRAME_SUMMARY_BATCH_SIZE)

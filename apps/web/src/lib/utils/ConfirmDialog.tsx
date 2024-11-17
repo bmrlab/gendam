@@ -5,13 +5,20 @@ import { Dialog } from '@gendam/ui/v2/dialog'
 import { useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
+interface ConfirmDialogOptions {
+  title: string
+  description: string
+  confirmText?: string
+  cancelText?: string
+}
+
 const ConfirmDialogComponent = ({
   title,
   description,
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
   onClose,
-}: {
-  title: string
-  description: string
+}: ConfirmDialogOptions & {
   onClose: (isConfirmed: boolean) => void
 }) => {
   const [isOpen, setIsOpen] = useState(true)
@@ -46,7 +53,7 @@ const ConfirmDialogComponent = ({
                 setIsOpen(false)
               }}
             >
-              Cancel
+              {cancelText}
             </Button>
             <Button
               variant="accent"
@@ -56,7 +63,7 @@ const ConfirmDialogComponent = ({
                 setIsOpen(false)
               }}
             >
-              Confirm
+              {confirmText}
             </Button>
           </div>
         </Dialog.Content>
@@ -65,7 +72,10 @@ const ConfirmDialogComponent = ({
   )
 }
 
-export const confirm = (title: string, description: string) => {
+export function confirm(title: string, description: string): Promise<boolean>
+export function confirm(options: ConfirmDialogOptions): Promise<boolean>
+
+export function confirm(titleOrOptions: string | ConfirmDialogOptions, description?: string) {
   return new Promise<boolean>((resolve) => {
     const container = document.createElement('div')
     document.body.appendChild(container)
@@ -76,10 +86,17 @@ export const confirm = (title: string, description: string) => {
       container.remove()
     }
 
+    const options =
+      typeof titleOrOptions === 'string'
+        ? {
+            title: titleOrOptions,
+            description: description ?? '',
+          }
+        : titleOrOptions
+
     root.render(
       <ConfirmDialogComponent
-        title={title}
-        description={description}
+        {...options}
         onClose={(isConfirmed) => {
           cleanup()
           resolve(isConfirmed)

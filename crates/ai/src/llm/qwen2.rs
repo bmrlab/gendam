@@ -149,7 +149,7 @@ impl Qwen2 {
                         }
                     }
                     Err(e) => {
-                        tracing::warn!("qwen2 rx error: {:?}", e);
+                        tracing::warn!(error=?e, "qwen2 rx error");
                         break;
                     }
                 }

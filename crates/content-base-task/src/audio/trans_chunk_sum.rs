@@ -26,10 +26,11 @@ pub trait AudioTransChunkSumTrait: Into<ContentTaskType> + Clone + Storage {
         ctx: &ContentBaseCtx,
         task_run_record: &mut crate::record::TaskRunRecord,
     ) -> anyhow::Result<()> {
-        let transcript = self
-            .transcript_task()
-            .transcript_content(&file_info.file_identifier, ctx)
-            .await?;
+        // for getting language of transcript
+        // let transcript = self
+        //     .transcript_task()
+        //     .transcript_content(&file_info.file_identifier, ctx)
+        //     .await?;
         let chunks = self
             .chunk_task()
             .chunk_content(&file_info.file_identifier, ctx)
@@ -78,9 +79,12 @@ Additional Rules:
 - Content: just response with the short sentence only, do not start with hint or prompt, do not contain anything else, e.g., "The speaker is talking about his childhood."
 - Focus: do not summarize the content in the previous video, focus on current piece of video transcript
 - Word count: aim for a summarization with no more than 30 words.
-- Language: summarization should be in the same language with input, which is {language}
+- Language: always provide the summary in English, regardless of the input language.
 "#,
-                language = transcript.language.as_ref()
+                // 现在中文的全文搜索不大好，所以都用英文总结的 transcript summary，索引里也只存英文总结文本，不直接存中文语音原文（存了也搜不出来 ...）
+                // - Language: summarization should be in the same language with input, which is {language}
+                // "#,
+                // language = transcript.language.as_ref()
             );
 
             let mut response = llm

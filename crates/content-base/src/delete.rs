@@ -96,10 +96,19 @@ async fn delete_task(
         any_dep_is_deleted = any_dep_is_deleted || is_deleted;
     }
 
+    // TODO: 这段代码用来强制删除一些任务的结果，主要用于测试期间，后面要支持任务的 version 在参数里。
+    // 记得要放在这个位置，不能放在上面的循环之前，依赖的任务依然保持原有逻辑，不受影响，除非在下面专门指定。
+    // let keep_completed_tasks = match task_type {
+    //     ContentTaskType::Video(
+    //         VideoTaskType::TransChunkSum(_) | VideoTaskType::TransChunkSumEmbed(_),
+    //     ) => false,
+    //     _ => keep_completed_tasks,
+    // };
+
     if keep_completed_tasks && is_completed && !any_dep_is_deleted {
         // 如果任务已经完成，且没有依赖任务被删除，则不删除
         tracing::info!(
-            "Task {} of {} is completed and not deleted",
+            "Task {} of {} is completed and will not be deleted",
             task_type,
             file_info.file_identifier
         );

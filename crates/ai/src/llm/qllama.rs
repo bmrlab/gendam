@@ -146,7 +146,7 @@ impl Qllama {
                         }
                     }
                     Err(e) => {
-                        tracing::warn!("quantized llama rx error: {:?}", e);
+                        tracing::warn!(error=?e, "quantized llama rx error");
                         break;
                     }
                 }
