@@ -5,7 +5,7 @@ use ai::{
     blip::BLIP,
     clip::{CLIPModel, CLIP},
     llava_phi3_mini::LLaVAPhi3Mini,
-    llm::{openai::OpenAI, qwen2::Qwen2, LLM},
+    llm::{openai::OpenAI, qllama::Qllama, qwen2::Qwen2, LLM},
     text_embedding::OrtTextEmbedding,
     whisper::Whisper,
     AIModel, AudioTranscriptModel, ImageCaptionModel, LLMModel, MultiModalEmbeddingModel,
@@ -361,6 +361,15 @@ impl AIHandler {
 
                             Qwen2::load(&model_path, &tokenizer_path, &device)
                                 .map(|v| LLM::Qwen2(v))
+                        }
+                        ConcreteModelType::LLaVAPhi3Mini => {
+                            // 和 LLaVAPhi3 使用同一个模型，但是不需要 mmproj
+                            let model_path = resources_dir_clone
+                                .join(get_str_from_params(&params, "model_path")?);
+                            let tokenizer_path = resources_dir_clone
+                                .join(get_str_from_params(&params, "tokenizer_path")?);
+                            let device = get_str_from_params(&params, "device")?;
+                            Qllama::load(model_path, tokenizer_path, device).map(|v| LLM::Qllama(v))
                         }
                         ConcreteModelType::OpenAI => {
                             let base_url = get_str_from_params(&params, "base_url")?;

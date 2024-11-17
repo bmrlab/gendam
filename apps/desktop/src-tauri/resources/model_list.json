@@ -128,7 +128,7 @@
   },
   {
     "id": "llava-phi3-mini",
-    "categories": ["ImageCaption"],
+    "categories": ["LLM", "ImageCaption"],
     "title": "LLaVA Phi3 Mini",
     "description": "",
     "artifacts_dir": "./llava-phi3-mini",

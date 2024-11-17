@@ -1,8 +1,8 @@
-use crate::{LLMInput, LLMOutput, Model};
-
+use super::traits::{LLMInput, LLMOutput, Model};
 pub mod candle;
 pub mod native;
 pub mod openai;
+pub mod qllama;
 pub mod qwen2;
 
 #[derive(Debug, Clone)]
@@ -84,6 +84,7 @@ pub(crate) trait LLMModel {
 pub enum LLM {
     OpenAI(openai::OpenAI),
     Qwen2(qwen2::Qwen2),
+    Qllama(qllama::Qllama),
 }
 
 impl Model for LLM {
@@ -104,6 +105,7 @@ impl Model for LLM {
             let res = match self {
                 LLM::OpenAI(model) => model.get_completion(&item.0, item.1).await,
                 LLM::Qwen2(model) => model.get_completion(&item.0, item.1).await,
+                LLM::Qllama(model) => model.get_completion(&item.0, item.1).await,
             };
             results.push(res);
         }
@@ -114,7 +116,9 @@ impl Model for LLM {
 
 #[cfg(test)]
 mod test {
-    use crate::llm::{openai::OpenAI, qwen2, LLMInferenceParams, LLMMessage, LLMModel};
+    use crate::llm::{
+        openai::OpenAI, qllama::Qllama, qwen2::Qwen2, LLMInferenceParams, LLMMessage, LLMModel,
+    };
 
     use super::LLMUserMessage;
 
@@ -138,9 +142,11 @@ mod test {
 
     #[test_log::test(tokio::test)]
     async fn test_qwen2() {
-        let model = qwen2::Qwen2::load(
-            "/Users/zhuo/Downloads/qwen2-7b-instruct-q4_0.gguf",
-            "/Users/zhuo/Downloads/tokenizer-qwen2-7b.json",
+        let current_dir = std::env::current_dir().unwrap();
+        let resource_dir = current_dir.join("../../apps/desktop/src-tauri/resources");
+        let model = Qwen2::load(
+            resource_dir.join("qwen2/qwen2-7b-instruct-q4_0.gguf"),
+            resource_dir.join("qwen2/tokenizer.json"),
             "metal",
         )
         .expect("failed to load model");
@@ -154,6 +160,35 @@ mod test {
             )
             .await
             .expect("");
+
+        tracing::info!("result: {:?}", result.to_string().await);
+    }
+
+    #[test_log::test(tokio::test)]
+    async fn test_qllama() {
+        let current_dir = std::env::current_dir().unwrap();
+        let resource_dir = current_dir.join("../../apps/desktop/src-tauri/resources");
+        let model = Qllama::load(
+            resource_dir.join("llava-phi3-mini/llava-phi-3-mini-int4.gguf"),
+            resource_dir.join("llava-phi3-mini/tokenizer.json"),
+            "metal",
+        )
+        .expect("failed to load model");
+
+        let messages = [
+            LLMMessage::new_system("You are a bot."),
+            LLMMessage::new_user("Hello."),
+            // LLMMessage::User(vec![LLMUserMessage::Text("Who are you?".into())]),
+        ];
+        // let param = LLMInferenceParams {
+        //     seed: Some(299792458),
+        //     temperature: 0.7,
+        //     top_p: None,
+        //     top_k: None,
+        //     ..Default::default()
+        // };
+        let param = LLMInferenceParams::default();
+        let mut result = model.get_completion(&messages, param).await.expect("");
 
         tracing::info!("result: {:?}", result.to_string().await);
     }

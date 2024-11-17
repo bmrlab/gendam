@@ -326,4 +326,34 @@ impl ModelWeights {
         let _enter = self.span_output.enter();
         self.output.forward(&x)
     }
+
+    pub fn forward(&mut self, x: &Tensor, index_pos: usize) -> Result<Tensor> {
+        let (_b_sz, seq_len) = x.dims2()?;
+        let mask = if seq_len == 1 {
+            None
+        } else {
+            Some(self.mask(seq_len, x.device())?)
+        };
+        let _enter = self.span.enter();
+        let mut layer_in = self.tok_embeddings.forward(x)?;
+        for layer in self.layers.iter_mut() {
+            let x = layer_in;
+            let residual = &x;
+            let x = layer.attention_norm.forward(&x)?;
+            let attn = layer.forward_attn(&x, mask.as_ref(), index_pos)?;
+            let x = (attn + residual)?;
+
+            // MLP
+            let _enter = layer.span_mlp.enter();
+            let residual = &x;
+            let x = layer.ffn_norm.forward(&x)?;
+            let x = layer.mlp.forward(&x)?;
+            let x = (x + residual)?;
+            layer_in = x
+        }
+        let x = self.norm.forward(&layer_in)?;
+        let x = x.i((.., seq_len - 1, ..))?;
+        let _enter = self.span_output.enter();
+        self.output.forward(&x)
+    }
 }
