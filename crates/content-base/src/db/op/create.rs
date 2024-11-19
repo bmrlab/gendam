@@ -20,10 +20,12 @@ use crate::{
 /// insert api
 impl DB {
     /// 在创建之前清空已有的索引
-    async fn _purge_index_before_create(&self, file_identifier: &str) {
+    async fn _purge_index_before_create(&self, file_identifier: &str) -> anyhow::Result<()> {
         if let Err(e) = self.delete_by_file_identifier(file_identifier).await {
             tracing::warn!("delete_by_file_identifier error: {:?}", e);
+            return Err(e);
         }
+        Ok(())
     }
 
     #[tracing::instrument(skip_all, fields(file_identifier))]
@@ -32,7 +34,7 @@ impl DB {
         file_identifier: String,
         image: ImageModel,
     ) -> anyhow::Result<ID> {
-        self._purge_index_before_create(&file_identifier).await;
+        self._purge_index_before_create(&file_identifier).await?;
         let record = ImageModel::create_only(&self.client, &image).await?;
         PayloadModel::create_for_model(&self.client, &record, &file_identifier.into()).await?;
         Ok(ID::from(record))
@@ -44,7 +46,7 @@ impl DB {
         file_identifier: String,
         (audio_model, audio_frames): (AudioModel, Vec<(AudioFrameModel, Vec<TextModel>)>),
     ) -> anyhow::Result<ID> {
-        self._purge_index_before_create(&file_identifier).await;
+        self._purge_index_before_create(&file_identifier).await?;
         let record = AudioModel::create_only(&self.client, &(audio_model, audio_frames)).await?;
         PayloadModel::create_for_model(&self.client, &record, &file_identifier.into()).await?;
         Ok(ID::from(record))
@@ -60,7 +62,7 @@ impl DB {
             Vec<(AudioFrameModel, Vec<TextModel>)>,
         ),
     ) -> anyhow::Result<ID> {
-        self._purge_index_before_create(&file_identifier).await;
+        self._purge_index_before_create(&file_identifier).await?;
         let record =
             VideoModel::create_only(&self.client, &(video, image_frames, audio_frames)).await?;
         PayloadModel::create_for_model(&self.client, &record, &file_identifier.into()).await?;
@@ -76,7 +78,7 @@ impl DB {
             Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>,
         ),
     ) -> anyhow::Result<ID> {
-        self._purge_index_before_create(&file_identifier).await;
+        self._purge_index_before_create(&file_identifier).await?;
         let record = WebPageModel::create_only(&self.client, &(web_page, pages)).await?;
         PayloadModel::create_for_model(&self.client, &record, &file_identifier.into()).await?;
         Ok(ID::from(record))
@@ -91,7 +93,7 @@ impl DB {
             Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>,
         ),
     ) -> anyhow::Result<ID> {
-        self._purge_index_before_create(&file_identifier).await;
+        self._purge_index_before_create(&file_identifier).await?;
         let record = DocumentModel::create_only(&self.client, &(document, pages)).await?;
         PayloadModel::create_for_model(&self.client, &record, &file_identifier.into()).await?;
         Ok(ID::from(record))
