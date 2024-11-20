@@ -57,7 +57,7 @@ impl DB {
                 tracing::debug!("{} results after rank", rank_result.len());
 
                 let query_results = self
-                    .lookup_payload_by_ids(&rank_result, &full_text_results)
+                    .lookup_assets_by_image_text_ids(&rank_result, &full_text_results)
                     .await?;
                 tracing::debug!("{} results after lookup", query_results.len());
 
@@ -67,7 +67,7 @@ impl DB {
         }
     }
 
-    async fn lookup_payload_by_ids(
+    async fn lookup_assets_by_image_text_ids(
         &self,
         rank_results: &Vec<RankResult>,
         full_text_results: &Vec<FullTextSearchResult>,
@@ -85,11 +85,13 @@ impl DB {
             .into_iter()
             .map(|id| surrealdb::sql::Thing::from(id))
             .collect::<Vec<_>>();
+        tracing::debug!(ids=?things, "look up assets by image and text ids");
         let mut res = self
             .client
             .query(PAYLOAD_LOOKUP_SQL)
             .bind(("ids", things))
             .await?;
+        tracing::debug!(response=?res, "look up assets by image and text ids");
         let res_image: Vec<PayloadLookupResult> = res.take(0)?;
         let res_text: Vec<PayloadLookupResult> = res.take(1)?;
         let res = Vec::new()

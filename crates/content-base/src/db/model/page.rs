@@ -38,6 +38,7 @@ where
         let Some(page_record) = resp.take::<Option<surrealdb::sql::Thing>>(0)? else {
             anyhow::bail!("Failed to insert video, no id returned");
         };
+        tracing::debug!(id=%page_record, "Page created in surrealdb");
         let all_records = Vec::new()
             .into_iter()
             .chain(text_records.into_iter())

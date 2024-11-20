@@ -45,6 +45,7 @@ where
         let Some(image_frame_record) = resp.take::<Option<surrealdb::sql::Thing>>(0)? else {
             anyhow::bail!("Failed to insert image frame, no id returned");
         };
+        tracing::debug!(id=%image_frame_record, "Image frame created in surrealdb");
         client
             .query("RELATE $relation_in -> contains -> $relation_outs;")
             .bind(("relation_in", image_frame_record.clone()))
@@ -100,6 +101,7 @@ where
         let Some(video_record) = resp.take::<Option<surrealdb::sql::Thing>>(0)? else {
             anyhow::bail!("Failed to insert video, no id returned");
         };
+        tracing::debug!(id=%video_record, "Video created in surrealdb");
         let all_frames = Vec::new()
             .into_iter()
             .chain(image_frame_records.into_iter())

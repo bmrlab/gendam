@@ -41,6 +41,7 @@ where
         let Some(audio_frame_record) = resp.take::<Option<surrealdb::sql::Thing>>(0)? else {
             anyhow::bail!("Failed to insert audio frame, no id returned");
         };
+        tracing::debug!(id=%audio_frame_record, "Audio frame created in surrealdb");
         client
             .query("RELATE $relation_in -> contains -> $relation_outs;")
             .bind(("relation_in", audio_frame_record.clone()))
@@ -85,6 +86,7 @@ where
         let Some(audio_record) = resp.take::<Option<surrealdb::sql::Thing>>(0)? else {
             anyhow::bail!("Failed to insert audio, no id returned");
         };
+        tracing::debug!(id=%audio_record, "Audio created in surrealdb");
         client
             .query("RELATE $relation_in -> contains -> $relation_outs;")
             .bind(("relation_in", audio_record.clone()))

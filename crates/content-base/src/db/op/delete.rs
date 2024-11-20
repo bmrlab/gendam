@@ -29,6 +29,11 @@ const CONTENT_TYPE_LOOKUP_QUERY: &'static str = r#"
 impl DB {
     #[tracing::instrument(skip(self))]
     pub async fn delete_by_file_identifier(&self, file_identifier: &str) -> anyhow::Result<()> {
+        // https://github.com/bmrlab/gendam/issues/110
+        // 可能并不一定是删除的时候有问题，但是至少 transaction 可以确保数据一致，不会出现有些数据没删除。
+        // 上面的 issue 很可能是插入数据的时候产生的，应该让插入数据串行才行
+        // TODO: 还有，如果遇到 index 出问题可以考虑 rebuild index, 已验证可以解决问题
+
         // 开启事务
         let mut resp = self.client.query("BEGIN TRANSACTION;").await?;
         check_db_error_from_resp!(resp)

@@ -46,6 +46,7 @@ where
         let Some(thing) = resp.take::<Option<surrealdb::sql::Thing>>(0)? else {
             anyhow::bail!("Failed to insert payload, no id returned");
         };
+        tracing::debug!(id=%thing, "Payload created in surrealdb");
         Ok(thing)
     }
 }

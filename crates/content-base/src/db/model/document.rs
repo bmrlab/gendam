@@ -30,6 +30,7 @@ where
         let Some(document_record) = resp.take::<Option<surrealdb::sql::Thing>>(0)? else {
             anyhow::bail!("Failed to insert document, no id returned");
         };
+        tracing::debug!(id=%document_record, "Document created in surrealdb");
         client
             .query("RELATE $relation_in -> contains -> $relation_outs;")
             .bind(("relation_in", document_record.clone()))
