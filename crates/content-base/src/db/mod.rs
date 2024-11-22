@@ -1,13 +1,13 @@
-pub mod client;
 #[allow(dead_code)]
 mod constant;
-#[allow(dead_code)]
-pub mod model;
 mod op;
 mod rank;
+mod sql;
+
+pub mod client;
+pub mod model;
 pub mod search;
 pub mod shared;
-mod sql;
 pub mod utils;
 
 #[derive(Clone, Debug)]

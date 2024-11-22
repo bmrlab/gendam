@@ -1,4 +1,4 @@
-use super::{id::ID, ModelCreate, ModelDelete, TextModel};
+use super::{id::ID, text::TextModel, ModelCreate, ModelDelete};
 use async_trait::async_trait;
 use educe::Educe;
 use serde::Serialize;

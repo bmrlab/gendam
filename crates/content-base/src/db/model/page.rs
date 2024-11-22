@@ -1,5 +1,5 @@
 use super::ModelCreate;
-use super::{id::ID, ImageModel, TextModel};
+use super::{id::ID, image::ImageModel, text::TextModel};
 use async_trait::async_trait;
 use serde::Serialize;
 

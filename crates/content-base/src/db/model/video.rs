@@ -1,4 +1,6 @@
-use super::{id::ID, AudioFrameModel, ImageModel, ModelCreate, ModelDelete, TextModel};
+use super::{
+    audio::AudioFrameModel, id::ID, image::ImageModel, text::TextModel, ModelCreate, ModelDelete,
+};
 use async_trait::async_trait;
 use educe::Educe;
 use serde::Serialize;

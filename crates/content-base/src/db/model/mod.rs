@@ -7,50 +7,8 @@ pub mod payload;
 pub mod text;
 pub mod video;
 pub mod web_page;
-use self::{
-    audio::{AudioFrameModel, AudioModel},
-    document::DocumentModel,
-    id::ID,
-    image::ImageModel,
-    payload::PayloadModel,
-    text::TextModel,
-    video::VideoModel,
-    web_page::WebPageModel,
-};
 use async_trait::async_trait;
 use serde::Serialize;
-
-#[derive(Serialize, Debug, Clone)]
-pub enum SelectResultModel {
-    Text(TextModel),
-    Image(ImageModel),
-    Audio(AudioModel),
-    Video(VideoModel),
-    WebPage(WebPageModel),
-    Document(DocumentModel),
-    Payload(PayloadModel),
-}
-
-impl SelectResultModel {
-    pub fn id(&self) -> Option<ID> {
-        match self {
-            SelectResultModel::Text(data) => data.id.clone(),
-            SelectResultModel::Image(data) => data.id.clone(),
-            SelectResultModel::Audio(data) => data.id.clone(),
-            SelectResultModel::Video(data) => data.id.clone(),
-            SelectResultModel::WebPage(data) => data.id.clone(),
-            SelectResultModel::Document(data) => data.id.clone(),
-            SelectResultModel::Payload(data) => data.id.clone(),
-        }
-    }
-
-    fn is_within_range<T>(start: T, end: T, range: (T, T)) -> bool
-    where
-        T: PartialOrd + Copy,
-    {
-        start >= range.0 && end <= range.1
-    }
-}
 
 #[async_trait]
 pub trait ModelCreate<T, TItem>
