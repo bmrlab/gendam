@@ -440,7 +440,7 @@ impl<S: CtxStore + Send> CtxWithLibrary for Ctx<S> {
                     &ai_handler.image_caption.1,
                 );
             // 这个 block 后面不再使用 ai_handler 了，上面 with 函数里不需要 clone 直接 move 就行
-            let cb = ContentBase::new(&cb_ctx, library.db()).map_err(|e| {
+            let cb = ContentBase::new(&cb_ctx, library.surrealdb_client()).map_err(|e| {
                 tracing::error!(task = "init content base", "Failed: {}", e);
                 CtxError::Internal(format!("Failed to init content base: {}", e))
             })?;

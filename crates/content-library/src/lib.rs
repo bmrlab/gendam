@@ -17,7 +17,7 @@ pub struct Library {
     files_dir: PathBuf, // for content files
     pub artifacts_dir: PathBuf,
     prisma_client: Arc<PrismaClient>,
-    db: Arc<RwLock<DB>>,
+    surrealdb_client: Arc<RwLock<DB>>,
 }
 
 impl Library {
@@ -25,8 +25,8 @@ impl Library {
         Arc::clone(&self.prisma_client)
     }
 
-    pub fn db(&self) -> Arc<RwLock<DB>> {
-        Arc::clone(&self.db)
+    pub fn surrealdb_client(&self) -> Arc<RwLock<DB>> {
+        Arc::clone(&self.surrealdb_client)
     }
 
     /// Get the absolute path of artifact directory on disk for a given file hash.
@@ -165,7 +165,7 @@ pub async fn load_library(
         files_dir,
         artifacts_dir,
         prisma_client,
-        db: Arc::new(RwLock::new(surrealdb_client)),
+        surrealdb_client: Arc::new(RwLock::new(surrealdb_client)),
     };
 
     Ok(library)

@@ -47,7 +47,7 @@ impl ContentBase {
         let max_count = payload.max_count.unwrap_or(MAX_RETRIEVAL_COUNT);
 
         let query_results = self
-            .db
+            .surrealdb_client
             .try_read()?
             .search(search_model, true, max_count)
             .await?;

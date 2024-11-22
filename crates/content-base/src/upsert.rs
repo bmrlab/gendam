@@ -124,7 +124,7 @@ impl ContentBase {
 
         // 对 task notification 做进一步处理
         let ctx = self.ctx.clone();
-        let db = self.db.clone();
+        let surrealdb_client = self.surrealdb_client.clone();
         let file_identifier_clone = file_identifier.to_string();
         tokio::spawn(async move {
             while let Some(notification) = inner_rx.recv().await {
@@ -139,7 +139,7 @@ impl ContentBase {
                         &file_identifier_clone,
                         &payload.metadata,
                         &task_type,
-                        db.clone(),
+                        surrealdb_client.clone(),
                     )
                     .await;
                 }
@@ -177,13 +177,13 @@ async fn run_task(
     }
 }
 
-#[tracing::instrument(level = "info", skip(ctx, metadata, db))]
+#[tracing::instrument(level = "info", skip(ctx, metadata, surrealdb_client))]
 async fn task_post_process(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
     metadata: &ContentMetadata,
     task_type: &ContentTaskType,
-    db: Arc<RwLock<DB>>,
+    surrealdb_client: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     match (task_type, metadata) {
         (
@@ -197,25 +197,26 @@ async fn task_post_process(
             // TransChunkSumEmbed, FrameDescEmbed 和 FrameEmbedding 结束后都触发 upsert_video_index_to_surrealdb
             // 如果有一个任务没完成，upsert_video_index_to_surrealdb 会报错
             // 但如果 video 没有音频，则直接跳过 TransChunkSumEmbed
-            upsert_video_index_to_surrealdb(ctx, file_identifier, metadata, db).await?;
+            upsert_video_index_to_surrealdb(ctx, file_identifier, metadata, surrealdb_client)
+                .await?;
             tracing::info!("video index upserted to surrealdb");
         }
         (ContentTaskType::Audio(AudioTaskType::TransChunkSumEmbed(_)), _) => {
-            upsert_audio_index_to_surrealdb(ctx, file_identifier, db).await?;
+            upsert_audio_index_to_surrealdb(ctx, file_identifier, surrealdb_client).await?;
             tracing::info!("audio index upserted to surrealdb");
         }
         (ContentTaskType::Image(ImageTaskType::DescEmbed(_) | ImageTaskType::Embedding(_)), _) => {
             // DescEmbed 和 Embedding 结束后都触发 upsert_image_index_to_surrealdb
             // 如果有一个任务没完成，upsert_image_index_to_surrealdb 会报错
-            upsert_image_index_to_surrealdb(ctx, file_identifier, db).await?;
+            upsert_image_index_to_surrealdb(ctx, file_identifier, surrealdb_client).await?;
             tracing::info!("image index upserted to surrealdb");
         }
         (ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(_)), _) => {
-            upsert_document_index_to_surrealdb(ctx, file_identifier, db).await?;
+            upsert_document_index_to_surrealdb(ctx, file_identifier, surrealdb_client).await?;
             tracing::info!("document index upserted to surrealdb");
         }
         (ContentTaskType::WebPage(WebPageTaskType::ChunkSumEmbed(_)), _) => {
-            upsert_web_page_index_to_surrealdb(ctx, file_identifier, db).await?;
+            upsert_web_page_index_to_surrealdb(ctx, file_identifier, surrealdb_client).await?;
             tracing::info!("web page index upserted to surrealdb");
         }
         _ => {}
@@ -234,7 +235,7 @@ fn warn_and_skip(msg: &'static str) -> impl FnOnce(anyhow::Error) -> anyhow::Err
 async fn upsert_audio_index_to_surrealdb(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
-    db: Arc<RwLock<DB>>,
+    surrealdb_client: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     let chunks = AudioTransChunkTask
         .chunk_content(file_identifier, ctx)
@@ -276,7 +277,8 @@ async fn upsert_audio_index_to_surrealdb(
         .collect::<Vec<_>>();
     let audio_frames: anyhow::Result<Vec<(AudioFrameModel, Vec<TextModel>)>> =
         collect_async_results!(future);
-    db.try_read()?
+    surrealdb_client
+        .try_read()?
         .insert_audio(
             file_identifier.to_string(),
             (AudioModel { id: None }, audio_frames?),
@@ -290,7 +292,7 @@ async fn upsert_video_index_to_surrealdb(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
     metadata: &VideoMetadata,
-    db: Arc<RwLock<DB>>,
+    surrealdb_client: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     let audio_frames: Vec<(AudioFrameModel, Vec<TextModel>)> = if metadata.audio.is_some() {
         let chunks = VideoTransChunkTask
@@ -399,7 +401,8 @@ async fn upsert_video_index_to_surrealdb(
         try_join_all(future).await?
     };
 
-    db.try_read()?
+    surrealdb_client
+        .try_read()?
         .insert_video(
             file_identifier.to_string(),
             (VideoModel { id: None }, image_frames, audio_frames),
@@ -412,7 +415,7 @@ async fn upsert_video_index_to_surrealdb(
 async fn upsert_image_index_to_surrealdb(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
-    db: Arc<RwLock<DB>>,
+    surrealdb_client: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     // 不用 task_type.desc_embed_content，用 ImageDescEmbedTask 创建个空实例，统一写法
     let caption_embedding = ImageDescEmbedTask
@@ -427,7 +430,8 @@ async fn upsert_image_index_to_surrealdb(
         .embedding_content(file_identifier, ctx)
         .await
         .map_err(warn_and_skip("image embedding"))?;
-    db.try_read()?
+    surrealdb_client
+        .try_read()?
         .insert_image(
             file_identifier.to_string(),
             ImageModel {
@@ -445,7 +449,7 @@ async fn upsert_image_index_to_surrealdb(
 async fn upsert_document_index_to_surrealdb(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
-    db: Arc<RwLock<DB>>,
+    surrealdb_client: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     let chunks = RawTextChunkTask
         .chunk_content(file_identifier, ctx)
@@ -482,7 +486,8 @@ async fn upsert_document_index_to_surrealdb(
         .collect::<Vec<_>>();
     let pages: anyhow::Result<Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>> =
         collect_async_results!(futures);
-    db.try_read()?
+    surrealdb_client
+        .try_read()?
         .insert_document(
             file_identifier.to_string(),
             (DocumentModel { id: None }, pages?),
@@ -495,7 +500,7 @@ async fn upsert_document_index_to_surrealdb(
 async fn upsert_web_page_index_to_surrealdb(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
-    db: Arc<RwLock<DB>>,
+    surrealdb_client: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     let chunks = WebPageChunkTask.chunk_content(file_identifier, ctx).await?;
     let futures = chunks
@@ -529,7 +534,8 @@ async fn upsert_web_page_index_to_surrealdb(
         .collect::<Vec<_>>();
     let pages: anyhow::Result<Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>> =
         collect_async_results!(futures);
-    db.try_read()?
+    surrealdb_client
+        .try_read()?
         .insert_web_page(
             file_identifier.to_string(),
             (WebPageModel { id: None }, pages?),

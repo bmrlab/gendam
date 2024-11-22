@@ -44,7 +44,7 @@ impl ContentBase {
             tracing::debug!("keep_search_indexes is true, skip deleting search indexes");
             return Ok(());
         }
-        self.db
+        self.surrealdb_client
             .try_write()?
             .delete_by_file_identifier(&payload.file_identifier)
             .await?;

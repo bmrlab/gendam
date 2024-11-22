@@ -28,7 +28,7 @@ impl ContentBase {
         Ok(Self {
             ctx: ctx.clone(),
             task_pool,
-            db,
+            surrealdb_client: db,
         })
     }
 
