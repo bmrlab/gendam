@@ -278,7 +278,7 @@ async fn upsert_audio_index_to_surrealdb(
     let audio_frames: anyhow::Result<Vec<(AudioFrameModel, Vec<TextModel>)>> =
         collect_async_results!(future);
     surrealdb_client
-        .try_read()?
+        .try_write()?
         .insert_audio(
             file_identifier.to_string(),
             (AudioModel { id: None }, audio_frames?),
@@ -402,7 +402,7 @@ async fn upsert_video_index_to_surrealdb(
     };
 
     surrealdb_client
-        .try_read()?
+        .try_write()?
         .insert_video(
             file_identifier.to_string(),
             (VideoModel { id: None }, image_frames, audio_frames),
@@ -431,7 +431,7 @@ async fn upsert_image_index_to_surrealdb(
         .await
         .map_err(warn_and_skip("image embedding"))?;
     surrealdb_client
-        .try_read()?
+        .try_write()?
         .insert_image(
             file_identifier.to_string(),
             ImageModel {
@@ -487,7 +487,7 @@ async fn upsert_document_index_to_surrealdb(
     let pages: anyhow::Result<Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>> =
         collect_async_results!(futures);
     surrealdb_client
-        .try_read()?
+        .try_write()?
         .insert_document(
             file_identifier.to_string(),
             (DocumentModel { id: None }, pages?),
@@ -535,7 +535,7 @@ async fn upsert_web_page_index_to_surrealdb(
     let pages: anyhow::Result<Vec<(PageModel, Vec<TextModel>, Vec<ImageModel>)>> =
         collect_async_results!(futures);
     surrealdb_client
-        .try_read()?
+        .try_write()?
         .insert_web_page(
             file_identifier.to_string(),
             (WebPageModel { id: None }, pages?),
