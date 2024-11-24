@@ -15,7 +15,7 @@ use web_page::WebPageMetadata;
 #[cfg_attr(feature = "rspc", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize, Deserialize, EnumDiscriminants)]
 #[strum_discriminants(derive(Serialize, Deserialize, strum_macros::Display))]
-#[strum_discriminants(name(ContentType))]
+#[strum_discriminants(name(ContentType))] // 这个宏会生成一个名为 ContentType 的辅助枚举类型
 #[serde(tag = "contentType")] // 用于 serialize 了以后写入数据库 assetObject.mediaData 里面的字段名
 #[non_exhaustive]
 pub enum ContentMetadata {

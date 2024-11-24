@@ -251,11 +251,11 @@ impl TaskPool {
         &self,
         file_identifier: &str,
         file_path: impl AsRef<Path>,
-        task: impl Into<ContentTaskType>,
+        task_type: impl Into<ContentTaskType>,
         priority: Option<TaskPriority>,
         notifier: Option<mpsc::Sender<TaskNotification>>,
     ) -> anyhow::Result<()> {
-        let mut payload = NewTaskPayload::new(file_identifier, file_path, task.into());
+        let mut payload = NewTaskPayload::new(file_identifier, file_path, task_type.into());
         payload.with_priority(priority);
         payload.with_notifier(notifier);
 

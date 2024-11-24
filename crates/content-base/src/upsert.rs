@@ -12,22 +12,20 @@ use crate::db::{
 };
 use crate::{collect_async_results, ContentBase};
 use content_base_context::ContentBaseCtx;
-use content_base_pool::{TaskNotification, TaskPool, TaskPriority, TaskStatus};
+use content_base_pool::{TaskNotification, TaskStatus};
 use content_base_task::{
     audio::{
         trans_chunk::{AudioTransChunkTask, AudioTranscriptChunkTrait},
         trans_chunk_sum::{AudioTransChunkSumTask, AudioTransChunkSumTrait},
         trans_chunk_sum_embed::{AudioTransChunkSumEmbedTask, AudioTransChunkSumEmbedTrait},
-        AudioTaskType,
     },
     image::{
         desc_embed::ImageDescEmbedTask, description::ImageDescriptionTask,
-        embedding::ImageEmbeddingTask, ImageTaskType,
+        embedding::ImageEmbeddingTask,
     },
     raw_text::{
         chunk::{DocumentChunkTrait, RawTextChunkTask},
         chunk_sum_embed::{DocumentChunkSumEmbedTrait, RawTextChunkSumEmbedTask},
-        RawTextTaskType,
     },
     video::{
         frame::{VideoFrameTask, VIDEO_FRAME_SUMMARY_BATCH_SIZE},
@@ -37,14 +35,14 @@ use content_base_task::{
         trans_chunk::VideoTransChunkTask,
         trans_chunk_sum::VideoTransChunkSumTask,
         trans_chunk_sum_embed::VideoTransChunkSumEmbedTask,
-        VideoTaskType,
     },
-    web_page::{
-        chunk::WebPageChunkTask, chunk_sum_embed::WebPageChunkSumEmbedTask, WebPageTaskType,
-    },
-    ContentTaskType, FileInfo, TaskRecord,
+    web_page::{chunk::WebPageChunkTask, chunk_sum_embed::WebPageChunkSumEmbedTask},
+    FileInfo, TaskRecord,
 };
-use content_metadata::{video::VideoMetadata, ContentMetadata};
+use content_metadata::{
+    audio::AudioMetadata, image::ImageMetadata, raw_text::RawTextMetadata, video::VideoMetadata,
+    web_page::WebPageMetadata, ContentMetadata, ContentType,
+};
 use futures_util::future::try_join_all;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -84,14 +82,18 @@ impl UpsertPayload {
 }
 
 impl ContentBase {
+    #[tracing::instrument(skip_all, fields(
+        hash = %payload.file_identifier,
+        content_type = %ContentType::from(&payload.metadata)
+    ))]
     pub async fn upsert(
         &self,
         payload: UpsertPayload,
     ) -> anyhow::Result<Receiver<TaskNotification>> {
         let task_pool = self.task_pool.clone();
-        let file_identifier = &payload.file_identifier.clone();
 
-        let mut task_record = TaskRecord::from_content_base(file_identifier, &self.ctx).await;
+        let mut task_record =
+            TaskRecord::from_content_base(payload.file_identifier.as_str(), &self.ctx).await;
 
         let (notification_tx, notification_rx) = mpsc::channel(512);
         let (inner_tx, mut inner_rx) = mpsc::channel(512);
@@ -105,118 +107,111 @@ impl ContentBase {
             file_full_path_on_disk: payload.file_full_path_on_disk.clone(),
         };
 
+        let tasks = Self::get_content_processing_tasks(&payload.metadata);
+        let mut unfinished_tasks = std::collections::HashSet::new();
+        for (task_type, _) in tasks.iter() {
+            // ContentTaskType 实现了 to_string 和 Eq, 可以 clone 了以后用于 HashSet
+            // see crates/content-base-task/src/task.rs
+            unfinished_tasks.insert(task_type.clone());
+        }
+
         // 内容被处理的入口
         tokio::spawn({
-            let tasks = Self::get_content_processing_tasks(&payload.metadata);
+            let file_identifier = file_info.file_identifier.clone();
+            let file_path = file_info.file_full_path_on_disk.clone();
+            let inner_tx = inner_tx.clone();
             async move {
                 for (task, priority) in tasks {
-                    run_task(
-                        &task_pool,
-                        &file_info,
-                        task,
-                        Some(priority),
-                        Some(inner_tx.clone()),
-                    )
-                    .await;
+                    let priority = Some(priority);
+                    // 当所有 inner_tx 的 clone 都被 drop 后通道才会被关闭然后 inner_rx 被 drop
+                    let notify_tx: Option<mpsc::Sender<TaskNotification>> = Some(inner_tx.clone());
+                    match task_pool
+                        .add_task(&file_identifier, &file_path, &task, priority, notify_tx)
+                        .await
+                    {
+                        Err(e) => {
+                            tracing::error!(error=?e, task_type=%task, "Failed to add task");
+                        }
+                        Ok(()) => {
+                            tracing::info!(task_type=%task, "Task added to TaskPool");
+                        }
+                    };
                 }
             }
+            .instrument(tracing::Span::current())
         });
 
-        // 对 task notification 做进一步处理
-        let ctx = self.ctx.clone();
-        let surrealdb_client = self.surrealdb_client.clone();
-        let file_identifier_clone = file_identifier.to_string();
-        tokio::spawn(async move {
-            while let Some(notification) = inner_rx.recv().await {
-                let task_type = notification.task_type.clone();
-                let task_status = notification.status.clone();
-                // receive notification from content_base_pool and send to client
-                let _ = notification_tx.send(notification).await;
-                // 对完成的任务进行后处理
-                if let TaskStatus::Finished = task_status {
-                    let _ = task_post_process(
-                        &ctx,
-                        &file_identifier_clone,
-                        &payload.metadata,
-                        &task_type,
-                        surrealdb_client.clone(),
-                    )
-                    .await;
+        tokio::spawn({
+            let ctx = self.ctx.clone();
+            let surrealdb_client = self.surrealdb_client.clone();
+            let file_identifier = file_info.file_identifier.to_string();
+            // 对 task notification 做进一步处理
+            async move {
+                while let Some(notification) = inner_rx.recv().await {
+                    let task_type = notification.task_type.clone();
+                    let task_status = notification.status.clone();
+                    // receive notification from content_base_pool and send to client
+                    let _ = notification_tx.send(notification).await;
+                    // 对完成的任务进行后处理
+                    if let TaskStatus::Finished = task_status {
+                        unfinished_tasks.remove(&task_type);
+                    }
+                    if unfinished_tasks.is_empty() {
+                        tracing::info!(
+                            "All tasks finished, start post processing for file: {}",
+                            file_identifier,
+                        );
+                        let _ = task_post_process(
+                            &ctx,
+                            &file_identifier,
+                            &payload.metadata,
+                            surrealdb_client.clone(),
+                        )
+                        .await;
+                    }
                 }
             }
+            .instrument(tracing::Span::current())
         });
 
         Ok(notification_rx)
     }
 }
 
-async fn run_task(
-    task_pool: &TaskPool,
-    file_info: &FileInfo,
-    task_type: impl Into<ContentTaskType>,
-    priority: Option<TaskPriority>,
-    notification_tx: Option<mpsc::Sender<TaskNotification>>,
-) {
-    let task_type: ContentTaskType = task_type.into();
-    if let Err(e) = task_pool
-        .add_task(
-            &file_info.file_identifier,
-            &file_info.file_full_path_on_disk,
-            &task_type,
-            priority,
-            notification_tx,
-        )
-        .await
-    {
-        tracing::warn!(
-            "failed to add task {}{}: {}",
-            &file_info.file_identifier,
-            &task_type,
-            e
-        );
-    }
-}
-
-#[tracing::instrument(level = "info", skip(ctx, metadata, surrealdb_client))]
+#[tracing::instrument(level = "info", skip_all)]
 async fn task_post_process(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
     metadata: &ContentMetadata,
-    task_type: &ContentTaskType,
     surrealdb_client: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
-    match (task_type, metadata) {
-        (
-            ContentTaskType::Video(
-                VideoTaskType::TransChunkSumEmbed(_)
-                | VideoTaskType::FrameEmbedding(_)
-                | VideoTaskType::FrameDescEmbed(_),
-            ),
-            ContentMetadata::Video(metadata),
-        ) => {
-            // TransChunkSumEmbed, FrameDescEmbed 和 FrameEmbedding 结束后都触发 upsert_video_index_to_surrealdb
-            // 如果有一个任务没完成，upsert_video_index_to_surrealdb 会报错
+    match metadata {
+        ContentMetadata::Video(metadata) => {
             // 但如果 video 没有音频，则直接跳过 TransChunkSumEmbed
             upsert_video_index_to_surrealdb(ctx, file_identifier, metadata, surrealdb_client)
                 .await?;
             tracing::info!("video index upserted to surrealdb");
         }
-        (ContentTaskType::Audio(AudioTaskType::TransChunkSumEmbed(_)), _) => {
-            upsert_audio_index_to_surrealdb(ctx, file_identifier, surrealdb_client).await?;
+        ContentMetadata::Audio(metadata) => {
+            upsert_audio_index_to_surrealdb(ctx, file_identifier, metadata, surrealdb_client)
+                .await?;
             tracing::info!("audio index upserted to surrealdb");
         }
-        (ContentTaskType::Image(ImageTaskType::DescEmbed(_) | ImageTaskType::Embedding(_)), _) => {
+        ContentMetadata::Image(metadata) => {
             // DescEmbed 和 Embedding 结束后都触发 upsert_image_index_to_surrealdb
             // 如果有一个任务没完成，upsert_image_index_to_surrealdb 会报错
-            upsert_image_index_to_surrealdb(ctx, file_identifier, surrealdb_client).await?;
+            upsert_image_index_to_surrealdb(ctx, file_identifier, metadata, surrealdb_client)
+                .await?;
             tracing::info!("image index upserted to surrealdb");
         }
-        (ContentTaskType::RawText(RawTextTaskType::ChunkSumEmbed(_)), _) => {
-            upsert_document_index_to_surrealdb(ctx, file_identifier, surrealdb_client).await?;
+        ContentMetadata::RawText(metadata) => {
+            upsert_document_index_to_surrealdb(ctx, file_identifier, metadata, surrealdb_client)
+                .await?;
             tracing::info!("document index upserted to surrealdb");
         }
-        (ContentTaskType::WebPage(WebPageTaskType::ChunkSumEmbed(_)), _) => {
-            upsert_web_page_index_to_surrealdb(ctx, file_identifier, surrealdb_client).await?;
+        ContentMetadata::WebPage(metadata) => {
+            upsert_web_page_index_to_surrealdb(ctx, file_identifier, metadata, surrealdb_client)
+                .await?;
             tracing::info!("web page index upserted to surrealdb");
         }
         _ => {}
@@ -235,6 +230,7 @@ fn warn_and_skip(msg: &'static str) -> impl FnOnce(anyhow::Error) -> anyhow::Err
 async fn upsert_audio_index_to_surrealdb(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
+    _metadata: &AudioMetadata,
     surrealdb_client: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     let chunks = AudioTransChunkTask
@@ -415,6 +411,7 @@ async fn upsert_video_index_to_surrealdb(
 async fn upsert_image_index_to_surrealdb(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
+    _metadata: &ImageMetadata,
     surrealdb_client: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     // 不用 task_type.desc_embed_content，用 ImageDescEmbedTask 创建个空实例，统一写法
@@ -449,6 +446,7 @@ async fn upsert_image_index_to_surrealdb(
 async fn upsert_document_index_to_surrealdb(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
+    _metadata: &RawTextMetadata,
     surrealdb_client: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     let chunks = RawTextChunkTask
@@ -500,6 +498,7 @@ async fn upsert_document_index_to_surrealdb(
 async fn upsert_web_page_index_to_surrealdb(
     ctx: &ContentBaseCtx,
     file_identifier: &str,
+    _metadata: &WebPageMetadata,
     surrealdb_client: Arc<RwLock<DB>>,
 ) -> anyhow::Result<()> {
     let chunks = WebPageChunkTask.chunk_content(file_identifier, ctx).await?;
