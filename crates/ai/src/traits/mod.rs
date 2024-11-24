@@ -62,93 +62,109 @@ where
         TFn: Fn() -> TFut + Send + 'static,
     {
         let loader = loader::ModelLoader::new(create_model);
-        let (tx, mut rx) = mpsc::channel::<HandlerPayload<TItem, TOutput>>(512);
+        let (tx, rx) = mpsc::channel::<HandlerPayload<TItem, TOutput>>(512);
 
-        // TODO I think this is better: not offload model when offload_duration is None
+        // TODO: Alternative strategy: Keep model loaded indefinitely when offload_duration is None
         let offload_duration = offload_duration.unwrap_or(Duration::from_secs(5));
 
         let rt = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()?;
 
-        std::thread::spawn(move || {
-            let local = tokio::task::LocalSet::new();
+        std::thread::spawn({
+            let model_id = model_id.clone();
+            move || {
+                let local = tokio::task::LocalSet::new();
 
-            local.spawn_local(async move {
-                let is_processing = Arc::new(Mutex::new(false));
-                loop {
-                    tokio::select! {
-                        _ = tokio::time::sleep(offload_duration) => {
-                            if loader.model.lock().await.is_some() {
-                                tracing::debug!("No message received for {:?}, offload model", offload_duration);
-                                if let Err(e) = loader.offload().await {
-                                    tracing::error!("failed to offload model: {}", e);
-                                }
-                            }
-                        }
-                        payload = rx.recv() => {
-                            match payload {
-                                Some((items, result_tx)) => {
-                                    if let Err(e) = loader.load().await {
-                                        tracing::error!("failed to load model: {}", e);
-                                        // TODO here we need to use tx
-                                        // if let Err(_) = result_tx.send(Err(anyhow::anyhow!(e))) {
-                                        //     tracing::error!("failed to send result");
-                                        // }
-                                    }
+                local.spawn_local(async move {
+                    Self::listen_to_ai_model_input(&model_id, loader, offload_duration, rx).await;
+                });
 
-                                    // If channel closed,
-                                    // we have no way to response, just ignore task.
-                                    // This is very useful for task cancellation.
-                                    if !result_tx.is_closed() {
-                                        {
-                                            let mut is_processing = is_processing.lock().await;
-                                            *is_processing = true;
-                                        };
+                rt.block_on(local);
+            }
+        });
 
-                                        let mut model = loader.model.lock().await;
-                                        if let Some(model) = model.as_mut() {
-                                            let results = model.process(items).await;
+        Ok(Self { model_id, tx })
+    }
 
-                                            if result_tx.send(results).is_err() {
-                                                tracing::error!("failed to send results");
-                                            }
-                                        } else {
-                                            tracing::error!("no valid model");
-                                            if result_tx.send(Err(anyhow::anyhow!("failed to load model"))).is_err() {
-                                                tracing::error!("failed to send results");
-                                            }
-                                        }
-
-                                        {
-                                            let mut is_processing = is_processing.lock().await;
-                                            *is_processing = false;
-                                        }
-                                    }
-                                }
-                                _ => {
-                                    // this means all tx has been dropped
-                                    if loader.model.lock().await.is_some() {
-                                        tracing::warn!("all tx dropped, offload model and end loop");
-                                        if let Err(e) = loader.offload().await {
-                                            tracing::error!("failed to offload model: {}", e);
-                                        }
-                                    }
-                                    break;
-                                }
-                            }
+    /// 为了更好处理 tracing span，把这部分独立出来，用 tracing::instrument 包裹
+    #[tracing::instrument(skip_all, fields(model_id=%_model_id))]
+    async fn listen_to_ai_model_input<T, TFut, TFn>(
+        _model_id: &str, // for better logging
+        loader: loader::ModelLoader<T, TFn, TFut>,
+        offload_duration: Duration,
+        mut rx: mpsc::Receiver<HandlerPayload<TItem, TOutput>>,
+    ) where
+        T: Model<Item = TItem, Output = TOutput> + Send + 'static,
+        TFut: Future<Output = anyhow::Result<T>> + Send + 'static,
+        TFn: Fn() -> TFut + Send + 'static,
+    {
+        let is_processing = Arc::new(Mutex::new(false));
+        loop {
+            tokio::select! {
+                _ = tokio::time::sleep(offload_duration) => {
+                    if loader.model.lock().await.is_some() {
+                        tracing::info!("No message received for {:?}, offload model", offload_duration);
+                        if let Err(e) = loader.offload().await {
+                            tracing::error!(error=%e, "Failed to offload model");
                         }
                     }
                 }
-            });
+                payload = rx.recv() => {
+                    match payload {
+                        Some((items, result_tx)) => {
+                            tracing::info!("Loading model");
+                            if let Err(e) = loader.load().await {
+                                tracing::error!(error=%e, "Failed to load model");
+                                // TODO here we need to use tx
+                                // if let Err(_) = result_tx.send(Err(anyhow::anyhow!(e))) {
+                                //     tracing::error!("failed to send result");
+                                // }
+                            }
 
-            rt.block_on(local);
-        });
+                            // If channel closed,
+                            // we have no way to response, just ignore task.
+                            // This is very useful for task cancellation.
+                            if !result_tx.is_closed() {
+                                {
+                                    let mut is_processing = is_processing.lock().await;
+                                    *is_processing = true;
+                                };
 
-        Ok(Self {
-            model_id: model_id.to_string(),
-            tx,
-        })
+                                let mut model = loader.model.lock().await;
+                                if let Some(model) = model.as_mut() {
+                                    let results = model.process(items).await;
+
+                                    if result_tx.send(results).is_err() {
+                                        tracing::error!("failed to send results");
+                                    }
+                                } else {
+                                    tracing::error!("no valid model");
+                                    if result_tx.send(Err(anyhow::anyhow!("failed to load model"))).is_err() {
+                                        tracing::error!("failed to send results");
+                                    }
+                                }
+
+                                {
+                                    let mut is_processing = is_processing.lock().await;
+                                    *is_processing = false;
+                                }
+                            }
+                        }
+                        _ => {
+                            // this means all tx has been dropped
+                            if loader.model.lock().await.is_some() {
+                                tracing::warn!("All tx dropped, offload model and end loop");
+                                if let Err(e) = loader.offload().await {
+                                    tracing::error!("Failed to offload model: {}", e);
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     #[tracing::instrument(name = "AIModel::process", err(Debug), skip_all, fields(model_id=%self.model_id))]

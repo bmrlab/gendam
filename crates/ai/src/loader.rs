@@ -1,7 +1,6 @@
 use futures::Future;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::debug;
 
 pub(crate) struct ModelLoader<T, TFn, TFut>
 where
@@ -30,7 +29,6 @@ where
         let mut current_model = self.model.lock().await;
 
         if current_model.is_none() {
-            debug!("loading model");
             let model = (self.create_model_fn)().await?;
             *current_model = Some(model);
         }
