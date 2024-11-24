@@ -44,41 +44,41 @@ impl ContentBaseCtx {
     pub fn with_multi_modal_embedding(
         mut self,
         multi_modal_embedding: Arc<MultiModalEmbeddingModel>,
-        model_name: &str,
+        model_id: &str,
     ) -> Self {
-        self.multi_modal_embedding = Some((multi_modal_embedding, model_name.to_string()));
+        self.multi_modal_embedding = Some((multi_modal_embedding, model_id.to_string()));
         self
     }
 
     pub fn with_text_embedding(
         mut self,
         text_embedding: Arc<TextEmbeddingModel>,
-        model_name: &str,
+        model_id: &str,
     ) -> Self {
-        self.text_embedding = Some((text_embedding, model_name.to_string()));
+        self.text_embedding = Some((text_embedding, model_id.to_string()));
         self
     }
 
     pub fn with_image_caption(
         mut self,
         image_caption: Arc<ImageCaptionModel>,
-        model_name: &str,
+        model_id: &str,
     ) -> Self {
-        self.image_caption = Some((image_caption, model_name.to_string()));
+        self.image_caption = Some((image_caption, model_id.to_string()));
         self
     }
 
     pub fn with_audio_transcript(
         mut self,
         audio_transcript: Arc<AudioTranscriptModel>,
-        model_name: &str,
+        model_id: &str,
     ) -> Self {
-        self.audio_transcript = Some((audio_transcript, model_name.to_string()));
+        self.audio_transcript = Some((audio_transcript, model_id.to_string()));
         self
     }
 
-    pub fn with_llm(mut self, llm: Arc<LLMModel>, model_name: &str) -> Self {
-        self.llm = Some((llm, model_name.to_string()));
+    pub fn with_llm(mut self, llm: Arc<LLMModel>, model_id: &str) -> Self {
+        self.llm = Some((llm, model_id.to_string()));
         self
     }
 

@@ -9,7 +9,7 @@ where
     TFut: Future<Output = anyhow::Result<T>>,
     TFn: Fn() -> TFut,
 {
-    pub model: Arc<Mutex<Option<T>>>,
+    pub model: Arc<Mutex<Option<T>>>, // will be loaded lazily with `create_model_fn`
     create_model_fn: TFn,
 }
 

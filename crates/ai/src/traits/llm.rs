@@ -15,6 +15,14 @@ pub struct LLMOutput {
     inner: LLMOutputInner,
 }
 
+impl std::fmt::Debug for LLMOutput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LLMOutput")
+            .field("inner", &"<stream>")
+            .finish()
+    }
+}
+
 impl Stream for LLMOutput {
     type Item = anyhow::Result<Option<String>>;
 
@@ -112,6 +120,7 @@ mod test {
     #[test_log::test(tokio::test)]
     async fn test_llm_to_image_caption() {
         let llm = AIModel::new(
+            "ollama-llava-phi3-mini".into(),
             move || async move {
                 Ok(LLM::OpenAI(
                     OpenAI::new("http://localhost:11434/v1", "", "llava-phi3:3.8b-mini-q4_0")

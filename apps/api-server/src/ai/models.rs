@@ -42,6 +42,7 @@ pub enum ConcreteModelType {
     LLaVAPhi3Mini,
 }
 
+// TODO: rename, in order to distinguish from ai::AIModel
 #[derive(Serialize, Deserialize, Type, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct AIModel {

@@ -137,9 +137,9 @@ export type RetrievalResultData = { filePath: FilePathWithAssetObjectData; metad
 
 export type AcceptShareOutput = { fileList: string[] }
 
-export type AIModelResult = { info: AIModel; status: AIModelStatus }
-
 export type RawTextMetadata = { textCount: number }
+
+export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
 
 export type LibraryModels = { MultiModalEmbedding: string; TextEmbedding: string; ImageCaption: string; AudioTranscript: string; Llm: string }
 
@@ -150,6 +150,8 @@ export type VideoPlayerTsRequestPayload = { hash: string; index: number; size: n
 export type LibraryLoadResult = { id: string; dir: string }
 
 export type RebuildIndexRequestPayload = { assetObjectHash: string; withExistingArtifacts: boolean }
+
+export type AIModelResult = { info: AIModel; status: AIModelStatus }
 
 export type AssetObjectCreatePayload = { materializedPath: string; name: string; localFullPath: string }
 
@@ -181,21 +183,19 @@ export type FilePathQueryPayload = { materializedPath: string; isDir?: boolean |
 
 export type SharePayload = { fileIdList: number[]; peerId: string }
 
-export type ModelDownloadStatus = { totalBytes: string; downloadedBytes: string }
-
 export type TaskListRequestPayload = { filter: TaskListRequestFilter }
 
 export type VideoIndexMetadata = { sliceType: VideoSliceType; startTimestamp: number; endTimestamp: number }
 
 export type ContentIndexMetadata = ({ contentType: "Video" } & VideoIndexMetadata) | ({ contentType: "Audio" } & AudioIndexMetadata) | ({ contentType: "Image" } & ImageIndexMetadata) | ({ contentType: "RawText" } & RawTextIndexMetadata) | ({ contentType: "WebPage" } & WebPageIndexMetadata)
 
-export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
-
 export type AudioIndexMetadata = { sliceType: AudioSliceType; startTimestamp: number; endTimestamp: number }
 
 export type SearchRequestPayload = { text: string }
 
 export type FilePathMovePayload = { active: FilePathRequestPayload; target: FilePathRequestPayload | null }
+
+export type AIModel = { id: string; title: string; description: string; categories: AIModelCategory[]; artifacts_dir: string; artifacts: ModelArtifact[]; model_type: ConcreteModelType; params: any; dim: number | null }
 
 export type TaskListRequestFilter = { assetObjectId?: number | null; assetObjectIds?: number[] | null }
 

@@ -84,10 +84,11 @@ impl AIHandler {
         let settings = get_library_settings(&library.dir);
 
         let model = get_model_info_by_id(ctx, &settings.models.image_caption)?;
-        let model_name = model.id.clone();
+        let model_id = model.id.clone();
 
         let handler = if model.model_type == ConcreteModelType::OpenAI {
             let handler = AIModel::new(
+                model_id.clone(),
                 move || {
                     let model_clone = model.clone();
 
@@ -113,6 +114,7 @@ impl AIHandler {
             // 所以只能把 match 写在外面，把模型实例直接传给 AIModel::new
             let handler = match model.model_type {
                 ConcreteModelType::BLIP => AIModel::new(
+                    model_id.clone(),
                     move || {
                         let resources_dir_clone = resources_dir.clone();
                         let model_clone = model.clone();
@@ -133,6 +135,7 @@ impl AIHandler {
                     Some(Duration::from_secs(30)),
                 )?,
                 ConcreteModelType::LLaVAPhi3Mini => AIModel::new(
+                    model_id.clone(),
                     move || {
                         let resources_dir_clone = resources_dir.clone();
                         let model_clone = model.clone();
@@ -168,7 +171,7 @@ impl AIHandler {
             handler
         };
 
-        Ok((handler, model_name))
+        Ok((handler, model_id))
     }
 
     fn build_multi_modal_embedding_model(
@@ -179,8 +182,10 @@ impl AIHandler {
         let settings = get_library_settings(&library.dir);
 
         let model = get_model_info_by_id(ctx, &settings.models.multi_modal_embedding)?;
-        let model_name = model.id.clone();
+        let model_id = model.id.clone();
+
         let handler = AIModel::new(
+            model_id.clone(),
             move || {
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
@@ -215,7 +220,7 @@ impl AIHandler {
             Some(Duration::from_secs(600)),
         )?;
 
-        Ok((handler, model_name))
+        Ok((handler, model_id))
     }
 
     fn build_audio_transcript_model(
@@ -226,8 +231,10 @@ impl AIHandler {
         let settings = get_library_settings(&library.dir);
 
         let model = get_model_info_by_id(ctx, &settings.models.audio_transcript)?;
-        let model_name = model.id.clone();
+        let model_id = model.id.clone();
+
         let handler = AIModel::new(
+            model_id.clone(),
             move || {
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
@@ -251,7 +258,7 @@ impl AIHandler {
             Some(Duration::from_secs(30)),
         )?;
 
-        Ok((handler, model_name))
+        Ok((handler, model_id))
     }
 
     /// Get text embedding model.
@@ -273,7 +280,7 @@ impl AIHandler {
         }
 
         let model = get_model_info_by_id(ctx, &settings.models.text_embedding)?;
-        let model_name = model.id.clone();
+        let model_id = model.id.clone();
 
         if model.model_type == ConcreteModelType::CLIP {
             let (handler, name) = Self::build_multi_modal_embedding_model(ctx)?;
@@ -281,6 +288,7 @@ impl AIHandler {
         }
 
         let handler = AIModel::new(
+            model_id.clone(),
             move || {
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
@@ -306,7 +314,7 @@ impl AIHandler {
             Some(Duration::from_secs(600)),
         )?;
 
-        Ok((handler, model_name))
+        Ok((handler, model_id))
     }
 
     /// 目前这个是专门给 audio transcript 和 raw text 的 chunking 用的
@@ -316,6 +324,7 @@ impl AIHandler {
         let resources_dir = ctx.get_resources_dir().to_path_buf();
         let library = ctx.library()?;
         let settings = get_library_settings(&library.dir);
+
         let model = get_model_info_by_id(ctx, &settings.models.llm)?;
 
         let (tokenizer_path, name) = match model.model_type {
@@ -342,9 +351,10 @@ impl AIHandler {
         let settings = get_library_settings(&library.dir);
 
         let model = get_model_info_by_id(ctx, &settings.models.llm)?;
-        let model_name = model.id.clone();
+        let model_id = model.id.clone();
 
         let handler = AIModel::new(
+            model_id.clone(),
             move || {
                 let resources_dir_clone = resources_dir.clone();
                 let model_clone = model.clone();
@@ -399,7 +409,7 @@ impl AIHandler {
             Some(Duration::from_secs(30)),
         )?;
 
-        Ok((handler, model_name))
+        Ok((handler, model_id))
     }
 
     pub fn rebuild_multi_modal_embedding_model(

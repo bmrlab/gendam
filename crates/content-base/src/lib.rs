@@ -79,6 +79,7 @@ mod test {
 
         // initialize AI models
         let whisper = AIModel::new(
+            "whisper-small".into(),
             || async {
                 Whisper::new(
                     get_project_root()
@@ -90,6 +91,7 @@ mod test {
         )
         .expect("whisper initialized");
         let llm = AIModel::new(
+            "ollama-qwen2-7b-instruct".into(),
             || async {
                 Ok(LLM::OpenAI(
                     OpenAI::new(
@@ -104,6 +106,7 @@ mod test {
         )
         .expect("");
         let text_embedding = AIModel::new(
+            "puff-base-v1".into(),
             || async {
                 OrtTextEmbedding::new(
                     get_project_root()
@@ -179,9 +182,16 @@ mod test {
         let ctx = ContentBaseCtx::new("gendam-test-artifacts", "");
 
         // initialize AI models
-        let whisper =
-            AIModel::new(|| async { Whisper::new("/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/whisper/ggml-medium-q5_0.bin").await }, None).expect("whisper initialized");
+        let whisper = AIModel::new(
+            "whisper-small".into(),
+            || async {
+                Whisper::new("/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/whisper/ggml-medium-q5_0.bin").await
+            },
+            None
+        )
+        .expect("whisper initialized");
         let llm = AIModel::new(
+            "ollama-qwen2-7b-instruct".into(),
             || async {
                 Ok(LLM::OpenAI(
                     OpenAI::new(
@@ -196,6 +206,7 @@ mod test {
         )
         .expect("");
         let text_embedding = AIModel::new(
+            "stella-base-zh-v3-1792d".into(),
             || async {
                 OrtTextEmbedding::new("/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/stella-base-zh-v3-1792d/model_quantized.onnx", "/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/stella-base-zh-v3-1792d/tokenizer.json").await
             },

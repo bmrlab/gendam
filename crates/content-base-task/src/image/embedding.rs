@@ -45,11 +45,11 @@ impl ContentTask for ImageEmbeddingTask {
     }
 
     fn task_parameters(&self, ctx: &ContentBaseCtx) -> Value {
-        let (_, model_name) = ctx
+        let (_, model_id) = ctx
             .multi_modal_embedding()
             .expect("multi modal embedding model should be set");
         json!({
-            "model": model_name,
+            "model": model_id,
         })
     }
 

@@ -12,6 +12,7 @@ impl ContentBase {
     /// 构造内部查询模型 SearchModel
     /// 1. 分词
     /// 2. query 文字 -> 文本向量 + 图片向量
+    #[tracing::instrument(err(Debug), skip_all, fields(query=%payload.query))]
     pub async fn query_payload_to_model(
         &self,
         payload: &ContentQueryPayload,

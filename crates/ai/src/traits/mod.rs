@@ -6,17 +6,16 @@ mod multi_modal_embedding;
 mod text_embedding;
 
 use crate::{loader, HandlerPayload};
-use anyhow::bail;
 pub use audio_transcript::*;
 use futures::Future;
 pub use image_caption::*;
 pub use image_embedding::*;
 pub use llm::*;
 pub use multi_modal_embedding::*;
+use std::fmt::Debug;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 pub use text_embedding::*;
 use tokio::sync::{mpsc, oneshot, Mutex};
-use tracing::{debug, error, warn};
 
 pub trait Model {
     type Item;
@@ -26,6 +25,7 @@ pub trait Model {
         &mut self,
         items: Vec<Self::Item>,
     ) -> impl std::future::Future<Output = anyhow::Result<Vec<anyhow::Result<Self::Output>>>> + Send;
+
     fn batch_size_limit(&self) -> usize;
 }
 
@@ -33,12 +33,14 @@ pub type BatchHandlerTx<Item, Output> = mpsc::Sender<HandlerPayload<Item, Output
 
 #[derive(Debug)]
 pub struct AIModel<TItem, TOutput> {
+    model_id: String, // for better logging
     tx: BatchHandlerTx<TItem, TOutput>,
 }
 
 impl<TItem, TOutput> Clone for AIModel<TItem, TOutput> {
     fn clone(&self) -> Self {
         Self {
+            model_id: self.model_id.clone(),
             tx: self.tx.clone(),
         }
     }
@@ -46,10 +48,11 @@ impl<TItem, TOutput> Clone for AIModel<TItem, TOutput> {
 
 impl<TItem, TOutput> AIModel<TItem, TOutput>
 where
-    TItem: Send + Sync + Clone + 'static,
-    TOutput: Send + Sync + 'static,
+    TItem: Send + Sync + Clone + Debug + 'static,
+    TOutput: Send + Sync + Debug + 'static,
 {
     pub fn new<T, TFut, TFn>(
+        model_id: String, // for better logging
         create_model: TFn,
         offload_duration: Option<Duration>,
     ) -> anyhow::Result<Self>
@@ -77,9 +80,9 @@ where
                     tokio::select! {
                         _ = tokio::time::sleep(offload_duration) => {
                             if loader.model.lock().await.is_some() {
-                                debug!("No message received for {:?}, offload model", offload_duration);
+                                tracing::debug!("No message received for {:?}, offload model", offload_duration);
                                 if let Err(e) = loader.offload().await {
-                                    error!("failed to offload model: {}", e);
+                                    tracing::error!("failed to offload model: {}", e);
                                 }
                             }
                         }
@@ -87,10 +90,10 @@ where
                             match payload {
                                 Some((items, result_tx)) => {
                                     if let Err(e) = loader.load().await {
-                                        error!("failed to load model: {}", e);
+                                        tracing::error!("failed to load model: {}", e);
                                         // TODO here we need to use tx
                                         // if let Err(_) = result_tx.send(Err(anyhow::anyhow!(e))) {
-                                        //     error!("failed to send result");
+                                        //     tracing::error!("failed to send result");
                                         // }
                                     }
 
@@ -108,12 +111,12 @@ where
                                             let results = model.process(items).await;
 
                                             if result_tx.send(results).is_err() {
-                                                error!("failed to send results");
+                                                tracing::error!("failed to send results");
                                             }
                                         } else {
-                                            error!("no valid model");
+                                            tracing::error!("no valid model");
                                             if result_tx.send(Err(anyhow::anyhow!("failed to load model"))).is_err() {
-                                                error!("failed to send results");
+                                                tracing::error!("failed to send results");
                                             }
                                         }
 
@@ -126,9 +129,9 @@ where
                                 _ => {
                                     // this means all tx has been dropped
                                     if loader.model.lock().await.is_some() {
-                                        warn!("all tx dropped, offload model and end loop");
+                                        tracing::warn!("all tx dropped, offload model and end loop");
                                         if let Err(e) = loader.offload().await {
-                                            error!("failed to offload model: {}", e);
+                                            tracing::error!("failed to offload model: {}", e);
                                         }
                                     }
                                     break;
@@ -142,21 +145,33 @@ where
             rt.block_on(local);
         });
 
-        Ok(Self { tx })
+        Ok(Self {
+            model_id: model_id.to_string(),
+            tx,
+        })
     }
 
+    #[tracing::instrument(name = "AIModel::process", err(Debug), skip_all, fields(model_id=%self.model_id))]
     pub async fn process(&self, items: Vec<TItem>) -> anyhow::Result<Vec<anyhow::Result<TOutput>>> {
         let (result_tx, rx) = oneshot::channel();
+        match self.tx.send((items, result_tx)).await {
+            Ok(_) => {
+                tracing::info!("items sent to model");
+            }
+            Err(e) => {
+                anyhow::bail!("failed to send items: {:?}", e);
+            }
+        }
 
-        self.tx.send((items, result_tx)).await?;
         match rx.await {
             Ok(result) => result,
             Err(e) => {
-                bail!("failed to receive results: {}", e);
+                anyhow::bail!("failed to receive results: {:?}", e);
             }
         }
     }
 
+    #[tracing::instrument(name = "AIModel::process_single", err(Debug), skip_all, fields(model_id=%self.model_id))]
     pub async fn process_single(&self, item: TItem) -> anyhow::Result<TOutput> {
         let results = self.process(vec![item]).await?;
         let result = results
@@ -182,6 +197,7 @@ where
         let (tx, mut rx) = mpsc::channel::<HandlerPayload<TNewItem, TNewOutput>>(512);
 
         let self_clone = Self {
+            model_id: self.model_id.clone(),
             tx: self.tx.clone(),
         };
 
@@ -251,7 +267,10 @@ where
             }
         });
 
-        AIModel { tx }
+        AIModel {
+            model_id: self.model_id.clone(),
+            tx,
+        }
     }
 }
 
@@ -260,6 +279,7 @@ async fn test_create_reference() {
     use crate::clip::{CLIPModel, CLIP};
 
     let original_clip = AIModel::new(
+        "clip-multilingual-v1".into(),
         move || async move { CLIP::new("/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/CLIP-ViT-B-32-multilingual-v1/visual_quantize.onnx", "/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/CLIP-ViT-B-32-multilingual-v1/textual_quantize.onnx", "/Users/zhuo/dev/tezign/bmrlab/gendam/apps/desktop/src-tauri/resources/CLIP-ViT-B-32-multilingual-v1/tokenizer.json", CLIPModel::MViTB32).await },
         Some(Duration::from_secs(120)),
     ).expect("create CLIP model");

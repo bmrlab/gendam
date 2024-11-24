@@ -443,7 +443,7 @@ impl TaskPoolContext {
         Some((task_id, priority, current_task))
     }
 
-    #[tracing::instrument(skip_all, fields(file_identifier = %task_id.file_identifier(), task_type = %task_id.task_type()))]
+    #[tracing::instrument(skip_all, fields(hash = %task_id.file_identifier(), task_type = %task_id.task_type()))]
     async fn async_exec_task(
         &self,
         content_base: &ContentBaseCtx,

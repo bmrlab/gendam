@@ -39,6 +39,7 @@ impl ContentBase {
     ///     2. 将上述结果进行 rank
     ///     3. 对上述 rank 的结果进行向上回溯
     ///     4. 填充 payload 信息
+    #[tracing::instrument(err(Debug), skip_all, fields(query=%payload.query))]
     pub async fn query(
         &self,
         payload: ContentQueryPayload,
