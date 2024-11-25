@@ -13,8 +13,9 @@ use std::convert::Into;
 const VECTOR_QUERY_LIMIT: usize = 100;
 
 // TODO: vision 和 text 向量现在采用了不同的命中范围，这个要继续调整
-const VISION_VECTOR_RANGE: &str = "<|2,20|>";
-const TEXT_VECTOR_RANGE: &str = "<|2,20|>";
+// <|K,EF|> K 是最近邻的数量，EF 是候选列表的大小，越大越准确但是越慢
+const VISION_VECTOR_RANGE: &str = "<|5,100|>";
+const TEXT_VECTOR_RANGE: &str = "<|5,100|>";
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct VectorSearchEntity {

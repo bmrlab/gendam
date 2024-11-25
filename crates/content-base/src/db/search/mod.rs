@@ -4,7 +4,7 @@ mod vector_search;
 use crate::{
     db::{model::id::ID, rank::Rank, DB},
     query::{
-        model::{FullTextSearchResult, SearchModel, SearchType, VectorSearchType},
+        model::{SearchModel, SearchType, VectorSearchType},
         payload::{
             audio::{AudioIndexMetadata, AudioSliceType},
             image::ImageIndexMetadata,
@@ -14,7 +14,7 @@ use crate::{
             ContentIndexMetadata, ContentQueryHitReason, ContentQueryResult,
         },
     },
-    utils::extract_highlighted_content,
+    // utils::extract_highlighted_content,
 };
 use serde::Deserialize;
 use std::convert::Into;
@@ -37,12 +37,8 @@ impl DB {
                     self.full_text_search(text.tokens.0, with_highlight).await?;
                 tracing::debug!("{} found in full text search", full_text_results.len());
 
-                let hit_words = full_text_results
-                    .iter()
-                    .map(|x| extract_highlighted_content(&x.score[0].0))
-                    .flatten()
-                    .collect::<Vec<String>>();
-                tracing::debug!("hit words {hit_words:?}");
+                // let hit_words = full_text_results.iter().map(|x| extract_highlighted_content(&x.score[0].0)).flatten().collect::<Vec<String>>();
+                // tracing::debug!("hit words {hit_words:?}");
 
                 let vector_results = self
                     .vector_search(text.text_embedding, text.vision_embedding)
@@ -57,8 +53,15 @@ impl DB {
                 )?;
                 tracing::debug!("{} results after rank", rank_result.len());
 
+                let full_text_highlight_map = full_text_results
+                    .iter()
+                    .map(|r| match r.score.get(0) {
+                        Some((highlight, _score)) => (r.id.clone(), highlight.clone()),
+                        None => (r.id.clone(), "".to_string()),
+                    })
+                    .collect::<std::collections::HashMap<_, _>>();
                 let query_results = self
-                    .lookup_assets_by_image_text_ids(&rank_result, &full_text_results)
+                    .lookup_assets_by_image_text_ids(&rank_result, &full_text_highlight_map)
                     .await?;
                 tracing::debug!("{} results after lookup", query_results.len());
 
@@ -71,12 +74,8 @@ impl DB {
     async fn lookup_assets_by_image_text_ids(
         &self,
         rank_results: &Vec<RankResult>,
-        full_text_results: &Vec<FullTextSearchResult>,
+        full_text_highlight_map: &std::collections::HashMap<ID, String>,
     ) -> anyhow::Result<Vec<ContentQueryResult>> {
-        let full_text_results_map = full_text_results
-            .into_iter()
-            .map(|r| (r.id.clone(), r))
-            .collect::<std::collections::HashMap<_, _>>();
         let rank_results_map = rank_results
             .into_iter()
             .map(|r| (r.id.clone(), r))
@@ -106,8 +105,8 @@ impl DB {
             let rank_result = rank_results_map
                 .get(&id)
                 .ok_or_else(|| anyhow::anyhow!("Missing rank result"))?;
-            let highlight = match full_text_results_map.get(&id) {
-                Some(r) => r.score[0].0.clone(),
+            let highlight = match full_text_highlight_map.get(&id) {
+                Some(v) => v.clone(),
                 None => "".to_string(),
             };
             let reference_text = record.reference_text.clone();

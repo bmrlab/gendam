@@ -61,6 +61,7 @@ pub fn deduplicate(vec: Vec<String>) -> Vec<String> {
     deduped
 }
 
+#[allow(dead_code)]
 pub fn extract_highlighted_content(text: &str) -> Vec<String> {
     Regex::new(&format!(r"{}(.*?){}", HIGHLIGHT_MARK.0, HIGHLIGHT_MARK.1))
         .and_then(|re| {
