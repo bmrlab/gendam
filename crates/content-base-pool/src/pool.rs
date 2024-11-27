@@ -24,18 +24,30 @@ pub struct TaskPool {
 struct TaskInQueue {
     task: Arc<Task>,
     priority: OrderedTaskPriority,
-    cancel_token: CancellationToken,
+    /// 仅用于高优先级任务取消低优先级任务，因为是临时取消，不会清空 task_mapping 中的任务。
+    /// 如果要永久取消（比如人工取消）的功能，需要用另一个 drop_cancel_token 来做。
+    priority_cancel_token: CancellationToken,
+    /// 用于永久取消任务，也就是丢弃任务，这个会在素材被删除的时候用到。
+    drop_cancel_token: CancellationToken,
     notifier: Option<mpsc::Sender<TaskNotification>>,
 }
 
 impl TaskInQueue {
-    async fn cancel(&self) {
-        self.cancel_token.cancel();
-
+    async fn cancel_due_to_priority(&self) {
+        self.priority_cancel_token.cancel();
         tracing::info!(
-            "Task cancelled {} {}",
-            &self.task.file_identifier,
-            &self.task.task_type
+            file_identifier=%self.task.file_identifier,
+            task_type=%self.task.task_type,
+            "Task cancelled due to priority",
+        );
+    }
+    async fn drop_with_reason(&self, drop_reason: &str) {
+        self.drop_cancel_token.cancel();
+        tracing::info!(
+            file_identifier=%self.task.file_identifier,
+            task_type=%self.task.task_type,
+            reason=%drop_reason,
+            "Task dropped",
         );
     }
 }
@@ -150,7 +162,6 @@ impl TaskPool {
                             TaskBound::IO => &io_ctx_clone,
                         };
 
-                        let current_cancel_token = CancellationToken::new();
                         let priority: OrderedTaskPriority = priority.into();
                         // 通过 order 确保在相同优先级和时间戳的情况下，先加入的任务优先级相对更高
                         let priority = {
@@ -161,7 +172,8 @@ impl TaskPool {
                         let task_in_queue = TaskInQueue {
                             task: task.clone(),
                             priority: priority.into(),
-                            cancel_token: current_cancel_token.clone(),
+                            priority_cancel_token: CancellationToken::new(),
+                            drop_cancel_token: CancellationToken::new(),
                             notifier,
                         };
 
@@ -173,8 +185,8 @@ impl TaskPool {
 
                         {
                             let mut task_queue = task_ctx.task_queue.write().await;
-                            tracing::debug!("task_queue lock acquired 1");
-                            task_queue.push(task_id, priority);
+                            tracing::debug!(task_id=%task_id, priority=%priority, "task_queue lock acquired to push task");
+                            task_queue.push(task_id.clone(), priority);
                             // 释放 task_queue 的锁，不然下面把任务重新添加回去需要 task_queue.write() 的时候会死锁
                         }
 
@@ -183,7 +195,7 @@ impl TaskPool {
                             let current_priority = priority;
                             if task_ctx.semaphore.available_permits() == 0 {
                                 // 找到优先级低于当前任务的任务，并取消它
-                                let task_priority = task_ctx.task_priority.write().await;
+                                let mut task_priority = task_ctx.task_priority.write().await;
                                 let mut min_task_id: Option<TaskId> = None;
                                 for (task_id, priority) in task_priority.iter() {
                                     if priority < &current_priority {
@@ -197,17 +209,32 @@ impl TaskPool {
                                     }
                                 }
 
-                                if let Some(task_id) = &min_task_id {
+                                if let Some(min_task_id) = min_task_id {
+                                    task_priority.remove(&min_task_id);
+                                    drop(task_priority); // drop 防止死锁的可能性, 并确保接下来不再使用它
+
+                                    tracing::info!(
+                                        "Task {} will be canceled due to a higher priority task {}",
+                                        &min_task_id,
+                                        &task_id
+                                    );
+                                    drop(task_id); // 确保后面不再使用了
                                     let mut task_mapping = task_ctx.task_mapping.write().await;
-                                    if let Some(item) =
-                                        task_mapping.get_mut(&task_id.to_store_key())
+                                    if let Some(task_in_queue) =
+                                        task_mapping.get_mut(&min_task_id.to_store_key())
                                     {
-                                        item.cancel().await;
+                                        // cancel 的流程
+                                        // -> cancel_token.cancel()
+                                        // -> tokio::select! { _ = current_task.cancel_token.cancelled() }
+                                        // -> semaphore.add_permits(1)
+                                        // -> pop 下一个任务，更高优先级的任务
+                                        task_in_queue.cancel_due_to_priority().await;
 
                                         // 需要把任务重新添加回去
+                                        let priority = task_in_queue.priority;
                                         let mut task_queue = task_ctx.task_queue.write().await;
-                                        tracing::debug!("task_queue lock acquired 2");
-                                        task_queue.push(task_id.clone(), item.priority.clone());
+                                        tracing::debug!(task_id=%min_task_id, priority=%priority, "task_queue lock acquired to push back canceled task");
+                                        task_queue.push(min_task_id, priority);
                                     }
                                 }
                             }
@@ -219,19 +246,19 @@ impl TaskPool {
                         let task_mapping = task_mapping.read().await;
                         let task_id = TaskId::new(&file_identifier, &task_type);
                         if let Some(task) = task_mapping.get(&task_id.to_store_key()) {
-                            task.cancel().await;
+                            task.drop_with_reason("CancelByIdAndType received").await;
                         }
                     }
                     TaskPayload::CancelById(file_identifier) => {
                         let task_mapping = task_mapping.read().await;
                         for (_, task) in task_mapping.get_all(&format!("{}*", file_identifier)) {
-                            task.cancel().await;
+                            task.drop_with_reason("CancelById received").await;
                         }
                     }
                     TaskPayload::CancelAll => {
                         let task_mapping = task_mapping.read().await;
                         for (_, task) in task_mapping.get_all("*") {
-                            task.cancel().await;
+                            task.drop_with_reason("CancelAll received").await;
                         }
                     }
                 }
@@ -496,7 +523,7 @@ impl TaskPoolContext {
                 result = current_task.task.task_type.run(&file_info, &content_base) => {
                     let notification = match &result {
                         Err(e) => {
-                            tracing::error!("Task error: {}", e);
+                            tracing::error!(task_id=%task_id, "Task error: {}", e);
                             TaskNotification::new(
                                 task_id.task_type(),
                                 TaskStatus::Error,
@@ -504,7 +531,7 @@ impl TaskPoolContext {
                             )
                         }
                         _ => {
-                            tracing::info!("Task finished");
+                            tracing::info!(task_id=%task_id, "Task finished");
                             TaskNotification::new(
                                 task_id.task_type(),
                                 TaskStatus::Finished,
@@ -515,25 +542,60 @@ impl TaskPoolContext {
 
                     if let Some(tx) = current_task.notifier.clone() {
                         if let Err(_) = tx.send(notification).await {
-                            tracing::error!("Failed to send task result");
-                        }
-                    }
-                }
-                _ = current_task.cancel_token.cancelled() => {
-                    if let Some(tx) = &current_task.notifier {
-                        if let Err(e) = tx
-                            .send(TaskNotification {
-                                task_type: current_task.task.task_type.clone(),
-                                status: TaskStatus::Cancelled,
-                                message: None,
-                            })
-                            .await
-                        {
-                            tracing::error!("Failed to send task cancelled notification: {}", e);
+                            tracing::error!(task_id=%task_id, "Failed to send task result");
                         }
                     }
 
-                    tracing::info!("Spawned task has been cancelled: {}", &task_id);
+                    // remove task from task_mapping
+                    task_mapping.write().await.remove(&task_id.to_store_key());
+                    tracing::debug!(task_id=%task_id, "Remove task from task_mapping");
+                }
+                _ = current_task.priority_cancel_token.cancelled() => {
+                    tracing::info!(task_id=%task_id, "Spawned task has been cancelled due to priority");
+                    if let Some(tx) = &current_task.notifier {
+                        if let Err(e) = tx
+                            .send(TaskNotification::new(
+                                &current_task.task.task_type,
+                                TaskStatus::Cancelled,
+                                Some("Task cancelled due to priority")
+                            ))
+                            .await
+                        {
+                            tracing::error!(task_id=%task_id, error=?e, "Failed to send task cancelled notification");
+                        }
+                    }
+                    // keep task in task_mapping since it will be popped out again, but with new cancel tokens
+                    let mut task_mapping = task_mapping.write().await;
+                    if let Some(removed) = task_mapping.remove(&task_id.to_store_key()) {
+                        let removed = removed.as_ref().to_owned();
+                        let task_in_queue = TaskInQueue {
+                            task: removed.task,
+                            priority: removed.priority,
+                            priority_cancel_token: CancellationToken::new(),
+                            drop_cancel_token: CancellationToken::new(),
+                            notifier: removed.notifier,
+                        };
+                        task_mapping.set(&task_id.to_store_key(), Arc::new(task_in_queue));
+                    }
+                    tracing::debug!("Keep task in task_mapping with new cancel tokens");
+                }
+                _ = current_task.drop_cancel_token.cancelled() => {
+                    tracing::info!(task_id=%task_id, "Spawned task has been dropped");
+                    if let Some(tx) = &current_task.notifier {
+                        if let Err(e) = tx
+                            .send(TaskNotification::new(
+                                &current_task.task.task_type,
+                                TaskStatus::Cancelled,
+                                Some("Task dropped"),
+                            ))
+                            .await
+                        {
+                            tracing::error!(task_id=%task_id, error=?e, "Failed to send task cancelled notification");
+                        }
+                    }
+                    // remove task from task_mapping
+                    task_mapping.write().await.remove(&task_id.to_store_key());
+                    tracing::debug!(task_id=%task_id, "Remove task from task_mapping");
                 }
             }
 
@@ -541,14 +603,18 @@ impl TaskPoolContext {
             semaphore.add_permits(1);
             tracing::info!("semaphore permits is added back");
 
-            {
-                let mut task_mapping = task_mapping.write().await;
-                task_mapping.remove(&task_id.to_store_key());
-            }
+            // 移动到了 tokio::select! 里面根据不同情况决定是否要删除
+            // {
+            //     let mut task_mapping = task_mapping.write().await;
+            //     task_mapping.remove(&task_id.to_store_key());
+            //     tracing::debug!(task_id=%task_id, "Remove task from task_mapping");
+            // }
 
+            // 但是 task_priority 照常处理，见 https://github.com/bmrlab/gendam/issues/109#issuecomment-2505306961
             {
                 let mut task_priority = task_priority.write().await;
                 task_priority.remove(&task_id);
+                tracing::debug!(task_id=%task_id, "Remove task from task_priority");
             }
 
             {
