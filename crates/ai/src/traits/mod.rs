@@ -113,7 +113,7 @@ where
                 payload = rx.recv() => {
                     match payload {
                         Some((items, result_tx)) => {
-                            tracing::info!("Loading model");
+                            tracing::debug!("Loading model");
                             if let Err(e) = loader.load().await {
                                 tracing::error!(error=%e, "Failed to load model");
                                 // TODO here we need to use tx
@@ -172,7 +172,7 @@ where
         let (result_tx, rx) = oneshot::channel();
         match self.tx.send((items, result_tx)).await {
             Ok(_) => {
-                tracing::info!("items sent to model");
+                tracing::debug!("items sent to model");
             }
             Err(e) => {
                 anyhow::bail!("failed to send items: {:?}", e);

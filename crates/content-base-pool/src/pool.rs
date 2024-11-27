@@ -173,8 +173,12 @@ impl TaskPool {
 
                         {
                             let mut task_queue = task_ctx.task_queue.write().await;
+                            tracing::debug!("task_queue lock acquired 1");
                             task_queue.push(task_id, priority);
+                            // 释放 task_queue 的锁，不然下面把任务重新添加回去需要 task_queue.write() 的时候会死锁
+                        }
 
+                        {
                             // 处理任务优先级
                             let current_priority = priority;
                             if task_ctx.semaphore.available_permits() == 0 {
@@ -202,6 +206,7 @@ impl TaskPool {
 
                                         // 需要把任务重新添加回去
                                         let mut task_queue = task_ctx.task_queue.write().await;
+                                        tracing::debug!("task_queue lock acquired 2");
                                         task_queue.push(task_id.clone(), item.priority.clone());
                                     }
                                 }

@@ -47,11 +47,11 @@ impl ContentBase {
         match metadata {
             ContentMetadata::Video(metadata) => {
                 if metadata.audio.is_some() {
-                    tasks.push((VideoTransChunkSumEmbedTask.into(), TaskPriority::Normal));
+                    tasks.push((VideoTransChunkSumEmbedTask.into(), TaskPriority::Low));
                 }
                 // tasks.push((VideoFrameTask.into(), TaskPriority::Low));
-                tasks.push((VideoFrameEmbeddingTask.into(), TaskPriority::Normal));
-                tasks.push((VideoFrameDescEmbedTask.into(), TaskPriority::Normal));
+                tasks.push((VideoFrameEmbeddingTask.into(), TaskPriority::Low));
+                tasks.push((VideoFrameDescEmbedTask.into(), TaskPriority::Low));
             }
             ContentMetadata::Audio(_metadata) => {
                 tasks.extend([
