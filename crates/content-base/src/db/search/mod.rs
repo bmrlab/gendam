@@ -17,6 +17,7 @@ use crate::{
     // utils::extract_highlighted_content,
 };
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::convert::Into;
 
 use super::rank::RankResult;
@@ -59,11 +60,21 @@ impl DB {
                         Some((highlight, _score)) => (r.id.clone(), highlight.clone()),
                         None => (r.id.clone(), "".to_string()),
                     })
-                    .collect::<std::collections::HashMap<_, _>>();
-                let query_results = self
-                    .lookup_assets_by_image_text_ids(&rank_result, &full_text_highlight_map)
+                    .collect::<HashMap<_, _>>();
+                let rank_results_map = rank_result
+                    .into_iter()
+                    .map(|r| (r.id.clone(), r))
+                    .collect::<HashMap<_, _>>();
+                let mut query_results = self
+                    .lookup_assets_by_image_text_ids(&rank_results_map, &full_text_highlight_map)
                     .await?;
                 tracing::debug!("{} results after lookup", query_results.len());
+                // 最后需要排序一下因为 query_results 是按照 id 的顺序返回的
+                query_results.sort_by(|a, b| {
+                    b.score
+                        .partial_cmp(&a.score)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
 
                 Ok(query_results)
             }
@@ -73,13 +84,9 @@ impl DB {
 
     async fn lookup_assets_by_image_text_ids(
         &self,
-        rank_results: &Vec<RankResult>,
-        full_text_highlight_map: &std::collections::HashMap<ID, String>,
+        rank_results_map: &HashMap<ID, RankResult>,
+        full_text_highlight_map: &HashMap<ID, String>,
     ) -> anyhow::Result<Vec<ContentQueryResult>> {
-        let rank_results_map = rank_results
-            .into_iter()
-            .map(|r| (r.id.clone(), r))
-            .collect::<std::collections::HashMap<_, _>>();
         let ids = rank_results_map.keys().collect::<Vec<_>>();
         let things = ids
             .into_iter()
@@ -104,7 +111,8 @@ impl DB {
             let id: ID = record.id.into();
             let rank_result = rank_results_map
                 .get(&id)
-                .ok_or_else(|| anyhow::anyhow!("Missing rank result"))?;
+                .ok_or_else(|| anyhow::anyhow!("Missing rank result"))?
+                .to_owned();
             let highlight = match full_text_highlight_map.get(&id) {
                 Some(v) => v.clone(),
                 None => "".to_string(),
@@ -208,6 +216,7 @@ impl DB {
                 reference_content: Some(record.reference_text),
             });
         }
+
         Ok(query_results)
     }
 }

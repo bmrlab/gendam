@@ -116,19 +116,13 @@ impl DB {
             }
         });
 
-        let mut res: Vec<VectorSearchResult> = join_all(futures)
+        let res: Vec<VectorSearchResult> = join_all(futures)
             .await
             .into_iter()
             .collect::<anyhow::Result<Vec<_>>>()?
             .into_iter()
             .flatten()
             .collect();
-
-        res.sort_by(|a, b| {
-            a.distance
-                .partial_cmp(&b.distance)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
 
         Ok(res)
     }

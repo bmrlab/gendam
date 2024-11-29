@@ -212,12 +212,14 @@ impl DB {
             }
         });
 
-        Ok(join_all(futures)
+        let res = join_all(futures)
             .await
             .into_iter()
             .collect::<anyhow::Result<Vec<_>>>()?
             .into_iter()
             .flatten()
-            .collect())
+            .collect();
+
+        Ok(res)
     }
 }

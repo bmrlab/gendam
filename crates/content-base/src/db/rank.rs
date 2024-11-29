@@ -9,6 +9,7 @@ pub struct RankResult {
     pub id: ID,
     /// 并不是真正的得分，而是排序的依据
     pub score: f32,
+    /// 真正的得分等辅助信息，格式是 distance:xxx, score:xxx，取决于搜索类型
     pub search_type: SearchType,
 }
 
@@ -49,14 +50,7 @@ impl Rank {
             );
             b_score
                 .partial_cmp(&a_score)
-                .ok_or(std::cmp::Ordering::Equal)
-                .expect(
-                    format!(
-                        "Failed to compare a_score: {}, b_score: {}",
-                        a_score, b_score
-                    )
-                    .as_str(),
-                )
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
         let rank_results = res
             .drain(..drain)
@@ -83,8 +77,7 @@ impl Rank {
         res.sort_by(|a, b| {
             a.distance
                 .partial_cmp(&b.distance)
-                .ok_or(std::cmp::Ordering::Equal)
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
         Ok(res
             .drain(..drain)
@@ -108,15 +101,15 @@ impl Rank {
         let concat_arrays = concat_arrays!(full_text_rank.clone(), vector_rank.clone()).into_vec();
         let mut rank_result: Vec<RankResult> = Rank::rrf(vec![full_text_rank, vector_rank], None)
             .into_iter()
-            .filter_map(|x| {
-                concat_arrays
-                    .iter()
-                    .find(|y| y.id.id_with_table() == x)
-                    .map(|r| RankResult {
-                        id: ID::from(x.as_str()),
-                        score: r.score,
+            .filter_map(|(id, score)| {
+                match concat_arrays.iter().find(|y| y.id.id_with_table() == id) {
+                    Some(r) => Some(RankResult {
+                        id: r.id.clone(),
+                        score, // 这里的 score 是 rrf 的得分
                         search_type: r.search_type.clone(),
-                    })
+                    }),
+                    None => None,
+                }
             })
             .collect();
         // tracing::debug!("rank_result: {:?}", rank_result);
@@ -144,24 +137,24 @@ impl Rankable for RankResult {
 }
 
 impl Rank {
-    fn rrf<T: Rankable>(rankings: Vec<Vec<T>>, k: Option<usize>) -> Vec<String> {
-        let mut rrf_scores: HashMap<String, f64> = HashMap::new();
+    fn rrf<T: Rankable>(rankings: Vec<Vec<T>>, k: Option<usize>) -> Vec<(String, f32)> {
+        let mut rrf_scores: HashMap<String, f32> = HashMap::new();
         let k = k.unwrap_or(60);
 
         for ranking in rankings {
             for (rank, item) in ranking.into_iter().enumerate() {
                 let doc_id = item.id();
                 let score = rrf_scores.entry(doc_id.clone()).or_insert(0.0);
-                *score += 1.0 / (k as f64 + rank as f64 + 1.0);
+                *score += 1.0 / (k as f32 + rank as f32 + 1.0);
             }
         }
 
-        let mut fused_ranking: Vec<String> = rrf_scores.keys().cloned().collect();
-        fused_ranking.sort_by(|a, b| {
-            rrf_scores[b]
-                .partial_cmp(&rrf_scores[a])
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        let mut fused_ranking: Vec<(String, f32)> = rrf_scores
+            .iter()
+            .map(|(id, &score)| (id.clone(), score))
+            .collect();
+
+        fused_ranking.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         fused_ranking
     }
@@ -280,6 +273,12 @@ mod test {
         let rankings = vec![ranking1, ranking2, ranking3];
 
         let fused_ranking = Rank::rrf(rankings, None);
-        assert_eq!(vec!["doc2", "doc3", "doc1", "doc5", "doc4"], fused_ranking);
+        assert_eq!(
+            vec!["doc2", "doc3", "doc1", "doc5", "doc4"],
+            fused_ranking
+                .iter()
+                .map(|x| x.0.clone())
+                .collect::<Vec<String>>()
+        );
     }
 }
