@@ -48,6 +48,7 @@ pub struct ContentQueryResult {
     pub metadata: ContentIndexMetadata,
     pub hit_reason: Option<ContentQueryHitReason>, // 命中的索引内容
     pub reference_content: Option<String>,         // 根据 metadata 提取出来的内容片段
+    pub search_hint: String,
 }
 
 // #[derive(Debug, Serialize)]

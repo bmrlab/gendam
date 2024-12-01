@@ -98,6 +98,7 @@ impl DB {
             .query(PAYLOAD_LOOKUP_SQL)
             .bind(("ids", things))
             .await?;
+
         // tracing::debug!(response=?res, "look up assets by image and text ids");
         let res_image: Vec<PayloadLookupResult> = res.take(0)?;
         let res_text: Vec<PayloadLookupResult> = res.take(1)?;
@@ -106,7 +107,12 @@ impl DB {
             .chain(res_image.into_iter())
             .chain(res_text.into_iter())
             .collect::<Vec<PayloadLookupResult>>();
+
         let mut query_results: Vec<ContentQueryResult> = Vec::new();
+        // text 和 image 可能对应到同样的视频片段，那么，视频的分数是不是应该增加？
+        // 也就是 query_results 里面是会有重复的 file_identifier 的
+        // https://github.com/bmrlab/gendam/issues/105#issuecomment-2509669785
+
         for record in res {
             let id: ID = record.id.into();
             let rank_result = rank_results_map
@@ -214,6 +220,7 @@ impl DB {
                 metadata,
                 hit_reason: Some(hit_reasone),
                 reference_content: Some(record.reference_text),
+                search_hint: rank_result.search_hint.clone(),
             });
         }
 

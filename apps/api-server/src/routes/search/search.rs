@@ -24,6 +24,7 @@ pub struct SearchResultData {
     pub score: f32,
     pub hit_reason: ContentQueryHitReason,
     pub reference_content: String,
+    pub search_hint: String,
 }
 
 pub async fn search_all(
@@ -62,6 +63,7 @@ pub async fn search_all(
             score: item.score,
             hit_reason,
             reference_content: item.reference_content.clone().unwrap_or_default(),
+            search_hint: item.search_hint.clone(),
         })
     })
     .await?

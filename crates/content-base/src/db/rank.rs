@@ -1,15 +1,18 @@
+use itertools::Itertools;
+
 use super::model::id::ID;
 use crate::concat_arrays;
-use crate::query::model::{FullTextSearchResult, SearchType, VectorSearchResult};
+use crate::query::model::{FullTextSearchResult, SearchType, VectorSearchResult, VectorSearchType};
 use std::collections::{HashMap, HashSet};
 pub struct Rank;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RankResult {
     pub id: ID,
-    /// 并不是真正的得分，而是排序的依据
+    /// 并不是全文搜索的 score，也不是向量搜索的 distance，是 rff 的得分，只是排序的依据
     pub score: f32,
     /// 真正的得分等辅助信息，格式是 distance:xxx, score:xxx，取决于搜索类型
+    pub search_hint: String,
     pub search_type: SearchType,
 }
 
@@ -52,15 +55,26 @@ impl Rank {
                 .partial_cmp(&a_score)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
+
         let rank_results = res
             .drain(..drain)
-            .map(|x| RankResult {
-                id: x.id.clone(),
-                score: calculate_score(
+            .map(|x| {
+                let score = calculate_score(
                     x.score.iter().map(|(_, score)| *score).collect(),
                     &score_type,
-                ),
-                search_type: SearchType::FullText,
+                );
+                let search_hint = x
+                    .score
+                    .iter()
+                    .map(|(_, score)| format!("fulltext.score:{}", score))
+                    .collect::<Vec<String>>()
+                    .join(",");
+                RankResult {
+                    id: x.id.clone(),
+                    score,
+                    search_hint,
+                    search_type: SearchType::FullText,
+                }
             })
             .collect();
         Ok(rank_results)
@@ -81,10 +95,18 @@ impl Rank {
         });
         Ok(res
             .drain(..drain)
-            .map(|x| RankResult {
-                id: x.id.clone(),
-                score: if x.distance < 0.0 { 0.0 } else { x.distance },
-                search_type: SearchType::Vector(x.vector_type),
+            .map(|x| {
+                let score = if x.distance < 0.0 { 0.0 } else { x.distance };
+                let search_hint = match x.vector_type {
+                    VectorSearchType::Text => format!("vector.text.distance:{}", x.distance),
+                    VectorSearchType::Vision => format!("vector.vision.distance:{}", x.distance),
+                };
+                RankResult {
+                    id: x.id.clone(),
+                    score,
+                    search_hint,
+                    search_type: SearchType::Vector(x.vector_type),
+                }
             })
             .collect())
     }
@@ -102,13 +124,25 @@ impl Rank {
         let mut rank_result: Vec<RankResult> = Rank::rrf(vec![full_text_rank, vector_rank], None)
             .into_iter()
             .filter_map(|(id, score)| {
-                match concat_arrays.iter().find(|y| y.id.id_with_table() == id) {
-                    Some(r) => Some(RankResult {
-                        id: r.id.clone(),
-                        score, // 这里的 score 是 rrf 的得分
-                        search_type: r.search_type.clone(),
-                    }),
-                    None => None,
+                let items = concat_arrays
+                    .iter()
+                    .filter(|y| y.id.id_with_table() == id)
+                    .collect_vec();
+                if items.len() > 0 {
+                    let item = items[0].clone();
+                    let search_hint = items
+                        .iter()
+                        .map(|x| x.search_hint.clone())
+                        .collect::<Vec<String>>()
+                        .join(",");
+                    Some(RankResult {
+                        id: item.id,
+                        score,
+                        search_hint,
+                        search_type: item.search_type,
+                    })
+                } else {
+                    None
                 }
             })
             .collect();

@@ -109,7 +109,7 @@ export type LibrariesListResult = { id: string; dir: string; title: string }
 
 export type VideoMetadata = { width: number; height: number; duration: number; bitRate: number; avgFrameRate: VideoAvgFrameRate; audio: AudioMetadata | null }
 
-export type SearchResultData = { filePath: FilePathWithAssetObjectData; metadata: ContentIndexMetadata; score: number; hitReason: ContentQueryHitReason; referenceContent: string }
+export type SearchResultData = { filePath: FilePathWithAssetObjectData; metadata: ContentIndexMetadata; score: number; hitReason: ContentQueryHitReason; referenceContent: string; searchHint: string }
 
 export type LibraryStatusResult = { id: string | null; loaded: boolean; isBusy: boolean }
 
