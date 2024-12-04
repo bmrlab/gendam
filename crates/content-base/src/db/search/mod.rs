@@ -163,6 +163,142 @@ async fn lookup_assets_by_image_text_ids<T: surrealdb::Connection>(
     Ok(query_results)
 }
 
+async fn merge_frames(query_results: &mut Vec<ContentQueryResult>) -> anyhow::Result<()> {
+    type Meta = ContentIndexMetadata;
+    query_results.sort_by(|a, b| {
+        match (
+            &a.file_identifier.cmp(&b.file_identifier),
+            &a.metadata,
+            &b.metadata,
+        ) {
+            (std::cmp::Ordering::Equal, Meta::Video(a_meta), Meta::Video(b_meta)) => a_meta
+                .start_timestamp
+                .cmp(&b_meta.start_timestamp)
+                .then(a_meta.end_timestamp.cmp(&b_meta.end_timestamp)),
+            (std::cmp::Ordering::Equal, Meta::Audio(a_meta), Meta::Audio(b_meta)) => a_meta
+                .start_timestamp
+                .cmp(&b_meta.start_timestamp)
+                .then(a_meta.end_timestamp.cmp(&b_meta.end_timestamp)),
+            (std::cmp::Ordering::Equal, Meta::WebPage(a_meta), Meta::WebPage(b_meta)) => a_meta
+                .start_index
+                .cmp(&b_meta.start_index)
+                .then(a_meta.end_index.cmp(&b_meta.end_index)),
+            (std::cmp::Ordering::Equal, Meta::RawText(a_meta), Meta::RawText(b_meta)) => a_meta
+                .start_index
+                .cmp(&b_meta.start_index)
+                .then(a_meta.end_index.cmp(&b_meta.end_index)),
+            (ordering, _, _) => *ordering,
+        }
+    });
+
+    // 用于存储合并后的结果
+    let mut merged_results: Vec<ContentQueryResult> = Vec::new();
+    let mut current_result: Option<ContentQueryResult> = None;
+
+    for mut result in query_results.drain(..) {
+        match current_result {
+            None => {
+                current_result = Some(result);
+            }
+            Some(mut curr) => {
+                if curr.file_identifier == result.file_identifier {
+                    // 检查是否有重叠并合并
+                    if merge_if_overlapping(&mut curr, &mut result) {
+                        current_result = Some(curr);
+                    } else {
+                        // 如果没有重叠，保存当前结果并开始新的
+                        merged_results.push(curr);
+                        current_result = Some(result);
+                    }
+                } else {
+                    // 不同文件，保存当前结果并开始新的
+                    merged_results.push(curr);
+                    current_result = Some(result);
+                }
+            }
+        }
+    }
+
+    // 处理最后一个结果
+    if let Some(last_result) = current_result {
+        merged_results.push(last_result);
+    }
+
+    // 更新原始 vector
+    *query_results = merged_results;
+
+    Ok(())
+}
+
+fn merge_if_overlapping(a: &mut ContentQueryResult, b: &mut ContentQueryResult) -> bool {
+    let (a_start, a_end, b_start, b_end) = match (&a.metadata, &b.metadata) {
+        (ContentIndexMetadata::Video(a_meta), ContentIndexMetadata::Video(b_meta)) => (
+            a_meta.start_timestamp,
+            a_meta.end_timestamp,
+            b_meta.start_timestamp,
+            b_meta.end_timestamp,
+        ),
+        (ContentIndexMetadata::Audio(a_meta), ContentIndexMetadata::Audio(b_meta)) => (
+            a_meta.start_timestamp,
+            a_meta.end_timestamp,
+            b_meta.start_timestamp,
+            b_meta.end_timestamp,
+        ),
+        (ContentIndexMetadata::WebPage(a_meta), ContentIndexMetadata::WebPage(b_meta)) => (
+            a_meta.start_index as i64,
+            a_meta.end_index as i64,
+            b_meta.start_index as i64,
+            b_meta.end_index as i64,
+        ),
+        (ContentIndexMetadata::RawText(a_meta), ContentIndexMetadata::RawText(b_meta)) => (
+            a_meta.start_index as i64,
+            a_meta.end_index as i64,
+            b_meta.start_index as i64,
+            b_meta.end_index as i64,
+        ),
+        _ => return false,
+    };
+
+    // 检查是否重叠，1s以内的算重叠
+    if b_start <= a_end + 1000 {
+        // 更新 metadata 中的 start/end
+        match &mut a.metadata {
+            ContentIndexMetadata::Video(meta) => {
+                meta.start_timestamp = a_start.min(b_start);
+                meta.end_timestamp = a_end.max(b_end);
+            }
+            ContentIndexMetadata::Audio(meta) => {
+                meta.start_timestamp = a_start.min(b_start);
+                meta.end_timestamp = a_end.max(b_end);
+            }
+            ContentIndexMetadata::WebPage(meta) => {
+                meta.start_index = a_start.min(b_start) as usize;
+                meta.end_index = a_end.max(b_end) as usize;
+            }
+            ContentIndexMetadata::RawText(meta) => {
+                meta.start_index = a_start.min(b_start) as usize;
+                meta.end_index = a_end.max(b_end) as usize;
+            }
+            _ => {}
+        }
+
+        // 取较高的分数
+        a.score = a.score.max(b.score);
+
+        // 合并 search_hint
+        if !b.search_hint.is_empty() {
+            if !a.search_hint.is_empty() {
+                a.search_hint.push_str("; ");
+            }
+            a.search_hint.push_str(&b.search_hint);
+        }
+
+        true
+    } else {
+        false
+    }
+}
+
 impl DB {
     #[tracing::instrument(err(Debug), skip_all)]
     pub async fn search(
@@ -213,6 +349,9 @@ impl DB {
                 )
                 .await?;
                 tracing::debug!("{} results after lookup", query_results.len());
+
+                merge_frames(&mut query_results).await?;
+
                 // 最后需要排序一下因为 query_results 是按照 id 的顺序返回的
                 query_results.sort_by(|a, b| {
                     b.score
