@@ -1,6 +1,11 @@
 mod full_text_search;
 mod test;
 mod vector_search;
+use serde::Deserialize;
+use std::collections::HashMap;
+use std::convert::Into;
+
+use super::rank::RankResult;
 use crate::{
     db::{model::id::ID, rank::Rank, DB},
     query::{
@@ -16,11 +21,147 @@ use crate::{
     },
     // utils::extract_highlighted_content,
 };
-use serde::Deserialize;
-use std::collections::HashMap;
-use std::convert::Into;
 
-use super::rank::RankResult;
+async fn lookup_assets_by_image_text_ids<T: surrealdb::Connection>(
+    surrealdb_client: &surrealdb::Surreal<T>,
+    rank_results_map: &HashMap<ID, RankResult>,
+    full_text_highlight_map: &HashMap<ID, String>,
+) -> anyhow::Result<Vec<ContentQueryResult>> {
+    let ids = rank_results_map.keys().collect::<Vec<_>>();
+    let things = ids
+        .into_iter()
+        .map(|id| surrealdb::sql::Thing::from(id))
+        .collect::<Vec<_>>();
+    // tracing::debug!(ids=?things, "look up assets by image and text ids");
+    let mut res = surrealdb_client
+        .query(PAYLOAD_LOOKUP_SQL)
+        .bind(("ids", things))
+        .await?;
+
+    // tracing::debug!(response=?res, "look up assets by image and text ids");
+    let res_image: Vec<PayloadLookupResult> = res.take(0)?;
+    let res_text: Vec<PayloadLookupResult> = res.take(1)?;
+    let res = Vec::new()
+        .into_iter()
+        .chain(res_image.into_iter())
+        .chain(res_text.into_iter())
+        .collect::<Vec<PayloadLookupResult>>();
+
+    let mut query_results: Vec<ContentQueryResult> = Vec::new();
+    // text 和 image 可能对应到同样的视频片段，那么，视频的分数是不是应该增加？
+    // 也就是 query_results 里面是会有重复的 file_identifier 的
+    // https://github.com/bmrlab/gendam/issues/105#issuecomment-2509669785
+    // TODO: 需要合并一下重复的 frame
+
+    for record in res {
+        let id: ID = record.id.into();
+        let rank_result = rank_results_map
+            .get(&id)
+            .ok_or_else(|| anyhow::anyhow!("Missing rank result"))?
+            .to_owned();
+        let highlight = match full_text_highlight_map.get(&id) {
+            Some(v) => v.clone(),
+            None => "".to_string(),
+        };
+        let reference_text = record.reference_text.clone();
+        let metadata = match (record.asset_id.tb.as_str(), &record.segment) {
+            ("image", None) => {
+                let metadata = ImageIndexMetadata { data: 0 };
+                ContentIndexMetadata::Image(metadata)
+            }
+            ("audio", Some(SegmentLookup::AudioFrame(segment))) => {
+                let metadata = AudioIndexMetadata {
+                    slice_type: AudioSliceType::Transcript,
+                    start_timestamp: segment.start_timestamp,
+                    end_timestamp: segment.end_timestamp,
+                };
+                ContentIndexMetadata::Audio(metadata)
+            }
+            ("video", Some(SegmentLookup::ImageFrame(segment))) => {
+                let metadata = VideoIndexMetadata {
+                    slice_type: VideoSliceType::Visual,
+                    start_timestamp: segment.start_timestamp,
+                    end_timestamp: segment.end_timestamp,
+                };
+                ContentIndexMetadata::Video(metadata)
+            }
+            ("video", Some(SegmentLookup::AudioFrame(segment))) => {
+                let metadata = VideoIndexMetadata {
+                    slice_type: VideoSliceType::Audio,
+                    start_timestamp: segment.start_timestamp,
+                    end_timestamp: segment.end_timestamp,
+                };
+                ContentIndexMetadata::Video(metadata)
+            }
+            ("document", Some(SegmentLookup::Page(segment))) => {
+                let metadata = RawTextIndexMetadata {
+                    chunk_type: RawTextChunkType::Content,
+                    start_index: segment.start_index,
+                    end_index: segment.end_index,
+                };
+                ContentIndexMetadata::RawText(metadata)
+            }
+            ("web", Some(SegmentLookup::Page(segment))) => {
+                let metadata = WebPageIndexMetadata {
+                    chunk_type: WebPageChunkType::Content,
+                    start_index: segment.start_index,
+                    end_index: segment.end_index,
+                };
+                ContentIndexMetadata::WebPage(metadata)
+            }
+            _ => {
+                anyhow::bail!(
+                    "unexpected asset type {:?} or segment type {:?}",
+                    &record.asset_id,
+                    &record.segment
+                );
+            }
+        };
+        let hit_reasone = match rank_result.search_type {
+            SearchType::FullText => match &metadata {
+                ContentIndexMetadata::Video(metadata) => match metadata.slice_type {
+                    VideoSliceType::Visual => ContentQueryHitReason::CaptionMatch(highlight),
+                    VideoSliceType::Audio => ContentQueryHitReason::TranscriptMatch(highlight),
+                },
+                ContentIndexMetadata::Audio(metadata) => match metadata.slice_type {
+                    AudioSliceType::Transcript => ContentQueryHitReason::TranscriptMatch(highlight),
+                },
+                ContentIndexMetadata::Image(_) => ContentQueryHitReason::CaptionMatch(highlight),
+                _ => ContentQueryHitReason::TextMatch(highlight),
+            },
+            SearchType::Vector(VectorSearchType::Text) => match &metadata {
+                ContentIndexMetadata::Video(metadata) => match metadata.slice_type {
+                    VideoSliceType::Visual => {
+                        ContentQueryHitReason::SemanticCaptionMatch(reference_text)
+                    }
+                    VideoSliceType::Audio => {
+                        ContentQueryHitReason::SemanticTranscriptMatch(reference_text)
+                    }
+                },
+                ContentIndexMetadata::Audio(metadata) => match metadata.slice_type {
+                    AudioSliceType::Transcript => {
+                        ContentQueryHitReason::SemanticTranscriptMatch(reference_text)
+                    }
+                },
+                ContentIndexMetadata::Image(_) => {
+                    ContentQueryHitReason::SemanticCaptionMatch(reference_text)
+                }
+                _ => ContentQueryHitReason::SemanticTextMatch(reference_text),
+            },
+            SearchType::Vector(VectorSearchType::Vision) => ContentQueryHitReason::VisionMatch,
+        };
+        query_results.push(ContentQueryResult {
+            file_identifier: record.file_identifier,
+            score: rank_result.score,
+            metadata,
+            hit_reason: Some(hit_reasone),
+            reference_content: Some(record.reference_text),
+            search_hint: rank_result.search_hint.clone(),
+        });
+    }
+
+    Ok(query_results)
+}
 
 impl DB {
     #[tracing::instrument(err(Debug), skip_all)]
@@ -65,9 +206,12 @@ impl DB {
                     .into_iter()
                     .map(|r| (r.id.clone(), r))
                     .collect::<HashMap<_, _>>();
-                let mut query_results = self
-                    .lookup_assets_by_image_text_ids(&rank_results_map, &full_text_highlight_map)
-                    .await?;
+                let mut query_results = lookup_assets_by_image_text_ids(
+                    &self.client,
+                    &rank_results_map,
+                    &full_text_highlight_map,
+                )
+                .await?;
                 tracing::debug!("{} results after lookup", query_results.len());
                 // 最后需要排序一下因为 query_results 是按照 id 的顺序返回的
                 query_results.sort_by(|a, b| {
@@ -80,151 +224,6 @@ impl DB {
             }
             _ => unimplemented!(),
         }
-    }
-
-    async fn lookup_assets_by_image_text_ids(
-        &self,
-        rank_results_map: &HashMap<ID, RankResult>,
-        full_text_highlight_map: &HashMap<ID, String>,
-    ) -> anyhow::Result<Vec<ContentQueryResult>> {
-        let ids = rank_results_map.keys().collect::<Vec<_>>();
-        let things = ids
-            .into_iter()
-            .map(|id| surrealdb::sql::Thing::from(id))
-            .collect::<Vec<_>>();
-        // tracing::debug!(ids=?things, "look up assets by image and text ids");
-        let mut res = self
-            .client
-            .query(PAYLOAD_LOOKUP_SQL)
-            .bind(("ids", things))
-            .await?;
-
-        // tracing::debug!(response=?res, "look up assets by image and text ids");
-        let res_image: Vec<PayloadLookupResult> = res.take(0)?;
-        let res_text: Vec<PayloadLookupResult> = res.take(1)?;
-        let res = Vec::new()
-            .into_iter()
-            .chain(res_image.into_iter())
-            .chain(res_text.into_iter())
-            .collect::<Vec<PayloadLookupResult>>();
-
-        let mut query_results: Vec<ContentQueryResult> = Vec::new();
-        // text 和 image 可能对应到同样的视频片段，那么，视频的分数是不是应该增加？
-        // 也就是 query_results 里面是会有重复的 file_identifier 的
-        // https://github.com/bmrlab/gendam/issues/105#issuecomment-2509669785
-
-        for record in res {
-            let id: ID = record.id.into();
-            let rank_result = rank_results_map
-                .get(&id)
-                .ok_or_else(|| anyhow::anyhow!("Missing rank result"))?
-                .to_owned();
-            let highlight = match full_text_highlight_map.get(&id) {
-                Some(v) => v.clone(),
-                None => "".to_string(),
-            };
-            let reference_text = record.reference_text.clone();
-            let metadata = match (record.asset_id.tb.as_str(), &record.segment) {
-                ("image", None) => {
-                    let metadata = ImageIndexMetadata { data: 0 };
-                    ContentIndexMetadata::Image(metadata)
-                }
-                ("audio", Some(SegmentLookup::AudioFrame(segment))) => {
-                    let metadata = AudioIndexMetadata {
-                        slice_type: AudioSliceType::Transcript,
-                        start_timestamp: segment.start_timestamp,
-                        end_timestamp: segment.end_timestamp,
-                    };
-                    ContentIndexMetadata::Audio(metadata)
-                }
-                ("video", Some(SegmentLookup::ImageFrame(segment))) => {
-                    let metadata = VideoIndexMetadata {
-                        slice_type: VideoSliceType::Visual,
-                        start_timestamp: segment.start_timestamp,
-                        end_timestamp: segment.end_timestamp,
-                    };
-                    ContentIndexMetadata::Video(metadata)
-                }
-                ("video", Some(SegmentLookup::AudioFrame(segment))) => {
-                    let metadata = VideoIndexMetadata {
-                        slice_type: VideoSliceType::Audio,
-                        start_timestamp: segment.start_timestamp,
-                        end_timestamp: segment.end_timestamp,
-                    };
-                    ContentIndexMetadata::Video(metadata)
-                }
-                ("document", Some(SegmentLookup::Page(segment))) => {
-                    let metadata = RawTextIndexMetadata {
-                        chunk_type: RawTextChunkType::Content,
-                        start_index: segment.start_index,
-                        end_index: segment.end_index,
-                    };
-                    ContentIndexMetadata::RawText(metadata)
-                }
-                ("web", Some(SegmentLookup::Page(segment))) => {
-                    let metadata = WebPageIndexMetadata {
-                        chunk_type: WebPageChunkType::Content,
-                        start_index: segment.start_index,
-                        end_index: segment.end_index,
-                    };
-                    ContentIndexMetadata::WebPage(metadata)
-                }
-                _ => {
-                    anyhow::bail!(
-                        "unexpected asset type {:?} or segment type {:?}",
-                        &record.asset_id,
-                        &record.segment
-                    );
-                }
-            };
-            let hit_reasone = match rank_result.search_type {
-                SearchType::FullText => match &metadata {
-                    ContentIndexMetadata::Video(metadata) => match metadata.slice_type {
-                        VideoSliceType::Visual => ContentQueryHitReason::CaptionMatch(highlight),
-                        VideoSliceType::Audio => ContentQueryHitReason::TranscriptMatch(highlight),
-                    },
-                    ContentIndexMetadata::Audio(metadata) => match metadata.slice_type {
-                        AudioSliceType::Transcript => {
-                            ContentQueryHitReason::TranscriptMatch(highlight)
-                        }
-                    },
-                    ContentIndexMetadata::Image(_) => {
-                        ContentQueryHitReason::CaptionMatch(highlight)
-                    }
-                    _ => ContentQueryHitReason::TextMatch(highlight),
-                },
-                SearchType::Vector(VectorSearchType::Text) => match &metadata {
-                    ContentIndexMetadata::Video(metadata) => match metadata.slice_type {
-                        VideoSliceType::Visual => {
-                            ContentQueryHitReason::SemanticCaptionMatch(reference_text)
-                        }
-                        VideoSliceType::Audio => {
-                            ContentQueryHitReason::SemanticTranscriptMatch(reference_text)
-                        }
-                    },
-                    ContentIndexMetadata::Audio(metadata) => match metadata.slice_type {
-                        AudioSliceType::Transcript => {
-                            ContentQueryHitReason::SemanticTranscriptMatch(reference_text)
-                        }
-                    },
-                    ContentIndexMetadata::Image(_) => {
-                        ContentQueryHitReason::SemanticCaptionMatch(reference_text)
-                    }
-                    _ => ContentQueryHitReason::SemanticTextMatch(reference_text),
-                },
-                SearchType::Vector(VectorSearchType::Vision) => ContentQueryHitReason::VisionMatch,
-            };
-            query_results.push(ContentQueryResult {
-                file_identifier: record.file_identifier,
-                score: rank_result.score,
-                metadata,
-                hit_reason: Some(hit_reasone),
-                reference_content: Some(record.reference_text),
-                search_hint: rank_result.search_hint.clone(),
-            });
-        }
-
-        Ok(query_results)
     }
 }
 
